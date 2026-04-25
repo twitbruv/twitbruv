@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router"
+import { Link, useLocation } from "@tanstack/react-router"
 import {
   IconBell,
   IconBookmark,
@@ -21,6 +21,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
+  useSidebar,
 } from "@workspace/ui/components/sidebar"
 import { TooltipProvider } from "@workspace/ui/components/tooltip"
 import { useEffect, useState } from "react"
@@ -38,8 +39,10 @@ import type { ReactNode } from "react"
 export function AppShell({ children }: { children: ReactNode }) {
   const { data: session, isPending } = authClient.useSession()
   const { me } = useMe()
+  const location = useLocation()
   const unread = useUnreadNotifications(Boolean(session))
   const dmUnread = useUnreadDms(Boolean(session))
+  const isInbox = location.pathname.startsWith("/inbox")
 
   // Render the lightweight public shell while we don't have a confirmed session. This covers
   // SSR (no session yet), the brief client hydration window, and any time the user is logged out.
@@ -194,8 +197,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             </main>
             {/* <RightRail /> */}
           </div>
-          <ComposeFab />
+          {!isInbox && <ComposeFab />}
         </SidebarInset>
+        <SidebarCloseOnNavigate />
       </SidebarProvider>
     </TooltipProvider>
   )
@@ -259,4 +263,15 @@ function useUnreadDms(enabled: boolean) {
     }
   }, [enabled])
   return count
+}
+
+function SidebarCloseOnNavigate() {
+  const location = useLocation()
+  const { setOpenMobile } = useSidebar()
+
+  useEffect(() => {
+    setOpenMobile(false)
+  }, [location.pathname, setOpenMobile])
+
+  return null
 }
