@@ -46,6 +46,7 @@ export function Compose({
   quoteOfId,
   quoted,
   placeholder = "What's happening?",
+  collapsible = false,
 }: {
   onCreated?: (post: Post) => void
   replyToId?: string
@@ -53,11 +54,14 @@ export function Compose({
   /** When quoting, render a summary of the quoted post so the author knows what's attached. */
   quoted?: Post
   placeholder?: string
+  /** When true, render a single-line collapsed view until the user focuses the input. */
+  collapsible?: boolean
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { me } = useMe()
   const dKey = useMemo(() => draftKey({ replyToId, quoteOfId }), [replyToId, quoteOfId])
   const [text, setText] = useState(() => loadDraft(dKey))
+  const [expanded, setExpanded] = useState(() => !collapsible || loadDraft(dKey).length > 0)
   // Persist drafts on every keystroke. Tiny localStorage write — fine without debouncing.
   useEffect(() => {
     saveDraft(dKey, text)
@@ -180,6 +184,7 @@ export function Compose({
       attachments.forEach((a) => URL.revokeObjectURL(a.previewUrl))
       setAttachments([])
       setPoll(null)
+      if (collapsible) setExpanded(false)
       onCreated?.(post)
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "failed to post")
@@ -221,8 +226,9 @@ export function Compose({
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
+          onFocus={() => setExpanded(true)}
           placeholder={placeholder}
-          rows={3}
+          rows={expanded ? 3 : 1}
           className="w-full resize-none bg-transparent text-[15px] leading-relaxed placeholder:text-muted-foreground focus:outline-none"
         />
 
@@ -364,57 +370,59 @@ export function Compose({
           </div>
         )}
 
-        <div className="mt-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/avif,image/gif,image/heic,image/heif"
-              multiple
-              hidden
-              onChange={(e) => {
-                addFiles(e.target.files)
-                e.target.value = ""
-              }}
-            />
-            <Button
-              variant="ghost"
-              size="icon"
-              disabled={attachments.length >= MAX_ATTACHMENTS || Boolean(poll)}
-              onClick={() => fileInputRef.current?.click()}
-              aria-label="add image"
-            >
-              <IconPhoto size={18} stroke={1.75} />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              disabled={Boolean(poll) || attachments.length > 0 || Boolean(replyToId) || Boolean(quoteOfId)}
-              onClick={startPoll}
-              aria-label="add poll"
-              title="Add a poll"
-            >
-              <IconChartBar size={18} stroke={1.75} />
-            </Button>
-            <span
-              className={`text-xs ${
-                remaining < 0
-                  ? "text-destructive"
-                  : remaining < 20
-                    ? "text-amber-600"
-                    : "text-muted-foreground"
-              }`}
-            >
-              {remaining}
-            </span>
+        {expanded && (
+          <div className="mt-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/avif,image/gif,image/heic,image/heif"
+                multiple
+                hidden
+                onChange={(e) => {
+                  addFiles(e.target.files)
+                  e.target.value = ""
+                }}
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                disabled={attachments.length >= MAX_ATTACHMENTS || Boolean(poll)}
+                onClick={() => fileInputRef.current?.click()}
+                aria-label="add image"
+              >
+                <IconPhoto size={18} stroke={1.75} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                disabled={Boolean(poll) || attachments.length > 0 || Boolean(replyToId) || Boolean(quoteOfId)}
+                onClick={startPoll}
+                aria-label="add poll"
+                title="Add a poll"
+              >
+                <IconChartBar size={18} stroke={1.75} />
+              </Button>
+              <span
+                className={`text-xs ${
+                  remaining < 0
+                    ? "text-destructive"
+                    : remaining < 20
+                      ? "text-amber-600"
+                      : "text-muted-foreground"
+                }`}
+              >
+                {remaining}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              {error && <span className="text-xs text-destructive">{error}</span>}
+              <Button type="submit" disabled={!canSubmit} size="lg">
+                {loading ? "Posting…" : replyToId ? "Reply" : quoteOfId ? "Quote" : "Post"}
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            {error && <span className="text-xs text-destructive">{error}</span>}
-            <Button type="submit" disabled={!canSubmit} size="lg">
-              {loading ? "Posting…" : replyToId ? "Reply" : quoteOfId ? "Quote" : "Post"}
-            </Button>
-          </div>
-        </div>
+        )}
       </div>
     </form>
   )

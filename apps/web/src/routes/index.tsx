@@ -52,7 +52,7 @@ function Landing() {
             </Link>
           </div>
         ) : (
-          <Compose onCreated={(p) => setNewPost(p)} />
+          <Compose onCreated={(p) => setNewPost(p)} collapsible />
         )}
         <div className="flex border-b border-border">
           {(["following", "all"] as Array<FeedTab>).map((t) => (
