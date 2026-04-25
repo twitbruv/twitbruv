@@ -26,6 +26,9 @@ dist
 .tanstack
 .vinxi
 
+# TypeScript incremental build info
+*.tsbuildinfo
+
 # Debug
 npm-debug.log*
 
