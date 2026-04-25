@@ -76,7 +76,7 @@ function pickLargest(media: NonNullable<Post["media"]>[number]) {
   )
 }
 
-function ArticleCardBlock({
+export function ArticleCardBlock({
   card,
 }: {
   card: NonNullable<Post["articleCard"]>
@@ -121,7 +121,7 @@ function ArticleCardBlock({
   )
 }
 
-function QuoteEmbed({ post }: { post: Post }) {
+export function QuoteEmbed({ post }: { post: Post }) {
   const handle = post.author.handle
   const thumb = post.media?.find((m) => m.processingState === "ready")
   const variant =
