@@ -5,10 +5,75 @@ import { ApiError, api } from "../lib/api"
 import { Editor } from "../components/editor/editor"
 import { VerifiedBadge } from "../components/verified-badge"
 import { authClient } from "../lib/auth"
+import { APP_NAME } from "../lib/env"
+import { buildSeoMeta, canonicalLink, clipDescription } from "../lib/seo"
 import type { ArticleDto } from "../lib/api"
 
 export const Route = createFileRoute("/$handle/a/$slug")({
   component: ArticleView,
+  loader: async ({ params }) => {
+    try {
+      const { article } = await api.userArticleBySlug(params.handle, params.slug)
+      return { article }
+    } catch {
+      return { article: null }
+    }
+  },
+  head: ({ loaderData, params }) => {
+    const article = loaderData?.article ?? null
+    const path = `/${params.handle}/a/${params.slug}`
+    if (!article) {
+      return {
+        meta: buildSeoMeta({
+          title: "Article not found",
+          description: `This article on ${APP_NAME} either doesn't exist or has been removed.`,
+          path,
+        }),
+        links: [canonicalLink(path)],
+      }
+    }
+    const description = clipDescription(
+      article.subtitle ||
+        article.bodyText ||
+        `An article by @${params.handle} on ${APP_NAME}.`
+    )
+    return {
+      meta: buildSeoMeta({
+        title: article.title,
+        description,
+        path,
+        image: article.coverUrl ?? `/og/article/${params.handle}/${params.slug}`,
+        type: "article",
+        largeCard: true,
+        publishedTime: article.publishedAt ?? undefined,
+        authorHandle: article.author.handle ?? undefined,
+      }),
+      links: [canonicalLink(path)],
+      scripts: [
+        {
+          type: "application/ld+json",
+          children: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Article",
+            headline: article.title,
+            description: article.subtitle ?? description,
+            image: article.coverUrl ?? undefined,
+            datePublished: article.publishedAt ?? undefined,
+            dateModified: article.editedAt ?? article.publishedAt ?? undefined,
+            wordCount: article.wordCount,
+            author: article.author.handle
+              ? {
+                  "@type": "Person",
+                  name: article.author.displayName ?? article.author.handle,
+                  url: `/${article.author.handle}`,
+                }
+              : undefined,
+            mainEntityOfPage: path,
+          }),
+        },
+      ],
+    }
+  },
 })
 
 function ArticleView() {

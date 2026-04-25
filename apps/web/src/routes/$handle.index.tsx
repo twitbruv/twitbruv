@@ -8,9 +8,69 @@ import { ImageLightbox } from "../components/image-lightbox"
 import { RichText } from "../components/rich-text"
 import { VerifiedBadge } from "../components/verified-badge"
 import { useMe } from "../lib/me"
+import { APP_NAME, WEB_URL } from "../lib/env"
+import { buildSeoMeta, canonicalLink, clipDescription } from "../lib/seo"
 import type { PublicProfile, UserList } from "../lib/api"
 
-export const Route = createFileRoute("/$handle/")({ component: Profile })
+export const Route = createFileRoute("/$handle/")({
+  component: Profile,
+  loader: async ({ params }) => {
+    try {
+      const { user } = await api.user(params.handle)
+      return { user }
+    } catch {
+      return { user: null }
+    }
+  },
+  head: ({ loaderData, params }) => {
+    const user = loaderData?.user ?? null
+    const path = `/${params.handle}`
+    if (!user) {
+      return {
+        meta: buildSeoMeta({
+          title: `@${params.handle} not found`,
+          description: `No ${APP_NAME} profile exists for @${params.handle}.`,
+          path,
+        }),
+        links: [canonicalLink(path)],
+      }
+    }
+    const name = user.displayName || `@${user.handle}`
+    const description = clipDescription(
+      user.bio ||
+        `@${user.handle} on ${APP_NAME} — ${user.counts.followers} followers, ${user.counts.posts} posts.`
+    )
+    return {
+      meta: buildSeoMeta({
+        title: `${name} (@${user.handle})`,
+        description,
+        path,
+        image: user.bannerUrl ?? `/og/user/${user.handle}`,
+        type: "profile",
+        largeCard: true,
+      }),
+      links: [canonicalLink(path)],
+      scripts: [
+        {
+          type: "application/ld+json",
+          children: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "ProfilePage",
+            mainEntity: {
+              "@type": "Person",
+              name,
+              alternateName: `@${user.handle}`,
+              description: user.bio ?? undefined,
+              image: user.avatarUrl ?? undefined,
+              url: `${WEB_URL}${path}`,
+              identifier: user.handle ?? undefined,
+            },
+          }),
+        },
+      ],
+    }
+  },
+})
 
 function Profile() {
   const { handle } = Route.useParams()

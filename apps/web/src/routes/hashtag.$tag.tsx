@@ -3,9 +3,23 @@ import { useCallback } from "react"
 import { api } from "../lib/api"
 import { Feed } from "../components/feed"
 import { PageFrame } from "../components/page-frame"
+import { APP_NAME } from "../lib/env"
+import { buildSeoMeta, canonicalLink } from "../lib/seo"
 
 export const Route = createFileRoute("/hashtag/$tag")({
   component: HashtagPage,
+  head: ({ params }) => {
+    const tag = params.tag.replace(/^#/, "")
+    const path = `/hashtag/${tag}`
+    return {
+      meta: buildSeoMeta({
+        title: `#${tag}`,
+        description: `Public posts tagged #${tag} on ${APP_NAME}.`,
+        path,
+      }),
+      links: [canonicalLink(path)],
+    }
+  },
 })
 
 function HashtagPage() {

@@ -20,6 +20,8 @@ import { RichText } from "../components/rich-text"
 import { PollBlock } from "../components/poll-block"
 import { ArticleCardBlock, QuoteEmbed } from "../components/post-card"
 import { useMe } from "../lib/me"
+import { APP_NAME } from "../lib/env"
+import { buildSeoMeta, canonicalLink, clipDescription } from "../lib/seo"
 import type { Post, Thread } from "../lib/api"
 
 type ThreadSearch = {
@@ -39,6 +41,81 @@ export const Route = createFileRoute("/$handle/p/$id")({
         ? search.homePostHandle
         : undefined,
   }),
+  loader: async ({ params }) => {
+    try {
+      const { post } = await api.post(params.id)
+      return { post }
+    } catch {
+      return { post: null }
+    }
+  },
+  head: ({ loaderData, params }) => {
+    const post = loaderData?.post ?? null
+    const path = `/${params.handle}/p/${params.id}`
+    if (!post) {
+      return {
+        meta: buildSeoMeta({
+          title: "Post not found",
+          description: `This post on ${APP_NAME} either doesn't exist or has been removed.`,
+          path,
+        }),
+        links: [canonicalLink(path)],
+      }
+    }
+    const author = post.author.displayName || `@${post.author.handle ?? "user"}`
+    const description = clipDescription(post.text || `A post by ${author} on ${APP_NAME}.`)
+    return {
+      meta: buildSeoMeta({
+        title: `${author}: "${clipDescription(post.text, 60)}"`,
+        description,
+        path,
+        image: `/og/post/${post.id}`,
+        type: "article",
+        largeCard: true,
+        publishedTime: post.createdAt,
+        authorHandle: post.author.handle ?? undefined,
+      }),
+      links: [canonicalLink(path)],
+      scripts: [
+        {
+          type: "application/ld+json",
+          children: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "SocialMediaPosting",
+            headline: clipDescription(post.text, 110),
+            articleBody: post.text,
+            datePublished: post.createdAt,
+            dateModified: post.editedAt ?? post.createdAt,
+            url: `${path}`,
+            author: post.author.handle
+              ? {
+                  "@type": "Person",
+                  name: post.author.displayName ?? post.author.handle,
+                  url: `/${post.author.handle}`,
+                }
+              : undefined,
+            interactionStatistic: [
+              {
+                "@type": "InteractionCounter",
+                interactionType: "https://schema.org/LikeAction",
+                userInteractionCount: post.counts.likes,
+              },
+              {
+                "@type": "InteractionCounter",
+                interactionType: "https://schema.org/ShareAction",
+                userInteractionCount: post.counts.reposts,
+              },
+              {
+                "@type": "InteractionCounter",
+                interactionType: "https://schema.org/CommentAction",
+                userInteractionCount: post.counts.replies,
+              },
+            ],
+          }),
+        },
+      ],
+    }
+  },
 })
 
 function ThreadView() {
