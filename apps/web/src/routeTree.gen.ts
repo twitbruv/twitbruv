@@ -16,6 +16,7 @@ import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as InboxRouteImport } from './routes/inbox'
 import { Route as DraftsRouteImport } from './routes/drafts'
+import { Route as CommunitiesRouteImport } from './routes/communities'
 import { Route as BookmarksRouteImport } from './routes/bookmarks'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -30,6 +31,7 @@ import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as InboxNewRouteImport } from './routes/inbox.new'
 import { Route as InboxConversationIdRouteImport } from './routes/inbox.$conversationId'
 import { Route as HashtagTagRouteImport } from './routes/hashtag.$tag'
+import { Route as CSlugRouteImport } from './routes/c.$slug'
 import { Route as ArticlesNewRouteImport } from './routes/articles.new'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminReportsRouteImport } from './routes/admin.reports'
@@ -72,6 +74,11 @@ const InboxRoute = InboxRouteImport.update({
 const DraftsRoute = DraftsRouteImport.update({
   id: '/drafts',
   path: '/drafts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CommunitiesRoute = CommunitiesRouteImport.update({
+  id: '/communities',
+  path: '/communities',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BookmarksRoute = BookmarksRouteImport.update({
@@ -144,6 +151,11 @@ const HashtagTagRoute = HashtagTagRouteImport.update({
   path: '/hashtag/$tag',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CSlugRoute = CSlugRouteImport.update({
+  id: '/c/$slug',
+  path: '/c/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ArticlesNewRoute = ArticlesNewRouteImport.update({
   id: '/articles/new',
   path: '/articles/new',
@@ -191,6 +203,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/analytics': typeof AnalyticsRoute
   '/bookmarks': typeof BookmarksRoute
+  '/communities': typeof CommunitiesRoute
   '/drafts': typeof DraftsRoute
   '/inbox': typeof InboxRouteWithChildren
   '/login': typeof LoginRoute
@@ -203,6 +216,7 @@ export interface FileRoutesByFullPath {
   '/admin/reports': typeof AdminReportsRoute
   '/admin/users': typeof AdminUsersRoute
   '/articles/new': typeof ArticlesNewRoute
+  '/c/$slug': typeof CSlugRoute
   '/hashtag/$tag': typeof HashtagTagRoute
   '/inbox/$conversationId': typeof InboxConversationIdRoute
   '/inbox/new': typeof InboxNewRoute
@@ -220,6 +234,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
   '/bookmarks': typeof BookmarksRoute
+  '/communities': typeof CommunitiesRoute
   '/drafts': typeof DraftsRoute
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
@@ -231,6 +246,7 @@ export interface FileRoutesByTo {
   '/admin/reports': typeof AdminReportsRoute
   '/admin/users': typeof AdminUsersRoute
   '/articles/new': typeof ArticlesNewRoute
+  '/c/$slug': typeof CSlugRoute
   '/hashtag/$tag': typeof HashtagTagRoute
   '/inbox/$conversationId': typeof InboxConversationIdRoute
   '/inbox/new': typeof InboxNewRoute
@@ -251,6 +267,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/analytics': typeof AnalyticsRoute
   '/bookmarks': typeof BookmarksRoute
+  '/communities': typeof CommunitiesRoute
   '/drafts': typeof DraftsRoute
   '/inbox': typeof InboxRouteWithChildren
   '/login': typeof LoginRoute
@@ -263,6 +280,7 @@ export interface FileRoutesById {
   '/admin/reports': typeof AdminReportsRoute
   '/admin/users': typeof AdminUsersRoute
   '/articles/new': typeof ArticlesNewRoute
+  '/c/$slug': typeof CSlugRoute
   '/hashtag/$tag': typeof HashtagTagRoute
   '/inbox/$conversationId': typeof InboxConversationIdRoute
   '/inbox/new': typeof InboxNewRoute
@@ -284,6 +302,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/analytics'
     | '/bookmarks'
+    | '/communities'
     | '/drafts'
     | '/inbox'
     | '/login'
@@ -296,6 +315,7 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/admin/users'
     | '/articles/new'
+    | '/c/$slug'
     | '/hashtag/$tag'
     | '/inbox/$conversationId'
     | '/inbox/new'
@@ -313,6 +333,7 @@ export interface FileRouteTypes {
     | '/'
     | '/analytics'
     | '/bookmarks'
+    | '/communities'
     | '/drafts'
     | '/login'
     | '/notifications'
@@ -324,6 +345,7 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/admin/users'
     | '/articles/new'
+    | '/c/$slug'
     | '/hashtag/$tag'
     | '/inbox/$conversationId'
     | '/inbox/new'
@@ -343,6 +365,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/analytics'
     | '/bookmarks'
+    | '/communities'
     | '/drafts'
     | '/inbox'
     | '/login'
@@ -355,6 +378,7 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/admin/users'
     | '/articles/new'
+    | '/c/$slug'
     | '/hashtag/$tag'
     | '/inbox/$conversationId'
     | '/inbox/new'
@@ -375,6 +399,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   AnalyticsRoute: typeof AnalyticsRoute
   BookmarksRoute: typeof BookmarksRoute
+  CommunitiesRoute: typeof CommunitiesRoute
   DraftsRoute: typeof DraftsRoute
   InboxRoute: typeof InboxRouteWithChildren
   LoginRoute: typeof LoginRoute
@@ -383,6 +408,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   SignupRoute: typeof SignupRoute
   ArticlesNewRoute: typeof ArticlesNewRoute
+  CSlugRoute: typeof CSlugRoute
   HashtagTagRoute: typeof HashtagTagRoute
   InviteTokenRoute: typeof InviteTokenRoute
   ListsIdRoute: typeof ListsIdRoute
@@ -439,6 +465,13 @@ declare module '@tanstack/react-router' {
       path: '/drafts'
       fullPath: '/drafts'
       preLoaderRoute: typeof DraftsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/communities': {
+      id: '/communities'
+      path: '/communities'
+      fullPath: '/communities'
+      preLoaderRoute: typeof CommunitiesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/bookmarks': {
@@ -537,6 +570,13 @@ declare module '@tanstack/react-router' {
       path: '/hashtag/$tag'
       fullPath: '/hashtag/$tag'
       preLoaderRoute: typeof HashtagTagRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/c/$slug': {
+      id: '/c/$slug'
+      path: '/c/$slug'
+      fullPath: '/c/$slug'
+      preLoaderRoute: typeof CSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/articles/new': {
@@ -651,6 +691,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   AnalyticsRoute: AnalyticsRoute,
   BookmarksRoute: BookmarksRoute,
+  CommunitiesRoute: CommunitiesRoute,
   DraftsRoute: DraftsRoute,
   InboxRoute: InboxRouteWithChildren,
   LoginRoute: LoginRoute,
@@ -659,6 +700,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   SignupRoute: SignupRoute,
   ArticlesNewRoute: ArticlesNewRoute,
+  CSlugRoute: CSlugRoute,
   HashtagTagRoute: HashtagTagRoute,
   InviteTokenRoute: InviteTokenRoute,
   ListsIdRoute: ListsIdRoute,

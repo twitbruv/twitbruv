@@ -8,6 +8,7 @@ import {
   IconMail,
   IconPencil,
   IconSearch,
+  IconUsersGroup,
 } from "@tabler/icons-react"
 import {
   Sidebar,
@@ -143,6 +144,18 @@ export function AppShell({ children }: { children: ReactNode }) {
                         <Link to="/lists">
                           <IconList />
                           <span>Lists</span>
+                        </Link>
+                      }
+                    />
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      size="default"
+                      tooltip="communities"
+                      render={
+                        <Link to="/communities">
+                          <IconUsersGroup />
+                          <span>Communities</span>
                         </Link>
                       }
                     />

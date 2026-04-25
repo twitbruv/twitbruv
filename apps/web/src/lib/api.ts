@@ -94,6 +94,42 @@ export const api = {
     ),
   bookmarks: (cursor?: string) =>
     request<FeedPage>(`/api/me/bookmarks${qs(cursor)}`),
+
+  communities: (cursor?: string) =>
+    request<{ communities: Array<Community>; nextCursor: string | null }>(
+      `/api/communities${qs(cursor)}`,
+    ),
+  communityBySlug: (slug: string) =>
+    request<{ community: Community }>(
+      `/api/communities/by/${encodeURIComponent(slug)}`,
+    ),
+  createCommunity: (body: {
+    slug: string
+    name: string
+    description?: string
+    visibility?: "public" | "restricted" | "private"
+  }) =>
+    request<{ community: Community }>("/api/communities", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  joinCommunity: (id: string) =>
+    request<{ ok: true; pendingApproval: boolean }>(
+      `/api/communities/${id}/join`,
+      { method: "POST" },
+    ),
+  leaveCommunity: (id: string) =>
+    request<{ ok: true }>(`/api/communities/${id}/leave`, { method: "POST" }),
+  communityMembers: (id: string) =>
+    request<{ members: Array<CommunityMember> }>(
+      `/api/communities/${id}/members`,
+    ),
+  communityTimeline: (id: string, cursor?: string) =>
+    request<FeedPage>(`/api/communities/${id}/timeline${qs(cursor)}`),
+  attachPostToCommunity: (id: string, postId: string) =>
+    request<{ ok: true }>(`/api/communities/${id}/posts/${postId}`, {
+      method: "POST",
+    }),
   blocks: (cursor?: string) =>
     request<{ users: Array<BlockedUser>; nextCursor: string | null }>(
       `/api/me/blocks${qs(cursor)}`
@@ -692,6 +728,30 @@ export interface SelfUser {
   locale: string
   timezone: string | null
   createdAt: string
+}
+
+export interface Community {
+  id: string
+  slug: string
+  name: string
+  description: string | null
+  avatarUrl: string | null
+  bannerUrl: string | null
+  visibility: "public" | "restricted" | "private"
+  ownerId: string
+  memberCount: number
+  createdAt: string
+  viewer?: { role: "owner" | "mod" | "member"; pendingApproval: boolean } | null
+}
+
+export interface CommunityMember {
+  id: string
+  handle: string | null
+  displayName: string | null
+  avatarUrl: string | null
+  isVerified: boolean
+  role: "owner" | "mod" | "member"
+  joinedAt: string
 }
 
 export interface Thread {
