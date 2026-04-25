@@ -1,5 +1,16 @@
 import { Link, createFileRoute, useRouter } from "@tanstack/react-router"
-import { useCallback, useEffect, useState } from "react"
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query"
+import {
+  useVirtualizer,
+  useWindowVirtualizer,
+} from "@tanstack/react-virtual"
 import {
   IconAt,
   IconHeart,
@@ -15,69 +26,106 @@ import { authClient } from "../lib/auth"
 import { Avatar } from "../components/avatar"
 import { PageFrame } from "../components/page-frame"
 import { VerifiedBadge } from "../components/verified-badge"
+import { useInfiniteScrollSentinel } from "../lib/use-infinite-scroll-sentinel"
+import type { InfiniteData } from "@tanstack/react-query"
 import type { NotificationItem, Post } from "../lib/api"
 
 export const Route = createFileRoute("/notifications")({
   component: Notifications,
 })
 
+interface NotificationsPage {
+  notifications: Array<NotificationItem>
+  nextCursor: string | null
+}
+
+const NOTIFICATIONS_QUERY_KEY = ["notifications"] as const
+type NotificationsQueryKey = typeof NOTIFICATIONS_QUERY_KEY
+
+const ESTIMATED_NOTIFICATION_HEIGHT = 140
+
+// Walk up the DOM to find the nearest ancestor that scrolls. Returns null when
+// the page itself scrolls (the common case on mobile and on routes that don't
+// pin the column).
+function findScrollParent(el: HTMLElement | null): HTMLElement | null {
+  let node: HTMLElement | null = el?.parentElement ?? null
+  while (node) {
+    const style = getComputedStyle(node)
+    const overflowY = style.overflowY || style.overflow
+    if (/(auto|scroll|overlay)/.test(overflowY)) {
+      if (node === document.documentElement || node === document.body) {
+        return null
+      }
+      return node
+    }
+    node = node.parentElement
+  }
+  return null
+}
+
+const useIsoLayoutEffect =
+  typeof window === "undefined" ? useEffect : useLayoutEffect
+
 function Notifications() {
   const router = useRouter()
-  const { data: session, isPending } = authClient.useSession()
-  const [items, setItems] = useState<Array<NotificationItem>>([])
-  const [cursor, setCursor] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [loadingMore, setLoadingMore] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { data: session, isPending: sessionPending } = authClient.useSession()
+  const queryClient = useQueryClient()
 
   useEffect(() => {
-    if (!isPending && !session) router.navigate({ to: "/login" })
-  }, [isPending, session, router])
+    if (!sessionPending && !session) router.navigate({ to: "/login" })
+  }, [sessionPending, session, router])
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const page = await api.notifications()
-      setItems(page.notifications)
-      setCursor(page.nextCursor)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "failed to load")
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const {
+    data,
+    error,
+    isPending,
+    fetchNextPage,
+    isFetchingNextPage,
+    hasNextPage,
+  } = useInfiniteQuery<
+    NotificationsPage,
+    Error,
+    InfiniteData<NotificationsPage, string | undefined>,
+    NotificationsQueryKey,
+    string | undefined
+  >({
+    queryKey: NOTIFICATIONS_QUERY_KEY,
+    queryFn: ({ pageParam }) => api.notifications(pageParam),
+    initialPageParam: undefined,
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
+    enabled: !!session,
+  })
 
-  useEffect(() => {
-    if (!session) return
-    load()
-  }, [session, load])
-
-  // Mark everything visible as read on arrival. Fire-and-forget.
+  // Mark everything as read on arrival. Fire-and-forget.
   useEffect(() => {
     if (!session) return
     api.notificationsMarkRead({ all: true }).catch(() => {})
   }, [session])
 
-  async function loadMore() {
-    if (!cursor || loadingMore) return
-    setLoadingMore(true)
-    try {
-      const page = await api.notifications(cursor)
-      setItems((prev) => [...prev, ...page.notifications])
-      setCursor(page.nextCursor)
-    } finally {
-      setLoadingMore(false)
-    }
-  }
+  const items = useMemo(
+    () => data?.pages.flatMap((p) => p.notifications) ?? [],
+    [data]
+  )
 
   async function markAllRead() {
     await api.notificationsMarkRead({ all: true })
-    setItems((prev) =>
-      prev.map((n) =>
-        n.readAt ? n : { ...n, readAt: new Date().toISOString() }
-      )
-    )
+    const now = new Date().toISOString()
+    queryClient.setQueryData<
+      InfiniteData<NotificationsPage, string | undefined>
+    >(NOTIFICATIONS_QUERY_KEY, (current) => {
+      if (!current) return current
+      return {
+        ...current,
+        pages: current.pages.map((page) => ({
+          ...page,
+          notifications: page.notifications.map((n) =>
+            n.readAt ? n : { ...n, readAt: now }
+          ),
+        })),
+      }
+    })
   }
+
   const hasUnread = items.some((n) => !n.readAt)
 
   return (
@@ -94,10 +142,10 @@ function Notifications() {
             Mark all read
           </Button>
         </header>
-        {loading ? (
-          <ul>
+        {isPending ? (
+          <div>
             {Array.from({ length: 5 }).map((_, i) => (
-              <li
+              <div
                 key={i}
                 className="flex items-start gap-3 border-b border-border px-4 py-3"
               >
@@ -106,11 +154,11 @@ function Notifications() {
                   <Skeleton className="h-4 w-2/3" />
                   <Skeleton className="h-3 w-1/3" />
                 </div>
-              </li>
+              </div>
             ))}
-          </ul>
+          </div>
         ) : error ? (
-          <p className="p-4 text-sm text-destructive">{error}</p>
+          <p className="p-4 text-sm text-destructive">{error.message}</p>
         ) : items.length === 0 ? (
           <div className="px-4 py-16 text-center">
             <p className="text-sm font-semibold">All caught up</p>
@@ -119,26 +167,195 @@ function Notifications() {
             </p>
           </div>
         ) : (
-          <ul>
-            {items.map((n) => (
-              <NotificationRow key={n.id} item={n} />
-            ))}
-            {cursor && (
-              <li className="flex justify-center py-3">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={loadMore}
-                  disabled={loadingMore}
-                >
-                  {loadingMore ? "loading…" : "load more"}
-                </Button>
-              </li>
-            )}
-          </ul>
+          <NotificationsList
+            items={items}
+            hasNextPage={!!hasNextPage}
+            isFetchingNextPage={isFetchingNextPage}
+            fetchNextPage={fetchNextPage}
+          />
         )}
       </main>
     </PageFrame>
+  )
+}
+
+interface NotificationsListProps {
+  items: Array<NotificationItem>
+  hasNextPage: boolean
+  isFetchingNextPage: boolean
+  fetchNextPage: () => void
+}
+
+function NotificationsList(props: NotificationsListProps) {
+  const probeRef = useRef<HTMLDivElement>(null)
+  // null = window scroll, HTMLElement = contained scroll, undefined = unresolved
+  const [scrollEl, setScrollEl] = useState<HTMLElement | null | undefined>(
+    undefined
+  )
+
+  useIsoLayoutEffect(() => {
+    setScrollEl(findScrollParent(probeRef.current))
+  }, [])
+
+  // First paint (and SSR): render non-virtualized so the page isn't blank
+  // while the scroll container is being detected.
+  if (scrollEl === undefined) {
+    return (
+      <div ref={probeRef}>
+        {props.items.map((item) => (
+          <NotificationRow key={item.id} item={item} />
+        ))}
+        {props.hasNextPage && (
+          <div className="flex justify-center py-4 text-xs text-muted-foreground">
+            {props.isFetchingNextPage ? "loading…" : ""}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  if (scrollEl === null) {
+    return <WindowNotificationsList {...props} />
+  }
+  return <ContainerNotificationsList {...props} scrollEl={scrollEl} />
+}
+
+function WindowNotificationsList({
+  items,
+  hasNextPage,
+  isFetchingNextPage,
+  fetchNextPage,
+}: NotificationsListProps) {
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const sentinelRef = useRef<HTMLDivElement>(null)
+  const [scrollMargin, setScrollMargin] = useState(0)
+
+  useIsoLayoutEffect(() => {
+    const node = wrapperRef.current
+    if (!node) return
+    const rect = node.getBoundingClientRect()
+    setScrollMargin(rect.top + window.scrollY)
+  }, [])
+
+  const virtualizer = useWindowVirtualizer({
+    count: items.length,
+    estimateSize: () => ESTIMATED_NOTIFICATION_HEIGHT,
+    overscan: 6,
+    scrollMargin,
+    getItemKey: (i) => items[i].id,
+  })
+
+  useInfiniteScrollSentinel(
+    sentinelRef,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+    { root: null }
+  )
+
+  const virtualItems = virtualizer.getVirtualItems()
+  const totalSize = virtualizer.getTotalSize()
+
+  return (
+    <div>
+      <div
+        ref={wrapperRef}
+        style={{
+          height: Math.max(0, totalSize - scrollMargin),
+          position: "relative",
+          width: "100%",
+        }}
+      >
+        {virtualItems.map((vi) => {
+          const item = items[vi.index]
+          return (
+            <div
+              key={vi.key}
+              ref={virtualizer.measureElement}
+              data-index={vi.index}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                transform: `translateY(${vi.start - scrollMargin}px)`,
+              }}
+            >
+              <NotificationRow item={item} />
+            </div>
+          )
+        })}
+      </div>
+      <div ref={sentinelRef} aria-hidden className="h-px" />
+      {hasNextPage && (
+        <div className="flex justify-center py-4 text-xs text-muted-foreground">
+          {isFetchingNextPage ? "loading…" : ""}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ContainerNotificationsList({
+  items,
+  hasNextPage,
+  isFetchingNextPage,
+  fetchNextPage,
+  scrollEl,
+}: NotificationsListProps & { scrollEl: HTMLElement }) {
+  const sentinelRef = useRef<HTMLDivElement>(null)
+
+  const virtualizer = useVirtualizer({
+    count: items.length,
+    getScrollElement: () => scrollEl,
+    estimateSize: () => ESTIMATED_NOTIFICATION_HEIGHT,
+    overscan: 6,
+    getItemKey: (i) => items[i].id,
+  })
+
+  useInfiniteScrollSentinel(
+    sentinelRef,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+    { root: scrollEl }
+  )
+
+  const virtualItems = virtualizer.getVirtualItems()
+  const totalSize = virtualizer.getTotalSize()
+
+  return (
+    <div>
+      <div
+        style={{ height: totalSize, position: "relative", width: "100%" }}
+      >
+        {virtualItems.map((vi) => {
+          const item = items[vi.index]
+          return (
+            <div
+              key={vi.key}
+              ref={virtualizer.measureElement}
+              data-index={vi.index}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                transform: `translateY(${vi.start}px)`,
+              }}
+            >
+              <NotificationRow item={item} />
+            </div>
+          )
+        })}
+      </div>
+      <div ref={sentinelRef} aria-hidden className="h-px" />
+      {hasNextPage && (
+        <div className="flex justify-center py-4 text-xs text-muted-foreground">
+          {isFetchingNextPage ? "loading…" : ""}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -156,7 +373,7 @@ function NotificationRow({ item }: { item: NotificationItem }) {
     .toUpperCase()
 
   return (
-    <li
+    <div
       className={`border-b border-border px-4 py-3 transition-colors hover:bg-muted/20 ${
         !item.readAt ? "bg-primary/5" : ""
       }`}
@@ -218,7 +435,7 @@ function NotificationRow({ item }: { item: NotificationItem }) {
           </time>
         </div>
       </div>
-    </li>
+    </div>
   )
 }
 
