@@ -76,7 +76,18 @@ function pickLargest(media: NonNullable<Post["media"]>[number]) {
   )
 }
 
-export function ArticleCardBlock({
+function clickedInteractiveElement(target: EventTarget | null) {
+  return (
+    target instanceof Element &&
+    Boolean(
+      target.closest(
+        'a, button, input, textarea, select, summary, [role="button"], [role="menuitem"], [data-post-card-ignore-open]'
+      )
+    )
+  )
+}
+
+function ArticleCardBlock({
   card,
 }: {
   card: NonNullable<Post["articleCard"]>
@@ -121,7 +132,7 @@ export function ArticleCardBlock({
   )
 }
 
-export function QuoteEmbed({ post }: { post: Post }) {
+function QuoteEmbed({ post }: { post: Post }) {
   const handle = post.author.handle
   const thumb = post.media?.find((m) => m.processingState === "ready")
   const variant =
@@ -144,23 +155,30 @@ export function QuoteEmbed({ post }: { post: Post }) {
             </time>
           </div>
           {post.text && (
-            <p className="mt-1 line-clamp-4 text-sm leading-relaxed whitespace-pre-wrap break-words">
+            <p className="mt-1 line-clamp-4 text-sm leading-relaxed break-words whitespace-pre-wrap">
               {post.text}
             </p>
           )}
         </div>
         {variant && (
           <div className="size-20 shrink-0 overflow-hidden rounded">
-            <img src={variant.url} alt="" className="h-full w-full object-cover" />
+            <img
+              src={variant.url}
+              alt=""
+              className="h-full w-full object-cover"
+            />
           </div>
         )}
       </div>
     </div>
   )
-  // Whole card is a link to the quoted post's detail page.
   if (handle) {
     return (
-      <Link to="/$handle/p/$id" params={{ handle, id: post.id }} className="block">
+      <Link
+        to="/$handle/p/$id"
+        params={{ handle, id: post.id }}
+        className="block"
+      >
         {content}
       </Link>
     )
@@ -170,8 +188,6 @@ export function QuoteEmbed({ post }: { post: Post }) {
 
 function MediaGrid({ media }: { media: NonNullable<Post["media"]> }) {
   const cols = media.length === 1 ? "grid-cols-1" : "grid-cols-2"
-  // Single gallery shared by all tiles — each cell opens the lightbox at its own index, so
-  // ArrowLeft / ArrowRight cycle through every ready image in the post.
   const gallery = media.flatMap((m) => {
     if (m.processingState !== "ready") return []
     const full = pickLargest(m)
@@ -223,20 +239,24 @@ export function PostCard({
   post: outerPost,
   onChange,
   onRemove,
+  onOpenThread,
+  active = false,
+  disableThreadNavigation = false,
 }: {
   post: Post
   onChange?: (post: Post) => void
   onRemove?: (id: string) => void
+  onOpenThread?: (post: Post) => void
+  active?: boolean
+  disableThreadNavigation?: boolean
 }) {
+  const navigate = useNavigate()
   const { data: session } = authClient.useSession()
   const isRepost = Boolean(outerPost.repostOf)
-  // The post we actually render. For a repost row we render the original post's content,
-  // author, counters, and engage with ITS id.
   const post = outerPost.repostOf ?? outerPost
 
   const isOwner = Boolean(session?.user && session.user.id === post.author.id)
 
-  // Fire one impression per post per session when the card dwells ≥50% in viewport for ≥1s.
   const articleRef = useRef<HTMLElement>(null)
   useEffect(() => {
     if (typeof window === "undefined") return
@@ -250,7 +270,11 @@ export function PostCard({
           if (entry.intersectionRatio >= 0.5) {
             if (visibleSince === null) visibleSince = Date.now()
             if (!fired && Date.now() - visibleSince >= 1000) {
-              recordImpression({ kind: "impression", subjectType: "post", subjectId: post.id })
+              recordImpression({
+                kind: "impression",
+                subjectType: "post",
+                subjectId: post.id,
+              })
               fired = true
               observer.disconnect()
             }
@@ -259,15 +283,18 @@ export function PostCard({
           }
         }
       },
-      { threshold: [0, 0.5, 1] },
+      { threshold: [0, 0.5, 1] }
     )
     observer.observe(el)
-    // Re-check periodically while intersecting — observers only fire on threshold change, not
-    // on time. A tiny interval advances the dwell check without extra observer events.
+    // Observers do not fire on time alone; interval completes the 1s dwell.
     const iv = window.setInterval(() => {
       if (fired || visibleSince === null) return
       if (Date.now() - visibleSince >= 1000) {
-        recordImpression({ kind: "impression", subjectType: "post", subjectId: post.id })
+        recordImpression({
+          kind: "impression",
+          subjectType: "post",
+          subjectId: post.id,
+        })
         fired = true
         observer.disconnect()
         window.clearInterval(iv)
@@ -278,7 +305,6 @@ export function PostCard({
       window.clearInterval(iv)
     }
   }, [post.id])
-  const navigate = useNavigate()
   const [busy, setBusy] = useState(false)
   const [editing, setEditing] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
@@ -286,19 +312,10 @@ export function PostCard({
   const [editError, setEditError] = useState<string | null>(null)
   const authorHandle = post.author.handle
   const showProfileLink = Boolean(authorHandle)
-  const showPostLink = Boolean(authorHandle)
-
-  function handleCardClick(e: React.MouseEvent) {
-    // Don't navigate if clicking on interactive elements
-    const target = e.target as HTMLElement
-    if (target.closest('a, button, [role="button"], input, textarea')) return
-    if (!authorHandle) return
-    navigate({ to: '/$handle/p/$id', params: { handle: authorHandle, id: post.id } })
-  }
+  const showPostLink = Boolean(authorHandle && !disableThreadNavigation)
   const canEdit =
     isOwner && Date.now() - new Date(post.createdAt).getTime() < EDIT_WINDOW_MS
 
-  // When we optimistically mutate, we need to write back into the right slot of the outer post.
   function emit(next: Post) {
     if (!onChange) return
     if (isRepost) onChange({ ...outerPost, repostOf: next })
@@ -346,9 +363,7 @@ export function PostCard({
     if (!onChange) {
       try {
         await op()
-      } catch {
-        /* nothing to roll back */
-      }
+      } catch {}
       return
     }
     const prev = post
@@ -407,11 +422,23 @@ export function PostCard({
     .slice(0, 1)
     .toUpperCase()
 
+  function openThread() {
+    if (disableThreadNavigation) return
+    if (!authorHandle) return
+    if (onOpenThread) {
+      onOpenThread(post)
+      return
+    }
+    navigate({
+      to: "/$handle/p/$id",
+      params: { handle: authorHandle, id: post.id },
+    })
+  }
+
   return (
     <article
       ref={articleRef}
-      onClick={handleCardClick}
-      className="border-b border-border px-4 py-4 transition-colors hover:bg-muted/20 cursor-pointer"
+      className={`border-b border-border px-4 py-4 transition-colors ${active ? "bg-muted/20" : "hover:bg-muted/20"}`}
     >
       {outerPost.pinned && (
         <div className="mb-2 ml-10 flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -436,258 +463,270 @@ export function PostCard({
         </Link>
       )}
       <div className="flex gap-3">
-      <div className="shrink-0">
-        {authorHandle ? (
-          <Link to="/$handle" params={{ handle: authorHandle }}>
+        <div className="shrink-0">
+          {authorHandle ? (
+            <Link to="/$handle" params={{ handle: authorHandle }}>
+              <Avatar
+                initial={initial}
+                src={post.author.avatarUrl}
+                className="size-10 text-sm ring-1 ring-border"
+              />
+            </Link>
+          ) : (
             <Avatar
               initial={initial}
               src={post.author.avatarUrl}
               className="size-10 text-sm ring-1 ring-border"
             />
-          </Link>
-        ) : (
-          <Avatar
-            initial={initial}
-            src={post.author.avatarUrl}
-            className="size-10 text-sm ring-1 ring-border"
-          />
-        )}
-      </div>
+          )}
+        </div>
 
-      <div className="min-w-0 flex-1">
-        <header className="flex items-center gap-2 text-sm">
-          {showProfileLink && authorHandle ? (
-            <Link
-              to="/$handle"
-              params={{ handle: authorHandle }}
-              className="flex items-center gap-1 font-semibold text-foreground hover:underline"
-            >
-              {post.author.displayName || `@${authorHandle}`}
-              {post.author.isVerified && <VerifiedBadge size={15} />}
-            </Link>
-          ) : (
-            <span className="flex items-center gap-1 font-semibold text-foreground">
-              {post.author.displayName ?? "unknown"}
-              {post.author.isVerified && <VerifiedBadge size={15} />}
-            </span>
-          )}
-          {authorHandle && (
-            <span className="text-muted-foreground">@{authorHandle}</span>
-          )}
-          <span className="text-muted-foreground">·</span>
-          {showPostLink && authorHandle ? (
-            <Link
-              to="/$handle/p/$id"
-              params={{ handle: authorHandle, id: post.id }}
-              className="text-muted-foreground hover:underline"
-              title={post.createdAt}
-            >
-              <time dateTime={post.createdAt}>
+        <div
+          className={`min-w-0 flex-1 ${authorHandle && !disableThreadNavigation ? "cursor-pointer" : ""}`}
+          onClick={(event) => {
+            if (
+              !authorHandle ||
+              disableThreadNavigation ||
+              clickedInteractiveElement(event.target)
+            )
+              return
+            openThread()
+          }}
+        >
+          <header className="flex items-center gap-2 text-sm">
+            {showProfileLink && authorHandle ? (
+              <Link
+                to="/$handle"
+                params={{ handle: authorHandle }}
+                className="flex items-center gap-1 font-semibold text-foreground hover:underline"
+              >
+                {post.author.displayName || `@${authorHandle}`}
+                {post.author.isVerified && <VerifiedBadge size={15} />}
+              </Link>
+            ) : (
+              <span className="flex items-center gap-1 font-semibold text-foreground">
+                {post.author.displayName ?? "unknown"}
+                {post.author.isVerified && <VerifiedBadge size={15} />}
+              </span>
+            )}
+            {authorHandle && (
+              <span className="text-muted-foreground">@{authorHandle}</span>
+            )}
+            <span className="text-muted-foreground">·</span>
+            {showPostLink && authorHandle ? (
+              <Link
+                to="/$handle/p/$id"
+                params={{ handle: authorHandle, id: post.id }}
+                className="text-muted-foreground hover:underline"
+                title={post.createdAt}
+              >
+                <time dateTime={post.createdAt}>
+                  {relativeTime(post.createdAt)}
+                </time>
+              </Link>
+            ) : (
+              <time className="text-muted-foreground" dateTime={post.createdAt}>
                 {relativeTime(post.createdAt)}
               </time>
-            </Link>
-          ) : (
-            <time className="text-muted-foreground" dateTime={post.createdAt}>
-              {relativeTime(post.createdAt)}
-            </time>
-          )}
-          {post.editedAt && (
-            <span className="text-xs text-muted-foreground">(edited)</span>
-          )}
-          {(isOwner || session) && (
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
+            )}
+            {post.editedAt && (
+              <span className="text-xs text-muted-foreground">(edited)</span>
+            )}
+            {(isOwner || session) && (
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="ml-auto size-5"
+                      render={<IconDots size={8} />}
+                    />
+                  }
+                />
+                <DropdownMenuContent
+                  align="end"
+                  sideOffset={4}
+                  className="w-40"
+                >
+                  {isOwner && canEdit && (
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setEditing(true)
+                        setEditText(post.text)
+                      }}
+                    >
+                      <IconPencil size={14} stroke={1.75} />
+                      <span>Edit</span>
+                    </DropdownMenuItem>
+                  )}
+                  {isOwner &&
+                    !isRepost &&
+                    !post.replyToId &&
+                    !post.quoteOfId && (
+                      <DropdownMenuItem
+                        onClick={async () => {
+                          try {
+                            if (post.pinned) await api.unpinPost(post.id)
+                            else await api.pinPost(post.id)
+                            onChange?.({ ...post, pinned: !post.pinned })
+                          } catch {}
+                        }}
+                      >
+                        <IconPin size={14} stroke={1.75} />
+                        <span>{post.pinned ? "Unpin" : "Pin to profile"}</span>
+                      </DropdownMenuItem>
+                    )}
+                  {isOwner && (
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onClick={onDelete}
+                      disabled={busy}
+                    >
+                      <IconTrash size={14} stroke={1.75} />
+                      <span>Delete</span>
+                    </DropdownMenuItem>
+                  )}
+                  {!isOwner && (
+                    <DropdownMenuItem onClick={() => setReportOpen(true)}>
+                      <IconFlag size={14} stroke={1.75} />
+                      <span>Report</span>
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            <ReportDialog
+              open={reportOpen}
+              onOpenChange={setReportOpen}
+              subjectType="post"
+              subjectId={post.id}
+              subjectLabel={
+                authorHandle ? `@${authorHandle}'s post` : "this post"
+              }
+            />
+          </header>
+          {editing ? (
+            <div className="mt-1">
+              <textarea
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                rows={3}
+                className="w-full resize-none bg-transparent text-sm focus:outline-none"
+                maxLength={POST_MAX_LEN}
+              />
+              <div className="mt-1 flex items-center justify-between text-xs">
+                <span
+                  className={
+                    editText.length > POST_MAX_LEN
+                      ? "text-destructive"
+                      : "text-muted-foreground"
+                  }
+                >
+                  {POST_MAX_LEN - editText.length}
+                </span>
+                <div className="flex items-center gap-2">
+                  {editError && (
+                    <span className="text-destructive">{editError}</span>
+                  )}
                   <Button
                     variant="ghost"
-                    size="icon-sm"
-                    className="ml-auto size-5"
-                    render={<IconDots size={8} />}
-                  />
-                }
-              />
-              <DropdownMenuContent align="end" sideOffset={4} className="w-40">
-                {isOwner && canEdit && (
-                  <DropdownMenuItem
+                    size="sm"
                     onClick={() => {
-                      setEditing(true)
+                      setEditing(false)
                       setEditText(post.text)
+                      setEditError(null)
                     }}
                   >
-                    <IconPencil size={14} stroke={1.75} />
-                    <span>Edit</span>
-                  </DropdownMenuItem>
-                )}
-                {isOwner && !isRepost && !post.replyToId && !post.quoteOfId && (
-                  <DropdownMenuItem
-                    onClick={async () => {
-                      try {
-                        if (post.pinned) await api.unpinPost(post.id)
-                        else await api.pinPost(post.id)
-                        onChange?.({ ...post, pinned: !post.pinned })
-                      } catch {
-                        /* surfaced via the post going stale on next refresh */
-                      }
-                    }}
-                  >
-                    <IconPin size={14} stroke={1.75} />
-                    <span>{post.pinned ? "Unpin" : "Pin to profile"}</span>
-                  </DropdownMenuItem>
-                )}
-                {isOwner && (
-                  <DropdownMenuItem
-                    variant="destructive"
-                    onClick={onDelete}
-                    disabled={busy}
-                  >
-                    <IconTrash size={14} stroke={1.75} />
-                    <span>Delete</span>
-                  </DropdownMenuItem>
-                )}
-                {!isOwner && (
-                  <DropdownMenuItem onClick={() => setReportOpen(true)}>
-                    <IconFlag size={14} stroke={1.75} />
-                    <span>Report</span>
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-          <ReportDialog
-            open={reportOpen}
-            onOpenChange={setReportOpen}
-            subjectType="post"
-            subjectId={post.id}
-            subjectLabel={authorHandle ? `@${authorHandle}'s post` : "this post"}
-          />
-        </header>
-        {editing ? (
-          <div className="mt-1">
-            <textarea
-              value={editText}
-              onChange={(e) => setEditText(e.target.value)}
-              rows={3}
-              className="w-full resize-none bg-transparent text-sm focus:outline-none"
-              maxLength={POST_MAX_LEN}
-            />
-            <div className="mt-1 flex items-center justify-between text-xs">
-              <span
-                className={
-                  editText.length > POST_MAX_LEN
-                    ? "text-destructive"
-                    : "text-muted-foreground"
-                }
-              >
-                {POST_MAX_LEN - editText.length}
-              </span>
-              <div className="flex items-center gap-2">
-                {editError && (
-                  <span className="text-destructive">{editError}</span>
-                )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setEditing(false)
-                    setEditText(post.text)
-                    setEditError(null)
-                  }}
-                >
-                  cancel
-                </Button>
-                <Button size="sm" onClick={saveEdit} disabled={busy}>
-                  save
-                </Button>
+                    cancel
+                  </Button>
+                  <Button size="sm" onClick={saveEdit} disabled={busy}>
+                    save
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
-        ) : post.articleCard ? null : (
-          <p className="wrap-break-words mt-1 text-[15px] leading-relaxed whitespace-pre-wrap">
-            <RichText text={post.text} />
-          </p>
-        )}
-        {post.articleCard && <ArticleCardBlock card={post.articleCard} />}
-        {post.media && post.media.length > 0 && (
-          <MediaGrid media={post.media} />
-        )}
-        {post.poll && (
-          <PollBlock
-            poll={post.poll}
-            onChange={(nextPoll) => emit({ ...post, poll: nextPoll })}
-          />
-        )}
-        {post.quoteOf && <QuoteEmbed post={post.quoteOf} />}
-        <footer className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
-          {showPostLink && authorHandle && (
+          ) : post.articleCard ? null : (
+            <p className="wrap-break-words mt-1 text-[15px] leading-relaxed whitespace-pre-wrap">
+              <RichText text={post.text} />
+            </p>
+          )}
+          {post.articleCard && <ArticleCardBlock card={post.articleCard} />}
+          {post.media && post.media.length > 0 && (
+            <MediaGrid media={post.media} />
+          )}
+          {post.poll && (
+            <PollBlock
+              poll={post.poll}
+              onChange={(nextPoll) => emit({ ...post, poll: nextPoll })}
+            />
+          )}
+          {post.quoteOf && <QuoteEmbed post={post.quoteOf} />}
+          <footer className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+            {showPostLink && authorHandle && (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={busy || !post.viewer}
+                className="flex items-center gap-2 transition hover:text-foreground"
+                aria-pressed={post.viewer?.reposted}
+                render={
+                  <Link
+                    to="/$handle/p/$id"
+                    params={{ handle: authorHandle, id: post.id }}
+                    className="flex items-center gap-2 hover:text-foreground"
+                  >
+                    <IconMessageCircle className="size-4" />
+                    <span className="text-xs">{post.counts.replies}</span>
+                  </Link>
+                }
+              />
+            )}
+            <RepostControl
+              post={post}
+              busy={busy}
+              onToggleRepost={toggleRepost}
+              onQuoteCreated={(_: Post) => {
+                if (post.viewer) {
+                  emit({
+                    ...post,
+                    counts: { ...post.counts, quotes: post.counts.quotes + 1 },
+                  })
+                }
+              }}
+            />
             <Button
               variant="ghost"
               size="sm"
+              onClick={toggleLike}
               disabled={busy || !post.viewer}
-              className="flex items-center gap-2 transition hover:text-foreground"
-              aria-pressed={post.viewer?.reposted}
-              render={
-                <Link
-                  to="/$handle/p/$id"
-                  params={{ handle: authorHandle, id: post.id }}
-                  className="flex items-center gap-2 hover:text-foreground"
-                >
-                  <IconMessageCircle className="size-4" />
-                  <span className="text-xs">{post.counts.replies}</span>
-                </Link>
-              }
-            />
-          )}
-          <RepostControl
-            post={post}
-            busy={busy}
-            onToggleRepost={toggleRepost}
-            onQuoteCreated={(quote) => {
-              // The newly created quote-post itself doesn't live in this card's state; its
-              // appearance in the feed is handled by whichever page rendered Compose. But the
-              // quoted post's quoteCount bumps up, so mirror that optimistic state.
-              if (post.viewer) {
-                emit({
-                  ...post,
-                  counts: { ...post.counts, quotes: post.counts.quotes + 1 },
-                })
-              }
-              // Suppress unused-var warning; callers who want to consume the quote post can
-              // subscribe via other surfaces (home feed invalidation already handles it).
-              void quote
-            }}
-          />
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={toggleLike}
-            disabled={busy || !post.viewer}
-            className={`flex cursor-pointer items-center gap-2 transition hover:text-foreground ${post.viewer?.liked ? "text-rose-600" : ""}`}
-            aria-pressed={post.viewer?.liked}
-          >
-            {post.viewer?.liked ? (
-              <IconHeartFilled className="size-4" />
-            ) : (
-              <IconHeart className="size-4" />
-            )}
-            <span className="text-xs">{post.counts.likes}</span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={toggleBookmark}
-            disabled={busy || !post.viewer}
-            className={`flex cursor-pointer items-center gap-2 transition hover:text-foreground ${post.viewer?.bookmarked ? "text-sky-600" : ""}`}
-            aria-pressed={post.viewer?.bookmarked}
-          >
-            {post.viewer?.bookmarked ? (
-              <IconBookmarkFilled className="size-4" />
-            ) : (
-              <IconBookmark className="size-4" />
-            )}
-            <span className="text-xs">{post.counts.bookmarks}</span>
-          </Button>
-        </footer>
-      </div>
+              className={`flex cursor-pointer items-center gap-2 transition hover:text-foreground ${post.viewer?.liked ? "text-rose-600" : ""}`}
+              aria-pressed={post.viewer?.liked}
+            >
+              {post.viewer?.liked ? (
+                <IconHeartFilled className="size-4" />
+              ) : (
+                <IconHeart className="size-4" />
+              )}
+              <span className="text-xs">{post.counts.likes}</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={toggleBookmark}
+              disabled={busy || !post.viewer}
+              className={`flex cursor-pointer items-center gap-2 transition hover:text-foreground ${post.viewer?.bookmarked ? "text-sky-600" : ""}`}
+              aria-pressed={post.viewer?.bookmarked}
+            >
+              {post.viewer?.bookmarked ? (
+                <IconBookmarkFilled className="size-4" />
+              ) : (
+                <IconBookmark className="size-4" />
+              )}
+              <span className="text-xs">{post.counts.bookmarks}</span>
+            </Button>
+          </footer>
+        </div>
       </div>
     </article>
   )
@@ -708,7 +747,6 @@ function RepostControl({
   const reposted = Boolean(post.viewer?.reposted)
   const disabled = busy || !post.viewer
 
-  // When already reposted, click the icon to un-repost directly (Twitter pattern).
   if (reposted) {
     return (
       <Button
@@ -720,7 +758,9 @@ function RepostControl({
         aria-pressed
       >
         <IconRepeat className="size-4" />
-        <span className="text-xs">{post.counts.reposts + post.counts.quotes}</span>
+        <span className="text-xs">
+          {post.counts.reposts + post.counts.quotes}
+        </span>
       </Button>
     )
   }
@@ -737,11 +777,12 @@ function RepostControl({
               className="flex cursor-pointer items-center gap-2 transition hover:text-foreground"
             >
               <IconRepeat className="size-4" />
-              <span className="text-xs">{post.counts.reposts + post.counts.quotes}</span>
+              <span className="text-xs">
+                {post.counts.reposts + post.counts.quotes}
+              </span>
             </Button>
           }
         />
-        {/* dropdown options populated below */}
         <DropdownMenuContent align="start" sideOffset={4} className="w-40">
           <DropdownMenuItem onClick={onToggleRepost}>
             <IconRepeat className="size-3.5" />
@@ -756,7 +797,9 @@ function RepostControl({
       <Dialog open={quoteOpen} onOpenChange={setQuoteOpen}>
         <DialogContent className="max-w-lg p-0">
           <DialogHeader className="border-b border-border px-4 py-3">
-            <DialogTitle className="text-sm font-semibold">Quote post</DialogTitle>
+            <DialogTitle className="text-sm font-semibold">
+              Quote post
+            </DialogTitle>
             <DialogDescription className="sr-only">
               Write your commentary. The original post will be attached.
             </DialogDescription>

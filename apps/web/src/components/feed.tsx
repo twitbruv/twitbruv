@@ -10,14 +10,16 @@ export function Feed({
   prependItem,
   hideReplies = false,
   onlyReplies = false,
+  onOpenThread,
+  activePostId,
 }: {
   load: (cursor?: string) => Promise<FeedPage>
   emptyMessage?: string
   prependItem?: Post | null
-  /** Filter out posts that are replies (have a replyToId) */
   hideReplies?: boolean
-  /** Only show posts that are replies (have a replyToId) */
   onlyReplies?: boolean
+  onOpenThread?: (post: Post) => void
+  activePostId?: string
 }) {
   const [posts, setPosts] = useState<Array<Post>>([])
   const [cursor, setCursor] = useState<string | null>(null)
@@ -25,7 +27,6 @@ export function Feed({
   const [error, setError] = useState<string | null>(null)
   const [loadingMore, setLoadingMore] = useState(false)
 
-  // Filter function for hiding/showing replies
   const filterPosts = (posts: Array<Post>) => {
     if (hideReplies) return posts.filter((p) => !p.replyToId)
     if (onlyReplies) return posts.filter((p) => p.replyToId)
@@ -50,7 +51,7 @@ export function Feed({
     return () => {
       cancel = true
     }
-  }, [load])
+  }, [hideReplies, load, onlyReplies])
 
   useEffect(() => {
     if (!prependItem) return
@@ -103,6 +104,8 @@ export function Feed({
           post={post}
           onChange={replace}
           onRemove={remove}
+          onOpenThread={onOpenThread}
+          active={activePostId === post.id || activePostId === post.repostOf?.id}
         />
       ))}
       {cursor && (

@@ -17,12 +17,27 @@ import { ApiError, api } from "../lib/api"
 import { useSubmitHotkey } from "../lib/hotkeys"
 import { Avatar } from "../components/avatar"
 import { RichText } from "../components/rich-text"
-import { PollBlock } from "../components/poll-block"
-import { ArticleCardBlock, QuoteEmbed } from "../components/post-card"
 import { useMe } from "../lib/me"
 import type { Post, Thread } from "../lib/api"
 
-export const Route = createFileRoute("/$handle/p/$id")({ component: ThreadView })
+type ThreadSearch = {
+  from?: "home"
+  homePostId?: string
+  homePostHandle?: string
+}
+
+export const Route = createFileRoute("/$handle/p/$id")({
+  component: ThreadView,
+  validateSearch: (search: Record<string, unknown>): ThreadSearch => ({
+    from: search.from === "home" ? "home" : undefined,
+    homePostId:
+      typeof search.homePostId === "string" ? search.homePostId : undefined,
+    homePostHandle:
+      typeof search.homePostHandle === "string"
+        ? search.homePostHandle
+        : undefined,
+  }),
+})
 
 function ThreadView() {
   const { handle, id } = Route.useParams()
@@ -46,7 +61,7 @@ function ThreadView() {
             post: t.post && t.post.id === next.id ? next : t.post,
             replies: t.replies.map((p) => (p.id === next.id ? next : p)),
           }
-        : t,
+        : t
     )
   }
 
@@ -56,33 +71,43 @@ function ThreadView() {
         ? {
             ...t,
             post: t.post
-              ? { ...t.post, counts: { ...t.post.counts, replies: t.post.counts.replies + 1 } }
+              ? {
+                  ...t.post,
+                  counts: {
+                    ...t.post.counts,
+                    replies: t.post.counts.replies + 1,
+                  },
+                }
               : t.post,
             replies: [...t.replies, post],
           }
-        : t,
+        : t
     )
   }
 
   if (error) {
     return (
-      <main className="px-4 py-16 text-center">
-        <p className="text-sm text-muted-foreground">post not found</p>
-        <Link
-          to="/$handle"
-          params={{ handle }}
-          className="mt-3 inline-block text-xs text-primary hover:underline"
-        >
-          back to @{handle}
-        </Link>
+      <main>
+        <div className="px-4 py-16 text-center">
+          <p className="text-sm text-muted-foreground">post not found</p>
+          <Link
+            to="/$handle"
+            params={{ handle }}
+            className="mt-3 inline-block text-xs text-primary hover:underline"
+          >
+            back to @{handle}
+          </Link>
+        </div>
       </main>
     )
   }
 
   if (!thread) {
     return (
-      <main className="px-4 py-16">
-        <p className="text-sm text-muted-foreground">loading…</p>
+      <main>
+        <div className="px-4 py-16">
+          <p className="text-sm text-muted-foreground">loading…</p>
+        </div>
       </main>
     )
   }
@@ -91,7 +116,6 @@ function ThreadView() {
 
   return (
     <main>
-      {/* Ancestors - connected with vertical line */}
       {hasAncestors && (
         <div>
           {thread.ancestors.map((p) => (
@@ -105,15 +129,16 @@ function ThreadView() {
         </div>
       )}
 
-      {/* Parent post */}
       {thread.post && (
-        <ParentPost post={thread.post} onChange={replace} hasAncestors={hasAncestors} />
+        <ParentPost
+          post={thread.post}
+          onChange={replace}
+          hasAncestors={hasAncestors}
+        />
       )}
 
-      {/* Reply composer */}
       <ReplyComposer postId={id} onReply={onReply} />
 
-      {/* Replies section - indented, clickable to view thread */}
       {thread.replies.length > 0 && (
         <div>
           {thread.replies.map((p) => (
@@ -132,7 +157,6 @@ function ThreadView() {
   )
 }
 
-/** Ancestor post with connecting line below and full actions */
 function AncestorPost({
   post,
   onChange,
@@ -144,7 +168,9 @@ function AncestorPost({
 }) {
   const [busy, setBusy] = useState(false)
   const authorHandle = post.author.handle
-  const initial = (post.author.displayName ?? authorHandle ?? "·").slice(0, 1).toUpperCase()
+  const initial = (post.author.displayName ?? authorHandle ?? "·")
+    .slice(0, 1)
+    .toUpperCase()
 
   function relativeTime(iso: string): string {
     const d = new Date(iso).getTime()
@@ -190,7 +216,10 @@ function AncestorPost({
     const reposted = !post.viewer.reposted
     optimistic(
       {
-        counts: { ...post.counts, reposts: post.counts.reposts + (reposted ? 1 : -1) },
+        counts: {
+          ...post.counts,
+          reposts: post.counts.reposts + (reposted ? 1 : -1),
+        },
         viewer: { ...post.viewer, reposted },
       },
       () => (reposted ? api.repost(post.id) : api.unrepost(post.id))
@@ -202,7 +231,10 @@ function AncestorPost({
     const bookmarked = !post.viewer.bookmarked
     optimistic(
       {
-        counts: { ...post.counts, bookmarks: post.counts.bookmarks + (bookmarked ? 1 : -1) },
+        counts: {
+          ...post.counts,
+          bookmarks: post.counts.bookmarks + (bookmarked ? 1 : -1),
+        },
         viewer: { ...post.viewer, bookmarked },
       },
       () => (bookmarked ? api.bookmark(post.id) : api.unbookmark(post.id))
@@ -211,16 +243,14 @@ function AncestorPost({
 
   return (
     <article className="relative px-4 py-3">
-      {/* Vertical connecting line below avatar */}
       {showLineBelow && (
         <div
-          className="absolute left-[26px] top-[42px] bottom-0 w-px bg-border"
+          className="absolute top-[42px] bottom-0 left-[26px] w-px bg-border"
           aria-hidden="true"
         />
       )}
 
       <div className="flex gap-2.5">
-        {/* Avatar column */}
         <div className="shrink-0">
           {authorHandle ? (
             <Link to="/$handle" params={{ handle: authorHandle }}>
@@ -231,36 +261,49 @@ function AncestorPost({
           )}
         </div>
 
-        {/* Content column */}
         <div className="min-w-0 flex-1">
-          {/* Header row */}
           <div className="flex items-center gap-1.5 text-xs">
             {authorHandle ? (
-              <Link to="/$handle" params={{ handle: authorHandle }} className="font-semibold hover:underline">
+              <Link
+                to="/$handle"
+                params={{ handle: authorHandle }}
+                className="font-semibold hover:underline"
+              >
                 {post.author.displayName || `@${authorHandle}`}
               </Link>
             ) : (
-              <span className="font-semibold">{post.author.displayName ?? "unknown"}</span>
+              <span className="font-semibold">
+                {post.author.displayName ?? "unknown"}
+              </span>
             )}
-            {authorHandle && <span className="text-muted-foreground">@{authorHandle}</span>}
+            {authorHandle && (
+              <span className="text-muted-foreground">@{authorHandle}</span>
+            )}
             <span className="text-muted-foreground">·</span>
-            <span className="tabular-nums text-muted-foreground">{relativeTime(post.createdAt)}</span>
+            <span className="text-muted-foreground tabular-nums">
+              {relativeTime(post.createdAt)}
+            </span>
           </div>
 
-          {/* Post content */}
-          <p className="mt-1 text-[13.5px] leading-[1.55] whitespace-pre-wrap break-words">
+          <p className="mt-1 text-[13.5px] leading-[1.55] break-words whitespace-pre-wrap">
             <RichText text={post.text} />
           </p>
 
-          {/* Media */}
           {post.media && post.media.length > 0 && (
-            <div className={`mt-2 grid gap-px overflow-hidden rounded-sm border border-border ${post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
+            <div
+              className={`mt-2 grid gap-px overflow-hidden rounded-sm border border-border ${post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}
+            >
               {post.media.map((m) => {
-                const variant = m.variants.find((v) => v.kind === "medium") ?? m.variants[0]
+                const variant =
+                  m.variants.find((v) => v.kind === "medium") ?? m.variants[0]
                 return (
                   <div key={m.id} className="aspect-video bg-muted">
                     {m.processingState === "ready" && (
-                      <img src={variant.url} alt={m.altText ?? ""} className="h-full w-full object-cover" />
+                      <img
+                        src={variant.url}
+                        alt={m.altText ?? ""}
+                        className="h-full w-full object-cover"
+                      />
                     )}
                   </div>
                 )
@@ -268,21 +311,6 @@ function AncestorPost({
             </div>
           )}
 
-          {/* Article card */}
-          {post.articleCard && <ArticleCardBlock card={post.articleCard} />}
-
-          {/* Poll */}
-          {post.poll && (
-            <PollBlock
-              poll={post.poll}
-              onChange={(nextPoll) => onChange({ ...post, poll: nextPoll })}
-            />
-          )}
-
-          {/* Quote embed */}
-          {post.quoteOf && <QuoteEmbed post={post.quoteOf} />}
-
-          {/* Action bar */}
           <div className="mt-2.5 flex items-center gap-5 text-muted-foreground">
             {authorHandle && (
               <Link
@@ -309,7 +337,11 @@ function AncestorPost({
               disabled={busy || !post.viewer}
               className={`flex items-center gap-1.5 py-0.5 text-[13px] tabular-nums transition-colors hover:text-rose-500 ${post.viewer?.liked ? "text-rose-500" : ""}`}
             >
-              {post.viewer?.liked ? <IconHeartFilled size={16} /> : <IconHeart size={16} stroke={1.5} />}
+              {post.viewer?.liked ? (
+                <IconHeartFilled size={16} />
+              ) : (
+                <IconHeart size={16} stroke={1.5} />
+              )}
               <span>{post.counts.likes}</span>
             </button>
             <button
@@ -318,7 +350,11 @@ function AncestorPost({
               disabled={busy || !post.viewer}
               className={`flex items-center gap-1.5 py-0.5 transition-colors hover:text-foreground ${post.viewer?.bookmarked ? "text-sky-600" : ""}`}
             >
-              {post.viewer?.bookmarked ? <IconBookmarkFilled size={16} /> : <IconBookmark size={16} stroke={1.5} />}
+              {post.viewer?.bookmarked ? (
+                <IconBookmarkFilled size={16} />
+              ) : (
+                <IconBookmark size={16} stroke={1.5} />
+              )}
             </button>
           </div>
         </div>
@@ -327,11 +363,20 @@ function AncestorPost({
   )
 }
 
-/** Parent post with stacked author info and activity stats */
-function ParentPost({ post, onChange, hasAncestors }: { post: Post; onChange: (p: Post) => void; hasAncestors?: boolean }) {
+function ParentPost({
+  post,
+  onChange,
+  hasAncestors,
+}: {
+  post: Post
+  onChange: (p: Post) => void
+  hasAncestors?: boolean
+}) {
   const [busy, setBusy] = useState(false)
   const authorHandle = post.author.handle
-  const initial = (post.author.displayName ?? authorHandle ?? "·").slice(0, 1).toUpperCase()
+  const initial = (post.author.displayName ?? authorHandle ?? "·")
+    .slice(0, 1)
+    .toUpperCase()
 
   async function optimistic(next: Partial<Post>, op: () => Promise<unknown>) {
     const prev = post
@@ -363,7 +408,10 @@ function ParentPost({ post, onChange, hasAncestors }: { post: Post; onChange: (p
     const reposted = !post.viewer.reposted
     optimistic(
       {
-        counts: { ...post.counts, reposts: post.counts.reposts + (reposted ? 1 : -1) },
+        counts: {
+          ...post.counts,
+          reposts: post.counts.reposts + (reposted ? 1 : -1),
+        },
         viewer: { ...post.viewer, reposted },
       },
       () => (reposted ? api.repost(post.id) : api.unrepost(post.id))
@@ -375,7 +423,10 @@ function ParentPost({ post, onChange, hasAncestors }: { post: Post; onChange: (p
     const bookmarked = !post.viewer.bookmarked
     optimistic(
       {
-        counts: { ...post.counts, bookmarks: post.counts.bookmarks + (bookmarked ? 1 : -1) },
+        counts: {
+          ...post.counts,
+          bookmarks: post.counts.bookmarks + (bookmarked ? 1 : -1),
+        },
         viewer: { ...post.viewer, bookmarked },
       },
       () => (bookmarked ? api.bookmark(post.id) : api.unbookmark(post.id))
@@ -384,15 +435,13 @@ function ParentPost({ post, onChange, hasAncestors }: { post: Post; onChange: (p
 
   return (
     <article className="relative border-b border-border px-4 py-3.5">
-      {/* Connecting line from ancestors */}
       {hasAncestors && (
         <div
-          className="absolute left-[26px] top-0 h-3.5 w-px bg-border"
+          className="absolute top-0 left-[26px] h-3.5 w-px bg-border"
           aria-hidden="true"
         />
       )}
 
-      {/* Author header - stacked layout */}
       <div className="flex items-center gap-2">
         {authorHandle ? (
           <Link to="/$handle" params={{ handle: authorHandle }}>
@@ -403,33 +452,48 @@ function ParentPost({ post, onChange, hasAncestors }: { post: Post; onChange: (p
         )}
         <div className="min-w-0 flex-1">
           {authorHandle ? (
-            <Link to="/$handle" params={{ handle: authorHandle }} className="block hover:underline">
-              <span className="text-[13px] font-semibold">{post.author.displayName || `@${authorHandle}`}</span>
+            <Link
+              to="/$handle"
+              params={{ handle: authorHandle }}
+              className="block hover:underline"
+            >
+              <span className="text-[13px] font-semibold">
+                {post.author.displayName || `@${authorHandle}`}
+              </span>
             </Link>
           ) : (
-            <span className="text-[13px] font-semibold">{post.author.displayName ?? "unknown"}</span>
+            <span className="text-[13px] font-semibold">
+              {post.author.displayName ?? "unknown"}
+            </span>
           )}
           {authorHandle && (
-            <span className="block text-[11px] text-muted-foreground">@{authorHandle}</span>
+            <span className="block text-[11px] text-muted-foreground">
+              @{authorHandle}
+            </span>
           )}
         </div>
         <IconDots size={14} className="shrink-0 text-muted-foreground" />
       </div>
 
-      {/* Post content - larger text */}
-      <p className="mt-2.5 text-[15.5px] leading-[1.5] whitespace-pre-wrap break-words">
+      <p className="mt-2.5 text-[15.5px] leading-[1.5] break-words whitespace-pre-wrap">
         <RichText text={post.text} />
       </p>
 
-      {/* Media grid if present */}
       {post.media && post.media.length > 0 && (
-        <div className={`mt-2.5 grid gap-px overflow-hidden rounded-sm border border-border ${post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
+        <div
+          className={`mt-2.5 grid gap-px overflow-hidden rounded-sm border border-border ${post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}
+        >
           {post.media.map((m) => {
-            const variant = m.variants.find((v) => v.kind === "medium") ?? m.variants[0]
+            const variant =
+              m.variants.find((v) => v.kind === "medium") ?? m.variants[0]
             return (
               <div key={m.id} className="aspect-video bg-muted">
                 {m.processingState === "ready" && (
-                  <img src={variant.url} alt={m.altText ?? ""} className="h-full w-full object-cover" />
+                  <img
+                    src={variant.url}
+                    alt={m.altText ?? ""}
+                    className="h-full w-full object-cover"
+                  />
                 )}
               </div>
             )
@@ -437,30 +501,19 @@ function ParentPost({ post, onChange, hasAncestors }: { post: Post; onChange: (p
         </div>
       )}
 
-      {/* Article card */}
-      {post.articleCard && <ArticleCardBlock card={post.articleCard} />}
-
-      {/* Poll */}
-      {post.poll && (
-        <PollBlock
-          poll={post.poll}
-          onChange={(nextPoll) => onChange({ ...post, poll: nextPoll })}
-        />
-      )}
-
-      {/* Quote embed */}
-      {post.quoteOf && <QuoteEmbed post={post.quoteOf} />}
-
-      {/* Activity stats row */}
       <div className="mt-2.5 flex items-center gap-3 font-mono text-[11px] text-muted-foreground">
         {post.counts.reposts > 0 && <span>{post.counts.reposts} reposts</span>}
         {post.counts.likes > 0 && <span>{post.counts.likes} likes</span>}
-        {post.counts.bookmarks > 0 && <span>{post.counts.bookmarks} bookmarks</span>}
+        {post.counts.bookmarks > 0 && (
+          <span>{post.counts.bookmarks} bookmarks</span>
+        )}
       </div>
 
-      {/* Action bar */}
       <div className="mt-2.5 flex items-center gap-5 text-muted-foreground">
-        <button type="button" className="flex items-center gap-1.5 py-0.5 text-[13px] tabular-nums hover:text-foreground">
+        <button
+          type="button"
+          className="flex items-center gap-1.5 py-0.5 text-[13px] tabular-nums hover:text-foreground"
+        >
           <IconMessageCircle size={16} stroke={1.5} />
           <span>{post.counts.replies}</span>
         </button>
@@ -479,7 +532,11 @@ function ParentPost({ post, onChange, hasAncestors }: { post: Post; onChange: (p
           disabled={busy || !post.viewer}
           className={`flex items-center gap-1.5 py-0.5 text-[13px] tabular-nums transition-colors hover:text-rose-500 ${post.viewer?.liked ? "text-rose-500" : ""}`}
         >
-          {post.viewer?.liked ? <IconHeartFilled size={16} /> : <IconHeart size={16} stroke={1.5} />}
+          {post.viewer?.liked ? (
+            <IconHeartFilled size={16} />
+          ) : (
+            <IconHeart size={16} stroke={1.5} />
+          )}
           <span>{post.counts.likes}</span>
         </button>
         <button
@@ -488,21 +545,32 @@ function ParentPost({ post, onChange, hasAncestors }: { post: Post; onChange: (p
           disabled={busy || !post.viewer}
           className={`flex items-center gap-1.5 py-0.5 transition-colors hover:text-foreground ${post.viewer?.bookmarked ? "text-sky-600" : ""}`}
         >
-          {post.viewer?.bookmarked ? <IconBookmarkFilled size={16} /> : <IconBookmark size={16} stroke={1.5} />}
+          {post.viewer?.bookmarked ? (
+            <IconBookmarkFilled size={16} />
+          ) : (
+            <IconBookmark size={16} stroke={1.5} />
+          )}
         </button>
       </div>
     </article>
   )
 }
 
-/** Inline reply composer with expandable controls */
-function ReplyComposer({ postId, onReply }: { postId: string; onReply: (p: Post) => void }) {
+function ReplyComposer({
+  postId,
+  onReply,
+}: {
+  postId: string
+  onReply: (p: Post) => void
+}) {
   const { me } = useMe()
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [text, setText] = useState("")
   const [expanded, setExpanded] = useState(false)
   const [loading, setLoading] = useState(false)
-  const avatarInitial = (me?.displayName ?? me?.handle ?? "·").slice(0, 1).toUpperCase()
+  const avatarInitial = (me?.displayName ?? me?.handle ?? "·")
+    .slice(0, 1)
+    .toUpperCase()
 
   const canSubmit = text.trim().length > 0 && !loading
 
@@ -510,7 +578,10 @@ function ReplyComposer({ postId, onReply }: { postId: string; onReply: (p: Post)
     if (!canSubmit) return
     setLoading(true)
     try {
-      const { post } = await api.createPost({ text: text.trim(), replyToId: postId })
+      const { post } = await api.createPost({
+        text: text.trim(),
+        replyToId: postId,
+      })
       setText("")
       setExpanded(false)
       onReply(post)
@@ -521,7 +592,6 @@ function ReplyComposer({ postId, onReply }: { postId: string; onReply: (p: Post)
     }
   }
 
-  // Cmd/Ctrl+Enter to submit
   useSubmitHotkey(submit, { enabled: canSubmit, target: textareaRef })
 
   function handleSubmit(e: React.FormEvent) {
@@ -530,7 +600,10 @@ function ReplyComposer({ postId, onReply }: { postId: string; onReply: (p: Post)
   }
 
   return (
-    <form onSubmit={handleSubmit} className="border-b border-border px-4 py-2.5">
+    <form
+      onSubmit={handleSubmit}
+      className="border-b border-border px-4 py-2.5"
+    >
       <div className="flex gap-2.5">
         <Avatar initial={avatarInitial} src={me?.avatarUrl} size={20} />
         <div className="min-w-0 flex-1">
@@ -539,7 +612,6 @@ function ReplyComposer({ postId, onReply }: { postId: string; onReply: (p: Post)
             value={text}
             onChange={(e) => {
               setText(e.target.value)
-              // Auto-resize
               if (textareaRef.current) {
                 textareaRef.current.style.height = "auto"
                 textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`
@@ -551,7 +623,6 @@ function ReplyComposer({ postId, onReply }: { postId: string; onReply: (p: Post)
             className="w-full resize-none bg-transparent text-[13px] leading-relaxed placeholder:text-muted-foreground focus:outline-none"
           />
 
-          {/* Animated toolbar - shows when expanded */}
           <div
             className={`flex items-center justify-between overflow-hidden transition-all duration-200 ${
               expanded ? "mt-2.5 max-h-10 opacity-100" : "max-h-0 opacity-0"
@@ -596,7 +667,6 @@ function ReplyComposer({ postId, onReply }: { postId: string; onReply: (p: Post)
             </button>
           </div>
 
-          {/* Collapsed state - just show Reply button */}
           {!expanded && (
             <div className="mt-1 flex justify-end">
               <button
@@ -614,11 +684,18 @@ function ReplyComposer({ postId, onReply }: { postId: string; onReply: (p: Post)
   )
 }
 
-/** Reply card - simpler than full PostCard */
-function ReplyCard({ post, onChange }: { post: Post; onChange: (p: Post) => void }) {
+function ReplyCard({
+  post,
+  onChange,
+}: {
+  post: Post
+  onChange: (p: Post) => void
+}) {
   const [busy, setBusy] = useState(false)
   const authorHandle = post.author.handle
-  const initial = (post.author.displayName ?? authorHandle ?? "·").slice(0, 1).toUpperCase()
+  const initial = (post.author.displayName ?? authorHandle ?? "·")
+    .slice(0, 1)
+    .toUpperCase()
 
   async function optimistic(next: Partial<Post>, op: () => Promise<unknown>) {
     const prev = post
@@ -650,7 +727,10 @@ function ReplyCard({ post, onChange }: { post: Post; onChange: (p: Post) => void
     const reposted = !post.viewer.reposted
     optimistic(
       {
-        counts: { ...post.counts, reposts: post.counts.reposts + (reposted ? 1 : -1) },
+        counts: {
+          ...post.counts,
+          reposts: post.counts.reposts + (reposted ? 1 : -1),
+        },
         viewer: { ...post.viewer, reposted },
       },
       () => (reposted ? api.repost(post.id) : api.unrepost(post.id))
@@ -673,69 +753,56 @@ function ReplyCard({ post, onChange }: { post: Post; onChange: (p: Post) => void
 
   return (
     <>
-      {/* Header row */}
       <div className="flex items-center gap-2 text-xs">
         {authorHandle ? (
-          <Link to="/$handle" params={{ handle: authorHandle }} onClick={(e) => e.stopPropagation()}>
+          <Link
+            to="/$handle"
+            params={{ handle: authorHandle }}
+            onClick={(e) => e.stopPropagation()}
+          >
             <Avatar initial={initial} src={post.author.avatarUrl} size={20} />
           </Link>
         ) : (
           <Avatar initial={initial} src={post.author.avatarUrl} size={20} />
         )}
         {authorHandle ? (
-          <Link to="/$handle" params={{ handle: authorHandle }} className="font-semibold hover:underline" onClick={(e) => e.stopPropagation()}>
+          <Link
+            to="/$handle"
+            params={{ handle: authorHandle }}
+            className="font-semibold hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
             {post.author.displayName || `@${authorHandle}`}
           </Link>
         ) : (
-          <span className="font-semibold">{post.author.displayName ?? "unknown"}</span>
+          <span className="font-semibold">
+            {post.author.displayName ?? "unknown"}
+          </span>
         )}
-        {authorHandle && <span className="text-muted-foreground">@{authorHandle}</span>}
+        {authorHandle && (
+          <span className="text-muted-foreground">@{authorHandle}</span>
+        )}
         <span className="text-muted-foreground">·</span>
-        <span className="tabular-nums text-muted-foreground">{relativeTime(post.createdAt)}</span>
+        <span className="text-muted-foreground tabular-nums">
+          {relativeTime(post.createdAt)}
+        </span>
         <div className="flex-1" />
         <IconDots size={13} className="text-muted-foreground" />
       </div>
 
-      {/* Content */}
-      <p className="mt-1.5 text-[13.5px] leading-[1.55] whitespace-pre-wrap break-words">
+      <p className="mt-1.5 text-[13.5px] leading-[1.55] break-words whitespace-pre-wrap">
         <RichText text={post.text} />
       </p>
 
-      {/* Media grid if present */}
-      {post.media && post.media.length > 0 && (
-        <div
-          className={`mt-2 grid gap-px overflow-hidden rounded-sm border border-border ${post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {post.media.map((m) => {
-            const variant = m.variants.find((v) => v.kind === "medium") ?? m.variants[0]
-            return (
-              <div key={m.id} className="aspect-video bg-muted">
-                {m.processingState === "ready" && (
-                  <img src={variant.url} alt={m.altText ?? ""} className="h-full w-full object-cover" />
-                )}
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: stops parent Link from intercepting interactions */}
-      <div onClick={(e) => e.stopPropagation()}>
-        {post.articleCard && <ArticleCardBlock card={post.articleCard} />}
-        {post.poll && (
-          <PollBlock
-            poll={post.poll}
-            onChange={(nextPoll) => onChange({ ...post, poll: nextPoll })}
-          />
-        )}
-        {post.quoteOf && <QuoteEmbed post={post.quoteOf} />}
-      </div>
-
-      {/* Action bar - stopPropagation to prevent navigation */}
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: action bar wrapper */}
-      <div className="mt-2.5 flex items-center gap-5 text-muted-foreground" onClick={(e) => e.stopPropagation()}>
-        <button type="button" className="flex items-center gap-1.5 py-0.5 text-[13px] tabular-nums hover:text-foreground">
+      <div
+        className="mt-2.5 flex items-center gap-5 text-muted-foreground"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          className="flex items-center gap-1.5 py-0.5 text-[13px] tabular-nums hover:text-foreground"
+        >
           <IconMessageCircle size={16} stroke={1.5} />
           <span>{post.counts.replies}</span>
         </button>
@@ -754,10 +821,17 @@ function ReplyCard({ post, onChange }: { post: Post; onChange: (p: Post) => void
           disabled={busy || !post.viewer}
           className={`flex items-center gap-1.5 py-0.5 text-[13px] tabular-nums transition-colors hover:text-rose-500 ${post.viewer?.liked ? "text-rose-500" : ""}`}
         >
-          {post.viewer?.liked ? <IconHeartFilled size={16} /> : <IconHeart size={16} stroke={1.5} />}
+          {post.viewer?.liked ? (
+            <IconHeartFilled size={16} />
+          ) : (
+            <IconHeart size={16} stroke={1.5} />
+          )}
           <span>{post.counts.likes}</span>
         </button>
-        <button type="button" className="flex items-center gap-1.5 py-0.5 transition-colors hover:text-foreground">
+        <button
+          type="button"
+          className="flex items-center gap-1.5 py-0.5 transition-colors hover:text-foreground"
+        >
           <IconBookmark size={16} stroke={1.5} />
         </button>
       </div>
