@@ -40,6 +40,7 @@
   "devDependencies": {
     "@rsbuild/core": "^1.6.17",
     "@tanstack/eslint-config": "^0.3.0",
+    "@tanstack/router-generator": "^1.166.34",
     "@types/node": "^25.1.0",
     "@types/react": "^19.2.10",
     "@types/react-dom": "^19.2.3",

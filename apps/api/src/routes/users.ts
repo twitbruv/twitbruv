@@ -11,6 +11,7 @@ import { loadArticleCards } from '../lib/article-cards.ts'
 import { loadRepostTargets } from '../lib/repost-targets.ts'
 import { loadQuoteTargets } from '../lib/quote-targets.ts'
 import { notify, invalidateUnreadCounts } from '../lib/notify.ts'
+import { loadPolls } from '../lib/polls.ts'
 import { parseCursor } from '../lib/cursor.ts'
 import { homeFeedCacheKey, profileFeedCacheKey } from './feed.ts'
 
@@ -198,7 +199,7 @@ usersRoute.get('/:handle/posts', async (c) => {
   }
 
   const ids = payload.posts.map((p) => p.id)
-  const [flags, repostMap, quoteMap] = await Promise.all([
+  const [flags, repostMap, quoteMap, pollMap] = await Promise.all([
     loadViewerFlags(db, viewerId, ids),
     loadRepostTargets({
       db,
@@ -212,16 +213,19 @@ usersRoute.get('/:handle/posts', async (c) => {
       env: mediaEnv,
       quoteRows: payload.posts.map((p) => ({ id: p.id, quoteOfId: p.quoteOfId })),
     }),
+    loadPolls(db, viewerId, ids),
   ])
   const posts: Array<PostDto> = payload.posts.map((p) => {
     const viewer = flags.get(p.id)
     const repostOf = repostMap.get(p.id)
     const quoteOf = quoteMap.get(p.id)
+    const poll = pollMap.get(p.id)
     return {
       ...p,
       ...(viewer ? { viewer } : {}),
       ...(repostOf ? { repostOf } : {}),
       ...(quoteOf ? { quoteOf } : {}),
+      ...(poll ? { poll } : {}),
     }
   })
   return c.json({ posts, nextCursor: payload.nextCursor })

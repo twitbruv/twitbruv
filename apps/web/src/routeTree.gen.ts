@@ -15,14 +15,17 @@ import { Route as SearchRouteImport } from './routes/search'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as InboxRouteImport } from './routes/inbox'
+import { Route as DraftsRouteImport } from './routes/drafts'
 import { Route as BookmarksRouteImport } from './routes/bookmarks'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as HandleRouteImport } from './routes/$handle'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ListsIndexRouteImport } from './routes/lists.index'
 import { Route as InboxIndexRouteImport } from './routes/inbox.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as HandleIndexRouteImport } from './routes/$handle.index'
+import { Route as ListsIdRouteImport } from './routes/lists.$id'
 import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as InboxNewRouteImport } from './routes/inbox.new'
 import { Route as InboxConversationIdRouteImport } from './routes/inbox.$conversationId'
@@ -66,6 +69,11 @@ const InboxRoute = InboxRouteImport.update({
   path: '/inbox',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DraftsRoute = DraftsRouteImport.update({
+  id: '/drafts',
+  path: '/drafts',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BookmarksRoute = BookmarksRouteImport.update({
   id: '/bookmarks',
   path: '/bookmarks',
@@ -91,6 +99,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ListsIndexRoute = ListsIndexRouteImport.update({
+  id: '/lists/',
+  path: '/lists/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const InboxIndexRoute = InboxIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -105,6 +118,11 @@ const HandleIndexRoute = HandleIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => HandleRoute,
+} as any)
+const ListsIdRoute = ListsIdRouteImport.update({
+  id: '/lists/$id',
+  path: '/lists/$id',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const InviteTokenRoute = InviteTokenRouteImport.update({
   id: '/invite/$token',
@@ -173,6 +191,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/analytics': typeof AnalyticsRoute
   '/bookmarks': typeof BookmarksRoute
+  '/drafts': typeof DraftsRoute
   '/inbox': typeof InboxRouteWithChildren
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
@@ -188,9 +207,11 @@ export interface FileRoutesByFullPath {
   '/inbox/$conversationId': typeof InboxConversationIdRoute
   '/inbox/new': typeof InboxNewRoute
   '/invite/$token': typeof InviteTokenRoute
+  '/lists/$id': typeof ListsIdRoute
   '/$handle/': typeof HandleIndexRoute
   '/admin/': typeof AdminIndexRoute
   '/inbox/': typeof InboxIndexRoute
+  '/lists/': typeof ListsIndexRoute
   '/$handle/a/$slug': typeof HandleASlugRoute
   '/$handle/p/$id': typeof HandlePIdRoute
   '/articles/$id/edit': typeof ArticlesIdEditRoute
@@ -199,6 +220,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
   '/bookmarks': typeof BookmarksRoute
+  '/drafts': typeof DraftsRoute
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
   '/search': typeof SearchRoute
@@ -213,9 +235,11 @@ export interface FileRoutesByTo {
   '/inbox/$conversationId': typeof InboxConversationIdRoute
   '/inbox/new': typeof InboxNewRoute
   '/invite/$token': typeof InviteTokenRoute
+  '/lists/$id': typeof ListsIdRoute
   '/$handle': typeof HandleIndexRoute
   '/admin': typeof AdminIndexRoute
   '/inbox': typeof InboxIndexRoute
+  '/lists': typeof ListsIndexRoute
   '/$handle/a/$slug': typeof HandleASlugRoute
   '/$handle/p/$id': typeof HandlePIdRoute
   '/articles/$id/edit': typeof ArticlesIdEditRoute
@@ -227,6 +251,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/analytics': typeof AnalyticsRoute
   '/bookmarks': typeof BookmarksRoute
+  '/drafts': typeof DraftsRoute
   '/inbox': typeof InboxRouteWithChildren
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRoute
@@ -242,9 +267,11 @@ export interface FileRoutesById {
   '/inbox/$conversationId': typeof InboxConversationIdRoute
   '/inbox/new': typeof InboxNewRoute
   '/invite/$token': typeof InviteTokenRoute
+  '/lists/$id': typeof ListsIdRoute
   '/$handle/': typeof HandleIndexRoute
   '/admin/': typeof AdminIndexRoute
   '/inbox/': typeof InboxIndexRoute
+  '/lists/': typeof ListsIndexRoute
   '/$handle/a/$slug': typeof HandleASlugRoute
   '/$handle/p/$id': typeof HandlePIdRoute
   '/articles/$id/edit': typeof ArticlesIdEditRoute
@@ -257,6 +284,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/analytics'
     | '/bookmarks'
+    | '/drafts'
     | '/inbox'
     | '/login'
     | '/notifications'
@@ -272,9 +300,11 @@ export interface FileRouteTypes {
     | '/inbox/$conversationId'
     | '/inbox/new'
     | '/invite/$token'
+    | '/lists/$id'
     | '/$handle/'
     | '/admin/'
     | '/inbox/'
+    | '/lists/'
     | '/$handle/a/$slug'
     | '/$handle/p/$id'
     | '/articles/$id/edit'
@@ -283,6 +313,7 @@ export interface FileRouteTypes {
     | '/'
     | '/analytics'
     | '/bookmarks'
+    | '/drafts'
     | '/login'
     | '/notifications'
     | '/search'
@@ -297,9 +328,11 @@ export interface FileRouteTypes {
     | '/inbox/$conversationId'
     | '/inbox/new'
     | '/invite/$token'
+    | '/lists/$id'
     | '/$handle'
     | '/admin'
     | '/inbox'
+    | '/lists'
     | '/$handle/a/$slug'
     | '/$handle/p/$id'
     | '/articles/$id/edit'
@@ -310,6 +343,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/analytics'
     | '/bookmarks'
+    | '/drafts'
     | '/inbox'
     | '/login'
     | '/notifications'
@@ -325,9 +359,11 @@ export interface FileRouteTypes {
     | '/inbox/$conversationId'
     | '/inbox/new'
     | '/invite/$token'
+    | '/lists/$id'
     | '/$handle/'
     | '/admin/'
     | '/inbox/'
+    | '/lists/'
     | '/$handle/a/$slug'
     | '/$handle/p/$id'
     | '/articles/$id/edit'
@@ -339,6 +375,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   AnalyticsRoute: typeof AnalyticsRoute
   BookmarksRoute: typeof BookmarksRoute
+  DraftsRoute: typeof DraftsRoute
   InboxRoute: typeof InboxRouteWithChildren
   LoginRoute: typeof LoginRoute
   NotificationsRoute: typeof NotificationsRoute
@@ -348,6 +385,8 @@ export interface RootRouteChildren {
   ArticlesNewRoute: typeof ArticlesNewRoute
   HashtagTagRoute: typeof HashtagTagRoute
   InviteTokenRoute: typeof InviteTokenRoute
+  ListsIdRoute: typeof ListsIdRoute
+  ListsIndexRoute: typeof ListsIndexRoute
   ArticlesIdEditRoute: typeof ArticlesIdEditRoute
 }
 
@@ -395,6 +434,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InboxRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/drafts': {
+      id: '/drafts'
+      path: '/drafts'
+      fullPath: '/drafts'
+      preLoaderRoute: typeof DraftsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/bookmarks': {
       id: '/bookmarks'
       path: '/bookmarks'
@@ -430,6 +476,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/lists/': {
+      id: '/lists/'
+      path: '/lists'
+      fullPath: '/lists/'
+      preLoaderRoute: typeof ListsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/inbox/': {
       id: '/inbox/'
       path: '/'
@@ -450,6 +503,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/$handle/'
       preLoaderRoute: typeof HandleIndexRouteImport
       parentRoute: typeof HandleRoute
+    }
+    '/lists/$id': {
+      id: '/lists/$id'
+      path: '/lists/$id'
+      fullPath: '/lists/$id'
+      preLoaderRoute: typeof ListsIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/invite/$token': {
       id: '/invite/$token'
@@ -591,6 +651,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   AnalyticsRoute: AnalyticsRoute,
   BookmarksRoute: BookmarksRoute,
+  DraftsRoute: DraftsRoute,
   InboxRoute: InboxRouteWithChildren,
   LoginRoute: LoginRoute,
   NotificationsRoute: NotificationsRoute,
@@ -600,17 +661,10 @@ const rootRouteChildren: RootRouteChildren = {
   ArticlesNewRoute: ArticlesNewRoute,
   HashtagTagRoute: HashtagTagRoute,
   InviteTokenRoute: InviteTokenRoute,
+  ListsIdRoute: ListsIdRoute,
+  ListsIndexRoute: ListsIndexRoute,
   ArticlesIdEditRoute: ArticlesIdEditRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

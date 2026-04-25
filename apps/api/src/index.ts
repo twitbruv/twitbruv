@@ -23,6 +23,9 @@ import { invitesRoute } from './routes/invites.ts'
 import { reportsRoute } from './routes/reports.ts'
 import { federationRoute } from './routes/federation.ts'
 import { adminRoute } from './routes/admin.ts'
+import { pollsRoute } from './routes/polls.ts'
+import { scheduledPostsRoute } from './routes/scheduled-posts.ts'
+import { listsRoute } from './routes/lists.ts'
 
 const ctx = await buildContext()
 const app = new Hono<HonoEnv>()
@@ -185,6 +188,9 @@ app.route('/api/reports', reportsRoute)
 // 302'd back to the web profile.
 app.route('/', federationRoute)
 app.route('/api/admin', adminRoute)
+app.route('/api/polls', pollsRoute)
+app.route('/api/scheduled-posts', scheduledPostsRoute)
+app.route('/api/lists', listsRoute)
 
 app.notFound((c) => c.json({ error: 'not_found' }, 404))
 app.onError((err, c) => {

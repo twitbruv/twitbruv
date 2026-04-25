@@ -9,6 +9,7 @@ import { loadPostMedia } from '../lib/post-media.ts'
 import { loadArticleCards } from '../lib/article-cards.ts'
 import { loadRepostTargets } from '../lib/repost-targets.ts'
 import { loadQuoteTargets } from '../lib/quote-targets.ts'
+import { loadPolls } from '../lib/polls.ts'
 import { linkHashtags } from '../lib/hashtags.ts'
 import { linkMentions } from '../lib/mentions.ts'
 import { notify, invalidateUnreadCounts } from '../lib/notify.ts'
@@ -113,6 +114,26 @@ postsRoute.post('/', requireAuth(), async (c) => {
       )
     }
 
+    if (body.poll) {
+      const closesAt = new Date(Date.now() + body.poll.durationMinutes * 60_000)
+      const [pollRow] = await tx
+        .insert(schema.polls)
+        .values({
+          postId: post.id,
+          closesAt,
+          allowMultiple: body.poll.allowMultiple,
+        })
+        .returning({ id: schema.polls.id })
+      if (!pollRow) throw new HttpError(500, 'poll_insert_failed')
+      await tx.insert(schema.pollOptions).values(
+        body.poll.options.map((text, position) => ({
+          pollId: pollRow.id,
+          position,
+          text: text.trim(),
+        })),
+      )
+    }
+
     await linkHashtags(tx, post.id, post.text)
     const mentionedUserIds = await linkMentions(tx, post.id, session.user.id, post.text)
 
@@ -167,7 +188,7 @@ postsRoute.post('/', requireAuth(), async (c) => {
   ])
 
   const env = c.get('ctx').mediaEnv
-  const [mediaMap, articleMap, repostMap, quoteMap] = await Promise.all([
+  const [mediaMap, articleMap, repostMap, quoteMap, pollMap] = await Promise.all([
     loadPostMedia(db, [result.post.id]),
     loadArticleCards(db, [result.post.id]),
     loadRepostTargets({
@@ -182,6 +203,7 @@ postsRoute.post('/', requireAuth(), async (c) => {
       env,
       quoteRows: [{ id: result.post.id, quoteOfId: result.post.quoteOfId }],
     }),
+    loadPolls(db, session.user.id, [result.post.id]),
   ])
   return c.json(
     {
@@ -194,6 +216,7 @@ postsRoute.post('/', requireAuth(), async (c) => {
         articleMap.get(result.post.id),
         repostMap.get(result.post.id),
         quoteMap.get(result.post.id),
+        pollMap.get(result.post.id),
       ),
     },
     201,
@@ -467,12 +490,13 @@ postsRoute.get('/:id/thread', async (c) => {
     { id: target.id, quoteOfId: target.quoteOfId },
     ...replies.map((r) => ({ id: r.post.id, quoteOfId: r.post.quoteOfId })),
   ]
-  const [flags, mediaMap, articleMap, repostMap, quoteMap] = await Promise.all([
+  const [flags, mediaMap, articleMap, repostMap, quoteMap, pollMap] = await Promise.all([
     loadViewerFlags(db, viewerId, allIds),
     loadPostMedia(db, allIds),
     loadArticleCards(db, allIds),
     loadRepostTargets({ db, viewerId, env, repostRows: allRepostRows }),
     loadQuoteTargets({ db, viewerId, env, quoteRows: allQuoteRows }),
+    loadPolls(db, viewerId, allIds),
   ])
 
   const byId = new Map(ancestorPostRows.map((r) => [r.post.id, r]))
@@ -489,6 +513,7 @@ postsRoute.get('/:id/thread', async (c) => {
         articleMap.get(r.post.id),
         repostMap.get(r.post.id),
         quoteMap.get(r.post.id),
+        pollMap.get(r.post.id),
       ),
     ),
     post: targetWithAuthor
@@ -501,6 +526,7 @@ postsRoute.get('/:id/thread', async (c) => {
           articleMap.get(target.id),
           repostMap.get(target.id),
           quoteMap.get(target.id),
+          pollMap.get(target.id),
         )
       : null,
     replies: replies.map((r) =>
@@ -513,6 +539,7 @@ postsRoute.get('/:id/thread', async (c) => {
         articleMap.get(r.post.id),
         repostMap.get(r.post.id),
         quoteMap.get(r.post.id),
+        pollMap.get(r.post.id),
       ),
     ),
   })
@@ -532,7 +559,7 @@ postsRoute.get('/:id', async (c) => {
     .limit(1)
   const row = rows[0]
   if (!row) return c.json({ error: 'not_found' }, 404)
-  const [flags, mediaMap, articleMap, repostMap, quoteMap] = await Promise.all([
+  const [flags, mediaMap, articleMap, repostMap, quoteMap, pollMap] = await Promise.all([
     loadViewerFlags(db, viewerId, [row.post.id]),
     loadPostMedia(db, [row.post.id]),
     loadArticleCards(db, [row.post.id]),
@@ -548,6 +575,7 @@ postsRoute.get('/:id', async (c) => {
       env: mediaEnv,
       quoteRows: [{ id: row.post.id, quoteOfId: row.post.quoteOfId }],
     }),
+    loadPolls(db, viewerId, [row.post.id]),
   ])
   return c.json({
     post: toPostDto(
@@ -559,6 +587,7 @@ postsRoute.get('/:id', async (c) => {
       articleMap.get(row.post.id),
       repostMap.get(row.post.id),
       quoteMap.get(row.post.id),
+      pollMap.get(row.post.id),
     ),
   })
 })
@@ -595,7 +624,7 @@ postsRoute.patch('/:id', requireAuth(), async (c) => {
 
   const [author] = await db.select().from(schema.users).where(eq(schema.users.id, result.post.authorId)).limit(1)
   const env = c.get('ctx').mediaEnv
-  const [flags, mediaMap, articleMap, repostMap, quoteMap] = await Promise.all([
+  const [flags, mediaMap, articleMap, repostMap, quoteMap, pollMap] = await Promise.all([
     loadViewerFlags(db, session.user.id, [result.post.id]),
     loadPostMedia(db, [result.post.id]),
     loadArticleCards(db, [result.post.id]),
@@ -611,6 +640,7 @@ postsRoute.patch('/:id', requireAuth(), async (c) => {
       env,
       quoteRows: [{ id: result.post.id, quoteOfId: result.post.quoteOfId }],
     }),
+    loadPolls(db, session.user.id, [result.post.id]),
   ])
   return c.json({
     post: toPostDto(
@@ -622,6 +652,7 @@ postsRoute.patch('/:id', requireAuth(), async (c) => {
       articleMap.get(result.post.id),
       repostMap.get(result.post.id),
       quoteMap.get(result.post.id),
+      pollMap.get(result.post.id),
     ),
   })
 })
@@ -725,7 +756,7 @@ postsRoute.get('/', async (c) => {
     .limit(limit)
 
   const ids = rows.map((r) => r.post.id)
-  const [flags, mediaMap, articleMap, repostMap, quoteMap] = await Promise.all([
+  const [flags, mediaMap, articleMap, repostMap, quoteMap, pollMap] = await Promise.all([
     loadViewerFlags(db, viewerId, ids),
     loadPostMedia(db, ids),
     loadArticleCards(db, ids),
@@ -741,6 +772,7 @@ postsRoute.get('/', async (c) => {
       env: mediaEnv,
       quoteRows: rows.map((r) => ({ id: r.post.id, quoteOfId: r.post.quoteOfId })),
     }),
+    loadPolls(db, viewerId, ids),
   ])
   const posts = rows.map((r) =>
     toPostDto(
@@ -752,6 +784,7 @@ postsRoute.get('/', async (c) => {
       articleMap.get(r.post.id),
       repostMap.get(r.post.id),
       quoteMap.get(r.post.id),
+      pollMap.get(r.post.id),
     ),
   )
   const nextCursor = posts.length === limit ? posts[posts.length - 1]!.createdAt : null

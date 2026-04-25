@@ -7,6 +7,7 @@ import type { MediaEnv } from '@workspace/media/env'
 import { loadEnv } from './env.ts'
 import { handleEmailJob } from './jobs/email.ts'
 import { handleMediaJob } from './jobs/media-process.ts'
+import { publishDueScheduledPosts } from './jobs/publish-scheduled.ts'
 
 const env = loadEnv()
 
@@ -74,10 +75,29 @@ await boss.work('media.process', { batchSize: 2 }, async (jobs) => {
   }
 })
 
-log.info({ queues: ['email.send', 'media.process'] }, 'worker_ready')
+// Polls every 30s for scheduled posts whose publish time has arrived. Cheap query, indexed.
+// Runs in-process rather than via pg-boss because it doesn't need durability or fan-out — it
+// just walks the table.
+const SCHEDULED_INTERVAL_MS = 30_000
+let scheduledRunning = false
+const scheduledTimer = setInterval(async () => {
+  if (scheduledRunning) return
+  scheduledRunning = true
+  try {
+    const n = await publishDueScheduledPosts(db)
+    if (n > 0) log.info({ published: n }, 'scheduled_posts_published')
+  } catch (err) {
+    log.error({ err: err instanceof Error ? err.message : err }, 'scheduled_posts_failed')
+  } finally {
+    scheduledRunning = false
+  }
+}, SCHEDULED_INTERVAL_MS)
+
+log.info({ queues: ['email.send', 'media.process'], scheduledIntervalMs: SCHEDULED_INTERVAL_MS }, 'worker_ready')
 
 const shutdown = async () => {
   log.info('worker_shutdown')
+  clearInterval(scheduledTimer)
   await boss.stop({ graceful: true })
   process.exit(0)
 }

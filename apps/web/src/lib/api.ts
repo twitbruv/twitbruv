@@ -237,7 +237,60 @@ export const api = {
     replyToId?: string
     quoteOfId?: string
     mediaIds?: Array<string>
+    poll?: PollInput
   }) => request<{ post: Post }>("/api/posts", { method: "POST", body: JSON.stringify(body) }),
+
+  votePoll: (pollId: string, optionIds: Array<string>) =>
+    request<{ ok: true }>(`/api/polls/${pollId}/vote`, {
+      method: "POST",
+      body: JSON.stringify({ optionIds }),
+    }),
+
+  // Drafts + scheduled posts. `kind` filters to only-drafts or only-scheduled.
+  scheduledPosts: (kind?: "draft" | "scheduled") =>
+    request<{ items: Array<ScheduledPost> }>(
+      `/api/scheduled-posts${kind ? `?kind=${kind}` : ""}`,
+    ),
+  createScheduledPost: (body: ScheduledPostInput) =>
+    request<{ item: ScheduledPost }>("/api/scheduled-posts", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateScheduledPost: (id: string, body: Partial<ScheduledPostInput>) =>
+    request<{ item: ScheduledPost }>(`/api/scheduled-posts/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteScheduledPost: (id: string) =>
+    request<{ ok: true }>(`/api/scheduled-posts/${id}`, { method: "DELETE" }),
+  publishScheduledPost: (id: string) =>
+    request<{ postId: string }>(`/api/scheduled-posts/${id}/publish`, { method: "POST" }),
+
+  // Lists.
+  myLists: () => request<{ lists: Array<UserList> }>("/api/lists/me"),
+  userLists: (handle: string) =>
+    request<{ lists: Array<UserList> }>(`/api/lists/by/${h(handle)}`),
+  list: (id: string) => request<{ list: UserList }>(`/api/lists/${id}`),
+  createList: (body: { slug: string; title: string; description?: string; isPrivate?: boolean }) =>
+    request<{ list: UserList }>("/api/lists", { method: "POST", body: JSON.stringify(body) }),
+  updateList: (id: string, body: Partial<{ title: string; description: string | null; isPrivate: boolean }>) =>
+    request<{ list: UserList }>(`/api/lists/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
+  deleteList: (id: string) =>
+    request<{ ok: true }>(`/api/lists/${id}`, { method: "DELETE" }),
+  listMembers: (id: string) =>
+    request<{ members: Array<UserListMember> }>(`/api/lists/${id}/members`),
+  addListMembers: (id: string, userIds: Array<string>) =>
+    request<{ ok: true; added: number }>(`/api/lists/${id}/members`, {
+      method: "POST",
+      body: JSON.stringify({ userIds }),
+    }),
+  removeListMember: (id: string, memberId: string) =>
+    request<{ ok: true }>(`/api/lists/${id}/members/${memberId}`, { method: "DELETE" }),
+  listTimeline: (id: string, cursor?: string) =>
+    request<FeedPage>(`/api/lists/${id}/timeline${qs(cursor)}`),
   post: (id: string) => request<{ post: Post }>(`/api/posts/${id}`),
   thread: (id: string) => request<Thread>(`/api/posts/${id}/thread`),
   deletePost: (id: string) => request<{ ok: true }>(`/api/posts/${id}`, { method: "DELETE" }),
@@ -378,6 +431,82 @@ export interface Post {
   quoteOf?: Post
   /** Set when this row is the pinned post on a profile feed. */
   pinned?: boolean
+  /** Optional poll attached to this post. */
+  poll?: PollDto
+}
+
+export interface PollOption {
+  id: string
+  position: number
+  text: string
+  voteCount: number
+}
+
+export interface PollDto {
+  id: string
+  closesAt: string
+  allowMultiple: boolean
+  totalVotes: number
+  closed: boolean
+  options: Array<PollOption>
+  viewerVoteOptionIds?: Array<string>
+}
+
+export interface PollInput {
+  options: Array<string>
+  durationMinutes: number
+  allowMultiple: boolean
+}
+
+export interface ScheduledPost {
+  id: string
+  text: string
+  mediaIds: Array<string>
+  visibility: "public" | "followers" | "unlisted"
+  replyRestriction: "anyone" | "following" | "mentioned"
+  sensitive: boolean
+  contentWarning: string | null
+  scheduledFor: string | null
+  publishedAt: string | null
+  publishedPostId: string | null
+  failedAt: string | null
+  failureReason: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ScheduledPostInput {
+  text: string
+  mediaIds?: Array<string>
+  visibility?: "public" | "followers" | "unlisted"
+  replyRestriction?: "anyone" | "following" | "mentioned"
+  sensitive?: boolean
+  contentWarning?: string
+  /** ISO timestamp; null/undefined = save as draft. */
+  scheduledFor?: string | null
+}
+
+export interface UserList {
+  id: string
+  ownerId: string
+  ownerHandle: string | null
+  ownerDisplayName: string | null
+  slug: string
+  title: string
+  description: string | null
+  isPrivate: boolean
+  memberCount: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface UserListMember {
+  id: string
+  handle: string | null
+  displayName: string | null
+  avatarUrl: string | null
+  isVerified: boolean
+  addedAt: string
 }
 
 export interface PostArticleCard {

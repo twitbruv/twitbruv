@@ -38,6 +38,7 @@ import { ReportDialog } from "./report-dialog"
 import { Avatar } from "./avatar"
 import { ImageLightbox } from "./image-lightbox"
 import { Compose } from "./compose"
+import { PollBlock } from "./poll-block"
 import { VerifiedBadge } from "./verified-badge"
 import type { Post } from "../lib/api"
 
@@ -598,6 +599,12 @@ export function PostCard({
         {post.articleCard && <ArticleCardBlock card={post.articleCard} />}
         {post.media && post.media.length > 0 && (
           <MediaGrid media={post.media} />
+        )}
+        {post.poll && (
+          <PollBlock
+            poll={post.poll}
+            onChange={(nextPoll) => emit({ ...post, poll: nextPoll })}
+          />
         )}
         {post.quoteOf && <QuoteEmbed post={post.quoteOf} />}
         <footer className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">

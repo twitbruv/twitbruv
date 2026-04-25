@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { uuidSchema } from './common.ts'
+import { pollInputSchema } from './polls.ts'
 
 export const POST_MAX_LEN = 500
 
@@ -16,6 +17,9 @@ export const createPostSchema = z.object({
   sensitive: z.boolean().default(false),
   contentWarning: z.string().max(100).optional(),
   lang: z.string().max(10).optional(),
+  // Attach a poll to this post. Polls are mutually exclusive with media (UI restriction);
+  // we don't enforce that on the server because the post-DTO surface handles either case.
+  poll: pollInputSchema.optional(),
 })
 
 export const editPostSchema = z.object({

@@ -2,7 +2,9 @@ import { Link } from "@tanstack/react-router"
 import {
   IconBell,
   IconBookmark,
+  IconClock,
   IconHome,
+  IconList,
   IconMail,
   IconPencil,
   IconSearch,
@@ -128,6 +130,30 @@ export function AppShell({ children }: { children: ReactNode }) {
                         <Link to="/bookmarks">
                           <IconBookmark />
                           <span>Bookmarks</span>
+                        </Link>
+                      }
+                    />
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      size="default"
+                      tooltip="lists"
+                      render={
+                        <Link to="/lists">
+                          <IconList />
+                          <span>Lists</span>
+                        </Link>
+                      }
+                    />
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      size="default"
+                      tooltip="drafts"
+                      render={
+                        <Link to="/drafts">
+                          <IconClock />
+                          <span>Drafts</span>
                         </Link>
                       }
                     />

@@ -2,6 +2,7 @@ import { schema } from '@workspace/db'
 import type { MediaEnv } from '@workspace/media/env'
 import { assetUrl, publicUrl } from '@workspace/media/s3'
 import type { ArticleCard } from './article-cards.ts'
+import type { PollDto } from './polls.ts'
 
 type PostRow = typeof schema.posts.$inferSelect
 type UserRow = typeof schema.users.$inferSelect
@@ -69,6 +70,8 @@ export interface PostDto {
   quoteOf?: PostDto
   /** Set when this row should render with a "Pinned" banner (profile feed first item). */
   pinned?: boolean
+  /** Attached poll, if any. Renders below the post text. */
+  poll?: PollDto
 }
 
 export function toMediaDto(m: MediaRow, env: MediaEnv): MediaDto {
@@ -103,6 +106,7 @@ export function toPostDto(
   articleCard?: ArticleCard,
   repostOf?: PostDto,
   quoteOf?: PostDto,
+  poll?: PollDto,
 ): PostDto {
   return {
     id: post.id,
@@ -136,5 +140,6 @@ export function toPostDto(
     ...(articleCard ? { articleCard } : {}),
     ...(repostOf ? { repostOf } : {}),
     ...(quoteOf ? { quoteOf } : {}),
+    ...(poll ? { poll } : {}),
   }
 }

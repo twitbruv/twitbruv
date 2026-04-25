@@ -9,6 +9,7 @@ import { loadPostMedia } from '../lib/post-media.ts'
 import { loadArticleCards } from '../lib/article-cards.ts'
 import { loadRepostTargets } from '../lib/repost-targets.ts'
 import { loadQuoteTargets } from '../lib/quote-targets.ts'
+import { loadPolls } from '../lib/polls.ts'
 
 export const searchRoute = new Hono<HonoEnv>()
 
@@ -72,7 +73,7 @@ searchRoute.get('/', async (c) => {
     .limit(40)
 
   const ids = postRows.map((r) => r.post.id)
-  const [flags, mediaMap, articleMap, repostMap, quoteMap] = await Promise.all([
+  const [flags, mediaMap, articleMap, repostMap, quoteMap, pollMap] = await Promise.all([
     loadViewerFlags(db, viewerId, ids),
     loadPostMedia(db, ids),
     loadArticleCards(db, ids),
@@ -88,6 +89,7 @@ searchRoute.get('/', async (c) => {
       env: mediaEnv,
       quoteRows: postRows.map((r) => ({ id: r.post.id, quoteOfId: r.post.quoteOfId })),
     }),
+    loadPolls(db, viewerId, ids),
   ])
   const posts = postRows.map((r) =>
     toPostDto(
@@ -99,6 +101,7 @@ searchRoute.get('/', async (c) => {
       articleMap.get(r.post.id),
       repostMap.get(r.post.id),
       quoteMap.get(r.post.id),
+      pollMap.get(r.post.id),
     ),
   )
   return c.json({ users: usersDto, posts })

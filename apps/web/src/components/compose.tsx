@@ -1,16 +1,35 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { IconPhoto, IconX } from "@tabler/icons-react"
+import { IconChartBar, IconPhoto, IconX } from "@tabler/icons-react"
 import { Button } from "@workspace/ui/components/button"
-import { POST_MAX_LEN } from "@workspace/validators"
+import {
+  POLL_MAX_OPTIONS,
+  POLL_MIN_OPTIONS,
+  POLL_OPTION_MAX_LEN,
+  POST_MAX_LEN,
+} from "@workspace/validators"
 import { ApiError, api } from "../lib/api"
 import { setAltText, uploadImage } from "../lib/media"
 import { clearDraft, draftKey, loadDraft, saveDraft } from "../lib/drafts"
 import { useMe } from "../lib/me"
 import { VerifiedBadge } from "./verified-badge"
-import type { Post } from "../lib/api"
+import type { PollInput, Post } from "../lib/api"
 import type { UploadedMedia } from "../lib/media"
 
 const MAX_ATTACHMENTS = 4
+
+interface PollDraft {
+  options: Array<string>
+  durationMinutes: number
+  allowMultiple: boolean
+}
+
+const POLL_DURATION_CHOICES: Array<{ label: string; minutes: number }> = [
+  { label: "5 minutes", minutes: 5 },
+  { label: "1 hour", minutes: 60 },
+  { label: "1 day", minutes: 60 * 24 },
+  { label: "3 days", minutes: 60 * 24 * 3 },
+  { label: "7 days", minutes: 60 * 24 * 7 },
+]
 
 interface PendingAttachment {
   tempId: string
@@ -44,6 +63,7 @@ export function Compose({
     saveDraft(dKey, text)
   }, [dKey, text])
   const [attachments, setAttachments] = useState<Array<PendingAttachment>>([])
+  const [poll, setPoll] = useState<PollDraft | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const avatarInitial = (me?.displayName ?? me?.handle ?? "·")
@@ -54,10 +74,36 @@ export function Compose({
   const readyMediaIds = attachments
     .filter((a) => a.status === "ready" && a.media)
     .map((a) => a.media!.id)
+  const pollValid =
+    !poll ||
+    (poll.options.filter((o) => o.trim().length > 0).length >= POLL_MIN_OPTIONS &&
+      poll.options.every((o) => o.length <= POLL_OPTION_MAX_LEN))
   const hasContent =
-    text.trim().length > 0 || readyMediaIds.length > 0 || Boolean(quoteOfId)
+    text.trim().length > 0 || readyMediaIds.length > 0 || Boolean(quoteOfId) || Boolean(poll)
   const noneUploading = attachments.every((a) => a.status !== "uploading")
-  const canSubmit = hasContent && remaining >= 0 && noneUploading && !loading
+  const canSubmit =
+    hasContent && remaining >= 0 && noneUploading && pollValid && !loading
+
+  function startPoll() {
+    if (poll) return
+    // Polls and media are mutually exclusive (matches Twitter / Mastodon).
+    setPoll({ options: ["", ""], durationMinutes: 60 * 24, allowMultiple: false })
+  }
+  function updatePollOption(idx: number, value: string) {
+    if (!poll) return
+    const next = [...poll.options]
+    next[idx] = value
+    setPoll({ ...poll, options: next })
+  }
+  function addPollOption() {
+    if (!poll || poll.options.length >= POLL_MAX_OPTIONS) return
+    setPoll({ ...poll, options: [...poll.options, ""] })
+  }
+  function removePollOption(idx: number) {
+    if (!poll) return
+    if (poll.options.length <= POLL_MIN_OPTIONS) return
+    setPoll({ ...poll, options: poll.options.filter((_, i) => i !== idx) })
+  }
 
   async function addFiles(files: FileList | null) {
     if (!files) return
@@ -115,16 +161,25 @@ export function Compose({
           .filter((a) => a.status === "ready" && a.media && a.altText.trim().length > 0)
           .map((a) => setAltText(a.media!.id, a.altText).catch(() => {})),
       )
+      const pollPayload: PollInput | undefined = poll
+        ? {
+            options: poll.options.map((o) => o.trim()).filter((o) => o.length > 0),
+            durationMinutes: poll.durationMinutes,
+            allowMultiple: poll.allowMultiple,
+          }
+        : undefined
       const { post } = await api.createPost({
         text: text.trim(),
         replyToId,
         quoteOfId,
         mediaIds: readyMediaIds.length > 0 ? readyMediaIds : undefined,
+        poll: pollPayload,
       })
       setText("")
       clearDraft(dKey)
       attachments.forEach((a) => URL.revokeObjectURL(a.previewUrl))
       setAttachments([])
+      setPoll(null)
       onCreated?.(post)
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "failed to post")
@@ -181,6 +236,83 @@ export function Compose({
               {quoted.author.handle && <span>@{quoted.author.handle}</span>}
             </div>
             <p className="mt-1 line-clamp-3 whitespace-pre-wrap break-words">{quoted.text}</p>
+          </div>
+        )}
+
+        {poll && (
+          <div className="mt-3 space-y-2 rounded-md border border-border p-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Poll
+              </span>
+              <button
+                type="button"
+                onClick={() => setPoll(null)}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                Remove poll
+              </button>
+            </div>
+            {poll.options.map((opt, idx) => (
+              <div key={idx} className="flex items-center gap-2">
+                <input
+                  value={opt}
+                  onChange={(e) => updatePollOption(idx, e.target.value)}
+                  placeholder={`Choice ${idx + 1}`}
+                  maxLength={POLL_OPTION_MAX_LEN}
+                  className="flex-1 rounded-md border border-border bg-transparent px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+                {poll.options.length > POLL_MIN_OPTIONS && (
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onClick={() => removePollOption(idx)}
+                    aria-label="remove option"
+                  >
+                    <IconX size={14} />
+                  </Button>
+                )}
+              </div>
+            ))}
+            {poll.options.length < POLL_MAX_OPTIONS && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={addPollOption}
+                className="text-xs"
+              >
+                + Add choice
+              </Button>
+            )}
+            <div className="flex flex-wrap items-center gap-3 pt-1 text-xs text-muted-foreground">
+              <label className="flex items-center gap-1">
+                <span>Duration</span>
+                <select
+                  value={poll.durationMinutes}
+                  onChange={(e) =>
+                    setPoll({ ...poll, durationMinutes: Number(e.target.value) })
+                  }
+                  className="rounded-md border border-border bg-background px-1 py-0.5 text-xs"
+                >
+                  {POLL_DURATION_CHOICES.map((c) => (
+                    <option key={c.minutes} value={c.minutes}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex items-center gap-1">
+                <input
+                  type="checkbox"
+                  checked={poll.allowMultiple}
+                  onChange={(e) =>
+                    setPoll({ ...poll, allowMultiple: e.target.checked })
+                  }
+                  className="size-3.5 accent-primary"
+                />
+                Allow multiple choices
+              </label>
+            </div>
           </div>
         )}
 
@@ -248,11 +380,21 @@ export function Compose({
             <Button
               variant="ghost"
               size="icon"
-              disabled={attachments.length >= MAX_ATTACHMENTS}
+              disabled={attachments.length >= MAX_ATTACHMENTS || Boolean(poll)}
               onClick={() => fileInputRef.current?.click()}
               aria-label="add image"
             >
               <IconPhoto size={18} stroke={1.75} />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              disabled={Boolean(poll) || attachments.length > 0 || Boolean(replyToId) || Boolean(quoteOfId)}
+              onClick={startPoll}
+              aria-label="add poll"
+              title="Add a poll"
+            >
+              <IconChartBar size={18} stroke={1.75} />
             </Button>
             <span
               className={`text-xs ${
