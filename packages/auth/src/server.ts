@@ -3,10 +3,8 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { magicLink } from 'better-auth/plugins/magic-link'
 import { twoFactor } from 'better-auth/plugins/two-factor'
 import { admin as adminPlugin } from 'better-auth/plugins/admin'
+import { passkey } from '@better-auth/passkey'
 import type { Database } from '@workspace/db'
-
-// Passkey support is a follow-up: better-auth ships passkeys as a separate plugin package.
-// Wire it in at M2 once the signup flow lands.
 
 export interface AuthConfig {
   db: Database
@@ -132,8 +130,27 @@ export function createAuth(config: AuthConfig) {
       }),
       twoFactor(),
       adminPlugin(),
+      // Passkeys (WebAuthn). The plugin maps onto the existing `passkeys`
+      // table that's already in the schema. The rpName/rpID pair drives the
+      // browser's UI ("Use a passkey for <rpName>?").
+      passkey({
+        rpName: config.appName,
+        rpID: rpIDFromUrl(config.baseURL),
+        origin: config.baseURL,
+      }),
     ],
   })
 }
 
 export type AuthInstance = ReturnType<typeof createAuth>
+
+// rpID for WebAuthn must be the eTLD+1 (or a registrable subdomain) of the
+// origin the user is currently on. We derive it from baseURL so dev (localhost)
+// and prod don't need separate env vars.
+function rpIDFromUrl(baseURL: string): string {
+  try {
+    return new URL(baseURL).hostname
+  } catch {
+    return 'localhost'
+  }
+}

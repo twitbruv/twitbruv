@@ -51,6 +51,34 @@ function Login() {
     await authClient.signIn.social({ provider, callbackURL: "/" })
   }
 
+  async function onPasskey() {
+    setError(null)
+    setLoading(true)
+    try {
+      // The passkey plugin attaches signIn.passkey at runtime; the typed
+      // surface depends on the optional plugin so we cast to access it.
+      const passkeySignIn = (
+        authClient.signIn as unknown as {
+          passkey?: () => Promise<{ data?: unknown; error?: { message?: string } }>
+        }
+      ).passkey
+      if (!passkeySignIn) {
+        throw new Error("Passkey sign-in is unavailable on this client.")
+      }
+      const { error: err } = await passkeySignIn()
+      if (err) throw new Error(err.message ?? "passkey sign in failed")
+      router.navigate({ to: "/" })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "passkey sign in failed")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const passkeySupported =
+    typeof window !== "undefined" &&
+    typeof window.PublicKeyCredential !== "undefined"
+
   return (
     <main className="mx-auto max-w-sm px-4 py-16">
       <h1 className="text-xl font-semibold">Sign in</h1>
@@ -77,6 +105,17 @@ function Login() {
       <Button variant="ghost" className="mt-2 w-full" size="sm" onClick={onMagicLink}>
         email me a sign-in link
       </Button>
+      {passkeySupported && (
+        <Button
+          variant="outline"
+          className="mt-2 w-full"
+          size="lg"
+          onClick={onPasskey}
+          disabled={loading}
+        >
+          Sign in with a passkey
+        </Button>
+      )}
       <div className="my-6 flex items-center gap-2 text-xs text-muted-foreground">
         <div className="h-px flex-1 bg-border" />
         or

@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { boolean, customType, date, index, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
+import { boolean, customType, date, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
 import { userRoleEnum } from './enums.ts'
 
 const citext = customType<{ data: string; driverData: string }>({
@@ -138,6 +138,12 @@ export const verifications = pgTable(
   (t) => [index('verifications_identifier_idx').on(t.identifier)],
 )
 
+// Passkey (WebAuthn) credentials, owned by a user. Column shape is dictated
+// by Better Auth's @better-auth/passkey plugin: usePlural=true on the
+// drizzle adapter maps the plugin's `passkey` model to this `passkeys`
+// table; the camelCase plugin fields land as snake_case columns under the
+// `casing: 'snake_case'` setting (e.g. `credentialID` → `credential_i_d`),
+// so we name the columns explicitly to keep parity.
 export const passkeys = pgTable(
   'passkeys',
   {
@@ -147,15 +153,16 @@ export const passkeys = pgTable(
       .references(() => users.id, { onDelete: 'cascade' }),
     name: text('name'),
     publicKey: text('public_key').notNull(),
-    credentialId: text('credential_id').notNull(),
-    counter: text('counter').notNull().default('0'),
-    deviceType: text('device_type'),
-    backedUp: boolean('backed_up'),
+    credentialID: text('credential_id').notNull(),
+    counter: integer('counter').notNull().default(0),
+    deviceType: text('device_type').notNull(),
+    backedUp: boolean('backed_up').notNull(),
     transports: text('transports'),
+    aaguid: text('aaguid'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    uniqueIndex('passkeys_credential_uq').on(t.credentialId),
+    uniqueIndex('passkeys_credential_uq').on(t.credentialID),
     index('passkeys_user_idx').on(t.userId),
   ],
 )

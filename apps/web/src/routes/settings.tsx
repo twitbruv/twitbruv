@@ -123,6 +123,7 @@ function Settings() {
       <AccountSection email={me.email} />
       <SessionsSection currentSessionId={session?.session.id ?? null} />
       <PrivacySection />
+      <PasskeysSection />
       <DangerZone onDeleted={() => router.navigate({ to: "/" })} />
 
       <form onSubmit={onSave} className="space-y-3">
@@ -535,6 +536,69 @@ function PrivacyList<T extends { id: string; handle: string | null; displayName:
         </li>
       ))}
     </ul>
+  )
+}
+
+function PasskeysSection() {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [status, setStatus] = useState<string | null>(null)
+
+  const supported =
+    typeof window !== "undefined" &&
+    typeof window.PublicKeyCredential !== "undefined"
+
+  async function add() {
+    if (busy) return
+    setBusy(true)
+    setError(null)
+    setStatus(null)
+    try {
+      const name =
+        window.prompt("Name this passkey (e.g. 'iPhone', 'YubiKey')") ?? "Passkey"
+      const passkeyApi = (
+        authClient as unknown as {
+          passkey?: {
+            addPasskey?: (opts: { name: string }) => Promise<{
+              data?: unknown
+              error?: { message?: string }
+            }>
+          }
+        }
+      ).passkey
+      if (!passkeyApi?.addPasskey) {
+        throw new Error("Passkey support is unavailable on this client.")
+      }
+      const res = await passkeyApi.addPasskey({ name })
+      if (res.error) {
+        throw new Error(res.error.message ?? "passkey_failed")
+      }
+      setStatus("Passkey saved. You can sign in with it next time.")
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "couldn't add passkey")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="space-y-2 border-t border-border pt-6">
+      <h2 className="text-sm font-semibold">Passkeys</h2>
+      <p className="text-xs text-muted-foreground">
+        Skip your password — sign in with your device's biometrics or a
+        hardware key. You can register multiple passkeys (one per device).
+      </p>
+      {!supported && (
+        <p className="text-xs text-muted-foreground">
+          Your browser doesn't support passkeys.
+        </p>
+      )}
+      {error && <p className="text-xs text-destructive">{error}</p>}
+      {status && <p className="text-xs text-muted-foreground">{status}</p>}
+      <Button size="sm" variant="outline" onClick={add} disabled={!supported || busy}>
+        {busy ? "Adding…" : "Add a passkey"}
+      </Button>
+    </section>
   )
 }
 
