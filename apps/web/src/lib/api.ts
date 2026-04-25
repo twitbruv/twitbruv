@@ -281,6 +281,8 @@ export const api = {
     quoteOfId?: string
     mediaIds?: Array<string>
     poll?: PollInput
+    /** Who can reply to this post. Defaults to anyone server-side. */
+    replyRestriction?: "anyone" | "following" | "mentioned"
   }) =>
     request<{ post: Post }>("/api/posts", {
       method: "POST",
@@ -379,6 +381,10 @@ export const api = {
     request<{ ok: true }>(`/api/posts/${id}/repost`, { method: "POST" }),
   unrepost: (id: string) =>
     request<{ ok: true }>(`/api/posts/${id}/repost`, { method: "DELETE" }),
+  hidePost: (id: string) =>
+    request<{ ok: true }>(`/api/posts/${id}/hide`, { method: "POST" }),
+  unhidePost: (id: string) =>
+    request<{ ok: true }>(`/api/posts/${id}/hide`, { method: "DELETE" }),
   pinPost: (id: string) =>
     request<{ ok: true }>(`/api/posts/${id}/pin`, { method: "POST" }),
   unpinPost: (id: string) =>
@@ -487,6 +493,9 @@ export interface Post {
   sensitive: boolean
   contentWarning: string | null
   replyRestriction: "anyone" | "following" | "mentioned"
+  /** Set when the conversation root author hid this reply. The thread renderer
+   *  collapses these by default behind a "Show hidden replies" affordance. */
+  hidden?: boolean
   author: {
     id: string
     handle: string | null

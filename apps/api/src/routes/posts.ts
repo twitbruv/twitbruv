@@ -51,6 +51,47 @@ postsRoute.post('/', requireAuth(), async (c) => {
       depth = parent.conversationDepth + 1
       replyTargetAuthorId = parent.authorId
 
+      // Enforce the conversation root's reply restriction. The author of the
+      // root and the post author can always reply (X behavior). For
+      // "following" we require the root's author to follow the replier;
+      // for "mentioned" we require the replier to be mentioned in the root.
+      const rootPostId = parent.rootId ?? parent.id
+      const [root] =
+        rootPostId === parent.id
+          ? [parent]
+          : await tx
+              .select()
+              .from(schema.posts)
+              .where(eq(schema.posts.id, rootPostId))
+              .limit(1)
+      if (root && root.authorId !== session.user.id) {
+        if (root.replyRestriction === 'following') {
+          const [followRow] = await tx
+            .select({ x: sql<number>`1` })
+            .from(schema.follows)
+            .where(
+              and(
+                eq(schema.follows.followerId, root.authorId),
+                eq(schema.follows.followeeId, session.user.id),
+              ),
+            )
+            .limit(1)
+          if (!followRow) throw new HttpError(403, 'replies_limited_to_following')
+        } else if (root.replyRestriction === 'mentioned') {
+          const [mentionRow] = await tx
+            .select({ x: sql<number>`1` })
+            .from(schema.mentions)
+            .where(
+              and(
+                eq(schema.mentions.postId, root.id),
+                eq(schema.mentions.mentionedUserId, session.user.id),
+              ),
+            )
+            .limit(1)
+          if (!mentionRow) throw new HttpError(403, 'replies_limited_to_mentioned')
+        }
+      }
+
       await tx
         .update(schema.posts)
         .set({ replyCount: sql`${schema.posts.replyCount} + 1` })
@@ -789,6 +830,81 @@ postsRoute.get('/', async (c) => {
   )
   const nextCursor = posts.length === limit ? posts[posts.length - 1]!.createdAt : null
   return c.json({ posts, nextCursor })
+})
+
+// Hide a reply from the conversation view. Allowed for the author of the
+// conversation root and for site moderators. The reply is not deleted; the
+// reply's author still sees it on their own profile and direct links still
+// resolve, but the thread route collapses it behind a "Show hidden replies"
+// affordance — same UX as X.
+postsRoute.post('/:id/hide', requireAuth(), async (c) => {
+  const session = c.get('session')!
+  const { db } = c.get('ctx')
+  const id = c.req.param('id')
+  const [post] = await db
+    .select()
+    .from(schema.posts)
+    .where(and(eq(schema.posts.id, id), isNull(schema.posts.deletedAt)))
+    .limit(1)
+  if (!post) return c.json({ error: 'not_found' }, 404)
+  if (!post.replyToId) return c.json({ error: 'cannot_hide_root' }, 400)
+  const rootId = post.rootId ?? post.replyToId
+  const [root] = await db
+    .select({ authorId: schema.posts.authorId })
+    .from(schema.posts)
+    .where(eq(schema.posts.id, rootId))
+    .limit(1)
+  if (!root) return c.json({ error: 'not_found' }, 404)
+  const me = session.user.id
+  const [meRow] = await db
+    .select({ role: schema.users.role })
+    .from(schema.users)
+    .where(eq(schema.users.id, me))
+    .limit(1)
+  const isMod = meRow?.role === 'admin' || meRow?.role === 'owner'
+  if (root.authorId !== me && !isMod) {
+    return c.json({ error: 'forbidden' }, 403)
+  }
+  await db
+    .update(schema.posts)
+    .set({ hiddenAt: new Date() })
+    .where(eq(schema.posts.id, post.id))
+  return c.json({ ok: true })
+})
+
+postsRoute.delete('/:id/hide', requireAuth(), async (c) => {
+  const session = c.get('session')!
+  const { db } = c.get('ctx')
+  const id = c.req.param('id')
+  const [post] = await db
+    .select({ id: schema.posts.id, rootId: schema.posts.rootId, replyToId: schema.posts.replyToId })
+    .from(schema.posts)
+    .where(eq(schema.posts.id, id))
+    .limit(1)
+  if (!post) return c.json({ error: 'not_found' }, 404)
+  const rootId = post.rootId ?? post.replyToId
+  if (!rootId) return c.json({ error: 'cannot_hide_root' }, 400)
+  const [root] = await db
+    .select({ authorId: schema.posts.authorId })
+    .from(schema.posts)
+    .where(eq(schema.posts.id, rootId))
+    .limit(1)
+  if (!root) return c.json({ error: 'not_found' }, 404)
+  const me = session.user.id
+  const [meRow] = await db
+    .select({ role: schema.users.role })
+    .from(schema.users)
+    .where(eq(schema.users.id, me))
+    .limit(1)
+  const isMod = meRow?.role === 'admin' || meRow?.role === 'owner'
+  if (root.authorId !== me && !isMod) {
+    return c.json({ error: 'forbidden' }, 403)
+  }
+  await db
+    .update(schema.posts)
+    .set({ hiddenAt: null })
+    .where(eq(schema.posts.id, post.id))
+  return c.json({ ok: true })
 })
 
 class HttpError extends Error {

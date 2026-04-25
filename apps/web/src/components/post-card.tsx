@@ -4,6 +4,8 @@ import {
   IconBookmark,
   IconBookmarkFilled,
   IconDots,
+  IconEye,
+  IconEyeOff,
   IconFlag,
   IconHeart,
   IconHeartFilled,
@@ -242,6 +244,7 @@ export function PostCard({
   onOpenThread,
   active = false,
   disableThreadNavigation = false,
+  canHide = false,
 }: {
   post: Post
   onChange?: (post: Post) => void
@@ -249,6 +252,9 @@ export function PostCard({
   onOpenThread?: (post: Post) => void
   active?: boolean
   disableThreadNavigation?: boolean
+  /** When true (set by the thread page when the viewer authored the conversation
+   *  root, or by admin tooling for moderators), expose Hide/Unhide reply menu items. */
+  canHide?: boolean
 }) {
   const navigate = useNavigate()
   const { data: session } = authClient.useSession()
@@ -585,6 +591,26 @@ export function PostCard({
                     >
                       <IconTrash size={14} stroke={1.75} />
                       <span>Delete</span>
+                    </DropdownMenuItem>
+                  )}
+                  {canHide && !isOwner && (
+                    <DropdownMenuItem
+                      onClick={async () => {
+                        try {
+                          if (post.hidden) await api.unhidePost(post.id)
+                          else await api.hidePost(post.id)
+                          onChange?.({ ...post, hidden: !post.hidden })
+                        } catch {
+                          /* surfaced via stale state on refresh */
+                        }
+                      }}
+                    >
+                      {post.hidden ? (
+                        <IconEye size={14} stroke={1.75} />
+                      ) : (
+                        <IconEyeOff size={14} stroke={1.75} />
+                      )}
+                      <span>{post.hidden ? "Unhide reply" : "Hide reply"}</span>
                     </DropdownMenuItem>
                   )}
                   {!isOwner && (
