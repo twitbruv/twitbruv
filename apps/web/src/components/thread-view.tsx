@@ -91,7 +91,7 @@ export function ThreadViewContent({
         ? {
             postId: returnToHome.postId,
             postHandle: returnToHome.postHandle,
-          },
+          }
         : {},
       replace: true,
     })
