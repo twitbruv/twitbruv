@@ -4,6 +4,7 @@ import {
   Scripts,
   createRootRoute,
 } from "@tanstack/react-router"
+import { useEffect } from "react"
 
 import appCss from "@workspace/ui/globals.css?url"
 import { AppShell } from "../components/app-shell"
@@ -12,6 +13,7 @@ import { ThemeProvider, themeBootstrapScript } from "../lib/theme"
 import { APP_NAME, WEB_URL } from "../lib/env"
 import { MeProvider } from "../lib/me"
 import { QueryProvider } from "../lib/query"
+import { registerServiceWorker } from "../lib/pwa"
 
 const DESCRIPTION = `${APP_NAME} — open-source, free-for-everyone social platform. No AI ranking, no paywalls, no ads.`
 
@@ -38,7 +40,8 @@ export const Route = createRootRoute({
       { rel: "stylesheet", href: appCss },
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
       { rel: "alternate icon", href: "/favicon.ico" },
-      { rel: "manifest", href: "/manifest.json" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "apple-touch-icon", href: "/icon-192.svg" },
     ],
     scripts: [{ children: themeBootstrapScript }],
   }),
@@ -55,7 +58,14 @@ export const Route = createRootRoute({
     </AppShell>
   ),
   shellComponent: RootDocument,
-  component: () => (
+  component: RootComponent,
+})
+
+function RootComponent() {
+  useEffect(() => {
+    registerServiceWorker()
+  }, [])
+  return (
     <QueryProvider>
       <ThemeProvider>
         <MeProvider>
@@ -65,8 +75,8 @@ export const Route = createRootRoute({
         </MeProvider>
       </ThemeProvider>
     </QueryProvider>
-  ),
-})
+  )
+}
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (

@@ -7,6 +7,7 @@ import { updateProfileSchema } from "@workspace/validators"
 import { ApiError, api } from "../lib/api"
 import { authClient } from "../lib/auth"
 import { useMe } from "../lib/me"
+import { useInstallPrompt } from "../lib/pwa"
 import { ClaimHandle } from "../components/claim-handle"
 import { AvatarUpload } from "../components/avatar-upload"
 import { BannerUpload } from "../components/banner-upload"
@@ -17,7 +18,13 @@ import type { BlockedUser, MutedUser } from "../lib/api"
 
 export const Route = createFileRoute("/settings")({ component: Settings })
 
-type SettingsTab = "profile" | "account" | "sessions" | "privacy" | "danger"
+type SettingsTab =
+  | "profile"
+  | "account"
+  | "sessions"
+  | "privacy"
+  | "install"
+  | "danger"
 
 function Settings() {
   const router = useRouter()
@@ -79,6 +86,11 @@ function Settings() {
             label="Privacy"
           />
           <SettingsTabBtn
+            active={tab === "install"}
+            onClick={() => setTab("install")}
+            label="Install"
+          />
+          <SettingsTabBtn
             active={tab === "danger"}
             onClick={() => setTab("danger")}
             label="Danger zone"
@@ -92,6 +104,7 @@ function Settings() {
             <SessionsSection currentSessionId={session?.session.id ?? null} />
           )}
           {tab === "privacy" && <PrivacySection />}
+          {tab === "install" && <InstallSection />}
           {tab === "danger" && (
             <DangerZone onDeleted={() => router.navigate({ to: "/" })} />
           )}
@@ -689,6 +702,49 @@ function PrivacyList<
         </li>
       ))}
     </ul>
+  )
+}
+
+function InstallSection() {
+  const { canInstall, installed, promptInstall } = useInstallPrompt()
+  const isIOS =
+    typeof navigator !== "undefined" &&
+    /iPad|iPhone|iPod/.test(navigator.userAgent) &&
+    !("MSStream" in window)
+  if (installed) {
+    return (
+      <section className="space-y-2 border-t border-border pt-6">
+        <h2 className="text-sm font-semibold">Install</h2>
+        <p className="text-xs text-muted-foreground">
+          You're using twotter as an installed app. Nice.
+        </p>
+      </section>
+    )
+  }
+  return (
+    <section className="space-y-2 border-t border-border pt-6">
+      <h2 className="text-sm font-semibold">Install app</h2>
+      <p className="text-xs text-muted-foreground">
+        Add twotter to your home screen for offline-friendly browsing and faster
+        startup. Notifications stay quiet until you opt in.
+      </p>
+      {canInstall ? (
+        <Button size="sm" variant="outline" onClick={() => promptInstall()}>
+          Install twotter
+        </Button>
+      ) : isIOS ? (
+        <p className="text-xs text-muted-foreground">
+          On iPhone/iPad, tap the Share button in Safari and choose
+          “Add to Home Screen”.
+        </p>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          Your browser doesn't show an install prompt yet. Try opening twotter
+          in Chrome or Edge, or check your browser menu for an “Install
+          twotter” option.
+        </p>
+      )}
+    </section>
   )
 }
 
