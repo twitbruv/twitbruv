@@ -14,21 +14,30 @@ export function Avatar({
   src,
   className,
   tone = "stone",
+  size,
 }: {
   initial: string
   src?: string | null
   className?: string
   tone?: keyof typeof tones
+  /** Size in pixels. When provided, font size is calculated dynamically. */
+  size?: number
 }) {
+  const sizeStyle = size ? { width: size, height: size } : undefined
+  const fontSize = size ? Math.round(size * 0.46) : undefined
+  const letterSpacing = fontSize ? `${-fontSize * 0.02}px` : undefined
+
   if (src) {
     return (
       <img
         src={src}
         alt=""
         className={cn(
-          "size-6 shrink-0 rounded object-cover",
+          "shrink-0 rounded object-cover",
+          !size && "size-6",
           className,
         )}
+        style={sizeStyle}
       />
     )
   }
@@ -38,10 +47,11 @@ export function Avatar({
   return (
     <div
       className={cn(
-        "flex size-6 shrink-0 items-center justify-center rounded text-[11px] font-semibold uppercase tracking-tight",
+        "flex shrink-0 items-center justify-center rounded font-semibold uppercase tracking-tight",
+        !size && "size-6 text-[11px]",
         className,
       )}
-      style={{ background: bg, color: fg }}
+      style={{ background: bg, color: fg, ...sizeStyle, fontSize, letterSpacing }}
     >
       {initial}
     </div>
