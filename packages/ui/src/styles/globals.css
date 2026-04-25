@@ -75,6 +75,7 @@
     --shadow-opacity: var(--shadow-opacity);
     --color-shadow-color: var(--shadow-color);
     --color-destructive-foreground: var(--destructive-foreground);
+    --color-faint: var(--faint);
 }
 
 :root {
@@ -110,6 +111,7 @@
     --sidebar-border: oklch(0.91 0.004 80);
     --sidebar-ring: oklch(0.55 0.07 160);
     --destructive-foreground: oklch(1.0 0 0);
+    --faint: oklch(0.7 0.005 80);
     --font-sans: Inter, system-ui, sans-serif;
     --font-serif: Inter, ui-sans-serif, sans-serif, system-ui;
     --font-mono: JetBrains Mono, monospace;
@@ -165,6 +167,7 @@
     --sidebar-border: oklch(0.3211 0 0);
     --sidebar-ring: oklch(0.6680 0.2200 31.1321);
     --destructive-foreground: oklch(1.0000 0 0);
+    --faint: oklch(0.45 0.005 80);
     --font-sans: Inter, system-ui, sans-serif;
     --font-serif: Inter, ui-sans-serif, sans-serif, system-ui;
     --font-mono: JetBrains Mono, monospace;
