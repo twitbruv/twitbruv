@@ -1,4 +1,8 @@
-import { createServerFileRoute } from "@tanstack/react-start/server"
+import { createFileRoute } from "@tanstack/react-router"
+// Side-effect import: loads the server-route type augmentation
+// (`server?` on FilebaseRouteOptionsInterface) so TS knows about the
+// `server.handlers` shape on createFileRoute().
+import "@tanstack/react-start"
 import { ImageResponse } from "@vercel/og"
 import { api } from "../lib/api"
 import {
@@ -119,30 +123,36 @@ function NotFoundCard() {
   )
 }
 
-export const ServerRoute = createServerFileRoute().methods({
-  GET: async ({ params }) => {
-    const fonts = await getOgFonts()
-    let post: Post | null = null
-    try {
-      post = (await api.post(params.id)).post
-    } catch {
-      // Falls through to NotFoundCard rather than 500ing the unfurler.
-    }
-    return new ImageResponse(
-      (
-        <OgFrame
-          eyebrow={post?.author.handle ? `Post · @${post.author.handle}` : "Post"}
-          seed={post?.id ?? params.id}
-        >
-          {post ? <PostCard post={post} /> : <NotFoundCard />}
-        </OgFrame>
-      ),
-      {
-        ...OG_SIZE,
-        fonts,
-        headers: OG_HEADERS,
-        status: post ? 200 : 404,
-      }
-    )
+export const Route = createFileRoute("/og/post/$id")({
+  server: {
+    handlers: {
+      GET: async ({ params }) => {
+        const fonts = await getOgFonts()
+        let post: Post | null = null
+        try {
+          post = (await api.post(params.id)).post
+        } catch {
+          // Falls through to NotFoundCard rather than 500ing the unfurler.
+        }
+        return new ImageResponse(
+          (
+            <OgFrame
+              eyebrow={
+                post?.author.handle ? `Post · @${post.author.handle}` : "Post"
+              }
+              seed={post?.id ?? params.id}
+            >
+              {post ? <PostCard post={post} /> : <NotFoundCard />}
+            </OgFrame>
+          ),
+          {
+            ...OG_SIZE,
+            fonts,
+            headers: OG_HEADERS,
+            status: post ? 200 : 404,
+          }
+        )
+      },
+    },
   },
 })

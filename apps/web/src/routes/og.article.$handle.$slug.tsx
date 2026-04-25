@@ -1,4 +1,8 @@
-import { createServerFileRoute } from "@tanstack/react-start/server"
+import { createFileRoute } from "@tanstack/react-router"
+// Side-effect import: loads the server-route type augmentation
+// (`server?` on FilebaseRouteOptionsInterface) so TS knows about the
+// `server.handlers` shape on createFileRoute().
+import "@tanstack/react-start"
 import { ImageResponse } from "@vercel/og"
 import { api } from "../lib/api"
 import {
@@ -97,36 +101,40 @@ function NotFoundCard() {
   )
 }
 
-export const ServerRoute = createServerFileRoute().methods({
-  GET: async ({ params }) => {
-    const fonts = await getOgFonts()
-    let article: ArticleDto | null = null
-    try {
-      article = (
-        await api.userArticleBySlug(params.handle, params.slug)
-      ).article
-    } catch {
-      // Fall through to placeholder card.
-    }
-    return new ImageResponse(
-      (
-        <OgFrame
-          eyebrow={`Article · @${params.handle}`}
-          seed={`${params.handle}/${params.slug}`}
-        >
-          {article ? (
-            <ArticleCard article={article} handle={params.handle} />
-          ) : (
-            <NotFoundCard />
-          )}
-        </OgFrame>
-      ),
-      {
-        ...OG_SIZE,
-        fonts,
-        headers: OG_HEADERS,
-        status: article ? 200 : 404,
-      }
-    )
+export const Route = createFileRoute("/og/article/$handle/$slug")({
+  server: {
+    handlers: {
+      GET: async ({ params }) => {
+        const fonts = await getOgFonts()
+        let article: ArticleDto | null = null
+        try {
+          article = (
+            await api.userArticleBySlug(params.handle, params.slug)
+          ).article
+        } catch {
+          // Fall through to placeholder card.
+        }
+        return new ImageResponse(
+          (
+            <OgFrame
+              eyebrow={`Article · @${params.handle}`}
+              seed={`${params.handle}/${params.slug}`}
+            >
+              {article ? (
+                <ArticleCard article={article} handle={params.handle} />
+              ) : (
+                <NotFoundCard />
+              )}
+            </OgFrame>
+          ),
+          {
+            ...OG_SIZE,
+            fonts,
+            headers: OG_HEADERS,
+            status: article ? 200 : 404,
+          }
+        )
+      },
+    },
   },
 })

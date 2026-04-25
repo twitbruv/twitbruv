@@ -35,9 +35,12 @@ import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminReportsRouteImport } from './routes/admin.reports'
 import { Route as HandleFollowingRouteImport } from './routes/$handle.following'
 import { Route as HandleFollowersRouteImport } from './routes/$handle.followers'
+import { Route as OgUserHandleRouteImport } from './routes/og.user.$handle'
+import { Route as OgPostIdRouteImport } from './routes/og.post.$id'
 import { Route as ArticlesIdEditRouteImport } from './routes/articles.$id.edit'
 import { Route as HandlePIdRouteImport } from './routes/$handle.p.$id'
 import { Route as HandleASlugRouteImport } from './routes/$handle.a.$slug'
+import { Route as OgArticleHandleSlugRouteImport } from './routes/og.article.$handle.$slug'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -169,6 +172,16 @@ const HandleFollowersRoute = HandleFollowersRouteImport.update({
   path: '/followers',
   getParentRoute: () => HandleRoute,
 } as any)
+const OgUserHandleRoute = OgUserHandleRouteImport.update({
+  id: '/og/user/$handle',
+  path: '/og/user/$handle',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OgPostIdRoute = OgPostIdRouteImport.update({
+  id: '/og/post/$id',
+  path: '/og/post/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ArticlesIdEditRoute = ArticlesIdEditRouteImport.update({
   id: '/articles/$id/edit',
   path: '/articles/$id/edit',
@@ -183,6 +196,11 @@ const HandleASlugRoute = HandleASlugRouteImport.update({
   id: '/a/$slug',
   path: '/a/$slug',
   getParentRoute: () => HandleRoute,
+} as any)
+const OgArticleHandleSlugRoute = OgArticleHandleSlugRouteImport.update({
+  id: '/og/article/$handle/$slug',
+  path: '/og/article/$handle/$slug',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -215,6 +233,9 @@ export interface FileRoutesByFullPath {
   '/$handle/a/$slug': typeof HandleASlugRoute
   '/$handle/p/$id': typeof HandlePIdRoute
   '/articles/$id/edit': typeof ArticlesIdEditRoute
+  '/og/post/$id': typeof OgPostIdRoute
+  '/og/user/$handle': typeof OgUserHandleRoute
+  '/og/article/$handle/$slug': typeof OgArticleHandleSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -243,6 +264,9 @@ export interface FileRoutesByTo {
   '/$handle/a/$slug': typeof HandleASlugRoute
   '/$handle/p/$id': typeof HandlePIdRoute
   '/articles/$id/edit': typeof ArticlesIdEditRoute
+  '/og/post/$id': typeof OgPostIdRoute
+  '/og/user/$handle': typeof OgUserHandleRoute
+  '/og/article/$handle/$slug': typeof OgArticleHandleSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -275,6 +299,9 @@ export interface FileRoutesById {
   '/$handle/a/$slug': typeof HandleASlugRoute
   '/$handle/p/$id': typeof HandlePIdRoute
   '/articles/$id/edit': typeof ArticlesIdEditRoute
+  '/og/post/$id': typeof OgPostIdRoute
+  '/og/user/$handle': typeof OgUserHandleRoute
+  '/og/article/$handle/$slug': typeof OgArticleHandleSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -308,6 +335,9 @@ export interface FileRouteTypes {
     | '/$handle/a/$slug'
     | '/$handle/p/$id'
     | '/articles/$id/edit'
+    | '/og/post/$id'
+    | '/og/user/$handle'
+    | '/og/article/$handle/$slug'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -336,6 +366,9 @@ export interface FileRouteTypes {
     | '/$handle/a/$slug'
     | '/$handle/p/$id'
     | '/articles/$id/edit'
+    | '/og/post/$id'
+    | '/og/user/$handle'
+    | '/og/article/$handle/$slug'
   id:
     | '__root__'
     | '/'
@@ -367,6 +400,9 @@ export interface FileRouteTypes {
     | '/$handle/a/$slug'
     | '/$handle/p/$id'
     | '/articles/$id/edit'
+    | '/og/post/$id'
+    | '/og/user/$handle'
+    | '/og/article/$handle/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -388,6 +424,9 @@ export interface RootRouteChildren {
   ListsIdRoute: typeof ListsIdRoute
   ListsIndexRoute: typeof ListsIndexRoute
   ArticlesIdEditRoute: typeof ArticlesIdEditRoute
+  OgPostIdRoute: typeof OgPostIdRoute
+  OgUserHandleRoute: typeof OgUserHandleRoute
+  OgArticleHandleSlugRoute: typeof OgArticleHandleSlugRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -574,6 +613,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HandleFollowersRouteImport
       parentRoute: typeof HandleRoute
     }
+    '/og/user/$handle': {
+      id: '/og/user/$handle'
+      path: '/og/user/$handle'
+      fullPath: '/og/user/$handle'
+      preLoaderRoute: typeof OgUserHandleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/og/post/$id': {
+      id: '/og/post/$id'
+      path: '/og/post/$id'
+      fullPath: '/og/post/$id'
+      preLoaderRoute: typeof OgPostIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/articles/$id/edit': {
       id: '/articles/$id/edit'
       path: '/articles/$id/edit'
@@ -594,6 +647,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/$handle/a/$slug'
       preLoaderRoute: typeof HandleASlugRouteImport
       parentRoute: typeof HandleRoute
+    }
+    '/og/article/$handle/$slug': {
+      id: '/og/article/$handle/$slug'
+      path: '/og/article/$handle/$slug'
+      fullPath: '/og/article/$handle/$slug'
+      preLoaderRoute: typeof OgArticleHandleSlugRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -664,6 +724,9 @@ const rootRouteChildren: RootRouteChildren = {
   ListsIdRoute: ListsIdRoute,
   ListsIndexRoute: ListsIndexRoute,
   ArticlesIdEditRoute: ArticlesIdEditRoute,
+  OgPostIdRoute: OgPostIdRoute,
+  OgUserHandleRoute: OgUserHandleRoute,
+  OgArticleHandleSlugRoute: OgArticleHandleSlugRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

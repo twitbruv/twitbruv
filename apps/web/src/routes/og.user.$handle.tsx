@@ -1,4 +1,8 @@
-import { createServerFileRoute } from "@tanstack/react-start/server"
+import { createFileRoute } from "@tanstack/react-router"
+// Side-effect import: loads the server-route type augmentation
+// (`server?` on FilebaseRouteOptionsInterface) so TS knows about the
+// `server.handlers` shape on createFileRoute().
+import "@tanstack/react-start"
 import { ImageResponse } from "@vercel/og"
 import { api } from "../lib/api"
 import {
@@ -122,34 +126,38 @@ function NotFoundCard({ handle }: { handle: string }) {
   )
 }
 
-export const ServerRoute = createServerFileRoute().methods({
-  GET: async ({ params }) => {
-    const fonts = await getOgFonts()
-    let user: PublicProfile | null = null
-    try {
-      user = (await api.user(params.handle)).user
-    } catch {
-      // Fall through to placeholder card.
-    }
-    return new ImageResponse(
-      (
-        <OgFrame
-          eyebrow={user ? `Profile · @${user.handle}` : "Profile"}
-          seed={params.handle}
-        >
-          {user ? (
-            <ProfileCard user={user} />
-          ) : (
-            <NotFoundCard handle={params.handle} />
-          )}
-        </OgFrame>
-      ),
-      {
-        ...OG_SIZE,
-        fonts,
-        headers: OG_HEADERS,
-        status: user ? 200 : 404,
-      }
-    )
+export const Route = createFileRoute("/og/user/$handle")({
+  server: {
+    handlers: {
+      GET: async ({ params }) => {
+        const fonts = await getOgFonts()
+        let user: PublicProfile | null = null
+        try {
+          user = (await api.user(params.handle)).user
+        } catch {
+          // Fall through to placeholder card.
+        }
+        return new ImageResponse(
+          (
+            <OgFrame
+              eyebrow={user ? `Profile · @${user.handle}` : "Profile"}
+              seed={params.handle}
+            >
+              {user ? (
+                <ProfileCard user={user} />
+              ) : (
+                <NotFoundCard handle={params.handle} />
+              )}
+            </OgFrame>
+          ),
+          {
+            ...OG_SIZE,
+            fonts,
+            headers: OG_HEADERS,
+            status: user ? 200 : 404,
+          }
+        )
+      },
+    },
   },
 })
