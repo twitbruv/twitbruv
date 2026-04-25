@@ -36,9 +36,10 @@ meRoute.patch('/', async (c) => {
   // treated as "clear this field" (→ null). Missing keys are left untouched.
   const patch: Partial<typeof schema.users.$inferInsert> = { updatedAt: new Date() }
   const has = (k: string) => Object.prototype.hasOwnProperty.call(raw, k)
-  if (has('displayName')) patch.displayName = body.displayName ?? null
-  if (has('bio')) patch.bio = body.bio ?? null
-  if (has('location')) patch.location = body.location ?? null
+  // Empty string from the client means "clear this field" → store NULL.
+  if (has('displayName')) patch.displayName = body.displayName || null
+  if (has('bio')) patch.bio = body.bio || null
+  if (has('location')) patch.location = body.location || null
   if (has('websiteUrl')) patch.websiteUrl = body.websiteUrl || null
   // Store the bare object key so we never have to migrate when the asset host changes.
   if (has('avatarUrl'))
