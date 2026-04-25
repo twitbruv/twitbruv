@@ -26,6 +26,7 @@ import { authClient } from "../lib/auth"
 import { Avatar } from "../components/avatar"
 import { ImageLightbox } from "../components/image-lightbox"
 import { PageFrame } from "../components/page-frame"
+import { RichText } from "../components/rich-text"
 import { VerifiedBadge } from "../components/verified-badge"
 import { subscribeToDmStream } from "../lib/dm-stream"
 import {
@@ -934,7 +935,11 @@ function Bubble({
           ) : (
             <>
               {message.media && <MessageImage media={message.media} />}
-              {message.text && <p className="break-words whitespace-pre-wrap">{message.text}</p>}
+              {message.text && (
+                <p className="break-words whitespace-pre-wrap">
+                  <RichText text={message.text} />
+                </p>
+              )}
               {!message.media && !message.text && <em className="opacity-70">[unsupported]</em>}
             </>
           )}
