@@ -14,9 +14,9 @@ interface FontEntry {
 
 let fontsPromise: Promise<Array<FontEntry>> | null = null
 
-/** Google Fonts hands back TTF/OTF when called with an old-IE user-agent and woff2
- *  for modern browsers. Satori (under @vercel/og) cannot decode woff2, so we force
- *  the legacy path. The first request pays ~150ms; the result is cached per process. */
+/** Google Fonts serves woff2 to modern browsers — Satori (under @vercel/og) can't
+ *  decode that. The IE11 user-agent gets woff, which Satori 0.10+ handles. The first
+ *  request pays ~150ms; the result is cached per process. */
 async function fetchInterWeight(weight: FontWeight): Promise<ArrayBuffer> {
   const cssUrl = `https://fonts.googleapis.com/css2?family=Inter:wght@${weight}&display=swap`
   const css = await (
@@ -27,7 +27,7 @@ async function fetchInterWeight(weight: FontWeight): Promise<ArrayBuffer> {
       },
     })
   ).text()
-  const match = css.match(/src:\s*url\((https:\/\/[^)]+)\)\s*format\('(?:truetype|opentype)'\)/)
+  const match = css.match(/src:\s*url\((https:\/\/[^)]+)\)/)
   if (!match) throw new Error(`Inter ${weight}: could not parse font url from Google Fonts CSS`)
   return await (await fetch(match[1])).arrayBuffer()
 }
