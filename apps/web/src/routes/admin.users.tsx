@@ -35,6 +35,7 @@ import {
 } from "@workspace/ui/components/table"
 import { IconChevronDown } from "@tabler/icons-react"
 import { api } from "../lib/api"
+import { useInfiniteScrollSentinel } from "../lib/use-infinite-scroll-sentinel"
 import { useMe } from "../lib/me"
 import { Avatar } from "../components/avatar"
 import { VerifiedBadge } from "../components/verified-badge"
@@ -60,21 +61,29 @@ function AdminUsers() {
   const [users, setUsers] = useState<Array<AdminUser>>([])
   const [cursor, setCursor] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [dialog, setDialog] = useState<ActionDialogState>(null)
+  // Bumped on every fresh load so in-flight loadMore results from a prior
+  // search/refresh are discarded instead of getting appended to the new list.
+  const generationRef = useRef(0)
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
 
   const load = useCallback(async (search: string) => {
+    const gen = ++generationRef.current
     setLoading(true)
     setError(null)
     try {
       const res = await api.adminUsers(search || undefined)
+      if (generationRef.current !== gen) return
       setUsers(res.users)
       setCursor(res.nextCursor)
     } catch (e) {
+      if (generationRef.current !== gen) return
       setError(e instanceof Error ? e.message : "failed")
     } finally {
-      setLoading(false)
+      if (generationRef.current === gen) setLoading(false)
     }
   }, [])
 
@@ -83,12 +92,20 @@ function AdminUsers() {
     return () => clearTimeout(t)
   }, [q, load])
 
-  async function loadMore() {
-    if (!cursor) return
-    const res = await api.adminUsers(q || undefined, cursor)
-    setUsers((prev) => [...prev, ...res.users])
-    setCursor(res.nextCursor)
-  }
+  const loadMore = useCallback(async () => {
+    if (!cursor || loadingMore) return
+    const gen = generationRef.current
+    setLoadingMore(true)
+    try {
+      const res = await api.adminUsers(q || undefined, cursor)
+      if (generationRef.current !== gen) return
+      setUsers((prev) => [...prev, ...res.users])
+      setCursor(res.nextCursor)
+    } finally {
+      setLoadingMore(false)
+    }
+  }, [cursor, loadingMore, q])
+
 
   const act = useCallback(
     async (userId: string, op: () => Promise<unknown>) => {
@@ -329,11 +346,11 @@ function AdminUsers() {
   })
 
   const rows = table.getRowModel().rows
-  const tableContainerRef = useRef<HTMLDivElement>(null)
+  const [scrollRoot, setScrollRoot] = useState<HTMLDivElement | null>(null)
   const rowVirtualizer = useVirtualizer({
     count: rows.length,
     estimateSize: () => 64,
-    getScrollElement: () => tableContainerRef.current,
+    getScrollElement: () => scrollRoot,
     overscan: 8,
   })
   const virtualRows = rowVirtualizer.getVirtualItems()
@@ -343,6 +360,10 @@ function AdminUsers() {
     virtualRows.length > 0
       ? totalSize - virtualRows[virtualRows.length - 1].end
       : 0
+
+  useInfiniteScrollSentinel(sentinelRef, !!cursor, loadingMore, loadMore, {
+    root: scrollRoot,
+  })
 
   return (
     <main className="flex h-[calc(100dvh-5rem)] flex-col">
@@ -359,7 +380,7 @@ function AdminUsers() {
       )}
       {users.length > 0 && (
         <div
-          ref={tableContainerRef}
+          ref={setScrollRoot}
           className="flex-1 overflow-auto"
         >
           <Table>
@@ -416,13 +437,12 @@ function AdminUsers() {
               )}
             </TableBody>
           </Table>
-        </div>
-      )}
-      {cursor && (
-        <div className="shrink-0 border-t border-border flex justify-center py-3">
-          <Button variant="ghost" size="sm" onClick={loadMore}>
-            load more
-          </Button>
+          <div ref={sentinelRef} aria-hidden className="h-px" />
+          {cursor && (
+            <div className="flex justify-center py-3 text-xs text-muted-foreground">
+              {loadingMore ? "loading…" : ""}
+            </div>
+          )}
         </div>
       )}
       <ActionDialog

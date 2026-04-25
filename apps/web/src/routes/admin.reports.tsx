@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   flexRender,
   getCoreRowModel,
@@ -23,6 +23,7 @@ import {
   TableRow,
 } from "@workspace/ui/components/table"
 import { api } from "../lib/api"
+import { useInfiniteScrollSentinel } from "../lib/use-infinite-scroll-sentinel"
 import { Avatar } from "../components/avatar"
 import type { ColumnDef } from "@tanstack/react-table"
 import type {
@@ -49,16 +50,23 @@ function AdminReports() {
   const [reports, setReports] = useState<Array<AdminReport>>([])
   const [cursor, setCursor] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  // Bumped on every fresh load so in-flight loadMore results from a prior
+  // status change are discarded instead of getting appended to the new list.
+  const generationRef = useRef(0)
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
 
   const load = useCallback(async (s: ReportStatus) => {
+    const gen = ++generationRef.current
     setLoading(true)
     try {
       const res = await api.adminReports(s)
+      if (generationRef.current !== gen) return
       setReports(res.reports)
       setCursor(res.nextCursor)
     } finally {
-      setLoading(false)
+      if (generationRef.current === gen) setLoading(false)
     }
   }, [])
 
@@ -66,12 +74,21 @@ function AdminReports() {
     load(status)
   }, [status, load])
 
-  async function loadMore() {
-    if (!cursor) return
-    const res = await api.adminReports(status, cursor)
-    setReports((prev) => [...prev, ...res.reports])
-    setCursor(res.nextCursor)
-  }
+  const loadMore = useCallback(async () => {
+    if (!cursor || loadingMore) return
+    const gen = generationRef.current
+    setLoadingMore(true)
+    try {
+      const res = await api.adminReports(status, cursor)
+      if (generationRef.current !== gen) return
+      setReports((prev) => [...prev, ...res.reports])
+      setCursor(res.nextCursor)
+    } finally {
+      setLoadingMore(false)
+    }
+  }, [cursor, loadingMore, status])
+
+  useInfiniteScrollSentinel(sentinelRef, !!cursor, loadingMore, loadMore)
 
   const columns = useMemo<Array<ColumnDef<AdminReport>>>(
     () => [
@@ -208,11 +225,10 @@ function AdminReports() {
           </TableBody>
         </Table>
       )}
+      <div ref={sentinelRef} aria-hidden className="h-px" />
       {cursor && (
-        <div className="flex justify-center py-3">
-          <Button variant="ghost" size="sm" onClick={loadMore}>
-            load more
-          </Button>
+        <div className="flex justify-center py-3 text-xs text-muted-foreground">
+          {loadingMore ? "loading…" : ""}
         </div>
       )}
       <ReportSheet
