@@ -51,7 +51,7 @@
     --font-sans: Inter, system-ui, sans-serif;
     --font-mono: JetBrains Mono, monospace;
     --font-serif: Inter, ui-sans-serif, sans-serif, system-ui;
-    --radius: 0rem;
+    --radius: 0.25rem;
     --tracking-tighter: calc(var(--tracking-normal) - 0.05em);
     --tracking-tight: calc(var(--tracking-normal) - 0.025em);
     --tracking-wide: calc(var(--tracking-normal) + 0.025em);
@@ -84,7 +84,7 @@
     --card-foreground: oklch(0.1994 0.0039 106.7490);
     --popover: oklch(1.0000 0 0);
     --popover-foreground: oklch(0.1994 0.0039 106.7490);
-    --primary: oklch(0.5405 0.2217 29.1470);
+    --primary: oklch(0.68 0.22 38.87);
     --primary-foreground: oklch(0.9706 0.0017 67.8024);
     --secondary: oklch(0.3818 0.0050 106.6339);
     --secondary-foreground: oklch(0.9706 0.0017 67.8024);
@@ -101,7 +101,6 @@
     --chart-3: oklch(0.6501 0.0904 140.2680);
     --chart-4: oklch(0.8280 0.1890 84.4290);
     --chart-5: oklch(0.7690 0.1880 70.0800);
-    --radius: 0rem;
     --sidebar: oklch(1.0000 0 0);
     --sidebar-foreground: oklch(0.1994 0.0039 106.7490);
     --sidebar-primary: oklch(0.2876 0.0071 106.8391);
@@ -166,7 +165,6 @@
     --sidebar-border: oklch(0.3211 0 0);
     --sidebar-ring: oklch(0.6680 0.2200 31.1321);
     --destructive-foreground: oklch(1.0000 0 0);
-    --radius: 0rem;
     --font-sans: Inter, system-ui, sans-serif;
     --font-serif: Inter, ui-sans-serif, sans-serif, system-ui;
     --font-mono: JetBrains Mono, monospace;
