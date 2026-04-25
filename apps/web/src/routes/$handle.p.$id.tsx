@@ -72,30 +72,38 @@ function ThreadView() {
 
   return (
     <main className="">
+      {/* Ancestors - context posts leading to the main post */}
       {thread.ancestors.length > 0 && (
-        <div className="border-b border-border/50">
+        <div className="opacity-60">
           {thread.ancestors.map((p) => (
             <PostCard key={p.id} post={p} onChange={replace} />
           ))}
         </div>
       )}
+
+      {/* Main post */}
       {thread.post && (
-        <div className="bg-muted/20">
+        <div className="bg-muted/10">
           <PostCard post={thread.post} onChange={replace} />
         </div>
       )}
-      <Compose onCreated={onReply} replyToId={id} placeholder={`Reply to @${handle}`} />
-      {thread.replies.length > 0 ? (
+
+      {/* Replies section */}
+      {thread.replies.length > 0 && (
         <div>
+          <div className="px-4 py-2 text-xs font-medium text-muted-foreground border-y border-border">
+            {thread.replies.length} {thread.replies.length === 1 ? 'reply' : 'replies'}
+          </div>
           {thread.replies.map((p) => (
             <PostCard key={p.id} post={p} onChange={replace} />
           ))}
         </div>
-      ) : (
-        <div className="border-t border-border px-4 py-6 text-sm text-muted-foreground">
-          No replies yet.
-        </div>
       )}
+
+      {/* Reply composer - sticky at bottom */}
+      <div className="sticky bottom-0 border-t border-border bg-background">
+        <Compose onCreated={onReply} replyToId={id} placeholder={`Reply to @${handle}`} />
+      </div>
     </main>
   )
 }
