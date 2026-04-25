@@ -78,6 +78,21 @@ export const BUCKETS = {
     { windowMs: HOUR, max: intEnv('RATE_LIMIT_ARTICLES_PER_HOUR', 20) },
     { windowMs: DAY, max: intEnv('RATE_LIMIT_ARTICLES_PER_DAY', 100) },
   ],
+  // Read-side caps. These are loose by design — legitimate users on a hot feed can scroll
+  // fast — but they cap the upside for a misbehaving client / scraper / runaway loop. Page-0
+  // hits are cached, so the per-minute cap mostly bounds back-end work for cursor-paginated
+  // requests and uncached endpoints (search, thread).
+  'reads.feed': [{ windowMs: MIN, max: intEnv('RATE_LIMIT_FEED_READS_PER_MINUTE', 120) }],
+  'reads.profile': [{ windowMs: MIN, max: intEnv('RATE_LIMIT_PROFILE_READS_PER_MINUTE', 240) }],
+  // Search hits two table scans (users ilike + posts FTS); cap tighter than feed/profile.
+  'reads.search': [{ windowMs: MIN, max: intEnv('RATE_LIMIT_SEARCH_PER_MINUTE', 30) }],
+  // Thread expands ancestors + replies + viewer flags; modest cap.
+  'reads.thread': [{ windowMs: MIN, max: intEnv('RATE_LIMIT_THREAD_PER_MINUTE', 120) }],
+  // Notification polling — frontend may poll unread-count every few seconds. Cache makes
+  // this ~free, but keep a hard ceiling against runaway tabs / misbehaving SDKs.
+  'reads.notifications': [
+    { windowMs: MIN, max: intEnv('RATE_LIMIT_NOTIF_READS_PER_MINUTE', 240) },
+  ],
 } satisfies Record<string, Array<FixedWindowLimit>>
 
 export type BucketName = keyof typeof BUCKETS

@@ -58,6 +58,15 @@ export const users = pgTable(
     uniqueIndex('users_handle_uq').on(t.handle),
     uniqueIndex('users_email_uq').on(t.email),
     index('users_created_at_idx').on(t.createdAt),
+    // Trigram GIN indexes for ilike '%q%' search. Without these, /api/search and the admin
+    // user list table-scan once the users table is large. pg_trgm is enabled by init SQL.
+    index('users_handle_trgm_idx')
+      .using('gin', sql`${t.handle} gin_trgm_ops`)
+      .where(sql`${t.handle} IS NOT NULL`),
+    index('users_email_trgm_idx').using('gin', sql`${t.email} gin_trgm_ops`),
+    index('users_display_name_trgm_idx')
+      .using('gin', sql`${t.displayName} gin_trgm_ops`)
+      .where(sql`${t.displayName} IS NOT NULL`),
   ],
 )
 

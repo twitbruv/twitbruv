@@ -11,6 +11,7 @@ import { loadPostMedia } from '../lib/post-media.ts'
 import { loadArticleCards } from '../lib/article-cards.ts'
 import { loadRepostTargets } from '../lib/repost-targets.ts'
 import { loadQuoteTargets } from '../lib/quote-targets.ts'
+import { parseCursor } from '../lib/cursor.ts'
 
 export const meRoute = new Hono<HonoEnv>()
 
@@ -83,7 +84,7 @@ meRoute.get('/bookmarks', async (c) => {
   const session = c.get('session')!
   const { db, mediaEnv } = c.get('ctx')
   const limit = Math.min(Number(c.req.query('limit') ?? 40), 100)
-  const cursor = c.req.query('cursor')
+  const cursor = parseCursor(c.req.query('cursor'))
 
   const rows = await db
     .select({ post: schema.posts, author: schema.users, bookmarkedAt: schema.bookmarks.createdAt })
@@ -94,7 +95,7 @@ meRoute.get('/bookmarks', async (c) => {
       and(
         eq(schema.bookmarks.userId, session.user.id),
         isNull(schema.posts.deletedAt),
-        cursor ? lt(schema.bookmarks.createdAt, new Date(cursor)) : undefined,
+        cursor ? lt(schema.bookmarks.createdAt, cursor) : undefined,
       ),
     )
     .orderBy(desc(schema.bookmarks.createdAt))

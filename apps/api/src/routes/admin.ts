@@ -4,6 +4,7 @@ import { and, desc, eq, ilike, or, sql } from '@workspace/db'
 import { schema } from '@workspace/db'
 import { assetUrl } from '@workspace/media/s3'
 import { requireAdmin, requireOwner, type HonoEnv, type Role } from '../middleware/session.ts'
+import { parseCursor } from '../lib/cursor.ts'
 
 export const adminRoute = new Hono<HonoEnv>()
 
@@ -11,8 +12,11 @@ export const adminRoute = new Hono<HonoEnv>()
 adminRoute.use('*', requireAdmin())
 
 const listQuery = z.object({
-  q: z.string().trim().optional(),
-  cursor: z.string().optional(),
+  // Cap admin search input. Without a limit, an admin (or compromised admin session) can
+  // ship a massive `q` and force the planner into a wildcard ilike scan. 80 chars matches
+  // the public search cap.
+  q: z.string().trim().max(80).optional(),
+  cursor: z.string().max(40).optional(),
   limit: z.coerce.number().min(1).max(100).default(40),
 })
 
@@ -23,10 +27,11 @@ adminRoute.get('/users', async (c) => {
 
   const filters: Array<unknown> = []
   if (q) {
-    const like = `%${q}%`
+    const like = `%${q.replace(/[\\%_]/g, (ch) => `\\${ch}`)}%`
     filters.push(or(ilike(schema.users.email, like), ilike(schema.users.handle, like)))
   }
-  if (cursor) filters.push(sql`${schema.users.createdAt} < ${new Date(cursor)}`)
+  const parsedCursor = parseCursor(cursor)
+  if (parsedCursor) filters.push(sql`${schema.users.createdAt} < ${parsedCursor}`)
 
   const rows = await db
     .select()
@@ -278,7 +283,8 @@ adminRoute.get('/reports', async (c) => {
 
   const filters: Array<unknown> = []
   if (status) filters.push(eq(schema.reports.status, status))
-  if (cursor) filters.push(sql`${schema.reports.createdAt} < ${new Date(cursor)}`)
+  const parsedCursor = parseCursor(cursor)
+  if (parsedCursor) filters.push(sql`${schema.reports.createdAt} < ${parsedCursor}`)
 
   const rows = await db
     .select({ report: schema.reports, reporter: schema.users })

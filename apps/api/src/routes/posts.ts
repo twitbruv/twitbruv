@@ -11,8 +11,9 @@ import { loadRepostTargets } from '../lib/repost-targets.ts'
 import { loadQuoteTargets } from '../lib/quote-targets.ts'
 import { linkHashtags } from '../lib/hashtags.ts'
 import { linkMentions } from '../lib/mentions.ts'
-import { notify } from '../lib/notify.ts'
-import { homeFeedCacheKey } from './feed.ts'
+import { notify, invalidateUnreadCounts } from '../lib/notify.ts'
+import { parseCursor } from '../lib/cursor.ts'
+import { homeFeedCacheKey, profileFeedCacheKey } from './feed.ts'
 
 export const postsRoute = new Hono<HonoEnv>()
 
@@ -149,16 +150,21 @@ postsRoute.post('/', requireAuth(), async (c) => {
         entityId: post.id,
       })
     }
-    await notify(tx, toNotify)
+    const notified = await notify(tx, toNotify)
 
     const [author] = await tx.select().from(schema.users).where(eq(schema.users.id, post.authorId)).limit(1)
     if (!author) throw new HttpError(500, 'author_missing')
 
-    return { post, author }
+    return { post, author, notified }
   })
 
-  // Invalidate the author's cached home feed so their own new post shows up on refresh.
-  await cache.del(homeFeedCacheKey(session.user.id))
+  // Invalidate the author's cached home feed so their own new post shows up on refresh,
+  // their profile-feed page-0 cache (this post needs to be at top), and any unread-count
+  // caches for users who got a notification.
+  await Promise.all([
+    cache.del(homeFeedCacheKey(session.user.id), profileFeedCacheKey(session.user.id)),
+    invalidateUnreadCounts(cache, result.notified),
+  ])
 
   const env = c.get('ctx').mediaEnv
   const [mediaMap, articleMap, repostMap, quoteMap] = await Promise.all([
@@ -197,11 +203,11 @@ postsRoute.post('/', requireAuth(), async (c) => {
 // Repost (creates a posts row with repostOfId set, empty text).
 postsRoute.post('/:id/repost', requireAuth(), async (c) => {
   const session = c.get('session')!
-  const { db, rateLimit } = c.get('ctx')
+  const { db, cache, rateLimit } = c.get('ctx')
   const id = c.req.param('id')
   await rateLimit(c, 'posts.repost')
 
-  await db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const [target] = await tx
       .select()
       .from(schema.posts)
@@ -220,7 +226,7 @@ postsRoute.post('/:id/repost', requireAuth(), async (c) => {
         ),
       )
       .limit(1)
-    if (existing) return
+    if (existing) return { notified: new Set<string>() }
 
     await tx.insert(schema.posts).values({
       authorId: session.user.id,
@@ -233,7 +239,7 @@ postsRoute.post('/:id/repost', requireAuth(), async (c) => {
       .set({ repostCount: sql`${schema.posts.repostCount} + 1` })
       .where(eq(schema.posts.id, target.id))
 
-    await notify(tx, [
+    const notified = await notify(tx, [
       {
         userId: target.authorId,
         actorId: session.user.id,
@@ -242,8 +248,13 @@ postsRoute.post('/:id/repost', requireAuth(), async (c) => {
         entityId: target.id,
       },
     ])
+    return { notified }
   })
 
+  await Promise.all([
+    cache.del(homeFeedCacheKey(session.user.id), profileFeedCacheKey(session.user.id)),
+    invalidateUnreadCounts(cache, result.notified),
+  ])
   return c.json({ ok: true })
 })
 
@@ -282,37 +293,37 @@ postsRoute.post('/:id/like', requireAuth(), async (c) => {
   const id = c.req.param('id')
   await rateLimit(c, 'posts.like')
 
-  await db.transaction(async (tx) => {
+  const notified = await db.transaction(async (tx) => {
     const inserted = await tx
       .insert(schema.likes)
       .values({ userId: session.user.id, postId: id })
       .onConflictDoNothing()
       .returning({ postId: schema.likes.postId })
-    if (inserted.length > 0) {
-      await tx
-        .update(schema.posts)
-        .set({ likeCount: sql`${schema.posts.likeCount} + 1` })
-        .where(eq(schema.posts.id, id))
+    if (inserted.length === 0) return new Set<string>()
 
-      const [target] = await tx
-        .select({ authorId: schema.posts.authorId })
-        .from(schema.posts)
-        .where(eq(schema.posts.id, id))
-        .limit(1)
-      if (target) {
-        await notify(tx, [
-          {
-            userId: target.authorId,
-            actorId: session.user.id,
-            kind: 'like',
-            entityType: 'post',
-            entityId: id,
-          },
-        ])
-      }
-    }
+    await tx
+      .update(schema.posts)
+      .set({ likeCount: sql`${schema.posts.likeCount} + 1` })
+      .where(eq(schema.posts.id, id))
+
+    const [target] = await tx
+      .select({ authorId: schema.posts.authorId })
+      .from(schema.posts)
+      .where(eq(schema.posts.id, id))
+      .limit(1)
+    if (!target) return new Set<string>()
+    return notify(tx, [
+      {
+        userId: target.authorId,
+        actorId: session.user.id,
+        kind: 'like',
+        entityType: 'post',
+        entityId: id,
+      },
+    ])
   })
 
+  await invalidateUnreadCounts(c.get('ctx').cache, notified)
   return c.json({ ok: true })
 })
 
@@ -383,8 +394,11 @@ postsRoute.delete('/:id/bookmark', requireAuth(), async (c) => {
 })
 
 // Thread: ancestors + target + immediate replies.
+const THREAD_MAX_ANCESTORS = 30
+
 postsRoute.get('/:id/thread', async (c) => {
-  const { db } = c.get('ctx')
+  const { db, rateLimit } = c.get('ctx')
+  await rateLimit(c, 'reads.thread')
   const viewerId = c.get('session')?.user.id
   const id = c.req.param('id')
 
@@ -395,21 +409,30 @@ postsRoute.get('/:id/thread', async (c) => {
     .limit(1)
   if (!target) return c.json({ error: 'not_found' }, 404)
 
-  // Walk ancestors from replyToId up the chain. Bounded.
-  const ancestorIds: Array<string> = []
-  let cursorId: string | null = target.replyToId
-  for (let i = 0; i < 30 && cursorId; i++) {
-    const [row] = await db
-      .select({ id: schema.posts.id, replyToId: schema.posts.replyToId })
-      .from(schema.posts)
-      .where(eq(schema.posts.id, cursorId))
-      .limit(1)
-    if (!row) break
-    ancestorIds.unshift(row.id)
-    cursorId = row.replyToId
-  }
+  // Walk ancestors via a single recursive CTE instead of N sequential round-trips. Bounded
+  // depth keeps the planner honest for pathological reply chains. The `depth` column orders
+  // results child-first; we reverse to render root-first.
+  type AncestorIdRow = { id: string; depth: number }
+  const ancestorRows: Array<AncestorIdRow> = target.replyToId
+    ? ((
+        await db.execute(sql<{ id: string; depth: number }>`
+          WITH RECURSIVE ancestors(id, reply_to_id, depth) AS (
+            SELECT id, reply_to_id, 0
+              FROM posts
+              WHERE id = ${target.replyToId} AND deleted_at IS NULL
+            UNION ALL
+            SELECT p.id, p.reply_to_id, a.depth + 1
+              FROM posts p
+              INNER JOIN ancestors a ON p.id = a.reply_to_id
+              WHERE p.deleted_at IS NULL AND a.depth < ${THREAD_MAX_ANCESTORS - 1}
+          )
+          SELECT id, depth FROM ancestors ORDER BY depth DESC
+        `)
+      ) as unknown as Array<AncestorIdRow>)
+    : []
+  const ancestorIds = ancestorRows.map((r) => r.id)
 
-  const ancestorRows = ancestorIds.length
+  const ancestorPostRows = ancestorIds.length
     ? await db
         .select({ post: schema.posts, author: schema.users })
         .from(schema.posts)
@@ -432,15 +455,15 @@ postsRoute.get('/:id/thread', async (c) => {
     .orderBy(asc(schema.posts.createdAt))
     .limit(100)
 
-  const allIds = [...ancestorRows.map((r) => r.post.id), target.id, ...replies.map((r) => r.post.id)]
+  const allIds = [...ancestorPostRows.map((r) => r.post.id), target.id, ...replies.map((r) => r.post.id)]
   const env = c.get('ctx').mediaEnv
   const allRepostRows = [
-    ...ancestorRows.map((r) => ({ id: r.post.id, repostOfId: r.post.repostOfId })),
+    ...ancestorPostRows.map((r) => ({ id: r.post.id, repostOfId: r.post.repostOfId })),
     { id: target.id, repostOfId: target.repostOfId },
     ...replies.map((r) => ({ id: r.post.id, repostOfId: r.post.repostOfId })),
   ]
   const allQuoteRows = [
-    ...ancestorRows.map((r) => ({ id: r.post.id, quoteOfId: r.post.quoteOfId })),
+    ...ancestorPostRows.map((r) => ({ id: r.post.id, quoteOfId: r.post.quoteOfId })),
     { id: target.id, quoteOfId: target.quoteOfId },
     ...replies.map((r) => ({ id: r.post.id, quoteOfId: r.post.quoteOfId })),
   ]
@@ -452,7 +475,7 @@ postsRoute.get('/:id/thread', async (c) => {
     loadQuoteTargets({ db, viewerId, env, quoteRows: allQuoteRows }),
   ])
 
-  const byId = new Map(ancestorRows.map((r) => [r.post.id, r]))
+  const byId = new Map(ancestorPostRows.map((r) => [r.post.id, r]))
   const orderedAncestors = ancestorIds.map((i) => byId.get(i)!).filter(Boolean)
 
   return c.json({
@@ -497,7 +520,8 @@ postsRoute.get('/:id/thread', async (c) => {
 
 // Fetch a single post.
 postsRoute.get('/:id', async (c) => {
-  const { db, mediaEnv } = c.get('ctx')
+  const { db, mediaEnv, rateLimit } = c.get('ctx')
+  await rateLimit(c, 'reads.thread')
   const viewerId = c.get('session')?.user.id
   const id = c.req.param('id')
   const rows = await db
@@ -680,10 +704,11 @@ postsRoute.delete('/:id', requireAuth(), async (c) => {
 
 // Global public timeline.
 postsRoute.get('/', async (c) => {
-  const { db, mediaEnv } = c.get('ctx')
+  const { db, mediaEnv, rateLimit } = c.get('ctx')
+  await rateLimit(c, 'reads.feed')
   const viewerId = c.get('session')?.user.id
   const limit = Math.min(Number(c.req.query('limit') ?? 40), 100)
-  const cursor = c.req.query('cursor')
+  const cursor = parseCursor(c.req.query('cursor'))
 
   const rows = await db
     .select({ post: schema.posts, author: schema.users })
@@ -693,7 +718,7 @@ postsRoute.get('/', async (c) => {
       and(
         isNull(schema.posts.deletedAt),
         eq(schema.posts.visibility, 'public'),
-        cursor ? lt(schema.posts.createdAt, new Date(cursor)) : undefined,
+        cursor ? lt(schema.posts.createdAt, cursor) : undefined,
       ),
     )
     .orderBy(desc(schema.posts.createdAt))

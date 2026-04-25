@@ -5,7 +5,8 @@ import { and, desc, eq, inArray, isNull, lt, or, sql } from '@workspace/db'
 import { schema, type Database } from '@workspace/db'
 import { assetUrl } from '@workspace/media/s3'
 import { requireAuth, type HonoEnv } from '../middleware/session.ts'
-import { notify } from '../lib/notify.ts'
+import { notify, invalidateUnreadCounts } from '../lib/notify.ts'
+import { parseCursor } from '../lib/cursor.ts'
 import { dmChannel } from '../lib/pubsub.ts'
 import { toMediaDto, type MediaDto } from '../lib/post-dto.ts'
 
@@ -610,7 +611,7 @@ dmsRoute.get('/:id/messages', async (c) => {
   const me = session.user.id
   const conversationId = c.req.param('id')
   const limit = Math.min(Number(c.req.query('limit') ?? 50), 100)
-  const cursor = c.req.query('cursor')
+  const cursor = parseCursor(c.req.query('cursor'))
 
   const membership = await loadMembership(db, conversationId, me)
   if (!membership) return c.json({ error: 'not_a_member' }, 403)
@@ -623,7 +624,7 @@ dmsRoute.get('/:id/messages', async (c) => {
       and(
         eq(schema.messages.conversationId, conversationId),
         isNull(schema.messages.deletedAt),
-        cursor ? lt(schema.messages.createdAt, new Date(cursor)) : undefined,
+        cursor ? lt(schema.messages.createdAt, cursor) : undefined,
       ),
     )
     .orderBy(desc(schema.messages.createdAt))
@@ -793,11 +794,13 @@ dmsRoute.post('/:id/messages', async (c) => {
 
   // Fan-out: every member (including me, so my other tabs stay in sync) gets the event.
   const recipients = [...message.otherUserIds, me]
-  await Promise.all(
-    recipients.map((userId) =>
+  const { cache } = c.get('ctx')
+  await Promise.all([
+    ...recipients.map((userId) =>
       pubsub.publish(dmChannel(userId), { type: 'message', conversationId, message: payload }),
     ),
-  )
+    invalidateUnreadCounts(cache, message.otherUserIds),
+  ])
 
   return c.json({ message: payload })
 })

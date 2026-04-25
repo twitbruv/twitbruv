@@ -12,12 +12,20 @@ import { loadQuoteTargets } from '../lib/quote-targets.ts'
 
 export const searchRoute = new Hono<HonoEnv>()
 
+// Hard cap on the search query string. Above this we'd bloat the FTS parse + force giant
+// LIKE patterns through the planner without giving users meaningful additional precision.
+const MAX_SEARCH_QUERY_LEN = 80
+
 searchRoute.get('/', async (c) => {
-  const { db, mediaEnv } = c.get('ctx')
+  const { db, mediaEnv, rateLimit } = c.get('ctx')
+  await rateLimit(c, 'reads.search')
   const viewerId = c.get('session')?.user.id
-  const q = (c.req.query('q') ?? '').trim()
-  if (q.length < 2) return c.json({ users: [], posts: [] })
-  const qLike = `%${q}%`
+  const rawQ = (c.req.query('q') ?? '').trim()
+  if (rawQ.length < 2) return c.json({ users: [], posts: [] })
+  const q = rawQ.slice(0, MAX_SEARCH_QUERY_LEN)
+  // LIKE wildcards, underscore, backslash — escape so user-supplied %s and _s don't turn into
+  // expensive table scans of the form `WHERE handle ilike '%%%%%%%%%%%'`.
+  const qLike = `%${q.replace(/[\\%_]/g, (ch) => `\\${ch}`)}%`
 
   // Users: match handle or displayName case-insensitive. For FTS-quality handle match we'd
   // add a trigram GIN index (pg_trgm) — acceptable v1 without it, small user counts.

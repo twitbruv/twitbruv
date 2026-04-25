@@ -10,8 +10,9 @@ import { loadPostMedia } from '../lib/post-media.ts'
 import { loadArticleCards } from '../lib/article-cards.ts'
 import { loadRepostTargets } from '../lib/repost-targets.ts'
 import { loadQuoteTargets } from '../lib/quote-targets.ts'
-import { notify } from '../lib/notify.ts'
-import { homeFeedCacheKey } from './feed.ts'
+import { notify, invalidateUnreadCounts } from '../lib/notify.ts'
+import { parseCursor } from '../lib/cursor.ts'
+import { homeFeedCacheKey, profileFeedCacheKey } from './feed.ts'
 
 export const usersRoute = new Hono<HonoEnv>()
 
@@ -27,7 +28,8 @@ async function resolveHandle(db: HonoEnv['Variables']['ctx']['db'], raw: string)
 
 // Public user profile, with counts + viewer-relative flags.
 usersRoute.get('/:handle', async (c) => {
-  const { db, mediaEnv } = c.get('ctx')
+  const { db, mediaEnv, rateLimit } = c.get('ctx')
+  await rateLimit(c, 'reads.profile')
   const viewerId = c.get('session')?.user.id
   const user = await resolveHandle(db, c.req.param('handle'))
   if (!user) return c.json({ error: 'not_found' }, 404)
@@ -93,19 +95,58 @@ usersRoute.get('/:handle', async (c) => {
 })
 
 // Profile feed.
+const PROFILE_FEED_TTL_SEC = 60
+
 usersRoute.get('/:handle/posts', async (c) => {
-  const { db, mediaEnv } = c.get('ctx')
+  const { db, mediaEnv, cache, rateLimit } = c.get('ctx')
+  await rateLimit(c, 'reads.profile')
   const viewerId = c.get('session')?.user.id
   const user = await resolveHandle(db, c.req.param('handle'))
   if (!user) return c.json({ error: 'not_found' }, 404)
   const limit = Math.min(Number(c.req.query('limit') ?? 40), 100)
-  const cursor = c.req.query('cursor')
+  const cursor = parseCursor(c.req.query('cursor'))
 
-  // Pinned post is promoted to the top of the FIRST page only — once you cursor past it,
-  // it's filtered out so it doesn't appear again mid-scroll.
-  let pinnedRow: { post: typeof schema.posts.$inferSelect; author: typeof schema.users.$inferSelect } | null = null
-  if (!cursor) {
-    const [pinned] = await db
+  // Page-0 cache. Identical post list per author, viewer-relative flags layered on after.
+  // Skips the pinned + main + flag fan-out queries on hot profiles entirely.
+  const cacheable = !cursor && limit === 40
+  type CachedRow = {
+    post: typeof schema.posts.$inferSelect
+    author: typeof schema.users.$inferSelect
+  }
+  type CachedPayload = {
+    rows: Array<CachedRow>
+    pinnedId: string | null
+    nextCursor: string | null
+  }
+
+  let payload: CachedPayload | null = null
+  if (cacheable) {
+    payload = await cache.get<CachedPayload>(profileFeedCacheKey(user.id))
+    if (payload) c.header('x-cache', 'hit')
+  }
+
+  if (!payload) {
+    // Pinned post is promoted to the top of the FIRST page only — once you cursor past it,
+    // it's filtered out so it doesn't appear again mid-scroll.
+    let pinnedRow: CachedRow | null = null
+    if (!cursor) {
+      const [pinned] = await db
+        .select({ post: schema.posts, author: schema.users })
+        .from(schema.posts)
+        .innerJoin(schema.users, eq(schema.users.id, schema.posts.authorId))
+        .where(
+          and(
+            eq(schema.posts.authorId, user.id),
+            isNull(schema.posts.deletedAt),
+            eq(schema.posts.visibility, 'public'),
+            sql`${schema.posts.pinnedAt} IS NOT NULL`,
+          ),
+        )
+        .limit(1)
+      pinnedRow = pinned ?? null
+    }
+
+    const rows = await db
       .select({ post: schema.posts, author: schema.users })
       .from(schema.posts)
       .innerJoin(schema.users, eq(schema.users.id, schema.posts.authorId))
@@ -114,32 +155,26 @@ usersRoute.get('/:handle/posts', async (c) => {
           eq(schema.posts.authorId, user.id),
           isNull(schema.posts.deletedAt),
           eq(schema.posts.visibility, 'public'),
-          sql`${schema.posts.pinnedAt} IS NOT NULL`,
+          // Don't double-render the pinned post in the date-ordered list.
+          pinnedRow ? sql`${schema.posts.id} <> ${pinnedRow.post.id}` : undefined,
+          cursor ? lt(schema.posts.createdAt, cursor) : undefined,
         ),
       )
-      .limit(1)
-    pinnedRow = pinned ?? null
+      .orderBy(desc(schema.posts.createdAt))
+      .limit(limit)
+
+    const allRows: Array<CachedRow> = pinnedRow ? [pinnedRow, ...rows] : rows
+    const nextCursor =
+      rows.length === limit ? rows[rows.length - 1]!.post.createdAt.toISOString() : null
+    payload = { rows: allRows, pinnedId: pinnedRow?.post.id ?? null, nextCursor }
+
+    if (cacheable) {
+      await cache.set(profileFeedCacheKey(user.id), payload, PROFILE_FEED_TTL_SEC)
+      c.header('x-cache', 'miss')
+    }
   }
 
-  const rows = await db
-    .select({ post: schema.posts, author: schema.users })
-    .from(schema.posts)
-    .innerJoin(schema.users, eq(schema.users.id, schema.posts.authorId))
-    .where(
-      and(
-        eq(schema.posts.authorId, user.id),
-        isNull(schema.posts.deletedAt),
-        eq(schema.posts.visibility, 'public'),
-        // Don't double-render the pinned post in the date-ordered list.
-        pinnedRow ? sql`${schema.posts.id} <> ${pinnedRow.post.id}` : undefined,
-        cursor ? lt(schema.posts.createdAt, new Date(cursor)) : undefined,
-      ),
-    )
-    .orderBy(desc(schema.posts.createdAt))
-    .limit(limit)
-
-  // Prepend the pinned row so DTO loaders + render order both see it as the first item.
-  const allRows = pinnedRow ? [pinnedRow, ...rows] : rows
+  const allRows = payload.rows
   const ids = allRows.map((r) => r.post.id)
   const [flags, mediaMap, articleMap, repostMap, quoteMap] = await Promise.all([
     loadViewerFlags(db, viewerId, ids),
@@ -169,12 +204,10 @@ usersRoute.get('/:handle/posts', async (c) => {
       repostMap.get(r.post.id),
       quoteMap.get(r.post.id),
     )
-    if (r.post.pinnedAt) (dto as { pinned?: boolean }).pinned = true
+    if (r.post.id === payload!.pinnedId) (dto as { pinned?: boolean }).pinned = true
     return dto
   })
-  // nextCursor advances by the date-ordered tail, not the pinned promotion.
-  const nextCursor = rows.length === limit ? rows[rows.length - 1]!.post.createdAt.toISOString() : null
-  return c.json({ posts, nextCursor })
+  return c.json({ posts, nextCursor: payload.nextCursor })
 })
 
 // Author's published articles list.
@@ -183,7 +216,7 @@ usersRoute.get('/:handle/articles', async (c) => {
   const user = await resolveHandle(db, c.req.param('handle'))
   if (!user) return c.json({ error: 'not_found' }, 404)
   const limit = Math.min(Number(c.req.query('limit') ?? 40), 100)
-  const cursor = c.req.query('cursor')
+  const cursor = parseCursor(c.req.query('cursor'))
   const rows = await db
     .select()
     .from(schema.articles)
@@ -192,7 +225,7 @@ usersRoute.get('/:handle/articles', async (c) => {
         eq(schema.articles.authorId, user.id),
         eq(schema.articles.status, 'published'),
         isNull(schema.articles.deletedAt),
-        cursor ? lt(schema.articles.publishedAt, new Date(cursor)) : undefined,
+        cursor ? lt(schema.articles.publishedAt, cursor) : undefined,
       ),
     )
     .orderBy(desc(schema.articles.publishedAt))
@@ -280,7 +313,7 @@ usersRoute.get('/:handle/followers', async (c) => {
   const user = await resolveHandle(db, c.req.param('handle'))
   if (!user) return c.json({ error: 'not_found' }, 404)
   const limit = Math.min(Number(c.req.query('limit') ?? 40), 100)
-  const cursor = c.req.query('cursor')
+  const cursor = parseCursor(c.req.query('cursor'))
 
   const rows = await db
     .select({ user: schema.users, follow: schema.follows })
@@ -290,7 +323,7 @@ usersRoute.get('/:handle/followers', async (c) => {
       and(
         eq(schema.follows.followeeId, user.id),
         isNull(schema.users.deletedAt),
-        cursor ? lt(schema.follows.createdAt, new Date(cursor)) : undefined,
+        cursor ? lt(schema.follows.createdAt, cursor) : undefined,
       ),
     )
     .orderBy(desc(schema.follows.createdAt))
@@ -306,7 +339,7 @@ usersRoute.get('/:handle/following', async (c) => {
   const user = await resolveHandle(db, c.req.param('handle'))
   if (!user) return c.json({ error: 'not_found' }, 404)
   const limit = Math.min(Number(c.req.query('limit') ?? 40), 100)
-  const cursor = c.req.query('cursor')
+  const cursor = parseCursor(c.req.query('cursor'))
 
   const rows = await db
     .select({ user: schema.users, follow: schema.follows })
@@ -316,7 +349,7 @@ usersRoute.get('/:handle/following', async (c) => {
       and(
         eq(schema.follows.followerId, user.id),
         isNull(schema.users.deletedAt),
-        cursor ? lt(schema.follows.createdAt, new Date(cursor)) : undefined,
+        cursor ? lt(schema.follows.createdAt, cursor) : undefined,
       ),
     )
     .orderBy(desc(schema.follows.createdAt))
@@ -336,24 +369,26 @@ usersRoute.post('/:handle/follow', requireAuth(), async (c) => {
   if (!user) return c.json({ error: 'not_found' }, 404)
   if (user.id === session.user.id) return c.json({ error: 'self_follow' }, 400)
 
-  await db.transaction(async (tx) => {
+  const notified = await db.transaction(async (tx) => {
     const inserted = await tx
       .insert(schema.follows)
       .values({ followerId: session.user.id, followeeId: user.id })
       .onConflictDoNothing()
       .returning({ followerId: schema.follows.followerId })
-    if (inserted.length > 0) {
-      await notify(tx, [
-        {
-          userId: user.id,
-          actorId: session.user.id,
-          kind: 'follow',
-        },
-      ])
-    }
+    if (inserted.length === 0) return new Set<string>()
+    return notify(tx, [
+      {
+        userId: user.id,
+        actorId: session.user.id,
+        kind: 'follow',
+      },
+    ])
   })
 
-  await cache.del(homeFeedCacheKey(session.user.id))
+  await Promise.all([
+    cache.del(homeFeedCacheKey(session.user.id)),
+    invalidateUnreadCounts(cache, notified),
+  ])
   return c.json({ ok: true })
 })
 

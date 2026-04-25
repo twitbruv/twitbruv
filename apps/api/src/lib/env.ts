@@ -47,6 +47,20 @@ const envSchema = z.object({
   S3_SECRET_ACCESS_KEY: z.string(),
   S3_BUCKET: z.string(),
   S3_PUBLIC_URL: z.string().url(),
+
+  // How long signed S3 GET URLs minted by the /api/m/* proxy stay valid. Short TTL minimizes
+  // damage if a signed URL leaks (e.g. is accidentally pasted into chat or a referer log).
+  // Default 15min — long enough to survive a slow page load + image decode, short enough that
+  // the URL is dead before most leak vectors find it.
+  MEDIA_SIGNED_URL_TTL_SEC: z.coerce.number().int().min(60).max(3600).default(900),
+
+  // Add HSTS header in production. Off by default for dev (where requests come over http://localhost).
+  // Enabling in prod opts the browser into HTTPS-only for this origin for 1 year, blocking
+  // downgrade attacks. Only set this once you are sure HTTPS is permanent for the domain.
+  ENABLE_HSTS: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
 })
 
 export type Env = z.infer<typeof envSchema>
