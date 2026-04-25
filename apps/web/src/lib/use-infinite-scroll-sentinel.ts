@@ -11,21 +11,23 @@ export function useInfiniteScrollSentinel(
   const { root = null, rootMargin = "600px 0px" } = options
   const loadMoreRef = useRef(loadMore)
   loadMoreRef.current = loadMore
-  const loadingRef = useRef(loading)
-  loadingRef.current = loading
 
   useEffect(() => {
     const node = sentinelRef.current
-    if (!node || !hasNext) return
+    // Tear the observer down while a load is in flight and re-create it when
+    // loading flips back to false. Re-observing fires the initial intersection
+    // callback again, which is what keeps loading more pages when the new
+    // content is still short enough that the sentinel never left the viewport
+    // — a plain observer wouldn't re-fire because the intersection state
+    // didn't change between pages.
+    if (!node || !hasNext || loading) return
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries.some((e) => e.isIntersecting) && !loadingRef.current) {
-          loadMoreRef.current()
-        }
+        if (entries.some((e) => e.isIntersecting)) loadMoreRef.current()
       },
       { root, rootMargin }
     )
     observer.observe(node)
     return () => observer.disconnect()
-  }, [hasNext, sentinelRef, root, rootMargin])
+  }, [hasNext, loading, sentinelRef, root, rootMargin])
 }

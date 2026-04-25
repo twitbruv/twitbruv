@@ -56,6 +56,7 @@ function AdminReports() {
   // status change are discarded instead of getting appended to the new list.
   const generationRef = useRef(0)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
+  const [scrollRoot, setScrollRoot] = useState<HTMLDivElement | null>(null)
 
   const load = useCallback(async (s: ReportStatus) => {
     const gen = ++generationRef.current
@@ -88,7 +89,9 @@ function AdminReports() {
     }
   }, [cursor, loadingMore, status])
 
-  useInfiniteScrollSentinel(sentinelRef, !!cursor, loadingMore, loadMore)
+  useInfiniteScrollSentinel(sentinelRef, !!cursor, loadingMore, loadMore, {
+    root: scrollRoot,
+  })
 
   const columns = useMemo<Array<ColumnDef<AdminReport>>>(
     () => [
@@ -163,8 +166,8 @@ function AdminReports() {
   })
 
   return (
-    <main>
-      <div className="flex gap-2 border-b border-border px-4 py-3 text-sm">
+    <main className="flex min-h-0 flex-1 flex-col">
+      <div className="flex shrink-0 gap-2 border-b border-border px-4 py-3 text-sm">
         {STATUSES.map((s) => (
           <button
             key={s}
@@ -179,58 +182,66 @@ function AdminReports() {
           </button>
         ))}
       </div>
-      {loading && reports.length === 0 && (
-        <p className="p-4 text-sm text-muted-foreground">loading…</p>
-      )}
-      {!loading && reports.length === 0 && (
-        <p className="p-4 text-sm text-muted-foreground">
-          No {status} reports.
-        </p>
-      )}
-      {reports.length > 0 && (
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((hg) => (
-              <TableRow key={hg.id}>
-                {hg.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows.map((row) => (
-              <TableRow
-                key={row.id}
-                data-state={
-                  row.original.id === selectedId ? "selected" : undefined
-                }
-                onClick={() => setSelectedId(row.original.id)}
-                className="cursor-pointer"
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
-      <div ref={sentinelRef} aria-hidden className="h-px" />
-      {cursor && (
-        <div className="flex justify-center py-3 text-xs text-muted-foreground">
-          {loadingMore ? "loading…" : ""}
-        </div>
-      )}
+      <div
+        ref={setScrollRoot}
+        className="flex-1 overflow-auto overscroll-contain"
+      >
+        {loading && reports.length === 0 && (
+          <p className="p-4 text-sm text-muted-foreground">loading…</p>
+        )}
+        {!loading && reports.length === 0 && (
+          <p className="p-4 text-sm text-muted-foreground">
+            No {status} reports.
+          </p>
+        )}
+        {reports.length > 0 && (
+          <Table>
+            <TableHeader className="sticky top-0 z-10 bg-background">
+              {table.getHeaderGroups().map((hg) => (
+                <TableRow key={hg.id}>
+                  {hg.headers.map((header) => (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  data-state={
+                    row.original.id === selectedId ? "selected" : undefined
+                  }
+                  onClick={() => setSelectedId(row.original.id)}
+                  className="cursor-pointer"
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+        <div ref={sentinelRef} aria-hidden className="h-px" />
+        {cursor && (
+          <div className="flex justify-center py-3 text-xs text-muted-foreground">
+            {loadingMore ? "loading…" : ""}
+          </div>
+        )}
+      </div>
       <ReportSheet
         reportId={selectedId}
         onClose={() => setSelectedId(null)}
