@@ -9,6 +9,7 @@ import {
   IconMail,
   IconPencil,
   IconSearch,
+  IconTrophy,
 } from "@tabler/icons-react"
 import {
   Sidebar,
@@ -127,6 +128,18 @@ export function AppShell({ children }: { children: ReactNode }) {
                               {dmUnread > 99 ? "99+" : dmUnread}
                             </Badge>
                           )}
+                        </Link>
+                      }
+                    />
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton
+                      size="default"
+                      tooltip="chess"
+                      render={
+                        <Link to="/chess">
+                          <IconTrophy />
+                          <span>Chess</span>
                         </Link>
                       }
                     />
