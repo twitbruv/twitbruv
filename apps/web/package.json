@@ -27,6 +27,7 @@
     "@tanstack/react-router": "^1.132.0",
     "@tanstack/react-start": "^1.132.0",
     "@tanstack/react-table": "^8.21.3",
+    "@tanstack/react-virtual": "^3.13.24",
     "@tanstack/router-plugin": "^1.132.0",
     "@workspace/auth": "workspace:*",
     "@workspace/ui": "workspace:*",

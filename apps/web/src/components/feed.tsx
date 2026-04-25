@@ -1,6 +1,6 @@
-import { useEffect, useMemo } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query"
-import { Button } from "@workspace/ui/components/button"
+import { useVirtualizer } from "@tanstack/react-virtual"
 import { SkeletonPostCard } from "@workspace/ui/components/skeleton"
 import { PostCard } from "./post-card"
 import type { InfiniteData } from "@tanstack/react-query"
@@ -11,6 +11,18 @@ type FeedQueryKey = ReadonlyArray<unknown>
 interface FeedLoaderPage {
   posts: Array<Post>
   nextCursor: string | null
+}
+
+// Walk up the DOM to find the nearest ancestor that scrolls. Falls back to
+// document.scrollingElement for the page-level scroll case.
+function findScrollParent(el: HTMLElement | null): HTMLElement | null {
+  let node: HTMLElement | null = el?.parentElement ?? null
+  while (node) {
+    const style = getComputedStyle(node)
+    if (/(auto|scroll|overlay)/.test(style.overflowY)) return node
+    node = node.parentElement
+  }
+  return (document.scrollingElement as HTMLElement | null) ?? document.documentElement
 }
 
 export function Feed({
@@ -118,6 +130,44 @@ export function Feed({
     )
   }
 
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const sentinelRef = useRef<HTMLDivElement>(null)
+  const [scrollEl, setScrollEl] = useState<HTMLElement | null>(null)
+
+  useEffect(() => {
+    setScrollEl(findScrollParent(wrapperRef.current))
+  }, [])
+
+  const virtualizer = useVirtualizer({
+    count: posts.length,
+    getScrollElement: () => scrollEl,
+    estimateSize: () => 220,
+    overscan: 6,
+  })
+
+  // Auto-load the next page when the bottom sentinel approaches the viewport.
+  useEffect(() => {
+    const node = sentinelRef.current
+    if (!node || !hasNextPage) return
+    // IntersectionObserver only accepts an Element (not document.scrollingElement)
+    // as `root`; null falls back to the viewport, which is what we want for
+    // page-level scrolling.
+    const root =
+      scrollEl && scrollEl !== document.scrollingElement && scrollEl !== document.documentElement
+        ? scrollEl
+        : null
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting) && !isFetchingNextPage) {
+          fetchNextPage()
+        }
+      },
+      { root, rootMargin: "600px 0px" }
+    )
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, scrollEl])
+
   if (isPending)
     return (
       <div>
@@ -137,39 +187,83 @@ export function Feed({
       </div>
     )
 
+  const virtualItems = virtualizer.getVirtualItems()
+  const totalSize = virtualizer.getTotalSize()
+
   return (
     <div>
-      {posts.map((post) => {
-        const banner = renderActivityBanner?.(post)
-        return (
-          <div key={post.id}>
-            {banner && (
-              <div className="border-b border-border/50 px-4 pt-2">
-                {banner}
-              </div>
-            )}
-            <PostCard
-              post={post}
-              onChange={replace}
-              onRemove={remove}
-              onOpenThread={onOpenThread}
-              active={
-                activePostId === post.id || activePostId === post.repostOf?.id
-              }
-            />
-          </div>
-        )
-      })}
+      <div
+        ref={wrapperRef}
+        style={{
+          height: scrollEl ? totalSize : undefined,
+          position: "relative",
+          width: "100%",
+        }}
+      >
+        {scrollEl
+          ? virtualItems.map((virtualItem) => {
+              const post = posts[virtualItem.index]
+              const banner = renderActivityBanner?.(post)
+              return (
+                <div
+                  key={post.id}
+                  ref={virtualizer.measureElement}
+                  data-index={virtualItem.index}
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    width: "100%",
+                    transform: `translateY(${virtualItem.start}px)`,
+                  }}
+                >
+                  {banner && (
+                    <div className="border-b border-border/50 px-4 pt-2">
+                      {banner}
+                    </div>
+                  )}
+                  <PostCard
+                    post={post}
+                    onChange={replace}
+                    onRemove={remove}
+                    onOpenThread={onOpenThread}
+                    active={
+                      activePostId === post.id ||
+                      activePostId === post.repostOf?.id
+                    }
+                  />
+                </div>
+              )
+            })
+          : // Fallback render (used for the first paint before we resolve the
+            // scroll parent) so SSR/initial HTML still shows posts.
+            posts.map((post) => {
+              const banner = renderActivityBanner?.(post)
+              return (
+                <div key={post.id}>
+                  {banner && (
+                    <div className="border-b border-border/50 px-4 pt-2">
+                      {banner}
+                    </div>
+                  )}
+                  <PostCard
+                    post={post}
+                    onChange={replace}
+                    onRemove={remove}
+                    onOpenThread={onOpenThread}
+                    active={
+                      activePostId === post.id ||
+                      activePostId === post.repostOf?.id
+                    }
+                  />
+                </div>
+              )
+            })}
+      </div>
+      <div ref={sentinelRef} aria-hidden className="h-px" />
       {hasNextPage && (
-        <div className="flex justify-center py-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => fetchNextPage()}
-            disabled={isFetchingNextPage}
-          >
-            {isFetchingNextPage ? "loading…" : "load more"}
-          </Button>
+        <div className="flex justify-center py-4 text-xs text-muted-foreground">
+          {isFetchingNextPage ? "loading…" : ""}
         </div>
       )}
     </div>
