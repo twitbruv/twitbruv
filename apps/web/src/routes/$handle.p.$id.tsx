@@ -17,6 +17,8 @@ import { ApiError, api } from "../lib/api"
 import { useSubmitHotkey } from "../lib/hotkeys"
 import { Avatar } from "../components/avatar"
 import { RichText } from "../components/rich-text"
+import { PollBlock } from "../components/poll-block"
+import { ArticleCardBlock, QuoteEmbed } from "../components/post-card"
 import { useMe } from "../lib/me"
 import type { Post, Thread } from "../lib/api"
 
@@ -324,6 +326,17 @@ function AncestorPost({
             </div>
           )}
 
+          {post.articleCard && <ArticleCardBlock card={post.articleCard} />}
+
+          {post.poll && (
+            <PollBlock
+              poll={post.poll}
+              onChange={(nextPoll) => onChange({ ...post, poll: nextPoll })}
+            />
+          )}
+
+          {post.quoteOf && <QuoteEmbed post={post.quoteOf} />}
+
           <div className="mt-2.5 flex items-center gap-5 text-muted-foreground">
             {authorHandle && (
               <Link
@@ -513,6 +526,17 @@ function ParentPost({
           })}
         </div>
       )}
+
+      {post.articleCard && <ArticleCardBlock card={post.articleCard} />}
+
+      {post.poll && (
+        <PollBlock
+          poll={post.poll}
+          onChange={(nextPoll) => onChange({ ...post, poll: nextPoll })}
+        />
+      )}
+
+      {post.quoteOf && <QuoteEmbed post={post.quoteOf} />}
 
       <div className="mt-2.5 flex items-center gap-3 font-mono text-[11px] text-muted-foreground">
         {post.counts.reposts > 0 && <span>{post.counts.reposts} reposts</span>}
@@ -806,6 +830,42 @@ function ReplyCard({
       <p className="mt-1.5 text-[13.5px] leading-[1.55] break-words whitespace-pre-wrap">
         <RichText text={post.text} />
       </p>
+
+      {post.media && post.media.length > 0 && (
+        // biome-ignore lint/a11y/useKeyWithClickEvents: stops parent Link from intercepting interactions
+        <div
+          className={`mt-2 grid gap-px overflow-hidden rounded-sm border border-border ${post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {post.media.map((m) => {
+            const variant =
+              m.variants.find((v) => v.kind === "medium") ?? m.variants[0]
+            return (
+              <div key={m.id} className="aspect-video bg-muted">
+                {m.processingState === "ready" && (
+                  <img
+                    src={variant.url}
+                    alt={m.altText ?? ""}
+                    className="h-full w-full object-cover"
+                  />
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: stops parent Link from intercepting interactions */}
+      <div onClick={(e) => e.stopPropagation()}>
+        {post.articleCard && <ArticleCardBlock card={post.articleCard} />}
+        {post.poll && (
+          <PollBlock
+            poll={post.poll}
+            onChange={(nextPoll) => onChange({ ...post, poll: nextPoll })}
+          />
+        )}
+        {post.quoteOf && <QuoteEmbed post={post.quoteOf} />}
+      </div>
 
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: action bar wrapper */}
       <div
