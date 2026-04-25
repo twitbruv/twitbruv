@@ -627,6 +627,7 @@ function PrivacyList<
     displayName: string | null
     avatarUrl: string | null
     isVerified: boolean
+    role: "user" | "admin" | "owner"
   },
 >({
   users,
@@ -670,14 +671,18 @@ function PrivacyList<
                   <span className="truncate">
                     {u.displayName ?? `@${u.handle}`}
                   </span>
-                  {u.isVerified && <VerifiedBadge size={13} />}
+                  {u.isVerified && (
+                    <VerifiedBadge size={13} role={u.role} />
+                  )}
                 </Link>
               ) : (
                 <span className="flex items-center gap-1 text-sm font-medium">
                   <span className="truncate">
                     {u.displayName ?? "Unknown user"}
                   </span>
-                  {u.isVerified && <VerifiedBadge size={13} />}
+                  {u.isVerified && (
+                    <VerifiedBadge size={13} role={u.role} />
+                  )}
                 </span>
               )}
               <p className="truncate text-xs text-muted-foreground">

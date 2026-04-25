@@ -43,6 +43,10 @@ export const posts = pgTable(
     replyRestriction: replyRestrictionEnum('reply_restriction').notNull().default('anyone'),
     editedAt: timestamp('edited_at', { withTimezone: true }),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    // Set when the author of the conversation root hides this reply. The reply is still
+    // visible in the original author's own profile and to anyone with the direct link;
+    // it's only collapsed/hidden from the conversation view of the root post (X parity).
+    hiddenAt: timestamp('hidden_at', { withTimezone: true }),
     // Timestamp the author last pinned this post to their profile. Nullable; only one pinned
     // post per author is enforced in the route layer (atomic clear-then-set in a tx).
     pinnedAt: timestamp('pinned_at', { withTimezone: true }),

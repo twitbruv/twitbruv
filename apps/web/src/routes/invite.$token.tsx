@@ -115,7 +115,9 @@ function InvitePage() {
           </div>
           <h1 className="flex items-center justify-center gap-1.5 text-lg font-semibold">
             {title}
-            {soloPeer?.isVerified && <VerifiedBadge size={16} />}
+            {soloPeer?.isVerified && (
+              <VerifiedBadge size={16} role={soloPeer.role} />
+            )}
           </h1>
           <p className="mt-1 text-xs text-muted-foreground">
             {conv.kind === "group" ? "Group conversation" : "Conversation"} ·{" "}

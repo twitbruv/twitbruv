@@ -188,7 +188,9 @@ function ConversationRow({ conversation }: { conversation: DmConversation }) {
           <div className="flex items-baseline justify-between gap-2">
             <span className="flex min-w-0 items-center gap-1 text-sm font-semibold">
               <span className="truncate">{title}</span>
-              {peer?.isVerified && <VerifiedBadge size={14} />}
+              {peer?.isVerified && (
+                <VerifiedBadge size={14} role={peer.role} />
+              )}
             </span>
             <time className="shrink-0 text-xs text-muted-foreground">{ts}</time>
           </div>

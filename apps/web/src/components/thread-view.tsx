@@ -43,9 +43,11 @@ export function ThreadViewContent({
         ? {
             ancestors: t.ancestors.map((p) => (p.id === next.id ? next : p)),
             post: t.post && t.post.id === next.id ? next : t.post,
-            replies: t.replies.map((p) => (p.id === next.id ? next : p)),
+            replies: t.replies.map((p) =>
+              p.id === next.id ? { ...p, ...next } : p,
+            ),
           }
-        : t
+        : t,
     )
   }
 
@@ -63,7 +65,7 @@ export function ThreadViewContent({
                   },
                 }
               : t.post,
-            replies: [...t.replies, post],
+            replies: [...t.replies, { ...post, descendantReplyCount: 0 }],
           }
         : t
     )

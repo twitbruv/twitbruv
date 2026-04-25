@@ -109,7 +109,7 @@ function Profile() {
         <div className="mt-3">
           <h1 className="flex items-center gap-1.5 text-xl font-semibold">
             {displayName}
-            {user.isVerified && <VerifiedBadge size={20} />}
+            {user.isVerified && <VerifiedBadge size={20} role={user.role} />}
           </h1>
           <p className="text-sm text-muted-foreground">@{user.handle}</p>
         </div>

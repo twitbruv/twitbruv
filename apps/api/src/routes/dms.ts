@@ -214,6 +214,7 @@ dmsRoute.get('/', async (c) => {
       displayName: u.displayName,
       avatarUrl: assetUrl(mediaEnv, u.avatarUrl),
       isVerified: u.isVerified,
+      role: u.role,
     }))
     const latest = latestByConv.get(r.conv.id)
     return {
@@ -718,7 +719,8 @@ dmsRoute.get('/:id', async (c) => {
         displayName: r.user.displayName,
         avatarUrl: assetUrl(mediaEnv, r.user.avatarUrl),
         isVerified: r.user.isVerified,
-        role: r.member.role,
+        role: r.user.role,
+        chatRole: r.member.role,
         lastReadMessageId: r.member.lastReadMessageId,
       })),
     },
@@ -796,6 +798,7 @@ dmsRoute.get('/:id/messages', async (c) => {
       displayName: r.sender.displayName,
       avatarUrl: assetUrl(mediaEnv, r.sender.avatarUrl),
       isVerified: r.sender.isVerified,
+      role: r.sender.role,
     },
   }))
   const nextCursor =
