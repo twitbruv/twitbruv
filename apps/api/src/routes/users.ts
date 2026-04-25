@@ -4,7 +4,7 @@ import { schema } from '@workspace/db'
 import { assetUrl } from '@workspace/media/s3'
 import type { HonoEnv } from '../middleware/session.ts'
 import { requireAuth } from '../middleware/session.ts'
-import { toPostDto } from '../lib/post-dto.ts'
+import { toPostDto, type PostDto } from '../lib/post-dto.ts'
 import { loadViewerFlags } from '../lib/viewer-flags.ts'
 import { loadPostMedia } from '../lib/post-media.ts'
 import { loadArticleCards } from '../lib/article-cards.ts'
@@ -106,16 +106,12 @@ usersRoute.get('/:handle/posts', async (c) => {
   const limit = Math.min(Number(c.req.query('limit') ?? 40), 100)
   const cursor = parseCursor(c.req.query('cursor'))
 
-  // Page-0 cache. Identical post list per author, viewer-relative flags layered on after.
-  // Skips the pinned + main + flag fan-out queries on hot profiles entirely.
+  // Page-0 cache. Identical post list per author; viewer-relative flags + repost/quote
+  // embeds (which carry their own viewer flags) are layered on after the cache lookup.
+  // Cached DTOs are pre-serialized so Date fields survive JSON round-trip in the cache.
   const cacheable = !cursor && limit === 40
-  type CachedRow = {
-    post: typeof schema.posts.$inferSelect
-    author: typeof schema.users.$inferSelect
-  }
   type CachedPayload = {
-    rows: Array<CachedRow>
-    pinnedId: string | null
+    posts: Array<PostDto>
     nextCursor: string | null
   }
 
@@ -128,7 +124,11 @@ usersRoute.get('/:handle/posts', async (c) => {
   if (!payload) {
     // Pinned post is promoted to the top of the FIRST page only — once you cursor past it,
     // it's filtered out so it doesn't appear again mid-scroll.
-    let pinnedRow: CachedRow | null = null
+    type Row = {
+      post: typeof schema.posts.$inferSelect
+      author: typeof schema.users.$inferSelect
+    }
+    let pinnedRow: Row | null = null
     if (!cursor) {
       const [pinned] = await db
         .select({ post: schema.posts, author: schema.users })
@@ -163,10 +163,33 @@ usersRoute.get('/:handle/posts', async (c) => {
       .orderBy(desc(schema.posts.createdAt))
       .limit(limit)
 
-    const allRows: Array<CachedRow> = pinnedRow ? [pinnedRow, ...rows] : rows
+    const allRows: Array<Row> = pinnedRow ? [pinnedRow, ...rows] : rows
     const nextCursor =
       rows.length === limit ? rows[rows.length - 1]!.post.createdAt.toISOString() : null
-    payload = { rows: allRows, pinnedId: pinnedRow?.post.id ?? null, nextCursor }
+
+    // Build viewer-independent DTOs (no viewer flags, no repost/quote embeds — those are
+    // layered on after, since they vary per viewer).
+    const ids = allRows.map((r) => r.post.id)
+    const [mediaMap, articleMap] = await Promise.all([
+      loadPostMedia(db, ids),
+      loadArticleCards(db, ids),
+    ])
+    const cachedPosts: Array<PostDto> = allRows.map((r) => {
+      const dto = toPostDto(
+        r.post,
+        r.author,
+        undefined,
+        mediaMap.get(r.post.id),
+        mediaEnv,
+        articleMap.get(r.post.id),
+      )
+      if (pinnedRow && r.post.id === pinnedRow.post.id) {
+        ;(dto as { pinned?: boolean }).pinned = true
+      }
+      return dto
+    })
+
+    payload = { posts: cachedPosts, nextCursor }
 
     if (cacheable) {
       await cache.set(profileFeedCacheKey(user.id), payload, PROFILE_FEED_TTL_SEC)
@@ -174,38 +197,32 @@ usersRoute.get('/:handle/posts', async (c) => {
     }
   }
 
-  const allRows = payload.rows
-  const ids = allRows.map((r) => r.post.id)
-  const [flags, mediaMap, articleMap, repostMap, quoteMap] = await Promise.all([
+  const ids = payload.posts.map((p) => p.id)
+  const [flags, repostMap, quoteMap] = await Promise.all([
     loadViewerFlags(db, viewerId, ids),
-    loadPostMedia(db, ids),
-    loadArticleCards(db, ids),
     loadRepostTargets({
       db,
       viewerId,
       env: mediaEnv,
-      repostRows: allRows.map((r) => ({ id: r.post.id, repostOfId: r.post.repostOfId })),
+      repostRows: payload.posts.map((p) => ({ id: p.id, repostOfId: p.repostOfId })),
     }),
     loadQuoteTargets({
       db,
       viewerId,
       env: mediaEnv,
-      quoteRows: allRows.map((r) => ({ id: r.post.id, quoteOfId: r.post.quoteOfId })),
+      quoteRows: payload.posts.map((p) => ({ id: p.id, quoteOfId: p.quoteOfId })),
     }),
   ])
-  const posts = allRows.map((r) => {
-    const dto = toPostDto(
-      r.post,
-      r.author,
-      flags.get(r.post.id),
-      mediaMap.get(r.post.id),
-      mediaEnv,
-      articleMap.get(r.post.id),
-      repostMap.get(r.post.id),
-      quoteMap.get(r.post.id),
-    )
-    if (r.post.id === payload!.pinnedId) (dto as { pinned?: boolean }).pinned = true
-    return dto
+  const posts: Array<PostDto> = payload.posts.map((p) => {
+    const viewer = flags.get(p.id)
+    const repostOf = repostMap.get(p.id)
+    const quoteOf = quoteMap.get(p.id)
+    return {
+      ...p,
+      ...(viewer ? { viewer } : {}),
+      ...(repostOf ? { repostOf } : {}),
+      ...(quoteOf ? { quoteOf } : {}),
+    }
   })
   return c.json({ posts, nextCursor: payload.nextCursor })
 })
