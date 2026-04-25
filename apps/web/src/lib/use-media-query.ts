@@ -3,6 +3,9 @@ import { useEffect, useState } from "react"
 export const HOME_PANEL_MIN_INSET_WIDTH = 1120
 export const HOME_PANEL_PRESENCE_MS = 300
 
+/** Matches the side panel slide transition length on home (`duration-300`). */
+export const HOME_PANEL_PRESENCE_MS = 300
+
 const INSET_SELECTOR = '[data-slot="sidebar-inset"]'
 
 function getInsetWidth() {
