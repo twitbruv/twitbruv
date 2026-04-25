@@ -19,6 +19,7 @@ import { Avatar } from "../components/avatar"
 import { RichText } from "../components/rich-text"
 import { PollBlock } from "../components/poll-block"
 import { ArticleCardBlock, QuoteEmbed } from "../components/post-card"
+import { ImageLightbox } from "../components/image-lightbox"
 import { useMe } from "../lib/me"
 import { APP_NAME } from "../lib/env"
 import { buildSeoMeta, canonicalLink, clipDescription } from "../lib/seo"
@@ -117,6 +118,53 @@ export const Route = createFileRoute("/$handle/p/$id")({
     }
   },
 })
+
+function PostMediaGrid({
+  media,
+  className,
+}: {
+  media: NonNullable<Post["media"]>
+  className: string
+}) {
+  const gallery = media.flatMap((m) => {
+    if (m.processingState !== "ready") return []
+    const full =
+      m.variants.find((v) => v.kind === "large") ??
+      m.variants.find((v) => v.kind === "medium") ??
+      m.variants.find((v) => v.kind === "thumb") ??
+      m.variants[0]
+    return [{ id: m.id, src: full.url, alt: m.altText ?? "" }]
+  })
+  const galleryImages = gallery.map(({ src, alt }) => ({ src, alt }))
+  return (
+    <div className={className}>
+      {media.map((m) => {
+        const variant =
+          m.variants.find((v) => v.kind === "medium") ?? m.variants[0]
+        const isReady = m.processingState === "ready"
+        const galleryIndex = gallery.findIndex((g) => g.id === m.id)
+        return (
+          <div key={m.id} className="aspect-video bg-muted">
+            {isReady && (
+              <ImageLightbox
+                images={galleryImages}
+                initialIndex={galleryIndex >= 0 ? galleryIndex : 0}
+                disabled={galleryImages.length === 0}
+                className="block h-full w-full"
+              >
+                <img
+                  src={variant.url}
+                  alt={m.altText ?? ""}
+                  className="h-full w-full object-cover"
+                />
+              </ImageLightbox>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 function ThreadView() {
   const { handle, id } = Route.useParams()
@@ -382,25 +430,10 @@ function AncestorPost({
           </p>
 
           {post.media && post.media.length > 0 && (
-            <div
+            <PostMediaGrid
+              media={post.media}
               className={`mt-2 grid gap-px overflow-hidden rounded-sm border border-border ${post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}
-            >
-              {post.media.map((m) => {
-                const variant =
-                  m.variants.find((v) => v.kind === "medium") ?? m.variants[0]
-                return (
-                  <div key={m.id} className="aspect-video bg-muted">
-                    {m.processingState === "ready" && (
-                      <img
-                        src={variant.url}
-                        alt={m.altText ?? ""}
-                        className="h-full w-full object-cover"
-                      />
-                    )}
-                  </div>
-                )
-              })}
-            </div>
+            />
           )}
 
           {post.articleCard && <ArticleCardBlock card={post.articleCard} />}
@@ -583,25 +616,10 @@ function ParentPost({
       </p>
 
       {post.media && post.media.length > 0 && (
-        <div
+        <PostMediaGrid
+          media={post.media}
           className={`mt-2.5 grid gap-px overflow-hidden rounded-sm border border-border ${post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}
-        >
-          {post.media.map((m) => {
-            const variant =
-              m.variants.find((v) => v.kind === "medium") ?? m.variants[0]
-            return (
-              <div key={m.id} className="aspect-video bg-muted">
-                {m.processingState === "ready" && (
-                  <img
-                    src={variant.url}
-                    alt={m.altText ?? ""}
-                    className="h-full w-full object-cover"
-                  />
-                )}
-              </div>
-            )
-          })}
-        </div>
+        />
       )}
 
       {post.articleCard && <ArticleCardBlock card={post.articleCard} />}
@@ -910,25 +928,11 @@ function ReplyCard({
 
       {post.media && post.media.length > 0 && (
         // biome-ignore lint/a11y/useKeyWithClickEvents: stops parent Link from intercepting interactions
-        <div
-          className={`mt-2 grid gap-px overflow-hidden rounded-sm border border-border ${post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {post.media.map((m) => {
-            const variant =
-              m.variants.find((v) => v.kind === "medium") ?? m.variants[0]
-            return (
-              <div key={m.id} className="aspect-video bg-muted">
-                {m.processingState === "ready" && (
-                  <img
-                    src={variant.url}
-                    alt={m.altText ?? ""}
-                    className="h-full w-full object-cover"
-                  />
-                )}
-              </div>
-            )
-          })}
+        <div onClick={(e) => e.stopPropagation()}>
+          <PostMediaGrid
+            media={post.media}
+            className={`mt-2 grid gap-px overflow-hidden rounded-sm border border-border ${post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}
+          />
         </div>
       )}
 
