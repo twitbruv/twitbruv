@@ -3,9 +3,10 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react"
-import { api } from "./api"
+import { ApiError, api } from "./api"
 import { authClient } from "./auth"
 import type { ReactNode } from "react"
 import type { SelfUser } from "./api"
@@ -19,10 +20,33 @@ interface MeContextValue {
 
 const MeContext = createContext<MeContextValue | null>(null)
 
+// Re-check the session this often while the tab is visible. Bounds how long a
+// banned/suspended/deleted user can keep an idle tab open before being kicked.
+const POLL_INTERVAL_MS = 30_000
+
 export function MeProvider({ children }: { children: ReactNode }) {
   const { data: session, isPending } = authClient.useSession()
   const [me, setMe] = useState<SelfUser | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  // Guard against re-entrant signOut calls when both the poll and a parallel
+  // request both observe a 401.
+  const forcingOut = useRef(false)
+
+  const forceSignOut = useCallback(async () => {
+    if (forcingOut.current) return
+    forcingOut.current = true
+    setMe(null)
+    try {
+      await authClient.signOut()
+    } catch {
+      // Best-effort: even if the server-side signOut fails (already-revoked session,
+      // network blip), the local state is cleared and the redirect will land them on
+      // the public login page where they can re-auth.
+    }
+    if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+      window.location.assign("/login")
+    }
+  }, [])
 
   const refresh = useCallback(async () => {
     if (!session) {
@@ -33,12 +57,18 @@ export function MeProvider({ children }: { children: ReactNode }) {
     try {
       const { user } = await api.me()
       setMe(user)
-    } catch {
+    } catch (e) {
       setMe(null)
+      // 401 here means the server has already invalidated the session (ban, delete,
+      // expired, etc.). Treat any other error as transient and leave the better-auth
+      // session alone so we don't bounce users on a network blip.
+      if (e instanceof ApiError && e.status === 401) {
+        await forceSignOut()
+      }
     } finally {
       setIsLoading(false)
     }
-  }, [session])
+  }, [session, forceSignOut])
 
   useEffect(() => {
     if (isPending) return
@@ -47,6 +77,41 @@ export function MeProvider({ children }: { children: ReactNode }) {
       return
     }
     refresh()
+  }, [isPending, session, refresh])
+
+  // Poll while authenticated + visible so users on idle tabs are kicked promptly
+  // after a moderation action. We also re-check on tab focus in case the OS
+  // throttled the interval while the tab was hidden.
+  useEffect(() => {
+    if (isPending || !session) return
+    let timer: ReturnType<typeof setInterval> | null = null
+
+    const start = () => {
+      if (timer) return
+      timer = setInterval(refresh, POLL_INTERVAL_MS)
+    }
+    const stop = () => {
+      if (!timer) return
+      clearInterval(timer)
+      timer = null
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        refresh()
+        start()
+      } else {
+        stop()
+      }
+    }
+
+    if (document.visibilityState === "visible") start()
+    document.addEventListener("visibilitychange", onVisibility)
+    window.addEventListener("focus", refresh)
+    return () => {
+      stop()
+      document.removeEventListener("visibilitychange", onVisibility)
+      window.removeEventListener("focus", refresh)
+    }
   }, [isPending, session, refresh])
 
   return (

@@ -40,7 +40,12 @@ export function createAuth(config: AuthConfig) {
     session: {
       expiresIn: 60 * 60 * 24 * 30, // 30 days
       updateAge: 60 * 60 * 24, // 1 day
-      cookieCache: { enabled: true, maxAge: 60 * 5 },
+      // Short TTL so admin actions that revoke a session (ban, delete, etc. — all of which
+      // wipe the row from `sessions`) take effect within ~30s instead of waiting up to the
+      // cache window. Better-auth caches the session in a signed cookie alongside the
+      // session token, and the cache cookie remains valid until it expires regardless of
+      // DB state, so this window is the worst-case lag for forced logout.
+      cookieCache: { enabled: true, maxAge: 30 },
     },
     advanced: {
       // Our auth tables use uuid PKs with defaultRandom() in Postgres.

@@ -23,6 +23,12 @@ meRoute.get('/', async (c) => {
   const { db } = c.get('ctx')
   const [user] = await db.select().from(schema.users).where(eq(schema.users.id, session.user.id)).limit(1)
   if (!user) return c.json({ error: 'not_found' }, 404)
+  // Authoritative liveness check. The session middleware already rejects banned users, but
+  // it reads `banned` from the (possibly cached) session payload, so a moderation action in
+  // the cache window can be missed. The frontend polls this endpoint periodically and force
+  // signs out on 401, so keeping this in sync with the DB bounds the lag for kicking
+  // banned, suspended, or soft-deleted users.
+  if (user.banned || user.deletedAt) return c.json({ error: 'unauthorized' }, 401)
   return c.json({ user: toSelfDto(user, c.get('ctx').mediaEnv) })
 })
 
