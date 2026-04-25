@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { streamSSE } from 'hono/streaming'
 import { z } from 'zod'
-import { and, desc, eq, inArray, isNull, lt, or, sql } from '@workspace/db'
+import { and, desc, eq, inArray, isNull, lt, ne, or, sql } from '@workspace/db'
 import { schema, type Database } from '@workspace/db'
 import { assetUrl } from '@workspace/media/s3'
 import { requireAuth, type HonoEnv } from '../middleware/session.ts'
@@ -91,10 +91,34 @@ dmsRoute.get('/stream', async (c) => {
 })
 
 // List my conversations with last-message preview, other-member info (1:1), and unread count.
+// `folder` selects between the main inbox (`requestState in ('none','accepted')`) and pending
+// message requests (`requestState='pending'`). Default is `inbox` so legacy clients don't get
+// requests mixed in. `requestCount` is always returned so the UI can render the tab badge
+// without a second round-trip.
 dmsRoute.get('/', async (c) => {
   const session = c.get('session')!
   const { db, mediaEnv } = c.get('ctx')
   const me = session.user.id
+  const folder = c.req.query('folder') === 'requests' ? 'requests' : 'inbox'
+
+  const folderFilter =
+    folder === 'requests'
+      ? eq(schema.conversationMembers.requestState, 'pending')
+      : inArray(schema.conversationMembers.requestState, ['none', 'accepted'])
+
+  // Pending requests count is always shown on the inbox tab so users can see new requests
+  // without polling /requests; one cheap aggregate is fine.
+  const [pendingRow] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(schema.conversationMembers)
+    .where(
+      and(
+        eq(schema.conversationMembers.userId, me),
+        isNull(schema.conversationMembers.leftAt),
+        eq(schema.conversationMembers.requestState, 'pending'),
+      ),
+    )
+  const requestCount = pendingRow?.n ?? 0
 
   const myConvs = await db
     .select({
@@ -110,12 +134,13 @@ dmsRoute.get('/', async (c) => {
       and(
         eq(schema.conversationMembers.userId, me),
         isNull(schema.conversationMembers.leftAt),
+        folderFilter,
       ),
     )
     .orderBy(desc(schema.conversations.lastMessageAt))
     .limit(50)
 
-  if (myConvs.length === 0) return c.json({ conversations: [] })
+  if (myConvs.length === 0) return c.json({ conversations: [], requestCount, folder })
 
   const convIds = myConvs.map((r) => r.conv.id)
   // postgres-js sends a JS array as one bound param; using `= ANY($1)` makes Postgres try to
@@ -199,6 +224,7 @@ dmsRoute.get('/', async (c) => {
       lastMessageAt: r.conv.lastMessageAt?.toISOString() ?? null,
       unreadCount: unreadByConv.get(r.conv.id) ?? 0,
       members: others,
+      requestState: r.member.requestState,
       lastMessage: latest
         ? {
             id: latest.id,
@@ -211,10 +237,13 @@ dmsRoute.get('/', async (c) => {
     }
   })
 
-  return c.json({ conversations })
+  return c.json({ conversations, requestCount, folder })
 })
 
-// Total unread across all my conversations. Used by sidebar badge.
+// Total unread across my non-pending conversations + a separate count of pending requests.
+// Pending-request messages are intentionally excluded from `count` so the sidebar badge
+// reflects messages the user has chosen to receive; `requestCount` lets the UI surface
+// pending requests with a distinct affordance.
 dmsRoute.get('/unread-count', async (c) => {
   const session = c.get('session')!
   const { db } = c.get('ctx')
@@ -227,13 +256,24 @@ dmsRoute.get('/unread-count', async (c) => {
     WHERE m.sender_id <> ${me}
       AND m.deleted_at IS NULL
       AND cm.left_at IS NULL
+      AND cm.request_state IN ('none', 'accepted')
       AND (
         cm.last_read_message_id IS NULL OR
         m.created_at > (SELECT created_at FROM ${schema.messages} WHERE id = cm.last_read_message_id)
       )
   `)
+  const [pendingRow] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(schema.conversationMembers)
+    .where(
+      and(
+        eq(schema.conversationMembers.userId, me),
+        isNull(schema.conversationMembers.leftAt),
+        eq(schema.conversationMembers.requestState, 'pending'),
+      ),
+    )
   const row = (result as unknown as Array<{ n: number }>)[0]
-  return c.json({ count: row?.n ?? 0 })
+  return c.json({ count: row?.n ?? 0, requestCount: pendingRow?.n ?? 0 })
 })
 
 // Start a conversation. With one peer (userId or userIds[0]) it find-or-creates the canonical
@@ -284,6 +324,29 @@ dmsRoute.post('/', async (c) => {
 
   const kind = peerIds.length >= 2 ? 'group' : 'dm'
 
+  // A peer's row starts as 'pending' (i.e. a message request) unless we're already mutuals
+  // — either I follow them, or they follow me. Mutuals get 'accepted' so the convo lands
+  // straight in their main inbox. Group convos opt out: joining a group is an explicit invite
+  // flow, not a cold DM, so all peers go in as 'accepted'.
+  const acceptedPeerIds = new Set<string>()
+  if (kind === 'dm') {
+    const edges = await db
+      .select({
+        followerId: schema.follows.followerId,
+        followeeId: schema.follows.followeeId,
+      })
+      .from(schema.follows)
+      .where(
+        or(
+          and(eq(schema.follows.followerId, me), inArray(schema.follows.followeeId, peerIds)),
+          and(eq(schema.follows.followeeId, me), inArray(schema.follows.followerId, peerIds)),
+        ),
+      )
+    for (const e of edges) acceptedPeerIds.add(e.followerId === me ? e.followeeId : e.followerId)
+  } else {
+    for (const id of peerIds) acceptedPeerIds.add(id)
+  }
+
   const id = await db.transaction(async (tx) => {
     const [created] = await tx
       .insert(schema.conversations)
@@ -291,17 +354,74 @@ dmsRoute.post('/', async (c) => {
       .returning({ id: schema.conversations.id })
     if (!created) throw new Error('failed_to_create_conversation')
     await tx.insert(schema.conversationMembers).values([
-      { conversationId: created.id, userId: me, role: 'admin' },
+      { conversationId: created.id, userId: me, role: 'admin', requestState: 'accepted' },
       ...peerIds.map((userId) => ({
         conversationId: created.id,
         userId,
         role: 'member' as const,
+        requestState: acceptedPeerIds.has(userId) ? ('accepted' as const) : ('pending' as const),
       })),
     ])
     return created.id
   })
 
   return c.json({ id, created: true })
+})
+
+// Accept a pending message request. Idempotent — a second call on an already-accepted
+// conversation just returns ok. Republishes a membership event so the sender sees nothing
+// special; from their side the convo was always accepted.
+dmsRoute.post('/:id/accept', async (c) => {
+  const session = c.get('session')!
+  const { db, pubsub, cache } = c.get('ctx')
+  const me = session.user.id
+  const conversationId = c.req.param('id')
+
+  const membership = await loadMembership(db, conversationId, me)
+  if (!membership) return c.json({ error: 'not_a_member' }, 403)
+  if (membership.requestState === 'declined') return c.json({ error: 'declined' }, 410)
+
+  await db
+    .update(schema.conversationMembers)
+    .set({ requestState: 'accepted' })
+    .where(
+      and(
+        eq(schema.conversationMembers.conversationId, conversationId),
+        eq(schema.conversationMembers.userId, me),
+      ),
+    )
+  // Accepting moves any messages from the requester out of the 'pending' bucket and into
+  // the unread count, so blow the cached count for this user.
+  await invalidateUnreadCounts(cache, [me])
+  await pubsub.publish(dmChannel(me), { type: 'membership', conversationId })
+  return c.json({ ok: true })
+})
+
+// Decline a pending message request. Soft-leaves the conversation so it disappears from the
+// receiver's listings and they stop accruing unread on it. Sender is not notified — declines
+// are intentionally silent. The conversation row is preserved (in case the same user later
+// gets a follow-from / accepts) but the receiver won't see further messages.
+dmsRoute.post('/:id/decline', async (c) => {
+  const session = c.get('session')!
+  const { db, pubsub, cache } = c.get('ctx')
+  const me = session.user.id
+  const conversationId = c.req.param('id')
+
+  const membership = await loadMembership(db, conversationId, me)
+  if (!membership) return c.json({ error: 'not_a_member' }, 403)
+
+  await db
+    .update(schema.conversationMembers)
+    .set({ requestState: 'declined', leftAt: new Date() })
+    .where(
+      and(
+        eq(schema.conversationMembers.conversationId, conversationId),
+        eq(schema.conversationMembers.userId, me),
+      ),
+    )
+  await invalidateUnreadCounts(cache, [me])
+  await pubsub.publish(dmChannel(me), { type: 'membership', conversationId })
+  return c.json({ ok: true })
 })
 
 // Group-only operations below. Schema enforces `kind in ('dm','group')`; we additionally guard
@@ -591,6 +711,7 @@ dmsRoute.get('/:id', async (c) => {
       title: conv.title,
       createdAt: conv.createdAt.toISOString(),
       myRole: membership.role,
+      myRequestState: membership.requestState,
       members: memberRows.map((r) => ({
         id: r.user.id,
         handle: r.user.handle,
@@ -693,6 +814,9 @@ dmsRoute.post('/:id/messages', async (c) => {
 
   const membership = await loadMembership(db, conversationId, me)
   if (!membership) return c.json({ error: 'not_a_member' }, 403)
+  // Pending requests can be previewed but not replied to — the receiver must accept first,
+  // and a declined member's row is soft-left (membership would be null above).
+  if (membership.requestState === 'pending') return c.json({ error: 'request_pending' }, 403)
 
   // Verify the media belongs to me before attaching — stops mediaId enumeration / theft.
   if (body.mediaId) {
@@ -742,9 +866,14 @@ dmsRoute.post('/:id/messages', async (c) => {
         ),
       )
 
-    // Notify everyone else still in the conversation.
+    // Notify everyone else still in the conversation. Members in 'pending' (an unaccepted
+    // message request) are skipped so cold DMs don't ring their notification bell — the
+    // request itself is surfaced via the inbox tab badge instead.
     const others = await tx
-      .select({ userId: schema.conversationMembers.userId })
+      .select({
+        userId: schema.conversationMembers.userId,
+        requestState: schema.conversationMembers.requestState,
+      })
       .from(schema.conversationMembers)
       .where(
         and(
@@ -753,10 +882,11 @@ dmsRoute.post('/:id/messages', async (c) => {
           sql`${schema.conversationMembers.userId} <> ${me}`,
         ),
       )
-    if (others.length > 0) {
+    const notifiable = others.filter((o) => o.requestState !== 'pending')
+    if (notifiable.length > 0) {
       await notify(
         tx,
-        others.map((o) => ({
+        notifiable.map((o) => ({
           userId: o.userId,
           actorId: me,
           kind: 'dm' as const,

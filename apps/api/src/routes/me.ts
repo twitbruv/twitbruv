@@ -79,6 +79,75 @@ meRoute.post('/handle', async (c) => {
   return c.json({ user: toSelfDto(user, c.get('ctx').mediaEnv) })
 })
 
+// Users I've blocked. Newest first. Used by settings → Privacy so users can audit and
+// unblock without remembering exact handles.
+meRoute.get('/blocks', async (c) => {
+  const session = c.get('session')!
+  const { db, mediaEnv } = c.get('ctx')
+  const limit = Math.min(Number(c.req.query('limit') ?? 50), 100)
+  const cursor = c.req.query('cursor')
+
+  const rows = await db
+    .select({ user: schema.users, block: schema.blocks })
+    .from(schema.blocks)
+    .innerJoin(schema.users, eq(schema.users.id, schema.blocks.blockedId))
+    .where(
+      and(
+        eq(schema.blocks.blockerId, session.user.id),
+        isNull(schema.users.deletedAt),
+        cursor ? lt(schema.blocks.createdAt, new Date(cursor)) : undefined,
+      ),
+    )
+    .orderBy(desc(schema.blocks.createdAt))
+    .limit(limit)
+  const users = rows.map((r) => ({
+    id: r.user.id,
+    handle: r.user.handle,
+    displayName: r.user.displayName,
+    avatarUrl: assetUrl(mediaEnv, r.user.avatarUrl),
+    isVerified: r.user.isVerified,
+    blockedAt: r.block.createdAt.toISOString(),
+  }))
+  const nextCursor =
+    rows.length === limit ? rows[rows.length - 1]!.block.createdAt.toISOString() : null
+  return c.json({ users, nextCursor })
+})
+
+// Users I've muted, with the mute scope so the UI can show whether they're hidden from
+// feed only, notifications only, or both.
+meRoute.get('/mutes', async (c) => {
+  const session = c.get('session')!
+  const { db, mediaEnv } = c.get('ctx')
+  const limit = Math.min(Number(c.req.query('limit') ?? 50), 100)
+  const cursor = c.req.query('cursor')
+
+  const rows = await db
+    .select({ user: schema.users, mute: schema.mutes })
+    .from(schema.mutes)
+    .innerJoin(schema.users, eq(schema.users.id, schema.mutes.mutedId))
+    .where(
+      and(
+        eq(schema.mutes.muterId, session.user.id),
+        isNull(schema.users.deletedAt),
+        cursor ? lt(schema.mutes.createdAt, new Date(cursor)) : undefined,
+      ),
+    )
+    .orderBy(desc(schema.mutes.createdAt))
+    .limit(limit)
+  const users = rows.map((r) => ({
+    id: r.user.id,
+    handle: r.user.handle,
+    displayName: r.user.displayName,
+    avatarUrl: assetUrl(mediaEnv, r.user.avatarUrl),
+    isVerified: r.user.isVerified,
+    mutedAt: r.mute.createdAt.toISOString(),
+    scope: r.mute.scope,
+  }))
+  const nextCursor =
+    rows.length === limit ? rows[rows.length - 1]!.mute.createdAt.toISOString() : null
+  return c.json({ users, nextCursor })
+})
+
 // Viewer's bookmarked posts, newest bookmark first.
 meRoute.get('/bookmarks', async (c) => {
   const session = c.get('session')!

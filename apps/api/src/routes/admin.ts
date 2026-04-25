@@ -52,6 +52,7 @@ adminRoute.get('/users', async (c) => {
     banReason: u.banReason,
     banExpires: u.banExpires?.toISOString() ?? null,
     shadowBannedAt: u.shadowBannedAt?.toISOString() ?? null,
+    isVerified: u.isVerified,
     deletedAt: u.deletedAt?.toISOString() ?? null,
     createdAt: u.createdAt.toISOString(),
   }))
@@ -108,6 +109,7 @@ adminRoute.get('/users/:id', async (c) => {
       banReason: user.banReason,
       banExpires: user.banExpires?.toISOString() ?? null,
       shadowBannedAt: user.shadowBannedAt?.toISOString() ?? null,
+      isVerified: user.isVerified,
       deletedAt: user.deletedAt?.toISOString() ?? null,
       createdAt: user.createdAt.toISOString(),
     },
@@ -338,6 +340,51 @@ adminRoute.patch('/reports/:id', async (c) => {
       resolvedAt: new Date(),
     })
     .where(eq(schema.reports.id, id))
+  return c.json({ ok: true })
+})
+
+const verifySchema = z.object({
+  reason: z.string().trim().min(1).max(500).optional(),
+})
+
+// Grant a verified badge. Idempotent — re-running on an already-verified user just records
+// another audit entry. Uses the existing `warn` mod action with a privateNote so we don't
+// have to extend the mod_action enum (and its DB migration) for a one-bit flag toggle.
+adminRoute.post('/users/:id/verify', async (c) => {
+  const session = c.get('session')!
+  const { db } = c.get('ctx')
+  const id = c.req.param('id')
+  const body = verifySchema.parse(await c.req.json().catch(() => ({})))
+
+  await db.transaction(async (tx) => {
+    await tx.update(schema.users).set({ isVerified: true }).where(eq(schema.users.id, id))
+    await tx.insert(schema.moderationActions).values({
+      moderatorId: session.user.id,
+      subjectType: 'user',
+      subjectId: id,
+      action: 'warn',
+      privateNote: `verify_grant${body.reason ? `: ${body.reason}` : ''}`,
+    })
+  })
+  return c.json({ ok: true })
+})
+
+adminRoute.post('/users/:id/unverify', async (c) => {
+  const session = c.get('session')!
+  const { db } = c.get('ctx')
+  const id = c.req.param('id')
+  const body = verifySchema.parse(await c.req.json().catch(() => ({})))
+
+  await db.transaction(async (tx) => {
+    await tx.update(schema.users).set({ isVerified: false }).where(eq(schema.users.id, id))
+    await tx.insert(schema.moderationActions).values({
+      moderatorId: session.user.id,
+      subjectType: 'user',
+      subjectId: id,
+      action: 'warn',
+      privateNote: `verify_revoke${body.reason ? `: ${body.reason}` : ''}`,
+    })
+  })
   return c.json({ ok: true })
 })
 

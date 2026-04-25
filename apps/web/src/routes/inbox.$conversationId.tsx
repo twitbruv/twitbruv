@@ -411,6 +411,18 @@ function Thread() {
         />
       )}
 
+      {conversation?.myRequestState === "pending" && (
+        <RequestBanner
+          conversationId={conversationId}
+          onAccepted={() =>
+            setConversation((prev) =>
+              prev ? { ...prev, myRequestState: "accepted" } : prev,
+            )
+          }
+          onDeclined={() => router.navigate({ to: "/inbox" })}
+        />
+      )}
+
       <div ref={scrollerRef} className="flex-1 overflow-y-auto px-4 py-4">
         {error && (
           <p className="mx-auto mb-3 max-w-prose rounded-md border border-destructive/40 bg-destructive/5 p-2 text-center text-xs text-destructive">
@@ -487,47 +499,106 @@ function Thread() {
         </div>
       )}
 
-      <form
-        onSubmit={send}
-        className="flex items-end gap-2 border-t border-border px-3 py-3"
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={onFileChange}
-        />
-        <Button
-          type="button"
-          variant="ghost"
-          aria-label="attach image"
-          disabled={sending}
-          onClick={() => fileInputRef.current?.click()}
+      {conversation?.myRequestState !== "pending" && (
+        <form
+          onSubmit={send}
+          className="flex items-end gap-2 border-t border-border px-3 py-3"
         >
-          <IconPaperclip size={18} stroke={1.75} />
-        </Button>
-        <textarea
-          ref={textareaRef}
-          value={draft}
-          onChange={(e) => {
-            setDraft(e.target.value)
-            if (e.target.value.length > 0) pingTyping()
-          }}
-          placeholder={pending ? "Add a caption…" : "Message"}
-          rows={1}
-          disabled={sending}
-          onKeyDown={onKeyDown}
-          className="flex-1 resize-none rounded-md border border-border bg-transparent px-3 py-2 text-sm leading-relaxed focus:ring-1 focus:ring-ring focus:outline-none disabled:opacity-60"
-        />
-        <Button
-          type="submit"
-          disabled={sending || (draft.trim().length === 0 && !pending)}
-        >
-          {sending ? "…" : "Send"}
-        </Button>
-      </form>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={onFileChange}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            aria-label="attach image"
+            disabled={sending}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <IconPaperclip size={18} stroke={1.75} />
+          </Button>
+          <textarea
+            ref={textareaRef}
+            value={draft}
+            onChange={(e) => {
+              setDraft(e.target.value)
+              if (e.target.value.length > 0) pingTyping()
+            }}
+            placeholder={pending ? "Add a caption…" : "Message"}
+            rows={1}
+            disabled={sending}
+            onKeyDown={onKeyDown}
+            className="flex-1 resize-none rounded-md border border-border bg-transparent px-3 py-2 text-sm leading-relaxed focus:ring-1 focus:ring-ring focus:outline-none disabled:opacity-60"
+          />
+          <Button
+            type="submit"
+            disabled={sending || (draft.trim().length === 0 && !pending)}
+          >
+            {sending ? "…" : "Send"}
+          </Button>
+        </form>
+      )}
     </main>
+  )
+}
+
+function RequestBanner({
+  conversationId,
+  onAccepted,
+  onDeclined,
+}: {
+  conversationId: string
+  onAccepted: () => void
+  onDeclined: () => void
+}) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function accept() {
+    setBusy(true)
+    setError(null)
+    try {
+      await api.dmAcceptRequest(conversationId)
+      onAccepted()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "couldn't accept")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function decline() {
+    if (!window.confirm("Decline this message request? The sender won't be notified.")) return
+    setBusy(true)
+    setError(null)
+    try {
+      await api.dmDeclineRequest(conversationId)
+      onDeclined()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "couldn't decline")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2 border-t border-border bg-muted/30 px-4 py-3 text-xs sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-muted-foreground">
+        This is a message request. Accept to start the conversation or decline to remove it.
+      </p>
+      <div className="flex items-center gap-2">
+        {error && <span className="text-destructive">{error}</span>}
+        <Button size="sm" variant="ghost" disabled={busy} onClick={decline}>
+          Decline
+        </Button>
+        <Button size="sm" disabled={busy} onClick={accept}>
+          Accept
+        </Button>
+      </div>
+    </div>
   )
 }
 

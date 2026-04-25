@@ -10,16 +10,22 @@ import type { DmConversation, DmMember } from "../lib/api"
 
 export const Route = createFileRoute("/inbox/")({ component: InboxList })
 
+type Folder = "inbox" | "requests"
+
 function InboxList() {
+  const [folder, setFolder] = useState<Folder>("inbox")
   const [conversations, setConversations] = useState<Array<DmConversation> | null>(null)
+  const [requestCount, setRequestCount] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let cancel = false
     async function load() {
       try {
-        const { conversations } = await api.dmConversations()
-        if (!cancel) setConversations(conversations)
+        const res = await api.dmConversations(folder)
+        if (cancel) return
+        setConversations(res.conversations)
+        setRequestCount(res.requestCount)
       } catch (e) {
         if (!cancel) setError(e instanceof Error ? e.message : "failed to load")
       }
@@ -35,7 +41,13 @@ function InboxList() {
       clearInterval(iv)
       unsubscribe()
     }
-  }, [])
+  }, [folder])
+
+  // Reset list state when the user switches tabs so the loading skeleton shows briefly
+  // instead of stale content from the other folder.
+  useEffect(() => {
+    setConversations(null)
+  }, [folder])
 
   return (
     <main>
@@ -50,6 +62,20 @@ function InboxList() {
           New
         </Button>
       </header>
+
+      <div className="flex border-b border-border text-sm">
+        <FolderTab
+          active={folder === "inbox"}
+          onClick={() => setFolder("inbox")}
+          label="Inbox"
+        />
+        <FolderTab
+          active={folder === "requests"}
+          onClick={() => setFolder("requests")}
+          label="Requests"
+          badge={requestCount}
+        />
+      </div>
 
       {error && <p className="p-4 text-sm text-destructive">{error}</p>}
       {!conversations && !error && (
@@ -70,10 +96,18 @@ function InboxList() {
       )}
       {conversations && conversations.length === 0 && (
         <div className="px-4 py-16 text-center">
-          <p className="text-sm font-semibold">No conversations yet</p>
+          <p className="text-sm font-semibold">
+            {folder === "requests" ? "No message requests" : "No conversations yet"}
+          </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Tap <span className="font-medium">New</span> above, or open someone's profile and
-            tap the message icon.
+            {folder === "requests"
+              ? "When someone you don't follow messages you, it'll appear here."
+              : (
+                  <>
+                    Tap <span className="font-medium">New</span> above, or open someone's
+                    profile and tap the message icon.
+                  </>
+                )}
           </p>
         </div>
       )}
@@ -85,6 +119,37 @@ function InboxList() {
         </ul>
       )}
     </main>
+  )
+}
+
+function FolderTab({
+  active,
+  onClick,
+  label,
+  badge,
+}: {
+  active: boolean
+  onClick: () => void
+  label: string
+  badge?: number
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex flex-1 items-center justify-center gap-2 px-4 py-3 text-sm transition-colors ${
+        active
+          ? "border-b-2 border-primary font-semibold text-foreground"
+          : "text-muted-foreground hover:text-foreground"
+      }`}
+    >
+      {label}
+      {badge !== undefined && badge > 0 && (
+        <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground">
+          {badge}
+        </span>
+      )}
+    </button>
   )
 }
 

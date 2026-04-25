@@ -69,6 +69,14 @@ export const api = {
       `/api/search?q=${encodeURIComponent(q)}`,
     ),
   bookmarks: (cursor?: string) => request<FeedPage>(`/api/me/bookmarks${qs(cursor)}`),
+  blocks: (cursor?: string) =>
+    request<{ users: Array<BlockedUser>; nextCursor: string | null }>(
+      `/api/me/blocks${qs(cursor)}`,
+    ),
+  mutes: (cursor?: string) =>
+    request<{ users: Array<MutedUser>; nextCursor: string | null }>(
+      `/api/me/mutes${qs(cursor)}`,
+    ),
 
   notifications: (cursor?: string, unreadOnly = false) => {
     const tail = unreadOnly ? (cursor ? "&unread=1" : "?unread=1") : ""
@@ -88,11 +96,20 @@ export const api = {
   analyticsOverview: (days = 28) =>
     request<AnalyticsOverview>(`/api/analytics/overview?days=${days}`),
 
-  dmConversations: () =>
-    request<{ conversations: Array<DmConversation> }>("/api/dms"),
+  dmConversations: (folder: "inbox" | "requests" = "inbox") =>
+    request<{
+      conversations: Array<DmConversation>
+      requestCount: number
+      folder: "inbox" | "requests"
+    }>(`/api/dms?folder=${folder}`),
   dmConversation: (conversationId: string) =>
     request<{ conversation: DmConversationDetail }>(`/api/dms/${conversationId}`),
-  dmUnreadCount: () => request<{ count: number }>("/api/dms/unread-count"),
+  dmUnreadCount: () =>
+    request<{ count: number; requestCount: number }>("/api/dms/unread-count"),
+  dmAcceptRequest: (conversationId: string) =>
+    request<{ ok: true }>(`/api/dms/${conversationId}/accept`, { method: "POST" }),
+  dmDeclineRequest: (conversationId: string) =>
+    request<{ ok: true }>(`/api/dms/${conversationId}/decline`, { method: "POST" }),
   dmStart: (userId: string) =>
     request<{ id: string; created: boolean }>("/api/dms", {
       method: "POST",
@@ -268,6 +285,16 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ role }),
     }),
+  adminVerify: (id: string, reason?: string) =>
+    request<{ ok: true }>(`/api/admin/users/${id}/verify`, {
+      method: "POST",
+      body: JSON.stringify(reason ? { reason } : {}),
+    }),
+  adminUnverify: (id: string, reason?: string) =>
+    request<{ ok: true }>(`/api/admin/users/${id}/unverify`, {
+      method: "POST",
+      body: JSON.stringify(reason ? { reason } : {}),
+    }),
   adminReports: (status?: ReportStatus, cursor?: string) => {
     const params = new URLSearchParams()
     if (status) params.set("status", status)
@@ -415,6 +442,25 @@ export interface UserListPage {
   nextCursor: string | null
 }
 
+export interface BlockedUser {
+  id: string
+  handle: string | null
+  displayName: string | null
+  avatarUrl: string | null
+  isVerified: boolean
+  blockedAt: string
+}
+
+export interface MutedUser {
+  id: string
+  handle: string | null
+  displayName: string | null
+  avatarUrl: string | null
+  isVerified: boolean
+  mutedAt: string
+  scope: "feed" | "notifications" | "both"
+}
+
 export interface SelfUser {
   id: string
   email: string
@@ -523,6 +569,8 @@ export interface DmMember {
   isVerified: boolean
 }
 
+export type DmRequestState = "none" | "pending" | "accepted" | "declined"
+
 export interface DmConversation {
   id: string
   kind: "dm" | "group"
@@ -531,6 +579,7 @@ export interface DmConversation {
   lastMessageAt: string | null
   unreadCount: number
   members: Array<DmMember>
+  requestState: DmRequestState
   lastMessage: {
     id: string
     senderId: string
@@ -546,6 +595,7 @@ export interface DmConversationDetail {
   title: string | null
   createdAt: string
   myRole: "member" | "admin"
+  myRequestState: DmRequestState
   members: Array<
     DmMember & { role: "member" | "admin"; lastReadMessageId: string | null }
   >
@@ -608,6 +658,7 @@ export interface AdminUser {
   banReason: string | null
   banExpires: string | null
   shadowBannedAt: string | null
+  isVerified: boolean
   deletedAt: string | null
   createdAt: string
 }

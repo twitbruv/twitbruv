@@ -81,6 +81,17 @@ function AdminUsers() {
     return act(u.id, () => api.adminSetRole(u.id, role as "user" | "admin" | "owner"))
   }
 
+  function toggleVerify(u: AdminUser) {
+    const verb = u.isVerified ? "Revoke verified badge from" : "Grant verified badge to"
+    const reason = window.prompt(`${verb} @${u.handle ?? u.email}? Reason (optional):`, "")
+    if (reason === null) return
+    return act(u.id, () =>
+      u.isVerified
+        ? api.adminUnverify(u.id, reason || undefined)
+        : api.adminVerify(u.id, reason || undefined),
+    )
+  }
+
   return (
     <main>
       <div className="border-b border-border p-4">
@@ -145,6 +156,11 @@ function AdminUsers() {
                   >
                     {status}
                   </span>
+                  {u.isVerified && (
+                    <span className="rounded-full bg-primary/10 px-1.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
+                      verified
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-muted-foreground">{u.email}</p>
                 {u.banReason && (
@@ -192,6 +208,14 @@ function AdminUsers() {
                       Shadow
                     </Button>
                   )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busyId === u.id}
+                    onClick={() => toggleVerify(u)}
+                  >
+                    {u.isVerified ? "Unverify" : "Verify"}
+                  </Button>
                 </div>
                 {me?.role === "owner" && u.id !== me.id && (
                   <Button

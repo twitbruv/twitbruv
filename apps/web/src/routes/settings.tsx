@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router"
+import { Link, createFileRoute, useRouter } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
@@ -10,6 +10,8 @@ import { useMe } from "../lib/me"
 import { ClaimHandle } from "../components/claim-handle"
 import { AvatarUpload } from "../components/avatar-upload"
 import { BannerUpload } from "../components/banner-upload"
+import { Avatar } from "../components/avatar"
+import type { BlockedUser, MutedUser } from "../lib/api"
 
 export const Route = createFileRoute("/settings")({ component: Settings })
 
@@ -115,6 +117,7 @@ function Settings() {
 
       <AccountSection email={me.email} />
       <SessionsSection currentSessionId={session?.session.id ?? null} />
+      <PrivacySection />
       <DangerZone onDeleted={() => router.navigate({ to: "/" })} />
 
       <form onSubmit={onSave} className="space-y-3">
@@ -351,6 +354,179 @@ function SessionsSection({ currentSessionId }: { currentSessionId: string | null
         </ul>
       )}
     </section>
+  )
+}
+
+function PrivacySection() {
+  const [tab, setTab] = useState<"blocks" | "mutes">("blocks")
+  const [blocks, setBlocks] = useState<Array<BlockedUser> | null>(null)
+  const [mutes, setMutes] = useState<Array<MutedUser> | null>(null)
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  async function loadBlocks() {
+    setError(null)
+    try {
+      const { users } = await api.blocks()
+      setBlocks(users)
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "couldn't load blocks")
+    }
+  }
+
+  async function loadMutes() {
+    setError(null)
+    try {
+      const { users } = await api.mutes()
+      setMutes(users)
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "couldn't load mutes")
+    }
+  }
+
+  useEffect(() => {
+    if (tab === "blocks" && blocks === null) loadBlocks()
+    if (tab === "mutes" && mutes === null) loadMutes()
+  }, [tab, blocks, mutes])
+
+  async function unblock(handle: string, id: string) {
+    setBusyId(id)
+    try {
+      await api.unblock(handle)
+      setBlocks((prev) => (prev ? prev.filter((u) => u.id !== id) : prev))
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  async function unmute(handle: string, id: string) {
+    setBusyId(id)
+    try {
+      await api.unmute(handle)
+      setMutes((prev) => (prev ? prev.filter((u) => u.id !== id) : prev))
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  return (
+    <section className="space-y-3 border-t border-border pt-6">
+      <h2 className="text-sm font-semibold">Privacy</h2>
+      <div className="flex gap-1">
+        <Button
+          size="sm"
+          variant={tab === "blocks" ? "default" : "ghost"}
+          onClick={() => setTab("blocks")}
+        >
+          Blocked
+          {blocks !== null && blocks.length > 0 && (
+            <span className="ml-1.5 text-xs opacity-80">{blocks.length}</span>
+          )}
+        </Button>
+        <Button
+          size="sm"
+          variant={tab === "mutes" ? "default" : "ghost"}
+          onClick={() => setTab("mutes")}
+        >
+          Muted
+          {mutes !== null && mutes.length > 0 && (
+            <span className="ml-1.5 text-xs opacity-80">{mutes.length}</span>
+          )}
+        </Button>
+      </div>
+      {error && <p className="text-xs text-destructive">{error}</p>}
+      {tab === "blocks" && (
+        <PrivacyList
+          users={blocks}
+          emptyText="You haven't blocked anyone."
+          renderTrailing={(u) => (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busyId === u.id || !u.handle}
+              onClick={() => u.handle && unblock(u.handle, u.id)}
+            >
+              Unblock
+            </Button>
+          )}
+          renderMeta={(u) => `Blocked ${new Date(u.blockedAt).toLocaleDateString()}`}
+        />
+      )}
+      {tab === "mutes" && (
+        <PrivacyList
+          users={mutes}
+          emptyText="You haven't muted anyone."
+          renderTrailing={(u) => (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={busyId === u.id || !u.handle}
+              onClick={() => u.handle && unmute(u.handle, u.id)}
+            >
+              Unmute
+            </Button>
+          )}
+          renderMeta={(u) => `${labelForScope(u.scope)} · ${new Date(u.mutedAt).toLocaleDateString()}`}
+        />
+      )}
+    </section>
+  )
+}
+
+function labelForScope(scope: "feed" | "notifications" | "both"): string {
+  if (scope === "both") return "Feed + notifications"
+  if (scope === "notifications") return "Notifications only"
+  return "Feed only"
+}
+
+function PrivacyList<T extends { id: string; handle: string | null; displayName: string | null; avatarUrl: string | null }>({
+  users,
+  emptyText,
+  renderTrailing,
+  renderMeta,
+}: {
+  users: Array<T> | null
+  emptyText: string
+  renderTrailing: (u: T) => React.ReactNode
+  renderMeta: (u: T) => string
+}) {
+  if (users === null) {
+    return <p className="text-xs text-muted-foreground">loading…</p>
+  }
+  if (users.length === 0) {
+    return <p className="text-xs text-muted-foreground">{emptyText}</p>
+  }
+  return (
+    <ul className="divide-y divide-border rounded-md border border-border">
+      {users.map((u) => (
+        <li key={u.id} className="flex items-center justify-between gap-3 px-3 py-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <Avatar
+              initial={(u.displayName || u.handle || "?").slice(0, 1).toUpperCase()}
+              src={u.avatarUrl}
+              className="size-8 shrink-0"
+            />
+            <div className="min-w-0">
+              {u.handle ? (
+                <Link
+                  to="/$handle"
+                  params={{ handle: u.handle }}
+                  className="block truncate text-sm font-medium hover:underline"
+                >
+                  {u.displayName ?? `@${u.handle}`}
+                </Link>
+              ) : (
+                <span className="block truncate text-sm font-medium">
+                  {u.displayName ?? "Unknown user"}
+                </span>
+              )}
+              <p className="truncate text-xs text-muted-foreground">{renderMeta(u)}</p>
+            </div>
+          </div>
+          {renderTrailing(u)}
+        </li>
+      ))}
+    </ul>
   )
 }
 
