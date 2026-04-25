@@ -351,7 +351,7 @@ function ChatView({
   function onDrop(e: React.DragEvent) {
     e.preventDefault()
     setDragOver(false)
-    const file = e.dataTransfer.files?.[0]
+    const file = e.dataTransfer.files.item(0)
     if (file) attachFile(file)
   }
 

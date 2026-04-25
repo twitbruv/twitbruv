@@ -15,7 +15,7 @@ export function BannerUpload({
   const [error, setError] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
 
-  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     e.target.value = ""
     if (file) upload(file)
@@ -50,7 +50,7 @@ export function BannerUpload({
   function onDrop(e: React.DragEvent) {
     e.preventDefault()
     setDragOver(false)
-    const file = e.dataTransfer.files?.[0]
+    const file = e.dataTransfer.files.item(0)
     if (file) upload(file)
   }
 

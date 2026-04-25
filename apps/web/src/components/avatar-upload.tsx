@@ -18,7 +18,7 @@ export function AvatarUpload({
   const [dragOver, setDragOver] = useState(false)
   const initial = (displayName ?? "·").slice(0, 1).toUpperCase()
 
-  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     e.target.value = ""
     if (file) upload(file)
@@ -53,7 +53,7 @@ export function AvatarUpload({
   function onDrop(e: React.DragEvent) {
     e.preventDefault()
     setDragOver(false)
-    const file = e.dataTransfer.files?.[0]
+    const file = e.dataTransfer.files.item(0)
     if (file) upload(file)
   }
 
