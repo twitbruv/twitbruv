@@ -1,12 +1,12 @@
 import { Link, useNavigate } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
-import { IconArrowLeft, IconArrowsMaximize, IconX } from "@tabler/icons-react"
+import { IconArrowsMaximize, IconX } from "@tabler/icons-react"
 import { Button } from "@workspace/ui/components/button"
-import { api, ApiError, type Post, type Thread } from "../lib/api"
+import { ApiError, api } from "../lib/api"
 import { homeThreadFromFeedSearch } from "../lib/home-from-feed"
-import { isPanelLayoutAvailable } from "../lib/use-media-query"
 import { Compose } from "./compose"
 import { PostCard } from "./post-card"
+import type { Post, Thread } from "../lib/api"
 
 export function ThreadViewContent({
   handle,
@@ -45,7 +45,7 @@ export function ThreadViewContent({
             post: t.post && t.post.id === next.id ? next : t.post,
             replies: t.replies.map((p) => (p.id === next.id ? next : p)),
           }
-        : t,
+        : t
     )
   }
 
@@ -55,11 +55,17 @@ export function ThreadViewContent({
         ? {
             ...t,
             post: t.post
-              ? { ...t.post, counts: { ...t.post.counts, replies: t.post.counts.replies + 1 } }
+              ? {
+                  ...t.post,
+                  counts: {
+                    ...t.post.counts,
+                    replies: t.post.counts.replies + 1,
+                  },
+                }
               : t.post,
             replies: [...t.replies, post],
           }
-        : t,
+        : t
     )
   }
 
@@ -75,48 +81,27 @@ export function ThreadViewContent({
     })
   }
 
-  function goBackToFeed() {
-    if (!returnToHome) return
-
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      window.history.back()
-      return
-    }
-
-    const restorePanel = isPanelLayoutAvailable()
-
-    navigate({
-      to: "/",
-      search: restorePanel
-        ? {
-            postId: returnToHome.postId,
-            postHandle: returnToHome.postHandle,
-          }
-        : {},
-      replace: true,
-    })
-  }
-
   return (
     <div className={isPanel ? "flex h-full flex-col bg-background" : ""}>
-      {!isPanel && returnToHome && (
-        <div className="sticky top-0 z-10 border-b border-border bg-background/95 px-3 py-2 backdrop-blur-sm">
-          <Button variant="ghost" size="sm" onClick={goBackToFeed}>
-            <IconArrowLeft className="size-4" />
-            Back
-          </Button>
-        </div>
-      )}
-
       {isPanel && (
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background/95 px-3 py-2 backdrop-blur-sm">
           <p className="text-sm font-semibold">Post</p>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon-sm" title="Open full view" onClick={openFullView}>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              title="Open full view"
+              onClick={openFullView}
+            >
               <IconArrowsMaximize className="size-4" />
             </Button>
             {onClose && (
-              <Button variant="ghost" size="icon-sm" onClick={onClose} title="Close">
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={onClose}
+                title="Close"
+              >
                 <IconX className="size-4" />
               </Button>
             )}
@@ -145,16 +130,29 @@ export function ThreadViewContent({
             {thread.ancestors.length > 0 && (
               <div className="border-b border-border/50">
                 {thread.ancestors.map((p) => (
-                  <PostCard key={p.id} post={p} onChange={replace} />
+                  <PostCard
+                    key={p.id}
+                    post={p}
+                    onChange={replace}
+                    disableThreadNavigation={isPanel}
+                  />
                 ))}
               </div>
             )}
             {thread.post && (
               <div className="bg-muted/20">
-                <PostCard post={thread.post} onChange={replace} />
+                <PostCard
+                  post={thread.post}
+                  onChange={replace}
+                  disableThreadNavigation={isPanel}
+                />
               </div>
             )}
-            <Compose onCreated={onReply} replyToId={id} placeholder={`Reply to @${handle}`} />
+            <Compose
+              onCreated={onReply}
+              replyToId={id}
+              placeholder={`Reply to @${handle}`}
+            />
             {thread.replies.length > 0 ? (
               <div>
                 {thread.replies.map((p) => (
