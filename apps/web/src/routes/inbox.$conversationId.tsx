@@ -25,6 +25,7 @@ import { api } from "../lib/api"
 import { authClient } from "../lib/auth"
 import { Avatar } from "../components/avatar"
 import { ImageLightbox } from "../components/image-lightbox"
+import { VerifiedBadge } from "../components/verified-badge"
 import { subscribeToDmStream } from "../lib/dm-stream"
 import {
   MAX_UPLOAD_BYTES,
@@ -1051,8 +1052,11 @@ function ThreadHeader({
         />
       )}
       <div className="min-w-0">
-        <div className="truncate text-sm font-semibold">
-          {peer?.displayName || (peer?.handle ? `@${peer.handle}` : "Conversation")}
+        <div className="flex items-center gap-1 text-sm font-semibold">
+          <span className="truncate">
+            {peer?.displayName || (peer?.handle ? `@${peer.handle}` : "Conversation")}
+          </span>
+          {peer?.isVerified && <VerifiedBadge size={14} />}
         </div>
         {peer?.handle && (
           <Link
@@ -1210,13 +1214,16 @@ function GroupSettingsDialog({
                     className="size-7"
                   />
                   <div className="min-w-0 flex-1">
-                    <div className="truncate font-medium">
-                      {m.displayName || (m.handle ? `@${m.handle}` : m.id.slice(0, 8))}
+                    <div className="flex flex-wrap items-center gap-1 font-medium">
+                      <span className="truncate">
+                        {m.displayName || (m.handle ? `@${m.handle}` : m.id.slice(0, 8))}
+                      </span>
+                      {m.isVerified && <VerifiedBadge size={13} />}
                       {m.role === "admin" && (
-                        <span className="ml-1 text-xs text-muted-foreground">(admin)</span>
+                        <span className="text-xs text-muted-foreground">(admin)</span>
                       )}
                       {m.id === me && (
-                        <span className="ml-1 text-xs text-muted-foreground">(you)</span>
+                        <span className="text-xs text-muted-foreground">(you)</span>
                       )}
                     </div>
                   </div>
@@ -1259,8 +1266,11 @@ function GroupSettingsDialog({
                           className="size-7"
                         />
                         <div className="min-w-0 flex-1">
-                          <div className="truncate font-medium">
-                            {u.displayName || (u.handle ? `@${u.handle}` : u.id.slice(0, 8))}
+                          <div className="flex items-center gap-1 font-medium">
+                            <span className="truncate">
+                              {u.displayName || (u.handle ? `@${u.handle}` : u.id.slice(0, 8))}
+                            </span>
+                            {u.isVerified && <VerifiedBadge size={13} />}
                           </div>
                           {u.handle && (
                             <div className="truncate text-xs text-muted-foreground">

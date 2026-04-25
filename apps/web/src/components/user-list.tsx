@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
 import { Button } from "@workspace/ui/components/button"
+import { VerifiedBadge } from "./verified-badge"
 import type { PublicUser, UserListPage } from "../lib/api"
 
 export function UserList({
@@ -63,7 +64,10 @@ export function UserList({
             params={{ handle: u.handle }}
             className="block border-b border-border px-4 py-3 hover:bg-muted/40"
           >
-            <div className="text-sm font-medium">{u.displayName || `@${u.handle}`}</div>
+            <div className="flex items-center gap-1 text-sm font-medium">
+              <span className="truncate">{u.displayName || `@${u.handle}`}</span>
+              {u.isVerified && <VerifiedBadge size={14} />}
+            </div>
             <div className="text-xs text-muted-foreground">@{u.handle}</div>
             {u.bio && <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{u.bio}</p>}
           </Link>

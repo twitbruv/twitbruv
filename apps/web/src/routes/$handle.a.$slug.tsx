@@ -3,6 +3,7 @@ import { useEffect, useState } from "react"
 import { Button } from "@workspace/ui/components/button"
 import { ApiError,  api } from "../lib/api"
 import { Editor } from "../components/editor/editor"
+import { VerifiedBadge } from "../components/verified-badge"
 import { authClient } from "../lib/auth"
 import type {ArticleDto} from "../lib/api";
 
@@ -70,9 +71,10 @@ function ArticleView() {
             <Link
               to="/$handle"
               params={{ handle: article.author.handle }}
-              className="font-medium text-foreground hover:underline"
+              className="flex items-center gap-1 font-medium text-foreground hover:underline"
             >
               {article.author.displayName || `@${article.author.handle}`}
+              {article.author.isVerified && <VerifiedBadge size={14} />}
             </Link>
           )}
           <span>·</span>

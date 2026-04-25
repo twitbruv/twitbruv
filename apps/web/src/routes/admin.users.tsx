@@ -4,6 +4,7 @@ import { Button } from "@workspace/ui/components/button"
 import {  api } from "../lib/api"
 import { useMe } from "../lib/me"
 import { Avatar } from "../components/avatar"
+import { VerifiedBadge } from "../components/verified-badge"
 import type {AdminUser} from "../lib/api";
 
 export const Route = createFileRoute("/admin/users")({ component: AdminUsers })
@@ -132,13 +133,15 @@ function AdminUsers() {
                     <Link
                       to="/$handle"
                       params={{ handle: u.handle }}
-                      className="text-sm font-semibold hover:underline"
+                      className="flex items-center gap-1 text-sm font-semibold hover:underline"
                     >
                       {u.displayName ?? u.handle}
+                      {u.isVerified && <VerifiedBadge size={14} />}
                     </Link>
                   ) : (
-                    <span className="text-sm font-semibold">
+                    <span className="flex items-center gap-1 text-sm font-semibold">
                       {u.displayName ?? u.email}
+                      {u.isVerified && <VerifiedBadge size={14} />}
                     </span>
                   )}
                   {u.handle && (

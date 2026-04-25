@@ -38,6 +38,7 @@ import { ReportDialog } from "./report-dialog"
 import { Avatar } from "./avatar"
 import { ImageLightbox } from "./image-lightbox"
 import { Compose } from "./compose"
+import { VerifiedBadge } from "./verified-badge"
 import type { Post } from "../lib/api"
 
 function relativeTime(iso: string): string {
@@ -131,8 +132,9 @@ function QuoteEmbed({ post }: { post: Post }) {
       <div className="flex gap-3 p-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 text-xs">
-            <span className="font-semibold text-foreground">
+            <span className="flex items-center gap-1 font-semibold text-foreground">
               {post.author.displayName || `@${handle ?? "unknown"}`}
+              {post.author.isVerified && <VerifiedBadge size={13} />}
             </span>
             {handle && <span className="text-muted-foreground">@{handle}</span>}
             <span className="text-muted-foreground">·</span>
@@ -413,9 +415,12 @@ export function PostCard({
           className="mb-2 ml-10 flex items-center gap-1.5 text-xs text-muted-foreground hover:underline"
         >
           <IconRepeat size={14} stroke={1.75} />
-          <span>
-            Reposted by{" "}
-            {outerPost.author.displayName || `@${outerPost.author.handle}`}
+          <span className="flex items-center gap-1">
+            <span>
+              Reposted by{" "}
+              {outerPost.author.displayName || `@${outerPost.author.handle}`}
+            </span>
+            {outerPost.author.isVerified && <VerifiedBadge size={12} />}
           </span>
         </Link>
       )}
@@ -444,13 +449,15 @@ export function PostCard({
             <Link
               to="/$handle"
               params={{ handle: authorHandle }}
-              className="font-semibold text-foreground hover:underline"
+              className="flex items-center gap-1 font-semibold text-foreground hover:underline"
             >
               {post.author.displayName || `@${authorHandle}`}
+              {post.author.isVerified && <VerifiedBadge size={15} />}
             </Link>
           ) : (
-            <span className="font-semibold text-foreground">
+            <span className="flex items-center gap-1 font-semibold text-foreground">
               {post.author.displayName ?? "unknown"}
+              {post.author.isVerified && <VerifiedBadge size={15} />}
             </span>
           )}
           {authorHandle && (

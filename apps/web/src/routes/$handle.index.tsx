@@ -5,6 +5,7 @@ import { Feed } from "../components/feed"
 import { ProfileActions } from "../components/profile-actions"
 import { ImageLightbox } from "../components/image-lightbox"
 import { RichText } from "../components/rich-text"
+import { VerifiedBadge } from "../components/verified-badge"
 import type {PublicProfile} from "../lib/api";
 
 export const Route = createFileRoute("/$handle/")({ component: Profile })
@@ -92,7 +93,10 @@ function Profile() {
           </div>
         </div>
         <div className="mt-3">
-          <h1 className="text-xl font-semibold">{displayName}</h1>
+          <h1 className="flex items-center gap-1.5 text-xl font-semibold">
+            {displayName}
+            {user.isVerified && <VerifiedBadge size={20} />}
+          </h1>
           <p className="text-sm text-muted-foreground">@{user.handle}</p>
         </div>
         {user.bio && (

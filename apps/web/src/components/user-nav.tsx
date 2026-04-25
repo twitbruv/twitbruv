@@ -25,6 +25,7 @@ import { SidebarMenuButton } from "@workspace/ui/components/sidebar"
 import { authClient } from "../lib/auth"
 import { useTheme } from "../lib/theme"
 import { Avatar } from "./avatar"
+import { VerifiedBadge } from "./verified-badge"
 import type { Theme } from "../lib/theme"
 import type { SelfUser } from "../lib/api"
 
@@ -55,8 +56,9 @@ export function UserNav({ user }: { user: SelfUser }) {
           >
             <Avatar initial={initial} src={user.avatarUrl} />
             <div className="flex min-w-0 flex-col leading-tight group-data-[collapsible=icon]:hidden">
-              <span className="truncate text-sm font-medium">
-                {displayName}
+              <span className="flex min-w-0 items-center gap-1 truncate text-sm font-medium">
+                <span className="truncate">{displayName}</span>
+                {user.isVerified && <VerifiedBadge size={14} />}
               </span>
               <span className="truncate text-xs text-muted-foreground">
                 {subtitle}
@@ -74,7 +76,10 @@ export function UserNav({ user }: { user: SelfUser }) {
         <div className="flex items-center gap-3 px-2 py-2">
           <Avatar initial={initial} src={user.avatarUrl} />
           <div className="flex min-w-0 flex-col leading-tight">
-            <span className="truncate text-sm font-medium">{displayName}</span>
+            <span className="flex min-w-0 items-center gap-1 truncate text-sm font-medium">
+              <span className="truncate">{displayName}</span>
+              {user.isVerified && <VerifiedBadge size={14} />}
+            </span>
             <span className="truncate text-xs text-muted-foreground">
               {subtitle}
             </span>

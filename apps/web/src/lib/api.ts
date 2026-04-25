@@ -622,6 +622,7 @@ export interface InvitePreview {
       handle: string | null
       displayName: string | null
       avatarUrl: string | null
+      isVerified: boolean
     }>
   }
   expiresAt: string | null

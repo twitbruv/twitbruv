@@ -46,6 +46,7 @@ invitesRoute.get('/:token', async (c) => {
           handle: r.user.handle,
           displayName: r.user.displayName,
           avatarUrl: assetUrl(mediaEnv, r.user.avatarUrl),
+          isVerified: r.user.isVerified,
         })),
       },
       expiresAt: invite.invite.expiresAt?.toISOString() ?? null,

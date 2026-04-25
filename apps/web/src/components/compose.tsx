@@ -6,6 +6,7 @@ import { ApiError, api } from "../lib/api"
 import { setAltText, uploadImage } from "../lib/media"
 import { clearDraft, draftKey, loadDraft, saveDraft } from "../lib/drafts"
 import { useMe } from "../lib/me"
+import { VerifiedBadge } from "./verified-badge"
 import type { Post } from "../lib/api"
 import type { UploadedMedia } from "../lib/media"
 
@@ -173,8 +174,9 @@ export function Compose({
         {quoted && (
           <div className="mt-2 rounded-md border border-border p-3 text-sm">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="font-medium text-foreground">
+              <span className="flex items-center gap-1 font-medium text-foreground">
                 {quoted.author.displayName || `@${quoted.author.handle ?? "unknown"}`}
+                {quoted.author.isVerified && <VerifiedBadge size={13} />}
               </span>
               {quoted.author.handle && <span>@{quoted.author.handle}</span>}
             </div>

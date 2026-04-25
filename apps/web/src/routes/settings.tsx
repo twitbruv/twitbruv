@@ -11,6 +11,7 @@ import { ClaimHandle } from "../components/claim-handle"
 import { AvatarUpload } from "../components/avatar-upload"
 import { BannerUpload } from "../components/banner-upload"
 import { Avatar } from "../components/avatar"
+import { VerifiedBadge } from "../components/verified-badge"
 import type { BlockedUser, MutedUser } from "../lib/api"
 
 export const Route = createFileRoute("/settings")({ component: Settings })
@@ -479,7 +480,7 @@ function labelForScope(scope: "feed" | "notifications" | "both"): string {
   return "Feed only"
 }
 
-function PrivacyList<T extends { id: string; handle: string | null; displayName: string | null; avatarUrl: string | null }>({
+function PrivacyList<T extends { id: string; handle: string | null; displayName: string | null; avatarUrl: string | null; isVerified: boolean }>({
   users,
   emptyText,
   renderTrailing,
@@ -511,13 +512,15 @@ function PrivacyList<T extends { id: string; handle: string | null; displayName:
                 <Link
                   to="/$handle"
                   params={{ handle: u.handle }}
-                  className="block truncate text-sm font-medium hover:underline"
+                  className="flex items-center gap-1 text-sm font-medium hover:underline"
                 >
-                  {u.displayName ?? `@${u.handle}`}
+                  <span className="truncate">{u.displayName ?? `@${u.handle}`}</span>
+                  {u.isVerified && <VerifiedBadge size={13} />}
                 </Link>
               ) : (
-                <span className="block truncate text-sm font-medium">
-                  {u.displayName ?? "Unknown user"}
+                <span className="flex items-center gap-1 text-sm font-medium">
+                  <span className="truncate">{u.displayName ?? "Unknown user"}</span>
+                  {u.isVerified && <VerifiedBadge size={13} />}
                 </span>
               )}
               <p className="truncate text-xs text-muted-foreground">{renderMeta(u)}</p>

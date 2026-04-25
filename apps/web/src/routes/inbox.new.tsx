@@ -4,6 +4,7 @@ import { IconX } from "@tabler/icons-react"
 import { Button } from "@workspace/ui/components/button"
 import { api } from "../lib/api"
 import { Avatar } from "../components/avatar"
+import { VerifiedBadge } from "../components/verified-badge"
 import type { PublicUser } from "../lib/api"
 
 export const Route = createFileRoute("/inbox/new")({ component: NewConversation })
@@ -91,8 +92,9 @@ function NewConversation() {
                   src={u.avatarUrl}
                   className="size-5"
                 />
-                <span className="font-medium">
+                <span className="flex items-center gap-1 font-medium">
                   {u.displayName || (u.handle ? `@${u.handle}` : u.id.slice(0, 8))}
+                  {u.isVerified && <VerifiedBadge size={12} />}
                 </span>
                 <button
                   type="button"
@@ -151,8 +153,11 @@ function NewConversation() {
                     className="size-8"
                   />
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-medium">
-                      {u.displayName || (u.handle ? `@${u.handle}` : u.id.slice(0, 8))}
+                    <div className="flex items-center gap-1 text-sm font-medium">
+                      <span className="truncate">
+                        {u.displayName || (u.handle ? `@${u.handle}` : u.id.slice(0, 8))}
+                      </span>
+                      {u.isVerified && <VerifiedBadge size={14} />}
                     </div>
                     {u.handle && (
                       <div className="truncate text-xs text-muted-foreground">

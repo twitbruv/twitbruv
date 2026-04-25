@@ -12,6 +12,7 @@ import { Button } from "@workspace/ui/components/button"
 import { Skeleton, SkeletonAvatar } from "@workspace/ui/components/skeleton"
 import {  api } from "../lib/api"
 import { authClient } from "../lib/auth"
+import { VerifiedBadge } from "../components/verified-badge"
 import type {NotificationItem} from "../lib/api";
 
 export const Route = createFileRoute("/notifications")({ component: Notifications })
@@ -151,12 +152,16 @@ function NotificationRow({ item }: { item: NotificationItem }) {
             <Link
               to="/$handle"
               params={{ handle: actorPath }}
-              className="font-semibold hover:underline"
+              className="inline-flex items-center gap-1 font-semibold align-middle hover:underline"
             >
               {actorLabel}
+              {item.actor?.isVerified && <VerifiedBadge size={14} />}
             </Link>
           ) : (
-            <span className="font-semibold">{actorLabel}</span>
+            <span className="inline-flex items-center gap-1 font-semibold align-middle">
+              {actorLabel}
+              {item.actor?.isVerified && <VerifiedBadge size={14} />}
+            </span>
           )}{" "}
           <span className="text-muted-foreground">{verb}</span>
         </p>

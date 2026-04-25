@@ -4,6 +4,7 @@ import { Button } from "@workspace/ui/components/button"
 import { ApiError, api } from "../lib/api"
 import { authClient } from "../lib/auth"
 import { Avatar } from "../components/avatar"
+import { VerifiedBadge } from "../components/verified-badge"
 import type { InvitePreview } from "../lib/api"
 
 export const Route = createFileRoute("/invite/$token")({ component: InvitePage })
@@ -77,6 +78,10 @@ function InvitePage() {
       .slice(0, 3)
       .map((m) => m.displayName ?? (m.handle ? `@${m.handle}` : "user"))
       .join(", ")
+  const soloPeer =
+    conv.kind === "dm" && !conv.title && conv.previewMembers.length === 1
+      ? conv.previewMembers[0]
+      : null
 
   return (
     <main className="mx-auto max-w-md px-4 py-16">
@@ -91,7 +96,10 @@ function InvitePage() {
             />
           ))}
         </div>
-        <h1 className="text-lg font-semibold">{title}</h1>
+        <h1 className="flex items-center justify-center gap-1.5 text-lg font-semibold">
+          {title}
+          {soloPeer?.isVerified && <VerifiedBadge size={16} />}
+        </h1>
         <p className="mt-1 text-xs text-muted-foreground">
           {conv.kind === "group" ? "Group conversation" : "Conversation"} ·{" "}
           {conv.memberCount} member{conv.memberCount === 1 ? "" : "s"}

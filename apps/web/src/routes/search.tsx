@@ -3,6 +3,7 @@ import { useEffect, useState } from "react"
 import { IconSearch } from "@tabler/icons-react"
 import { Input } from "@workspace/ui/components/input"
 import { PostCard } from "../components/post-card"
+import { VerifiedBadge } from "../components/verified-badge"
 import { api } from "../lib/api"
 import type { Post, PublicUser } from "../lib/api"
 
@@ -108,8 +109,11 @@ function Search() {
                     params={{ handle: u.handle }}
                     className="block border-t border-border px-4 py-3 hover:bg-muted/40"
                   >
-                    <div className="text-sm font-medium">
-                      {u.displayName || `@${u.handle}`}
+                    <div className="flex items-center gap-1 text-sm font-medium">
+                      <span className="truncate">
+                        {u.displayName || `@${u.handle}`}
+                      </span>
+                      {u.isVerified && <VerifiedBadge size={14} />}
                     </div>
                     <div className="text-xs text-muted-foreground">
                       @{u.handle}

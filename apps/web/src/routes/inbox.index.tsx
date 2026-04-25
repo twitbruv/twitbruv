@@ -5,6 +5,7 @@ import { Button } from "@workspace/ui/components/button"
 import { Skeleton, SkeletonAvatar } from "@workspace/ui/components/skeleton"
 import { api } from "../lib/api"
 import { Avatar } from "../components/avatar"
+import { VerifiedBadge } from "../components/verified-badge"
 import { subscribeToDmStream } from "../lib/dm-stream"
 import type { DmConversation, DmMember } from "../lib/api"
 
@@ -160,6 +161,8 @@ function ConversationRow({ conversation }: { conversation: DmConversation }) {
   const ts = conversation.lastMessageAt
     ? new Date(conversation.lastMessageAt).toLocaleString()
     : ""
+  const peer =
+    !isGroup && !conversation.title ? conversation.members.at(0) : null
 
   return (
     <li>
@@ -171,7 +174,10 @@ function ConversationRow({ conversation }: { conversation: DmConversation }) {
         <ConversationAvatar conversation={conversation} />
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-2">
-            <span className="truncate text-sm font-semibold">{title}</span>
+            <span className="flex min-w-0 items-center gap-1 text-sm font-semibold">
+              <span className="truncate">{title}</span>
+              {peer?.isVerified && <VerifiedBadge size={14} />}
+            </span>
             <time className="shrink-0 text-xs text-muted-foreground">{ts}</time>
           </div>
           <p className="truncate text-sm text-muted-foreground">
