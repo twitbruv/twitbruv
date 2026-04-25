@@ -13,11 +13,16 @@ export function BannerUpload({
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [dragOver, setDragOver] = useState(false)
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     e.target.value = ""
-    if (!file) return
+    if (file) upload(file)
+  }
+
+  async function upload(file: File) {
+    if (!file.type.startsWith("image/") || uploading) return
     setError(null)
     setUploading(true)
     try {
@@ -30,6 +35,23 @@ export function BannerUpload({
     } finally {
       setUploading(false)
     }
+  }
+
+  function onDragOver(e: React.DragEvent) {
+    if (uploading) return
+    if (!Array.from(e.dataTransfer.types).includes("Files")) return
+    e.preventDefault()
+    setDragOver(true)
+  }
+  function onDragLeave(e: React.DragEvent) {
+    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return
+    setDragOver(false)
+  }
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setDragOver(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) upload(file)
   }
 
   return (
@@ -58,17 +80,30 @@ export function BannerUpload({
         size="icon"
         onClick={() => inputRef.current?.click()}
         disabled={uploading}
-        className="group relative block h-36 w-full overflow-hidden rounded-md border border-border bg-muted"
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
+        className={`group relative block h-36 w-full overflow-hidden rounded-md border bg-muted transition ${
+          dragOver ? "border-primary ring-2 ring-primary" : "border-border"
+        }`}
         aria-label="upload banner"
       >
         {currentUrl ? (
           <img src={currentUrl} alt="" className="h-full w-full object-cover" />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
-            click to upload a banner image (wide is better)
+            {dragOver
+              ? "drop image to upload"
+              : "click to upload a banner image (wide is better)"}
           </div>
         )}
-        <div className="absolute inset-0 flex items-center justify-center bg-background/0 opacity-0 transition group-hover:bg-background/30 group-hover:opacity-100">
+        <div
+          className={`absolute inset-0 flex items-center justify-center transition ${
+            dragOver
+              ? "bg-primary/10 opacity-100"
+              : "bg-background/0 opacity-0 group-hover:bg-background/30 group-hover:opacity-100"
+          }`}
+        >
           <IconCamera className="size-4" />
         </div>
       </Button>

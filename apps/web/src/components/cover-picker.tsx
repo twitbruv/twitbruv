@@ -18,6 +18,7 @@ export function CoverPicker({
   const [preview, setPreview] = useState<string | null>(initialUrl)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [dragOver, setDragOver] = useState(false)
 
   async function pick(file: File) {
     if (!file.type.startsWith("image/")) {
@@ -46,8 +47,30 @@ export function CoverPicker({
     onChange(null)
   }
 
+  function onDragOver(e: React.DragEvent) {
+    if (busy) return
+    if (!Array.from(e.dataTransfer.types).includes("Files")) return
+    e.preventDefault()
+    setDragOver(true)
+  }
+  function onDragLeave(e: React.DragEvent) {
+    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return
+    setDragOver(false)
+  }
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setDragOver(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) pick(file)
+  }
+
   return (
-    <div className="space-y-1">
+    <div
+      className="space-y-1"
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
       <input
         ref={fileInputRef}
         type="file"
@@ -82,10 +105,20 @@ export function CoverPicker({
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={busy}
-          className="flex aspect-[3/1] w-full flex-col items-center justify-center gap-1 rounded-md border-2 border-dashed border-border text-xs text-muted-foreground transition hover:bg-muted/30"
+          className={`flex aspect-[3/1] w-full flex-col items-center justify-center gap-1 rounded-md border-2 border-dashed text-xs transition ${
+            dragOver
+              ? "border-primary bg-primary/10 text-foreground"
+              : "border-border text-muted-foreground hover:bg-muted/30"
+          }`}
         >
           <IconPhoto size={20} stroke={1.5} />
-          <span>{busy ? "uploading…" : "Add cover image"}</span>
+          <span>
+            {busy
+              ? "uploading…"
+              : dragOver
+                ? "Drop to upload"
+                : "Add cover image"}
+          </span>
         </button>
       )}
       {error && <p className="text-xs text-destructive">{error}</p>}

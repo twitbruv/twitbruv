@@ -37,7 +37,7 @@ import {
   uploadImage,
 } from "../lib/media"
 import { WEB_URL } from "../lib/env"
-import type { ChangeEvent, FormEvent, KeyboardEvent } from "react"
+import type { ChangeEvent, DragEvent, FormEvent, KeyboardEvent } from "react"
 import type {
   DmConversationDetail,
   DmInvite,
@@ -75,6 +75,7 @@ function Thread() {
   const [pending, setPending] = useState<Pending | null>(null)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [dragOver, setDragOver] = useState(false)
   // Map of userId -> timestamp(ms) when their typing event last arrived; we render anyone with
   // an entry within the last TYPING_TTL ms.
   const [typingAt, setTypingAt] = useState<Record<string, number>>({})
@@ -338,6 +339,23 @@ function Thread() {
     e.target.value = ""
   }
 
+  function onDragOver(e: DragEvent) {
+    if (sending || conversation?.myRequestState === "pending") return
+    if (!Array.from(e.dataTransfer.types).includes("Files")) return
+    e.preventDefault()
+    setDragOver(true)
+  }
+  function onDragLeave(e: DragEvent) {
+    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return
+    setDragOver(false)
+  }
+  function onDrop(e: DragEvent) {
+    e.preventDefault()
+    setDragOver(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) attachFile(file)
+  }
+
   async function send(e?: FormEvent) {
     e?.preventDefault()
     const text = draft.trim()
@@ -400,7 +418,19 @@ function Thread() {
 
   return (
     <PageFrame className="flex min-h-0 flex-1 flex-col">
-      <main className="flex h-[calc(100vh-3.5rem)] flex-col">
+      <main
+        className="relative flex h-[calc(100vh-3.5rem)] flex-col"
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
+      >
+        {dragOver && (
+          <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-primary/10 text-sm font-medium text-foreground">
+            <div className="rounded-md border-2 border-dashed border-primary bg-background px-4 py-3 shadow-sm">
+              Drop image to attach
+            </div>
+          </div>
+        )}
         <header className="flex items-center gap-3 border-b border-border bg-background/80 px-4 py-3 backdrop-blur-sm">
           <Link
             to="/inbox"

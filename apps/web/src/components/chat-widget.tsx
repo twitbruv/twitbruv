@@ -241,6 +241,7 @@ function ChatView({
   const [text, setText] = useState("")
   const [sending, setSending] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -305,9 +306,12 @@ function ChatView({
 
   async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (!file || !file.type.startsWith("image/")) return
     e.target.value = ""
+    if (file) uploadAndSend(file)
+  }
 
+  async function uploadAndSend(file: File) {
+    if (!file.type.startsWith("image/") || uploading) return
     setUploading(true)
     try {
       const media = await uploadImage(file)
@@ -322,8 +326,35 @@ function ChatView({
     }
   }
 
+  function onDragOver(e: React.DragEvent) {
+    if (uploading) return
+    if (!Array.from(e.dataTransfer.types).includes("Files")) return
+    e.preventDefault()
+    setDragOver(true)
+  }
+  function onDragLeave(e: React.DragEvent) {
+    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return
+    setDragOver(false)
+  }
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setDragOver(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) uploadAndSend(file)
+  }
+
   return (
-    <div className="flex h-[32rem] max-h-[calc(100vh-6rem)] flex-col">
+    <div
+      className="relative flex h-[32rem] max-h-[calc(100vh-6rem)] flex-col"
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+    >
+      {dragOver && (
+        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-md border-2 border-dashed border-primary bg-primary/10 text-sm font-medium text-foreground">
+          Drop image to send
+        </div>
+      )}
       <header className="flex items-center gap-2 border-b border-border px-3 py-2.5">
         <Button size="icon-sm" variant="ghost" onClick={onBack}>
           <IconArrowLeft size={18} />

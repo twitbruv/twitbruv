@@ -15,12 +15,17 @@ export function AvatarUpload({
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [dragOver, setDragOver] = useState(false)
   const initial = (displayName ?? "·").slice(0, 1).toUpperCase()
 
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     e.target.value = ""
-    if (!file) return
+    if (file) upload(file)
+  }
+
+  async function upload(file: File) {
+    if (!file.type.startsWith("image/") || uploading) return
     setError(null)
     setUploading(true)
     try {
@@ -35,10 +40,36 @@ export function AvatarUpload({
     }
   }
 
+  function onDragOver(e: React.DragEvent) {
+    if (uploading) return
+    if (!Array.from(e.dataTransfer.types).includes("Files")) return
+    e.preventDefault()
+    setDragOver(true)
+  }
+  function onDragLeave(e: React.DragEvent) {
+    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return
+    setDragOver(false)
+  }
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setDragOver(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) upload(file)
+  }
+
   return (
     <div className="flex items-center gap-4">
-      <div className="relative">
-        <div className="size-20 overflow-hidden rounded-full ring-2 ring-background">
+      <div
+        className="relative"
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
+      >
+        <div
+          className={`size-20 overflow-hidden rounded-full ring-2 transition ${
+            dragOver ? "ring-primary" : "ring-background"
+          }`}
+        >
           {currentUrl ? (
             <img
               src={currentUrl}
