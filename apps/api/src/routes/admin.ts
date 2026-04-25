@@ -1,6 +1,6 @@
 import { Hono, type Context } from 'hono'
 import { z } from 'zod'
-import { and, desc, eq, ilike, or, sql } from '@workspace/db'
+import { and, desc, eq, gte, ilike, or, sql } from '@workspace/db'
 import { schema } from '@workspace/db'
 import { assetUrl } from '@workspace/media/s3'
 import { handleSchema } from '@workspace/validators'
@@ -30,8 +30,8 @@ adminRoute.get('/stats', async (c) => {
       deleted: sql<number>`count(*) filter (where ${schema.users.deletedAt} is not null)::int`,
       verified: sql<number>`count(*) filter (where ${schema.users.isVerified} = true)::int`,
       admins: sql<number>`count(*) filter (where ${schema.users.role} in ('admin','owner'))::int`,
-      newToday: sql<number>`count(*) filter (where ${schema.users.createdAt} >= ${dayAgo})::int`,
-      newThisWeek: sql<number>`count(*) filter (where ${schema.users.createdAt} >= ${weekAgo})::int`,
+      newToday: sql<number>`count(*) filter (where ${gte(schema.users.createdAt, dayAgo)})::int`,
+      newThisWeek: sql<number>`count(*) filter (where ${gte(schema.users.createdAt, weekAgo)})::int`,
     })
     .from(schema.users)
 
