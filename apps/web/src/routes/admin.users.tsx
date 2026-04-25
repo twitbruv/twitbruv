@@ -17,6 +17,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -179,24 +180,27 @@ function AdminUsers() {
                 <IconChevronDown className="size-3" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
-                <DropdownMenuLabel>Set role</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {ROLES.map((r) => (
-                  <DropdownMenuItem
-                    key={r}
-                    disabled={r === u.role}
-                    onClick={() =>
-                      r !== u.role && act(u.id, () => api.adminSetRole(u.id, r))
-                    }
-                  >
-                    <span className="uppercase tracking-wider">{r}</span>
-                    {r === u.role && (
-                      <span className="ml-auto text-[10px] text-muted-foreground">
-                        current
-                      </span>
-                    )}
-                  </DropdownMenuItem>
-                ))}
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>Set role</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {ROLES.map((r) => (
+                    <DropdownMenuItem
+                      key={r}
+                      disabled={r === u.role}
+                      onClick={() =>
+                        r !== u.role &&
+                        act(u.id, () => api.adminSetRole(u.id, r))
+                      }
+                    >
+                      <span className="uppercase tracking-wider">{r}</span>
+                      {r === u.role && (
+                        <span className="ml-auto text-[10px] text-muted-foreground">
+                          current
+                        </span>
+                      )}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuGroup>
               </DropdownMenuContent>
             </DropdownMenu>
           )
