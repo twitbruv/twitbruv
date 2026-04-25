@@ -12,11 +12,18 @@ import {
   OgFrame,
   OgStats,
   getOgFonts,
+  loadOgImage,
   truncate,
 } from "../lib/og-image"
 import type { PublicProfile } from "../lib/api"
 
-function ProfileCard({ user }: { user: PublicProfile }) {
+function ProfileCard({
+  user,
+  avatarSrc,
+}: {
+  user: PublicProfile
+  avatarSrc: string | null
+}) {
   const display = user.displayName || `@${user.handle}`
   const initial = (user.displayName ?? user.handle ?? "·").slice(0, 1)
 
@@ -36,7 +43,7 @@ function ProfileCard({ user }: { user: PublicProfile }) {
           gap: 28,
         }}
       >
-        <OgAvatar src={user.avatarUrl} initial={initial} size={140} />
+        <OgAvatar src={avatarSrc} initial={initial} size={140} />
         <div
           style={{
             display: "flex",
@@ -137,6 +144,7 @@ export const Route = createFileRoute("/og/user/$handle")({
         } catch {
           // Fall through to placeholder card.
         }
+        const avatarSrc = await loadOgImage(user?.avatarUrl)
         return new ImageResponse(
           (
             <OgFrame
@@ -144,7 +152,7 @@ export const Route = createFileRoute("/og/user/$handle")({
               seed={params.handle}
             >
               {user ? (
-                <ProfileCard user={user} />
+                <ProfileCard user={user} avatarSrc={avatarSrc} />
               ) : (
                 <NotFoundCard handle={params.handle} />
               )}

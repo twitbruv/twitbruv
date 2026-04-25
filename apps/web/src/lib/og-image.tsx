@@ -3,6 +3,15 @@ import { APP_NAME } from "./env"
 /** Standard OG card aspect — what Twitter, Facebook, Slack, Discord etc. expect. */
 export const OG_SIZE = { width: 1200, height: 630 } as const
 
+/** Cap on how long we wait for a remote avatar before giving up and rendering the
+ *  initial chip instead. Unfurlers (Twitter, Slack, ...) tend to time us out around
+ *  10s so we need plenty of headroom. */
+const OG_IMAGE_FETCH_TIMEOUT_MS = 4000
+
+/** Hard ceiling on remote image bytes we'll decode. Avatars are normally <100KB; this
+ *  is just a guard against pathological inputs ballooning memory inside satori. */
+const OG_IMAGE_MAX_BYTES = 4 * 1024 * 1024
+
 type FontWeight = 400 | 500 | 600 | 800
 
 interface FontEntry {
@@ -52,6 +61,36 @@ export async function getOgFonts(): Promise<Array<FontEntry>> {
     })
   }
   return fontsPromise
+}
+
+/** Server-side image loader for OG cards. Satori (under @vercel/og) only decodes PNG
+ *  and JPEG — any webp/avif `<img src>` blows up with "Unsupported image type". We
+ *  fetch the bytes here, transcode to PNG via sharp, and hand satori a data URL it can
+ *  paint. Returns null on any error so callers fall back to the initial chip rather
+ *  than 500ing the unfurler. */
+export async function loadOgImage(
+  src: string | null | undefined,
+): Promise<string | null> {
+  if (!src) return null
+  // Pass data URLs straight through; nothing to fetch.
+  if (src.startsWith("data:")) return src
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), OG_IMAGE_FETCH_TIMEOUT_MS)
+  try {
+    const res = await fetch(src, { redirect: "follow", signal: controller.signal })
+    if (!res.ok) return null
+    const buf = Buffer.from(await res.arrayBuffer())
+    if (buf.byteLength === 0 || buf.byteLength > OG_IMAGE_MAX_BYTES) return null
+    // Dynamic import keeps sharp out of any client bundle that might transitively pull
+    // this module in (it's a native binary; bundlers choke on it).
+    const sharp = (await import("sharp")).default
+    const png = await sharp(buf).png().toBuffer()
+    return `data:image/png;base64,${png.toString("base64")}`
+  } catch {
+    return null
+  } finally {
+    clearTimeout(timeout)
+  }
 }
 
 export const OG_HEADERS = {

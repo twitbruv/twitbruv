@@ -178,18 +178,44 @@ export function publicUrl(env: MediaEnv, key: string) {
   return `${env.S3_PUBLIC_URL.replace(/\/$/, '')}/${key}`
 }
 
+/** Returns the path portion of MEDIA_PROXY_BASE without leading or trailing slashes
+ *  (e.g. "api/m"). Empty string when the proxy isn't configured or its URL won't parse. */
+function proxyPathPrefix(env: MediaEnv): string {
+  if (!env.MEDIA_PROXY_BASE) return ''
+  try {
+    return new URL(env.MEDIA_PROXY_BASE).pathname.replace(/^\/+|\/+$/g, '')
+  } catch {
+    return ''
+  }
+}
+
+/** Strip a leading proxy-path prefix (e.g. "api/m/") off a key. Tolerates any number
+ *  of leading slashes and repeated prefixes — both have shown up in the wild from
+ *  legacy DB rows and host changes that confused earlier versions of extractKey. */
+function stripProxyPath(env: MediaEnv, key: string): string {
+  const prefix = proxyPathPrefix(env)
+  let out = key.replace(/^\/+/, '')
+  if (!prefix) return out
+  while (out.startsWith(`${prefix}/`)) {
+    out = out.slice(prefix.length + 1)
+  }
+  return out
+}
+
 /**
  * Best-effort key extraction for legacy DB rows that stored a full S3 URL (e.g. before we
- * switched to the proxy). Strips the host and an optional bucket prefix.
+ * switched to the proxy) or an already-proxied URL. Strips the host, an optional bucket
+ * prefix, and the proxy path prefix so the resulting key is always relative to the bucket
+ * root.
  */
 export function extractKey(env: MediaEnv, urlOrKey: string): string {
-  if (!urlOrKey.includes('://')) return urlOrKey.replace(/^\/+/, '')
+  if (!urlOrKey.includes('://')) return stripProxyPath(env, urlOrKey)
   try {
     const u = new URL(urlOrKey)
     const parts = u.pathname.replace(/^\/+/, '').split('/')
-    if (parts[0] === env.S3_BUCKET) return parts.slice(1).join('/')
-    if (parts[0]?.startsWith('bucket-')) return parts.slice(1).join('/')
-    return parts.join('/')
+    if (parts[0] === env.S3_BUCKET) return stripProxyPath(env, parts.slice(1).join('/'))
+    if (parts[0]?.startsWith('bucket-')) return stripProxyPath(env, parts.slice(1).join('/'))
+    return stripProxyPath(env, parts.join('/'))
   } catch {
     return urlOrKey
   }
@@ -203,7 +229,7 @@ export function extractKey(env: MediaEnv, urlOrKey: string): string {
 export function assetUrl(env: MediaEnv, stored: string | null | undefined): string | null {
   if (!stored) return null
   if (env.MEDIA_PROXY_BASE && stored.startsWith(env.MEDIA_PROXY_BASE)) return stored
-  if (!stored.includes('://')) return publicUrl(env, stored)
+  if (!stored.includes('://')) return publicUrl(env, stripProxyPath(env, stored))
   return publicUrl(env, extractKey(env, stored))
 }
 

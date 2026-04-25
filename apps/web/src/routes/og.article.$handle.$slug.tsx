@@ -11,11 +11,20 @@ import {
   OgAvatar,
   OgFrame,
   getOgFonts,
+  loadOgImage,
   truncate,
 } from "../lib/og-image"
 import type { ArticleDto } from "../lib/api"
 
-function ArticleCard({ article, handle }: { article: ArticleDto; handle: string }) {
+function ArticleCard({
+  article,
+  handle,
+  avatarSrc,
+}: {
+  article: ArticleDto
+  handle: string
+  avatarSrc: string | null
+}) {
   const author = article.author
   const display = author.displayName || `@${author.handle ?? handle}`
   const initial = (author.displayName ?? author.handle ?? handle).slice(0, 1)
@@ -64,7 +73,7 @@ function ArticleCard({ article, handle }: { article: ArticleDto; handle: string 
           marginTop: "auto",
         }}
       >
-        <OgAvatar src={author.avatarUrl} initial={initial} size={56} />
+        <OgAvatar src={avatarSrc} initial={initial} size={56} />
         <div
           style={{
             display: "flex",
@@ -114,6 +123,7 @@ export const Route = createFileRoute("/og/article/$handle/$slug")({
         } catch {
           // Fall through to placeholder card.
         }
+        const avatarSrc = await loadOgImage(article?.author.avatarUrl)
         return new ImageResponse(
           (
             <OgFrame
@@ -121,7 +131,11 @@ export const Route = createFileRoute("/og/article/$handle/$slug")({
               seed={`${params.handle}/${params.slug}`}
             >
               {article ? (
-                <ArticleCard article={article} handle={params.handle} />
+                <ArticleCard
+                  article={article}
+                  handle={params.handle}
+                  avatarSrc={avatarSrc}
+                />
               ) : (
                 <NotFoundCard />
               )}

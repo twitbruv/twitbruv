@@ -12,11 +12,12 @@ import {
   OgFrame,
   OgStats,
   getOgFonts,
+  loadOgImage,
   truncate,
 } from "../lib/og-image"
 import type { Post } from "../lib/api"
 
-function PostCard({ post }: { post: Post }) {
+function PostCard({ post, avatarSrc }: { post: Post; avatarSrc: string | null }) {
   const handle = post.author.handle ?? "user"
   const display = post.author.displayName || `@${handle}`
   const initial = (post.author.displayName ?? handle).slice(0, 1)
@@ -56,7 +57,7 @@ function PostCard({ post }: { post: Post }) {
           marginTop: "auto",
         }}
       >
-        <OgAvatar src={post.author.avatarUrl} initial={initial} size={64} />
+        <OgAvatar src={avatarSrc} initial={initial} size={64} />
         <div style={{ display: "flex", flexDirection: "column" }}>
           <div
             style={{
@@ -135,6 +136,9 @@ export const Route = createFileRoute("/og/post/$id")({
         } catch {
           // Falls through to NotFoundCard rather than 500ing the unfurler.
         }
+        // Resolve the avatar in parallel with anything else that might land here
+        // later. Satori can't decode webp, so we transcode server-side.
+        const avatarSrc = await loadOgImage(post?.author.avatarUrl)
         return new ImageResponse(
           (
             <OgFrame
@@ -143,7 +147,11 @@ export const Route = createFileRoute("/og/post/$id")({
               }
               seed={post?.id ?? params.id}
             >
-              {post ? <PostCard post={post} /> : <NotFoundCard />}
+              {post ? (
+                <PostCard post={post} avatarSrc={avatarSrc} />
+              ) : (
+                <NotFoundCard />
+              )}
             </OgFrame>
           ),
           {
