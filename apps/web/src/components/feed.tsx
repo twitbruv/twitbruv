@@ -26,7 +26,7 @@ export function Feed({
   const [loadingMore, setLoadingMore] = useState(false)
 
   // Filter function for hiding/showing replies
-  const filterPosts = (posts: Post[]) => {
+  const filterPosts = (posts: Array<Post>) => {
     if (hideReplies) return posts.filter((p) => !p.replyToId)
     if (onlyReplies) return posts.filter((p) => p.replyToId)
     return posts

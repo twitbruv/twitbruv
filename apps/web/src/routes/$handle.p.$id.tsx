@@ -257,7 +257,7 @@ function AncestorPost({
                 const variant = m.variants.find((v) => v.kind === "medium") ?? m.variants[0]
                 return (
                   <div key={m.id} className="aspect-video bg-muted">
-                    {m.processingState === "ready" && variant && (
+                    {m.processingState === "ready" && (
                       <img src={variant.url} alt={m.altText ?? ""} className="h-full w-full object-cover" />
                     )}
                   </div>
@@ -412,7 +412,7 @@ function ParentPost({ post, onChange, hasAncestors }: { post: Post; onChange: (p
             const variant = m.variants.find((v) => v.kind === "medium") ?? m.variants[0]
             return (
               <div key={m.id} className="aspect-video bg-muted">
-                {m.processingState === "ready" && variant && (
+                {m.processingState === "ready" && (
                   <img src={variant.url} alt={m.altText ?? ""} className="h-full w-full object-cover" />
                 )}
               </div>
