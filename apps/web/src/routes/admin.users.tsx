@@ -55,6 +55,15 @@ type ActionDialogState =
   | { kind: "delete"; user: AdminUser }
   | null
 
+const COLUMN_WIDTHS: Record<string, string> = {
+  user: "280px",
+  email: "240px",
+  role: "120px",
+  status: "200px",
+  actions: "340px",
+}
+const TABLE_MIN_WIDTH = "1180px"
+
 function AdminUsers() {
   const { me } = useMe()
   const [q, setQ] = useState("")
@@ -166,7 +175,7 @@ function AdminUsers() {
         id: "email",
         header: "Email",
         cell: ({ row }) => (
-          <span className="truncate text-xs text-muted-foreground">
+          <span className="block truncate text-xs text-muted-foreground">
             {row.original.email}
           </span>
         ),
@@ -384,7 +393,15 @@ function AdminUsers() {
           ref={setScrollRoot}
           className="flex-1 overflow-auto overscroll-contain"
         >
-          <Table>
+          <Table
+            className="table-fixed"
+            style={{ minWidth: TABLE_MIN_WIDTH }}
+          >
+            <colgroup>
+              {table.getVisibleLeafColumns().map((col) => (
+                <col key={col.id} style={{ width: COLUMN_WIDTHS[col.id] }} />
+              ))}
+            </colgroup>
             <TableHeader className="sticky top-0 z-10 bg-background">
               {table.getHeaderGroups().map((hg) => (
                 <TableRow key={hg.id}>
