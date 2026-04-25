@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router"
+import { Link, useNavigate } from "@tanstack/react-router"
 import { useEffect, useRef, useState } from "react"
 import {
   IconBookmark,
@@ -278,6 +278,7 @@ export function PostCard({
       window.clearInterval(iv)
     }
   }, [post.id])
+  const navigate = useNavigate()
   const [busy, setBusy] = useState(false)
   const [editing, setEditing] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
@@ -286,6 +287,14 @@ export function PostCard({
   const authorHandle = post.author.handle
   const showProfileLink = Boolean(authorHandle)
   const showPostLink = Boolean(authorHandle)
+
+  function handleCardClick(e: React.MouseEvent) {
+    // Don't navigate if clicking on interactive elements
+    const target = e.target as HTMLElement
+    if (target.closest('a, button, [role="button"], input, textarea')) return
+    if (!authorHandle) return
+    navigate({ to: '/$handle/p/$id', params: { handle: authorHandle, id: post.id } })
+  }
   const canEdit =
     isOwner && Date.now() - new Date(post.createdAt).getTime() < EDIT_WINDOW_MS
 
@@ -401,7 +410,8 @@ export function PostCard({
   return (
     <article
       ref={articleRef}
-      className="border-b border-border px-4 py-4 transition-colors hover:bg-muted/20"
+      onClick={handleCardClick}
+      className="border-b border-border px-4 py-4 transition-colors hover:bg-muted/20 cursor-pointer"
     >
       {outerPost.pinned && (
         <div className="mb-2 ml-10 flex items-center gap-1.5 text-xs text-muted-foreground">
