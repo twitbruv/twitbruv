@@ -1,5 +1,6 @@
 import { useLocation, useRouter } from "@tanstack/react-router"
 import { IconArrowLeft } from "@tabler/icons-react"
+import { SidebarTrigger } from "@workspace/ui/components/sidebar"
 import { getRouteInfo } from "../lib/routes"
 
 export function AppHeader() {
@@ -10,6 +11,7 @@ export function AppHeader() {
   return (
     <header className="sticky top-0 z-10 flex justify-center border-b border-border bg-background/90 backdrop-blur-sm">
       <div className="flex w-full max-w-[620px] items-center gap-2.5 px-4 py-2.5">
+        <SidebarTrigger className="size-6" />
         {back && (
           <button
             type="button"
