@@ -56,13 +56,12 @@ type ActionDialogState =
   | null
 
 const COLUMN_WIDTHS: Record<string, string> = {
-  user: "280px",
-  email: "240px",
-  role: "120px",
-  status: "200px",
-  actions: "340px",
+  user: "25%",
+  email: "20%",
+  role: "10%",
+  status: "17%",
+  actions: "28%",
 }
-const TABLE_MIN_WIDTH = "1180px"
 
 function AdminUsers() {
   const { me } = useMe()
@@ -393,10 +392,7 @@ function AdminUsers() {
           ref={setScrollRoot}
           className="flex-1 overflow-auto overscroll-contain"
         >
-          <Table
-            className="table-fixed"
-            style={{ minWidth: TABLE_MIN_WIDTH }}
-          >
+          <Table className="table-fixed">
             <colgroup>
               {table.getVisibleLeafColumns().map((col) => (
                 <col key={col.id} style={{ width: COLUMN_WIDTHS[col.id] }} />
