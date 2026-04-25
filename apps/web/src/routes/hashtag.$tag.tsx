@@ -4,7 +4,9 @@ import { api } from "../lib/api"
 import { Feed } from "../components/feed"
 import { PageFrame } from "../components/page-frame"
 
-export const Route = createFileRoute("/hashtag/$tag")({ component: HashtagPage })
+export const Route = createFileRoute("/hashtag/$tag")({
+  component: HashtagPage,
+})
 
 function HashtagPage() {
   const { tag } = Route.useParams()
@@ -12,13 +14,15 @@ function HashtagPage() {
 
   return (
     <PageFrame>
-    <main className="">
-      <header className="border-b border-border px-4 py-3">
-        <h1 className="text-lg font-semibold">#{tag}</h1>
-        <p className="text-xs text-muted-foreground">public posts with this hashtag</p>
-      </header>
-      <Feed load={load} emptyMessage={`Nothing tagged #${tag} yet.`} />
-    </main>
+      <main className="">
+        <header className="border-b border-border px-4 py-3">
+          <h1 className="text-lg font-semibold">#{tag}</h1>
+          <p className="text-xs text-muted-foreground">
+            public posts with this hashtag
+          </p>
+        </header>
+        <Feed load={load} emptyMessage={`Nothing tagged #${tag} yet.`} />
+      </main>
     </PageFrame>
   )
 }

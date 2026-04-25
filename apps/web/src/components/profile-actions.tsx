@@ -26,7 +26,9 @@ export function ProfileActions({
   onChange: (next: PublicProfile) => void
 }) {
   const router = useRouter()
-  const [busy, setBusy] = useState<null | "follow" | "block" | "mute" | "message">(null)
+  const [busy, setBusy] = useState<
+    null | "follow" | "block" | "mute" | "message"
+  >(null)
   const [reportOpen, setReportOpen] = useState(false)
 
   if (!profile.viewer || !profile.handle) return null
@@ -38,7 +40,10 @@ export function ProfileActions({
     setBusy("message")
     try {
       const { id } = await api.dmStart(profile.id)
-      router.navigate({ to: "/inbox/$conversationId", params: { conversationId: id } })
+      router.navigate({
+        to: "/inbox/$conversationId",
+        params: { conversationId: id },
+      })
     } catch {
       setBusy(null)
     }
@@ -49,7 +54,7 @@ export function ProfileActions({
     next: boolean,
     op: () => Promise<unknown>,
     flag: keyof NonNullable<PublicProfile["viewer"]>,
-    delta = 0,
+    delta = 0
   ) {
     setBusy(key)
     const prev = profile
@@ -57,7 +62,8 @@ export function ProfileActions({
       ...profile,
       counts: {
         ...profile.counts,
-        followers: profile.counts.followers + (flag === "following" ? delta : 0),
+        followers:
+          profile.counts.followers + (flag === "following" ? delta : 0),
       },
       viewer: { ...v, [flag]: next },
     }
@@ -92,7 +98,7 @@ export function ProfileActions({
             !v.following,
             () => (v.following ? api.unfollow(h) : api.follow(h)),
             "following",
-            v.following ? -1 : 1,
+            v.following ? -1 : 1
           )
         }
       >
@@ -113,7 +119,7 @@ export function ProfileActions({
                 "mute",
                 !v.muting,
                 () => (v.muting ? api.unmute(h) : api.mute(h)),
-                "muting",
+                "muting"
               )
             }
           >
@@ -132,7 +138,7 @@ export function ProfileActions({
                 "block",
                 !v.blocking,
                 () => (v.blocking ? api.unblock(h) : api.block(h)),
-                "blocking",
+                "blocking"
               )
             }}
           >

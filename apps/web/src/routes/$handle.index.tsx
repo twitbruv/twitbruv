@@ -1,14 +1,14 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
 import { useCallback, useEffect, useState } from "react"
 import { Button } from "@workspace/ui/components/button"
-import { ApiError,  api } from "../lib/api"
+import { ApiError, api } from "../lib/api"
 import { Feed } from "../components/feed"
 import { ProfileActions } from "../components/profile-actions"
 import { ImageLightbox } from "../components/image-lightbox"
 import { RichText } from "../components/rich-text"
 import { VerifiedBadge } from "../components/verified-badge"
 import { useMe } from "../lib/me"
-import type {PublicProfile} from "../lib/api";
+import type { PublicProfile } from "../lib/api"
 
 export const Route = createFileRoute("/$handle/")({ component: Profile })
 
@@ -96,6 +96,7 @@ function Profile() {
               <Button
                 size="sm"
                 variant="outline"
+                nativeButton={false}
                 render={<Link to="/settings" hash="profile" />}
               >
                 Edit profile

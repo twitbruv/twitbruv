@@ -42,37 +42,61 @@ function Settings() {
 
   return (
     <PageFrame>
-    <main className="mx-auto px-4 py-8">
-      <header>
-        <h1 className="text-xl font-semibold">Settings</h1>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {me.handle ? `@${me.handle}` : "no handle yet"} ·{" "}
-          {me.emailVerified ? "email verified" : "email unverified"}
-        </p>
-      </header>
+      <main className="mx-auto px-4 py-8">
+        <header>
+          <h1 className="text-xl font-semibold">Settings</h1>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {me.handle ? `@${me.handle}` : "no handle yet"} ·{" "}
+            {me.emailVerified ? "email verified" : "email unverified"}
+          </p>
+        </header>
 
-      {!me.handle && (
-        <div className="mt-6">
-          <ClaimHandle onClaimed={(h) => setMe({ ...me, handle: h })} />
+        {!me.handle && (
+          <div className="mt-6">
+            <ClaimHandle onClaimed={(h) => setMe({ ...me, handle: h })} />
+          </div>
+        )}
+
+        <div className="mt-6 flex gap-1 overflow-x-auto border-b border-border">
+          <SettingsTabBtn
+            active={tab === "profile"}
+            onClick={() => setTab("profile")}
+            label="Profile"
+          />
+          <SettingsTabBtn
+            active={tab === "account"}
+            onClick={() => setTab("account")}
+            label="Account"
+          />
+          <SettingsTabBtn
+            active={tab === "sessions"}
+            onClick={() => setTab("sessions")}
+            label="Sessions"
+          />
+          <SettingsTabBtn
+            active={tab === "privacy"}
+            onClick={() => setTab("privacy")}
+            label="Privacy"
+          />
+          <SettingsTabBtn
+            active={tab === "danger"}
+            onClick={() => setTab("danger")}
+            label="Danger zone"
+          />
         </div>
-      )}
 
-      <div className="mt-6 flex gap-1 overflow-x-auto border-b border-border">
-        <SettingsTabBtn active={tab === "profile"} onClick={() => setTab("profile")} label="Profile" />
-        <SettingsTabBtn active={tab === "account"} onClick={() => setTab("account")} label="Account" />
-        <SettingsTabBtn active={tab === "sessions"} onClick={() => setTab("sessions")} label="Sessions" />
-        <SettingsTabBtn active={tab === "privacy"} onClick={() => setTab("privacy")} label="Privacy" />
-        <SettingsTabBtn active={tab === "danger"} onClick={() => setTab("danger")} label="Danger zone" />
-      </div>
-
-      <div className="mt-6">
-        {tab === "profile" && <ProfileSection />}
-        {tab === "account" && <AccountSection email={me.email} />}
-        {tab === "sessions" && <SessionsSection currentSessionId={session?.session.id ?? null} />}
-        {tab === "privacy" && <PrivacySection />}
-        {tab === "danger" && <DangerZone onDeleted={() => router.navigate({ to: "/" })} />}
-      </div>
-    </main>
+        <div className="mt-6">
+          {tab === "profile" && <ProfileSection />}
+          {tab === "account" && <AccountSection email={me.email} />}
+          {tab === "sessions" && (
+            <SessionsSection currentSessionId={session?.session.id ?? null} />
+          )}
+          {tab === "privacy" && <PrivacySection />}
+          {tab === "danger" && (
+            <DangerZone onDeleted={() => router.navigate({ to: "/" })} />
+          )}
+        </div>
+      </main>
     </PageFrame>
   )
 }
@@ -90,7 +114,7 @@ function SettingsTabBtn({
     <button
       type="button"
       onClick={onClick}
-      className={`whitespace-nowrap px-4 py-3 text-sm font-medium transition-colors ${
+      className={`px-4 py-3 text-sm font-medium whitespace-nowrap transition-colors ${
         active
           ? "border-b-2 border-primary text-foreground"
           : "text-muted-foreground hover:text-foreground"
@@ -128,7 +152,7 @@ function ProfileSection() {
     if (!el) return
     el.scrollIntoView({ behavior: "smooth", block: "start" })
     const firstInput = el.querySelector<HTMLInputElement | HTMLTextAreaElement>(
-      "input, textarea",
+      "input, textarea"
     )
     firstInput?.focus({ preventScroll: true })
   }, [me])
@@ -194,7 +218,11 @@ function ProfileSection() {
         />
       </section>
 
-      <form onSubmit={onSave} id="profile" className="scroll-mt-4 space-y-3 border-t border-border pt-6">
+      <form
+        onSubmit={onSave}
+        id="profile"
+        className="scroll-mt-4 space-y-3 border-t border-border pt-6"
+      >
         <h2 className="text-sm font-semibold">Profile details</h2>
         <div className="space-y-1">
           <Label htmlFor="displayName">Display name</Label>
@@ -282,7 +310,9 @@ function AccountSection({ email }: { email: string }) {
     try {
       const res = await authClient.changeEmail({ newEmail })
       setEmStatus(
-        res.error ? res.error.message ?? "couldn't update email" : "verification email sent — confirm to switch",
+        res.error
+          ? (res.error.message ?? "couldn't update email")
+          : "verification email sent — confirm to switch"
       )
     } finally {
       setEmBusy(false)
@@ -303,8 +333,14 @@ function AccountSection({ email }: { email: string }) {
           onChange={(e) => setNewEmail(e.target.value)}
           placeholder="new@example.com"
         />
-        {emStatus && <p className="text-xs text-muted-foreground">{emStatus}</p>}
-        <Button type="submit" size="sm" disabled={emBusy || !newEmail || newEmail === email}>
+        {emStatus && (
+          <p className="text-xs text-muted-foreground">{emStatus}</p>
+        )}
+        <Button
+          type="submit"
+          size="sm"
+          disabled={emBusy || !newEmail || newEmail === email}
+        >
           Send verification
         </Button>
       </form>
@@ -325,8 +361,14 @@ function AccountSection({ email }: { email: string }) {
           onChange={(e) => setNewPassword(e.target.value)}
           placeholder="New password (10+ characters)"
         />
-        {pwStatus && <p className="text-xs text-muted-foreground">{pwStatus}</p>}
-        <Button type="submit" size="sm" disabled={pwBusy || !currentPassword || !newPassword}>
+        {pwStatus && (
+          <p className="text-xs text-muted-foreground">{pwStatus}</p>
+        )}
+        <Button
+          type="submit"
+          size="sm"
+          disabled={pwBusy || !currentPassword || !newPassword}
+        >
           Update password
         </Button>
       </form>
@@ -342,7 +384,11 @@ interface SessionRow {
   userAgent?: string | null
 }
 
-function SessionsSection({ currentSessionId }: { currentSessionId: string | null }) {
+function SessionsSection({
+  currentSessionId,
+}: {
+  currentSessionId: string | null
+}) {
   const [sessions, setSessions] = useState<Array<SessionRow> | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -388,7 +434,12 @@ function SessionsSection({ currentSessionId }: { currentSessionId: string | null
     <section className="space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold">Active sessions</h2>
-        <Button size="sm" variant="outline" disabled={busy} onClick={revokeOthers}>
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={busy}
+          onClick={revokeOthers}
+        >
           Sign out other devices
         </Button>
       </div>
@@ -402,23 +453,35 @@ function SessionsSection({ currentSessionId }: { currentSessionId: string | null
           {sessions.map((s) => {
             const isCurrent = s.id === currentSessionId
             return (
-              <li key={s.id} className="flex items-start justify-between gap-3 px-3 py-2 text-xs">
+              <li
+                key={s.id}
+                className="flex items-start justify-between gap-3 px-3 py-2 text-xs"
+              >
                 <div className="min-w-0">
                   <div className="font-medium">
                     {s.userAgent ? truncate(s.userAgent, 60) : "Unknown device"}
                     {isCurrent && (
-                      <span className="ml-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                      <span className="ml-1 text-[10px] tracking-wider text-muted-foreground uppercase">
                         this device
                       </span>
                     )}
                   </div>
                   <div className="text-muted-foreground">
                     {s.ipAddress && <span>{s.ipAddress} · </span>}
-                    {s.createdAt && <span>started {new Date(s.createdAt).toLocaleString()}</span>}
+                    {s.createdAt && (
+                      <span>
+                        started {new Date(s.createdAt).toLocaleString()}
+                      </span>
+                    )}
                   </div>
                 </div>
                 {!isCurrent && s.token && (
-                  <Button size="sm" variant="ghost" disabled={busy} onClick={() => revoke(s.token!)}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={busy}
+                    onClick={() => revoke(s.token!)}
+                  >
                     Revoke
                   </Button>
                 )}
@@ -523,7 +586,9 @@ function PrivacySection() {
               Unblock
             </Button>
           )}
-          renderMeta={(u) => `Blocked ${new Date(u.blockedAt).toLocaleDateString()}`}
+          renderMeta={(u) =>
+            `Blocked ${new Date(u.blockedAt).toLocaleDateString()}`
+          }
         />
       )}
       {tab === "mutes" && (
@@ -540,7 +605,9 @@ function PrivacySection() {
               Unmute
             </Button>
           )}
-          renderMeta={(u) => `${labelForScope(u.scope)} · ${new Date(u.mutedAt).toLocaleDateString()}`}
+          renderMeta={(u) =>
+            `${labelForScope(u.scope)} · ${new Date(u.mutedAt).toLocaleDateString()}`
+          }
         />
       )}
     </section>
@@ -553,7 +620,15 @@ function labelForScope(scope: "feed" | "notifications" | "both"): string {
   return "Feed only"
 }
 
-function PrivacyList<T extends { id: string; handle: string | null; displayName: string | null; avatarUrl: string | null; isVerified: boolean }>({
+function PrivacyList<
+  T extends {
+    id: string
+    handle: string | null
+    displayName: string | null
+    avatarUrl: string | null
+    isVerified: boolean
+  },
+>({
   users,
   emptyText,
   renderTrailing,
@@ -573,10 +648,15 @@ function PrivacyList<T extends { id: string; handle: string | null; displayName:
   return (
     <ul className="divide-y divide-border rounded-md border border-border">
       {users.map((u) => (
-        <li key={u.id} className="flex items-center justify-between gap-3 px-3 py-2">
+        <li
+          key={u.id}
+          className="flex items-center justify-between gap-3 px-3 py-2"
+        >
           <div className="flex min-w-0 items-center gap-2">
             <Avatar
-              initial={(u.displayName || u.handle || "?").slice(0, 1).toUpperCase()}
+              initial={(u.displayName || u.handle || "?")
+                .slice(0, 1)
+                .toUpperCase()}
               src={u.avatarUrl}
               className="size-8 shrink-0"
             />
@@ -587,16 +667,22 @@ function PrivacyList<T extends { id: string; handle: string | null; displayName:
                   params={{ handle: u.handle }}
                   className="flex items-center gap-1 text-sm font-medium hover:underline"
                 >
-                  <span className="truncate">{u.displayName ?? `@${u.handle}`}</span>
+                  <span className="truncate">
+                    {u.displayName ?? `@${u.handle}`}
+                  </span>
                   {u.isVerified && <VerifiedBadge size={13} />}
                 </Link>
               ) : (
                 <span className="flex items-center gap-1 text-sm font-medium">
-                  <span className="truncate">{u.displayName ?? "Unknown user"}</span>
+                  <span className="truncate">
+                    {u.displayName ?? "Unknown user"}
+                  </span>
                   {u.isVerified && <VerifiedBadge size={13} />}
                 </span>
               )}
-              <p className="truncate text-xs text-muted-foreground">{renderMeta(u)}</p>
+              <p className="truncate text-xs text-muted-foreground">
+                {renderMeta(u)}
+              </p>
             </div>
           </div>
           {renderTrailing(u)}
@@ -635,8 +721,10 @@ function DangerZone({ onDeleted }: { onDeleted: () => void }) {
     <section className="space-y-3">
       <h2 className="text-sm font-semibold text-destructive">Danger zone</h2>
       <p className="text-xs text-muted-foreground">
-        Deleting your account is permanent. Posts, articles, and DMs you authored will be removed.
-        Type <code className="rounded bg-muted px-1">{requiredText}</code> to confirm.
+        Deleting your account is permanent. Posts, articles, and DMs you
+        authored will be removed. Type{" "}
+        <code className="rounded bg-muted px-1">{requiredText}</code> to
+        confirm.
       </p>
       <Input
         value={confirm}
@@ -644,7 +732,12 @@ function DangerZone({ onDeleted }: { onDeleted: () => void }) {
         placeholder={requiredText}
       />
       {error && <p className="text-xs text-destructive">{error}</p>}
-      <Button variant="destructive" size="sm" disabled={!matches || busy} onClick={deleteMe}>
+      <Button
+        variant="destructive"
+        size="sm"
+        disabled={!matches || busy}
+        onClick={deleteMe}
+      >
         Delete my account
       </Button>
     </section>

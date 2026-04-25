@@ -1,7 +1,11 @@
 import { API_URL } from "./env"
 
 export class ApiError extends Error {
-  constructor(public status: number, public code: string, message: string) {
+  constructor(
+    public status: number,
+    public code: string,
+    message: string
+  ) {
     super(message)
   }
 }
@@ -17,22 +21,34 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   })
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: "unknown" }))
-    throw new ApiError(res.status, body.error ?? "unknown", body.message ?? res.statusText)
+    throw new ApiError(
+      res.status,
+      body.error ?? "unknown",
+      body.message ?? res.statusText
+    )
   }
   return (await res.json()) as T
 }
 
 const h = (handle: string) => handle.replace(/^@/, "")
-const qs = (cursor?: string) => (cursor ? `?cursor=${encodeURIComponent(cursor)}` : "")
+const qs = (cursor?: string) =>
+  cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""
 
 export const api = {
   me: () => request<{ user: SelfUser }>("/api/me"),
   updateMe: (body: Partial<SelfUser>) =>
-    request<{ user: SelfUser }>("/api/me", { method: "PATCH", body: JSON.stringify(body) }),
+    request<{ user: SelfUser }>("/api/me", {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
   claimHandle: (handle: string) =>
-    request<{ user: SelfUser }>("/api/me/handle", { method: "POST", body: JSON.stringify({ handle }) }),
+    request<{ user: SelfUser }>("/api/me/handle", {
+      method: "POST",
+      body: JSON.stringify({ handle }),
+    }),
 
-  user: (handle: string) => request<{ user: PublicProfile }>(`/api/users/${h(handle)}`),
+  user: (handle: string) =>
+    request<{ user: PublicProfile }>(`/api/users/${h(handle)}`),
   userPosts: (handle: string, cursor?: string) =>
     request<FeedPage>(`/api/users/${h(handle)}/posts${qs(cursor)}`),
   followers: (handle: string, cursor?: string) =>
@@ -43,11 +59,15 @@ export const api = {
   follow: (handle: string) =>
     request<{ ok: true }>(`/api/users/${h(handle)}/follow`, { method: "POST" }),
   unfollow: (handle: string) =>
-    request<{ ok: true }>(`/api/users/${h(handle)}/follow`, { method: "DELETE" }),
+    request<{ ok: true }>(`/api/users/${h(handle)}/follow`, {
+      method: "DELETE",
+    }),
   block: (handle: string) =>
     request<{ ok: true }>(`/api/users/${h(handle)}/block`, { method: "POST" }),
   unblock: (handle: string) =>
-    request<{ ok: true }>(`/api/users/${h(handle)}/block`, { method: "DELETE" }),
+    request<{ ok: true }>(`/api/users/${h(handle)}/block`, {
+      method: "DELETE",
+    }),
   mute: (handle: string, scope: "feed" | "notifications" | "both" = "feed") =>
     request<{ ok: true }>(`/api/users/${h(handle)}/mute`, {
       method: "POST",
@@ -57,25 +77,30 @@ export const api = {
     request<{ ok: true }>(`/api/users/${h(handle)}/mute`, { method: "DELETE" }),
 
   feed: (cursor?: string) => request<FeedPage>(`/api/feed${qs(cursor)}`),
-  publicTimeline: (cursor?: string) => request<FeedPage>(`/api/posts${qs(cursor)}`),
+  publicTimeline: (cursor?: string) =>
+    request<FeedPage>(`/api/posts${qs(cursor)}`),
   hashtag: (tag: string, cursor?: string) =>
-    request<HashtagPage>(`/api/hashtags/${encodeURIComponent(tag.replace(/^#/, ""))}/posts${qs(cursor)}`),
-  trendingHashtags: () =>
-    request<{ hashtags: Array<{ tag: string; postCount: number }>; cached: boolean }>(
-      "/api/hashtags/trending",
+    request<HashtagPage>(
+      `/api/hashtags/${encodeURIComponent(tag.replace(/^#/, ""))}/posts${qs(cursor)}`
     ),
+  trendingHashtags: () =>
+    request<{
+      hashtags: Array<{ tag: string; postCount: number }>
+      cached: boolean
+    }>("/api/hashtags/trending"),
   search: (q: string) =>
     request<{ users: Array<PublicUser>; posts: Array<Post> }>(
-      `/api/search?q=${encodeURIComponent(q)}`,
+      `/api/search?q=${encodeURIComponent(q)}`
     ),
-  bookmarks: (cursor?: string) => request<FeedPage>(`/api/me/bookmarks${qs(cursor)}`),
+  bookmarks: (cursor?: string) =>
+    request<FeedPage>(`/api/me/bookmarks${qs(cursor)}`),
   blocks: (cursor?: string) =>
     request<{ users: Array<BlockedUser>; nextCursor: string | null }>(
-      `/api/me/blocks${qs(cursor)}`,
+      `/api/me/blocks${qs(cursor)}`
     ),
   mutes: (cursor?: string) =>
     request<{ users: Array<MutedUser>; nextCursor: string | null }>(
-      `/api/me/mutes${qs(cursor)}`,
+      `/api/me/mutes${qs(cursor)}`
     ),
 
   notifications: (cursor?: string, unreadOnly = false) => {
@@ -103,13 +128,19 @@ export const api = {
       folder: "inbox" | "requests"
     }>(`/api/dms?folder=${folder}`),
   dmConversation: (conversationId: string) =>
-    request<{ conversation: DmConversationDetail }>(`/api/dms/${conversationId}`),
+    request<{ conversation: DmConversationDetail }>(
+      `/api/dms/${conversationId}`
+    ),
   dmUnreadCount: () =>
     request<{ count: number; requestCount: number }>("/api/dms/unread-count"),
   dmAcceptRequest: (conversationId: string) =>
-    request<{ ok: true }>(`/api/dms/${conversationId}/accept`, { method: "POST" }),
+    request<{ ok: true }>(`/api/dms/${conversationId}/accept`, {
+      method: "POST",
+    }),
   dmDeclineRequest: (conversationId: string) =>
-    request<{ ok: true }>(`/api/dms/${conversationId}/decline`, { method: "POST" }),
+    request<{ ok: true }>(`/api/dms/${conversationId}/decline`, {
+      method: "POST",
+    }),
   dmStart: (userId: string) =>
     request<{ id: string; created: boolean }>("/api/dms", {
       method: "POST",
@@ -139,24 +170,30 @@ export const api = {
       method: "DELETE",
     }),
   dmTyping: (conversationId: string) =>
-    request<{ ok: true }>(`/api/dms/${conversationId}/typing`, { method: "POST" }),
+    request<{ ok: true }>(`/api/dms/${conversationId}/typing`, {
+      method: "POST",
+    }),
   dmEditMessage: (conversationId: string, messageId: string, text: string) =>
     request<{ ok: true; editedAt: string }>(
       `/api/dms/${conversationId}/messages/${messageId}`,
-      { method: "PATCH", body: JSON.stringify({ text }) },
+      { method: "PATCH", body: JSON.stringify({ text }) }
     ),
   dmDeleteMessage: (conversationId: string, messageId: string) =>
     request<{ ok: true }>(`/api/dms/${conversationId}/messages/${messageId}`, {
       method: "DELETE",
     }),
-  dmToggleReaction: (conversationId: string, messageId: string, emoji: string) =>
+  dmToggleReaction: (
+    conversationId: string,
+    messageId: string,
+    emoji: string
+  ) =>
     request<{ ok: true; op: "add" | "remove" }>(
       `/api/dms/${conversationId}/messages/${messageId}/reactions`,
-      { method: "POST", body: JSON.stringify({ emoji }) },
+      { method: "POST", body: JSON.stringify({ emoji }) }
     ),
   dmCreateInvite: (
     conversationId: string,
-    body: { expiresInHours?: number; maxUses?: number } = {},
+    body: { expiresInHours?: number; maxUses?: number } = {}
   ) =>
     request<{ invite: DmInvite }>(`/api/dms/${conversationId}/invites`, {
       method: "POST",
@@ -169,14 +206,19 @@ export const api = {
       method: "DELETE",
     }),
   invitePreview: (token: string) =>
-    request<{ invite: InvitePreview }>(`/api/invites/${encodeURIComponent(token)}`),
+    request<{ invite: InvitePreview }>(
+      `/api/invites/${encodeURIComponent(token)}`
+    ),
   inviteAccept: (token: string) =>
-    request<{ id: string }>(`/api/invites/${encodeURIComponent(token)}/accept`, {
-      method: "POST",
-    }),
+    request<{ id: string }>(
+      `/api/invites/${encodeURIComponent(token)}/accept`,
+      {
+        method: "POST",
+      }
+    ),
   dmMessages: (conversationId: string, cursor?: string) =>
     request<{ messages: Array<DmMessage>; nextCursor: string | null }>(
-      `/api/dms/${conversationId}/messages${qs(cursor)}`,
+      `/api/dms/${conversationId}/messages${qs(cursor)}`
     ),
   dmSend: (
     conversationId: string,
@@ -185,7 +227,7 @@ export const api = {
       sharedPostId?: string
       sharedArticleId?: string
       mediaId?: string
-    },
+    }
   ) =>
     request<{ message: DmMessage }>(`/api/dms/${conversationId}/messages`, {
       method: "POST",
@@ -207,7 +249,8 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
-  article: (id: string) => request<{ article: ArticleDto }>(`/api/articles/${id}`),
+  article: (id: string) =>
+    request<{ article: ArticleDto }>(`/api/articles/${id}`),
   deleteArticle: (id: string) =>
     request<{ ok: true }>(`/api/articles/${id}`, { method: "DELETE" }),
   myArticles: (cursor?: string) =>
@@ -229,7 +272,7 @@ export const api = {
     }>(`/api/users/${h(handle)}/articles${qs(cursor)}`),
   userArticleBySlug: (handle: string, slug: string) =>
     request<{ article: ArticleDto }>(
-      `/api/users/${h(handle)}/articles/${encodeURIComponent(slug)}`,
+      `/api/users/${h(handle)}/articles/${encodeURIComponent(slug)}`
     ),
 
   createPost: (body: {
@@ -238,7 +281,11 @@ export const api = {
     quoteOfId?: string
     mediaIds?: Array<string>
     poll?: PollInput
-  }) => request<{ post: Post }>("/api/posts", { method: "POST", body: JSON.stringify(body) }),
+  }) =>
+    request<{ post: Post }>("/api/posts", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
 
   votePoll: (pollId: string, optionIds: Array<string>) =>
     request<{ ok: true }>(`/api/polls/${pollId}/vote`, {
@@ -249,7 +296,7 @@ export const api = {
   // Drafts + scheduled posts. `kind` filters to only-drafts or only-scheduled.
   scheduledPosts: (kind?: "draft" | "scheduled") =>
     request<{ items: Array<ScheduledPost> }>(
-      `/api/scheduled-posts${kind ? `?kind=${kind}` : ""}`,
+      `/api/scheduled-posts${kind ? `?kind=${kind}` : ""}`
     ),
   createScheduledPost: (body: ScheduledPostInput) =>
     request<{ item: ScheduledPost }>("/api/scheduled-posts", {
@@ -264,16 +311,33 @@ export const api = {
   deleteScheduledPost: (id: string) =>
     request<{ ok: true }>(`/api/scheduled-posts/${id}`, { method: "DELETE" }),
   publishScheduledPost: (id: string) =>
-    request<{ postId: string }>(`/api/scheduled-posts/${id}/publish`, { method: "POST" }),
+    request<{ postId: string }>(`/api/scheduled-posts/${id}/publish`, {
+      method: "POST",
+    }),
 
   // Lists.
   myLists: () => request<{ lists: Array<UserList> }>("/api/lists/me"),
   userLists: (handle: string) =>
     request<{ lists: Array<UserList> }>(`/api/lists/by/${h(handle)}`),
   list: (id: string) => request<{ list: UserList }>(`/api/lists/${id}`),
-  createList: (body: { slug: string; title: string; description?: string; isPrivate?: boolean }) =>
-    request<{ list: UserList }>("/api/lists", { method: "POST", body: JSON.stringify(body) }),
-  updateList: (id: string, body: Partial<{ title: string; description: string | null; isPrivate: boolean }>) =>
+  createList: (body: {
+    slug: string
+    title: string
+    description?: string
+    isPrivate?: boolean
+  }) =>
+    request<{ list: UserList }>("/api/lists", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateList: (
+    id: string,
+    body: Partial<{
+      title: string
+      description: string | null
+      isPrivate: boolean
+    }>
+  ) =>
     request<{ list: UserList }>(`/api/lists/${id}`, {
       method: "PATCH",
       body: JSON.stringify(body),
@@ -288,25 +352,35 @@ export const api = {
       body: JSON.stringify({ userIds }),
     }),
   removeListMember: (id: string, memberId: string) =>
-    request<{ ok: true }>(`/api/lists/${id}/members/${memberId}`, { method: "DELETE" }),
+    request<{ ok: true }>(`/api/lists/${id}/members/${memberId}`, {
+      method: "DELETE",
+    }),
   listTimeline: (id: string, cursor?: string) =>
     request<FeedPage>(`/api/lists/${id}/timeline${qs(cursor)}`),
   post: (id: string) => request<{ post: Post }>(`/api/posts/${id}`),
   thread: (id: string) => request<Thread>(`/api/posts/${id}/thread`),
-  deletePost: (id: string) => request<{ ok: true }>(`/api/posts/${id}`, { method: "DELETE" }),
+  deletePost: (id: string) =>
+    request<{ ok: true }>(`/api/posts/${id}`, { method: "DELETE" }),
   editPost: (id: string, text: string) =>
-    request<{ post: Post }>(`/api/posts/${id}`, { method: "PATCH", body: JSON.stringify({ text }) }),
+    request<{ post: Post }>(`/api/posts/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ text }),
+    }),
 
-  like: (id: string) => request<{ ok: true }>(`/api/posts/${id}/like`, { method: "POST" }),
-  unlike: (id: string) => request<{ ok: true }>(`/api/posts/${id}/like`, { method: "DELETE" }),
+  like: (id: string) =>
+    request<{ ok: true }>(`/api/posts/${id}/like`, { method: "POST" }),
+  unlike: (id: string) =>
+    request<{ ok: true }>(`/api/posts/${id}/like`, { method: "DELETE" }),
   bookmark: (id: string) =>
     request<{ ok: true }>(`/api/posts/${id}/bookmark`, { method: "POST" }),
   unbookmark: (id: string) =>
     request<{ ok: true }>(`/api/posts/${id}/bookmark`, { method: "DELETE" }),
-  repost: (id: string) => request<{ ok: true }>(`/api/posts/${id}/repost`, { method: "POST" }),
+  repost: (id: string) =>
+    request<{ ok: true }>(`/api/posts/${id}/repost`, { method: "POST" }),
   unrepost: (id: string) =>
     request<{ ok: true }>(`/api/posts/${id}/repost`, { method: "DELETE" }),
-  pinPost: (id: string) => request<{ ok: true }>(`/api/posts/${id}/pin`, { method: "POST" }),
+  pinPost: (id: string) =>
+    request<{ ok: true }>(`/api/posts/${id}/pin`, { method: "POST" }),
   unpinPost: (id: string) =>
     request<{ ok: true }>(`/api/posts/${id}/pin`, { method: "DELETE" }),
 
@@ -315,7 +389,7 @@ export const api = {
     if (q) params.set("q", q)
     if (cursor) params.set("cursor", cursor)
     return request<{ users: Array<AdminUser>; nextCursor: string | null }>(
-      `/api/admin/users${params.toString() ? `?${params.toString()}` : ""}`,
+      `/api/admin/users${params.toString() ? `?${params.toString()}` : ""}`
     )
   },
   adminUser: (id: string) => request<AdminUserDetail>(`/api/admin/users/${id}`),
@@ -332,7 +406,9 @@ export const api = {
       body: JSON.stringify(body),
     }),
   adminUnshadowban: (id: string) =>
-    request<{ ok: true }>(`/api/admin/users/${id}/unshadowban`, { method: "POST" }),
+    request<{ ok: true }>(`/api/admin/users/${id}/unshadowban`, {
+      method: "POST",
+    }),
   adminSetRole: (id: string, role: "user" | "admin" | "owner") =>
     request<{ ok: true }>(`/api/admin/users/${id}/role`, {
       method: "POST",
@@ -353,20 +429,26 @@ export const api = {
     if (status) params.set("status", status)
     if (cursor) params.set("cursor", cursor)
     return request<{ reports: Array<AdminReport>; nextCursor: string | null }>(
-      `/api/admin/reports${params.toString() ? `?${params.toString()}` : ""}`,
+      `/api/admin/reports${params.toString() ? `?${params.toString()}` : ""}`
     )
   },
   adminReportDetail: (id: string) =>
     request<AdminReportDetail>(`/api/admin/reports/${id}`),
   adminResolveReport: (
     id: string,
-    body: { status: "triaged" | "actioned" | "dismissed"; resolutionNote?: string },
+    body: {
+      status: "triaged" | "actioned" | "dismissed"
+      resolutionNote?: string
+    }
   ) =>
     request<{ ok: true }>(`/api/admin/reports/${id}`, {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
-  adminDeletePost: (id: string, body: { reason?: string; reportId?: string } = {}) =>
+  adminDeletePost: (
+    id: string,
+    body: { reason?: string; reportId?: string } = {}
+  ) =>
     request<{ ok: true }>(`/api/admin/posts/${id}`, {
       method: "DELETE",
       body: JSON.stringify(body),

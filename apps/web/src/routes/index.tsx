@@ -24,7 +24,8 @@ export const Route = createFileRoute("/")({
   component: Landing,
   validateSearch: (search: Record<string, unknown>): HomeSearch => ({
     postId: typeof search.postId === "string" ? search.postId : undefined,
-    postHandle: typeof search.postHandle === "string" ? search.postHandle : undefined,
+    postHandle:
+      typeof search.postHandle === "string" ? search.postHandle : undefined,
   }),
 })
 
@@ -40,7 +41,7 @@ function Landing() {
   const [tab, setTab] = useState<FeedTab>("following")
   const selectedThread = useMemo(
     () => (postId && postHandle ? { id: postId, handle: postHandle } : null),
-    [postId, postHandle],
+    [postId, postHandle]
   )
   const panelThread = useDelayedPresence(selectedThread, HOME_PANEL_PRESENCE_MS)
 
@@ -78,7 +79,10 @@ function Landing() {
     navigate({
       to: "/$handle/p/$id",
       params: { handle: selectedThread.handle, id: selectedThread.id },
-      search: homeThreadFromFeedSearch(selectedThread.id, selectedThread.handle),
+      search: homeThreadFromFeedSearch(
+        selectedThread.id,
+        selectedThread.handle
+      ),
       replace: true,
     })
   }, [isDesktop, navigate, selectedThread])
@@ -95,7 +99,7 @@ function Landing() {
     const needsHandle = me && !me.handle
     return (
       <main className="@min-[1120px]/inset:flex @min-[1120px]/inset:justify-center @min-[1120px]/inset:overflow-x-clip">
-        <div className="@min-[1120px]/inset:flex @min-[1120px]/inset:w-[1120px] @min-[1120px]/inset:min-h-[calc(100vh-3rem)] @min-[1120px]/inset:items-start">
+        <div className="@min-[1120px]/inset:flex @min-[1120px]/inset:min-h-[calc(100vh-3rem)] @min-[1120px]/inset:w-[1120px] @min-[1120px]/inset:items-start">
           <div
             className={`mx-auto w-full min-w-0 border-border md:max-w-[640px] md:border-x @min-[1120px]/inset:mx-0 @min-[1120px]/inset:max-w-none @min-[1120px]/inset:w-[640px] @min-[1120px]/inset:shrink-0 @min-[1120px]/inset:border-x @min-[1120px]/inset:border-border @min-[1120px]/inset:transition-transform @min-[1120px]/inset:duration-300 @min-[1120px]/inset:ease-out @min-[1120px]/inset:[will-change:transform] @min-[1120px]/inset:[contain:layout] ${
               panelThread
@@ -109,7 +113,8 @@ function Landing() {
                   Finish setting up your account
                 </h2>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Pick a handle so people can find you. This is permanent for v1.
+                  Pick a handle so people can find you. This is permanent for
+                  v1.
                 </p>
                 <Link to="/settings" className="mt-3 inline-block">
                   <Button size="sm">Claim your handle</Button>
@@ -153,7 +158,7 @@ function Landing() {
                 className={`sticky top-0 h-[calc(100vh-3rem)] overflow-hidden border-l border-border bg-background transition-transform duration-300 ease-out [will-change:transform] ${
                   selectedThread
                     ? "translate-x-0"
-                    : "translate-x-full pointer-events-none"
+                    : "pointer-events-none translate-x-full"
                 }`}
               >
                 <ThreadViewContent
@@ -181,9 +186,9 @@ function Landing() {
           Open-source. Free for everyone. No AI.
         </h1>
         <p className="mt-4 max-w-prose text-sm text-muted-foreground">
-          {APP_NAME} is a developer-native social platform. Post, write articles,
-          DM, and connect your GitHub or GitLab — without paywalls, trackers, or
-          black-box rankers.
+          {APP_NAME} is a developer-native social platform. Post, write
+          articles, DM, and connect your GitHub or GitLab — without paywalls,
+          trackers, or black-box rankers.
         </p>
         <div className="mt-8 flex gap-2">
           <Link to="/signup">

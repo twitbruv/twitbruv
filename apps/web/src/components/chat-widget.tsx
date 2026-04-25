@@ -20,9 +20,11 @@ import type { DmConversation, DmMember, DmMessage } from "../lib/api"
 export function ChatWidget() {
   const [open, setOpen] = useState(false)
   const [closing, setClosing] = useState(false)
-  const [conversations, setConversations] = useState<Array<DmConversation> | null>(null)
+  const [conversations, setConversations] =
+    useState<Array<DmConversation> | null>(null)
   const [unreadCount, setUnreadCount] = useState(0)
-  const [activeConversation, setActiveConversation] = useState<DmConversation | null>(null)
+  const [activeConversation, setActiveConversation] =
+    useState<DmConversation | null>(null)
 
   useEffect(() => {
     let cancel = false
@@ -103,7 +105,7 @@ export function ChatWidget() {
           height: { duration: 0.25, ease: [0.32, 0, 0, 1] },
           scale: { duration: 0.38, ease: [0.32, 0, 0, 1] },
         }}
-        className={`absolute bottom-0 right-0 w-80 overflow-hidden rounded-2xl border border-border bg-background shadow-xl ${isExpanded ? "" : "pointer-events-none"}`}
+        className={`absolute right-0 bottom-0 w-80 overflow-hidden rounded-2xl border border-border bg-background shadow-xl ${isExpanded ? "" : "pointer-events-none"}`}
       >
         {activeConversation ? (
           <ChatView
@@ -126,15 +128,11 @@ export function ChatWidget() {
         initial={false}
         animate={{ opacity: isExpanded ? 0 : 1 }}
         transition={{ duration: 0.2, delay: isExpanded ? 0 : 0.15 }}
-        className={`
-          flex size-14 cursor-pointer items-center justify-center rounded-full
-          bg-primary text-primary-foreground shadow-xl shadow-primary/30
-          ${isExpanded ? "pointer-events-none" : ""}
-        `}
+        className={`flex size-14 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl shadow-primary/30 ${isExpanded ? "pointer-events-none" : ""} `}
       >
         <IconMessage className="size-6" />
         {unreadCount > 0 && (
-          <span className="absolute -right-1 -top-1 flex size-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
+          <span className="absolute -top-1 -right-1 flex size-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
@@ -160,6 +158,7 @@ function ConversationList({
           <Button
             size="icon-sm"
             variant="ghost"
+            nativeButton={false}
             render={<Link to="/inbox/new" onClick={onClose} />}
           >
             <IconPencilPlus size={16} />
@@ -175,7 +174,9 @@ function ConversationList({
           <p className="p-4 text-sm text-muted-foreground">loading...</p>
         )}
         {conversations && conversations.length === 0 && (
-          <p className="p-4 text-sm text-muted-foreground">no conversations yet</p>
+          <p className="p-4 text-sm text-muted-foreground">
+            no conversations yet
+          </p>
         )}
         {conversations && conversations.length > 0 && (
           <ul>
@@ -187,7 +188,6 @@ function ConversationList({
           </ul>
         )}
       </div>
-
     </div>
   )
 }
@@ -200,7 +200,9 @@ function ConversationRow({
   onClick: () => void
 }) {
   const title = conversation.title || defaultTitle(conversation)
-  const preview = conversation.lastMessage?.text ?? previewForKind(conversation.lastMessage?.kind)
+  const preview =
+    conversation.lastMessage?.text ??
+    previewForKind(conversation.lastMessage?.kind)
 
   return (
     <button
@@ -288,7 +290,9 @@ function ChatView({
 
     setSending(true)
     try {
-      const { message } = await api.dmSend(conversation.id, { text: text.trim() })
+      const { message } = await api.dmSend(conversation.id, {
+        text: text.trim(),
+      })
       setMessages((prev) => [...prev, message])
       setText("")
       inputRef.current?.focus()
@@ -307,7 +311,9 @@ function ChatView({
     setUploading(true)
     try {
       const media = await uploadImage(file)
-      const { message } = await api.dmSend(conversation.id, { mediaId: media.id })
+      const { message } = await api.dmSend(conversation.id, {
+        mediaId: media.id,
+      })
       setMessages((prev) => [...prev, message])
     } catch {
       // ignore
@@ -330,9 +336,13 @@ function ChatView({
 
       <div className="flex-1 overflow-y-auto px-3 py-2">
         {loading ? (
-          <p className="py-4 text-center text-sm text-muted-foreground">loading...</p>
+          <p className="py-4 text-center text-sm text-muted-foreground">
+            loading...
+          </p>
         ) : messages.length === 0 ? (
-          <p className="py-4 text-center text-sm text-muted-foreground">no messages yet</p>
+          <p className="py-4 text-center text-sm text-muted-foreground">
+            no messages yet
+          </p>
         ) : (
           <div className="space-y-2">
             {messages.map((msg) => (
@@ -345,7 +355,10 @@ function ChatView({
         )}
       </div>
 
-      <form onSubmit={handleSend} className="flex items-center gap-1 border-t border-border px-2 py-2">
+      <form
+        onSubmit={handleSend}
+        className="flex items-center gap-1 border-t border-border px-2 py-2"
+      >
         <input
           ref={fileInputRef}
           type="file"
@@ -371,7 +384,12 @@ function ChatView({
           disabled={uploading}
           className="flex-1 bg-transparent text-sm placeholder:text-muted-foreground focus:outline-none"
         />
-        <Button type="submit" size="icon-sm" variant="ghost" disabled={!text.trim() || sending || uploading}>
+        <Button
+          type="submit"
+          size="icon-sm"
+          variant="ghost"
+          disabled={!text.trim() || sending || uploading}
+        >
           <IconSend size={18} />
         </Button>
       </form>
@@ -379,7 +397,13 @@ function ChatView({
   )
 }
 
-function MessageBubble({ message, isMe }: { message: DmMessage; isMe: boolean }) {
+function MessageBubble({
+  message,
+  isMe,
+}: {
+  message: DmMessage
+  isMe: boolean
+}) {
   const time = new Date(message.createdAt).toLocaleTimeString([], {
     hour: "numeric",
     minute: "2-digit",
@@ -405,7 +429,9 @@ function MessageBubble({ message, isMe }: { message: DmMessage; isMe: boolean })
           />
         )}
         {message.text && (
-          <p className="text-sm whitespace-pre-wrap break-words">{message.text}</p>
+          <p className="text-sm break-words whitespace-pre-wrap">
+            {message.text}
+          </p>
         )}
         <p
           className={`mt-0.5 text-[10px] ${
@@ -419,7 +445,11 @@ function MessageBubble({ message, isMe }: { message: DmMessage; isMe: boolean })
   )
 }
 
-function ConversationAvatar({ conversation }: { conversation: DmConversation }) {
+function ConversationAvatar({
+  conversation,
+}: {
+  conversation: DmConversation
+}) {
   if (conversation.kind === "group") {
     const a = conversation.members.at(0)
     const b = conversation.members.at(1)
@@ -429,14 +459,14 @@ function ConversationAvatar({ conversation }: { conversation: DmConversation }) 
           <Avatar
             initial={initialFor(a)}
             src={a.avatarUrl}
-            className="absolute left-0 top-0 size-6 ring-2 ring-background"
+            className="absolute top-0 left-0 size-6 ring-2 ring-background"
           />
         )}
         {b && (
           <Avatar
             initial={initialFor(b)}
             src={b.avatarUrl}
-            className="absolute bottom-0 right-0 size-6 ring-2 ring-background"
+            className="absolute right-0 bottom-0 size-6 ring-2 ring-background"
           />
         )}
       </div>
@@ -462,7 +492,9 @@ function defaultTitle(conversation: DmConversation): string {
     return `${names.slice(0, 2).join(", ")} + ${names.length - 2}`
   }
   const other = conversation.members.at(0)
-  return other?.displayName ?? (other?.handle ? `@${other.handle}` : "Conversation")
+  return (
+    other?.displayName ?? (other?.handle ? `@${other.handle}` : "Conversation")
+  )
 }
 
 function initialFor(m: DmMember): string {

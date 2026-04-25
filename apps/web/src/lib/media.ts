@@ -14,14 +14,14 @@ export interface UploadedMedia {
 /** Pick the best variant URL for a given display context. Fallbacks walk smaller to larger. */
 export function pickVariantUrl(
   media: UploadedMedia,
-  prefer: "thumb" | "medium" | "large" = "medium",
+  prefer: "thumb" | "medium" | "large" = "medium"
 ): string | null {
   const order =
     prefer === "thumb"
       ? ["thumb", "medium", "large"]
       : prefer === "large"
-      ? ["large", "medium", "thumb"]
-      : ["medium", "large", "thumb"]
+        ? ["large", "medium", "thumb"]
+        : ["medium", "large", "thumb"]
   for (const kind of order) {
     const v = media.variants.find((x) => x.kind === kind)
     if (v) return v.url
@@ -84,10 +84,12 @@ export async function compressImage(file: File): Promise<File> {
             quality: COMPRESSED_QUALITY,
           })
         : await new Promise<Blob | null>((resolve) =>
-            canvas.toBlob(resolve, COMPRESSED_MIME, COMPRESSED_QUALITY),
+            canvas.toBlob(resolve, COMPRESSED_MIME, COMPRESSED_QUALITY)
           )
     if (!blob || blob.size >= file.size) return file
-    return new File([blob], replaceExt(file.name, "webp"), { type: COMPRESSED_MIME })
+    return new File([blob], replaceExt(file.name, "webp"), {
+      type: COMPRESSED_MIME,
+    })
   } catch {
     return file
   }
@@ -99,10 +101,15 @@ function replaceExt(name: string, ext: string): string {
 }
 
 /** Update alt text on an already-uploaded media. Best-effort — failures don't block the send. */
-export async function setAltText(mediaId: string, altText: string | null): Promise<void> {
+export async function setAltText(
+  mediaId: string,
+  altText: string | null
+): Promise<void> {
   await json(`/api/media/${mediaId}/alt`, {
     method: "PATCH",
-    body: JSON.stringify({ altText: altText && altText.trim().length > 0 ? altText.trim() : null }),
+    body: JSON.stringify({
+      altText: altText && altText.trim().length > 0 ? altText.trim() : null,
+    }),
   })
 }
 
@@ -129,15 +136,20 @@ export async function uploadImage(file: File): Promise<UploadedMedia> {
   const deadline = Date.now() + 60_000
   let lastState: UploadedMedia["processingState"] = "pending"
   while (Date.now() < deadline) {
-    const { media } = await json<{ media: UploadedMedia }>(`/api/media/${intent.mediaId}`)
+    const { media } = await json<{ media: UploadedMedia }>(
+      `/api/media/${intent.mediaId}`
+    )
     lastState = media.processingState
     if (media.processingState === "ready") return media
-    if (media.processingState === "failed" || media.processingState === "flagged") {
+    if (
+      media.processingState === "failed" ||
+      media.processingState === "flagged"
+    ) {
       throw new Error(`media ${media.processingState}`)
     }
     await new Promise((r) => setTimeout(r, 800))
   }
   throw new Error(
-    `media processing timed out (last state: ${lastState}) — is the worker running?`,
+    `media processing timed out (last state: ${lastState}) — is the worker running?`
   )
 }

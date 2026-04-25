@@ -59,9 +59,14 @@ export function Compose({
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { me } = useMe()
-  const dKey = useMemo(() => draftKey({ replyToId, quoteOfId }), [replyToId, quoteOfId])
+  const dKey = useMemo(
+    () => draftKey({ replyToId, quoteOfId }),
+    [replyToId, quoteOfId]
+  )
   const [text, setText] = useState(() => loadDraft(dKey))
-  const [expanded, setExpanded] = useState(() => !collapsible || loadDraft(dKey).length > 0)
+  const [expanded, setExpanded] = useState(
+    () => !collapsible || loadDraft(dKey).length > 0
+  )
   // Persist drafts on every keystroke. Tiny localStorage write — fine without debouncing.
   useEffect(() => {
     saveDraft(dKey, text)
@@ -80,10 +85,14 @@ export function Compose({
     .map((a) => a.media!.id)
   const pollValid =
     !poll ||
-    (poll.options.filter((o) => o.trim().length > 0).length >= POLL_MIN_OPTIONS &&
+    (poll.options.filter((o) => o.trim().length > 0).length >=
+      POLL_MIN_OPTIONS &&
       poll.options.every((o) => o.length <= POLL_OPTION_MAX_LEN))
   const hasContent =
-    text.trim().length > 0 || readyMediaIds.length > 0 || Boolean(quoteOfId) || Boolean(poll)
+    text.trim().length > 0 ||
+    readyMediaIds.length > 0 ||
+    Boolean(quoteOfId) ||
+    Boolean(poll)
   const noneUploading = attachments.every((a) => a.status !== "uploading")
   const canSubmit =
     hasContent && remaining >= 0 && noneUploading && pollValid && !loading
@@ -91,7 +100,11 @@ export function Compose({
   function startPoll() {
     if (poll) return
     // Polls and media are mutually exclusive (matches Twitter / Mastodon).
-    setPoll({ options: ["", ""], durationMinutes: 60 * 24, allowMultiple: false })
+    setPoll({
+      options: ["", ""],
+      durationMinutes: 60 * 24,
+      allowMultiple: false,
+    })
   }
   function updatePollOption(idx: number, value: string) {
     if (!poll) return
@@ -162,12 +175,17 @@ export function Compose({
       // Push alt text just before send. Best-effort — failures don't block the post itself.
       await Promise.all(
         attachments
-          .filter((a) => a.status === "ready" && a.media && a.altText.trim().length > 0)
-          .map((a) => setAltText(a.media!.id, a.altText).catch(() => {})),
+          .filter(
+            (a) =>
+              a.status === "ready" && a.media && a.altText.trim().length > 0
+          )
+          .map((a) => setAltText(a.media!.id, a.altText).catch(() => {}))
       )
       const pollPayload: PollInput | undefined = poll
         ? {
-            options: poll.options.map((o) => o.trim()).filter((o) => o.length > 0),
+            options: poll.options
+              .map((o) => o.trim())
+              .filter((o) => o.length > 0),
             durationMinutes: poll.durationMinutes,
             allowMultiple: poll.allowMultiple,
           }
@@ -236,19 +254,22 @@ export function Compose({
           <div className="mt-2 rounded-md border border-border p-3 text-sm">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span className="flex items-center gap-1 font-medium text-foreground">
-                {quoted.author.displayName || `@${quoted.author.handle ?? "unknown"}`}
+                {quoted.author.displayName ||
+                  `@${quoted.author.handle ?? "unknown"}`}
                 {quoted.author.isVerified && <VerifiedBadge size={13} />}
               </span>
               {quoted.author.handle && <span>@{quoted.author.handle}</span>}
             </div>
-            <p className="mt-1 line-clamp-3 whitespace-pre-wrap break-words">{quoted.text}</p>
+            <p className="mt-1 line-clamp-3 break-words whitespace-pre-wrap">
+              {quoted.text}
+            </p>
           </div>
         )}
 
         {poll && (
           <div className="mt-3 space-y-2 rounded-md border border-border p-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                 Poll
               </span>
               <button
@@ -266,7 +287,7 @@ export function Compose({
                   onChange={(e) => updatePollOption(idx, e.target.value)}
                   placeholder={`Choice ${idx + 1}`}
                   maxLength={POLL_OPTION_MAX_LEN}
-                  className="flex-1 rounded-md border border-border bg-transparent px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  className="flex-1 rounded-md border border-border bg-transparent px-2 py-1 text-sm focus:ring-1 focus:ring-ring focus:outline-none"
                 />
                 {poll.options.length > POLL_MIN_OPTIONS && (
                   <Button
@@ -296,7 +317,10 @@ export function Compose({
                 <select
                   value={poll.durationMinutes}
                   onChange={(e) =>
-                    setPoll({ ...poll, durationMinutes: Number(e.target.value) })
+                    setPoll({
+                      ...poll,
+                      durationMinutes: Number(e.target.value),
+                    })
                   }
                   className="rounded-md border border-border bg-background px-1 py-0.5 text-xs"
                 >
@@ -356,14 +380,16 @@ export function Compose({
                   onChange={(e) =>
                     setAttachments((prev) =>
                       prev.map((x) =>
-                        x.tempId === a.tempId ? { ...x, altText: e.target.value } : x,
-                      ),
+                        x.tempId === a.tempId
+                          ? { ...x, altText: e.target.value }
+                          : x
+                      )
                     )
                   }
                   disabled={a.status !== "ready"}
                   placeholder="Describe for screen readers"
                   maxLength={1000}
-                  className="w-full rounded-md border border-border bg-transparent px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+                  className="w-full rounded-md border border-border bg-transparent px-2 py-1 text-xs focus:ring-1 focus:ring-ring focus:outline-none disabled:opacity-50"
                 />
               </div>
             ))}
@@ -387,7 +413,9 @@ export function Compose({
               <Button
                 variant="ghost"
                 size="icon"
-                disabled={attachments.length >= MAX_ATTACHMENTS || Boolean(poll)}
+                disabled={
+                  attachments.length >= MAX_ATTACHMENTS || Boolean(poll)
+                }
                 onClick={() => fileInputRef.current?.click()}
                 aria-label="add image"
               >
@@ -396,7 +424,12 @@ export function Compose({
               <Button
                 variant="ghost"
                 size="icon"
-                disabled={Boolean(poll) || attachments.length > 0 || Boolean(replyToId) || Boolean(quoteOfId)}
+                disabled={
+                  Boolean(poll) ||
+                  attachments.length > 0 ||
+                  Boolean(replyToId) ||
+                  Boolean(quoteOfId)
+                }
                 onClick={startPoll}
                 aria-label="add poll"
                 title="Add a poll"
@@ -416,9 +449,17 @@ export function Compose({
               </span>
             </div>
             <div className="flex items-center gap-2">
-              {error && <span className="text-xs text-destructive">{error}</span>}
+              {error && (
+                <span className="text-xs text-destructive">{error}</span>
+              )}
               <Button type="submit" disabled={!canSubmit} size="lg">
-                {loading ? "Posting…" : replyToId ? "Reply" : quoteOfId ? "Quote" : "Post"}
+                {loading
+                  ? "Posting…"
+                  : replyToId
+                    ? "Reply"
+                    : quoteOfId
+                      ? "Quote"
+                      : "Post"}
               </Button>
             </div>
           </div>

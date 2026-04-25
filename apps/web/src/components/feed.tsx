@@ -105,7 +105,9 @@ export function Feed({
           onChange={replace}
           onRemove={remove}
           onOpenThread={onOpenThread}
-          active={activePostId === post.id || activePostId === post.repostOf?.id}
+          active={
+            activePostId === post.id || activePostId === post.repostOf?.id
+          }
         />
       ))}
       {cursor && (

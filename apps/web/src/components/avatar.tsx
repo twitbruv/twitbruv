@@ -35,7 +35,7 @@ export function Avatar({
         className={cn(
           "shrink-0 rounded object-cover",
           !size && "size-6",
-          className,
+          className
         )}
         style={sizeStyle}
       />
@@ -47,11 +47,17 @@ export function Avatar({
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center justify-center rounded font-semibold uppercase tracking-tight",
+        "flex shrink-0 items-center justify-center rounded font-semibold tracking-tight uppercase",
         !size && "size-6 text-[11px]",
-        className,
+        className
       )}
-      style={{ background: bg, color: fg, ...sizeStyle, fontSize, letterSpacing }}
+      style={{
+        background: bg,
+        color: fg,
+        ...sizeStyle,
+        fontSize,
+        letterSpacing,
+      }}
     >
       {initial}
     </div>

@@ -667,6 +667,7 @@ export function PostCard({
               <Button
                 variant="ghost"
                 size="sm"
+                nativeButton={false}
                 disabled={busy || !post.viewer}
                 className="flex items-center gap-2 transition hover:text-foreground"
                 aria-pressed={post.viewer?.reposted}

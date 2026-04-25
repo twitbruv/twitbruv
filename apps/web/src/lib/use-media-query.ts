@@ -22,8 +22,7 @@ export function useInsetMinWidth(min: number) {
     const inset = document.querySelector<HTMLElement>(INSET_SELECTOR)
     if (!inset) return
 
-    const update = () =>
-      setMatches(inset.getBoundingClientRect().width >= min)
+    const update = () => setMatches(inset.getBoundingClientRect().width >= min)
 
     update()
     const observer = new ResizeObserver(update)

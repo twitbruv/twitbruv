@@ -6,7 +6,7 @@ export type HomeThreadFromFeedSearch = {
 
 export function homeThreadFromFeedSearch(
   homePostId: string,
-  homePostHandle: string,
+  homePostHandle: string
 ): HomeThreadFromFeedSearch {
   return { from: "home", homePostId, homePostHandle }
 }

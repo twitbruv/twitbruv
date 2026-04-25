@@ -61,38 +61,49 @@ function NewArticle() {
 
   return (
     <PageFrame>
-    <main className="">
-      <header className="flex items-center justify-between border-b border-border px-4 py-3">
-        <h1 className="text-sm font-semibold text-muted-foreground">new article</h1>
-        <div className="flex items-center gap-2">
-          {error && <span className="text-xs text-destructive">{error}</span>}
-          <Button variant="outline" size="sm" disabled={saving !== null} onClick={() => save("draft")}>
-            {saving === "draft" ? "saving…" : "save draft"}
-          </Button>
-          <Button size="sm" disabled={saving !== null} onClick={() => save("published")}>
-            {saving === "publish" ? "publishing…" : "publish"}
-          </Button>
+      <main className="">
+        <header className="flex items-center justify-between border-b border-border px-4 py-3">
+          <h1 className="text-sm font-semibold text-muted-foreground">
+            new article
+          </h1>
+          <div className="flex items-center gap-2">
+            {error && <span className="text-xs text-destructive">{error}</span>}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={saving !== null}
+              onClick={() => save("draft")}
+            >
+              {saving === "draft" ? "saving…" : "save draft"}
+            </Button>
+            <Button
+              size="sm"
+              disabled={saving !== null}
+              onClick={() => save("published")}
+            >
+              {saving === "publish" ? "publishing…" : "publish"}
+            </Button>
+          </div>
+        </header>
+        <div className="px-4 pt-6">
+          <CoverPicker onChange={setCoverMediaId} />
+          <Input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="title"
+            className="mt-4 h-auto border-0 px-0 text-2xl font-semibold shadow-none focus-visible:ring-0"
+            maxLength={150}
+          />
+          <Input
+            value={subtitle}
+            onChange={(e) => setSubtitle(e.target.value)}
+            placeholder="subtitle (optional)"
+            className="mt-2 h-auto border-0 px-0 text-sm text-muted-foreground shadow-none focus-visible:ring-0"
+            maxLength={200}
+          />
         </div>
-      </header>
-      <div className="px-4 pt-6">
-        <CoverPicker onChange={setCoverMediaId} />
-        <Input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="title"
-          className="mt-4 h-auto border-0 px-0 text-2xl font-semibold shadow-none focus-visible:ring-0"
-          maxLength={150}
-        />
-        <Input
-          value={subtitle}
-          onChange={(e) => setSubtitle(e.target.value)}
-          placeholder="subtitle (optional)"
-          className="mt-2 h-auto border-0 px-0 text-sm text-muted-foreground shadow-none focus-visible:ring-0"
-          maxLength={200}
-        />
-      </div>
-      <Editor onChange={setBody} />
-    </main>
+        <Editor onChange={setBody} />
+      </main>
     </PageFrame>
   )
 }

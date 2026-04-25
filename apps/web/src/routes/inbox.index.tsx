@@ -16,7 +16,8 @@ type Folder = "inbox" | "requests"
 
 function InboxList() {
   const [folder, setFolder] = useState<Folder>("inbox")
-  const [conversations, setConversations] = useState<Array<DmConversation> | null>(null)
+  const [conversations, setConversations] =
+    useState<Array<DmConversation> | null>(null)
   const [requestCount, setRequestCount] = useState(0)
   const [error, setError] = useState<string | null>(null)
 
@@ -53,75 +54,81 @@ function InboxList() {
 
   return (
     <PageFrame>
-    <main>
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background/80 px-4 py-3 backdrop-blur-sm">
-        <h1 className="text-base font-semibold">Messages</h1>
-        <Button
-          size="sm"
-          variant="outline"
-          render={<Link to="/inbox/new" />}
-        >
-          <IconPencilPlus size={14} stroke={1.75} />
-          New
-        </Button>
-      </header>
+      <main>
+        <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background/80 px-4 py-3 backdrop-blur-sm">
+          <h1 className="text-base font-semibold">Messages</h1>
+          <Button
+            size="sm"
+            variant="outline"
+            nativeButton={false}
+            render={<Link to="/inbox/new" />}
+          >
+            <IconPencilPlus size={14} stroke={1.75} />
+            New
+          </Button>
+        </header>
 
-      <div className="flex border-b border-border text-sm">
-        <FolderTab
-          active={folder === "inbox"}
-          onClick={() => setFolder("inbox")}
-          label="Inbox"
-        />
-        <FolderTab
-          active={folder === "requests"}
-          onClick={() => setFolder("requests")}
-          label="Requests"
-          badge={requestCount}
-        />
-      </div>
-
-      {error && <p className="p-4 text-sm text-destructive">{error}</p>}
-      {!conversations && !error && (
-        <ul>
-          {Array.from({ length: 6 }).map((_, i) => (
-            <li key={i} className="flex items-start gap-3 border-b border-border px-4 py-3">
-              <SkeletonAvatar />
-              <div className="flex-1 space-y-2">
-                <div className="flex justify-between">
-                  <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-3 w-12" />
-                </div>
-                <Skeleton className="h-3 w-3/4" />
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-      {conversations && conversations.length === 0 && (
-        <div className="px-4 py-16 text-center">
-          <p className="text-sm font-semibold">
-            {folder === "requests" ? "No message requests" : "No conversations yet"}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {folder === "requests"
-              ? "When someone you don't follow messages you, it'll appear here."
-              : (
-                  <>
-                    Tap <span className="font-medium">New</span> above, or open someone's
-                    profile and tap the message icon.
-                  </>
-                )}
-          </p>
+        <div className="flex border-b border-border text-sm">
+          <FolderTab
+            active={folder === "inbox"}
+            onClick={() => setFolder("inbox")}
+            label="Inbox"
+          />
+          <FolderTab
+            active={folder === "requests"}
+            onClick={() => setFolder("requests")}
+            label="Requests"
+            badge={requestCount}
+          />
         </div>
-      )}
-      {conversations && conversations.length > 0 && (
-        <ul>
-          {conversations.map((c) => (
-            <ConversationRow key={c.id} conversation={c} />
-          ))}
-        </ul>
-      )}
-    </main>
+
+        {error && <p className="p-4 text-sm text-destructive">{error}</p>}
+        {!conversations && !error && (
+          <ul>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <li
+                key={i}
+                className="flex items-start gap-3 border-b border-border px-4 py-3"
+              >
+                <SkeletonAvatar />
+                <div className="flex-1 space-y-2">
+                  <div className="flex justify-between">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-12" />
+                  </div>
+                  <Skeleton className="h-3 w-3/4" />
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        {conversations && conversations.length === 0 && (
+          <div className="px-4 py-16 text-center">
+            <p className="text-sm font-semibold">
+              {folder === "requests"
+                ? "No message requests"
+                : "No conversations yet"}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {folder === "requests" ? (
+                "When someone you don't follow messages you, it'll appear here."
+              ) : (
+                <>
+                  Tap <span className="font-medium">New</span> above, or open
+                  someone's profile and tap the message icon.
+                </>
+              )}
+            </p>
+          </div>
+        )}
+        {conversations && conversations.length > 0 && (
+          <ul>
+            {conversations.map((c) => (
+              <ConversationRow key={c.id} conversation={c} />
+            ))}
+          </ul>
+        )}
+      </main>
     </PageFrame>
   )
 }
@@ -160,7 +167,9 @@ function FolderTab({
 function ConversationRow({ conversation }: { conversation: DmConversation }) {
   const isGroup = conversation.kind === "group"
   const title = conversation.title || defaultTitle(conversation)
-  const preview = conversation.lastMessage?.text ?? previewForKind(conversation.lastMessage?.kind)
+  const preview =
+    conversation.lastMessage?.text ??
+    previewForKind(conversation.lastMessage?.kind)
   const ts = conversation.lastMessageAt
     ? new Date(conversation.lastMessageAt).toLocaleString()
     : ""
@@ -198,7 +207,11 @@ function ConversationRow({ conversation }: { conversation: DmConversation }) {
   )
 }
 
-function ConversationAvatar({ conversation }: { conversation: DmConversation }) {
+function ConversationAvatar({
+  conversation,
+}: {
+  conversation: DmConversation
+}) {
   if (conversation.kind === "group") {
     // Stack the first two member avatars in a 2x2-ish overlap so groups read at a glance.
     const a = conversation.members.at(0)
@@ -209,14 +222,14 @@ function ConversationAvatar({ conversation }: { conversation: DmConversation }) 
           <Avatar
             initial={initialFor(a)}
             src={a.avatarUrl}
-            className="absolute left-0 top-0 size-7 ring-2 ring-background"
+            className="absolute top-0 left-0 size-7 ring-2 ring-background"
           />
         )}
         {b && (
           <Avatar
             initial={initialFor(b)}
             src={b.avatarUrl}
-            className="absolute bottom-0 right-0 size-7 ring-2 ring-background"
+            className="absolute right-0 bottom-0 size-7 ring-2 ring-background"
           />
         )}
       </div>
@@ -242,7 +255,9 @@ function defaultTitle(conversation: DmConversation): string {
     return `${names.slice(0, 2).join(", ")} + ${names.length - 2}`
   }
   const other = conversation.members.at(0)
-  return other?.displayName ?? (other?.handle ? `@${other.handle}` : "Conversation")
+  return (
+    other?.displayName ?? (other?.handle ? `@${other.handle}` : "Conversation")
+  )
 }
 
 function initialFor(m: DmMember): string {

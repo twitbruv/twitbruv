@@ -5,7 +5,11 @@
 
 const PREFIX = "draft.compose."
 
-export function draftKey(scope: { replyToId?: string; quoteOfId?: string; conversationId?: string }) {
+export function draftKey(scope: {
+  replyToId?: string
+  quoteOfId?: string
+  conversationId?: string
+}) {
   if (scope.replyToId) return `${PREFIX}reply.${scope.replyToId}`
   if (scope.quoteOfId) return `${PREFIX}quote.${scope.quoteOfId}`
   if (scope.conversationId) return `${PREFIX}dm.${scope.conversationId}`

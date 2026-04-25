@@ -5,7 +5,11 @@ import { Label } from "@workspace/ui/components/label"
 import { handleSchema } from "@workspace/validators"
 import { ApiError, api } from "../lib/api"
 
-export function ClaimHandle({ onClaimed }: { onClaimed: (handle: string) => void }) {
+export function ClaimHandle({
+  onClaimed,
+}: {
+  onClaimed: (handle: string) => void
+}) {
   const [handle, setHandle] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -25,7 +29,8 @@ export function ClaimHandle({ onClaimed }: { onClaimed: (handle: string) => void
     } catch (e) {
       if (e instanceof ApiError) {
         if (e.code === "handle_taken") setError("that handle is taken")
-        else if (e.code === "reserved_handle") setError("that handle is reserved")
+        else if (e.code === "reserved_handle")
+          setError("that handle is reserved")
         else setError(e.message)
       } else {
         setError("claim failed")
@@ -56,7 +61,9 @@ export function ClaimHandle({ onClaimed }: { onClaimed: (handle: string) => void
               required
             />
           </div>
-          <p className="text-xs text-muted-foreground">3–20 chars · letters, numbers, underscore.</p>
+          <p className="text-xs text-muted-foreground">
+            3–20 chars · letters, numbers, underscore.
+          </p>
         </div>
         {error && <p className="text-xs text-destructive">{error}</p>}
         <Button type="submit" disabled={loading}>

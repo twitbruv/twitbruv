@@ -57,7 +57,13 @@ function Login() {
       <form onSubmit={onSubmit} className="mt-6 space-y-3">
         <div className="space-y-1">
           <Label htmlFor="email">Email</Label>
-          <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <Input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
         </div>
         <div className="space-y-1">
           <Label htmlFor="password">Password</Label>
@@ -74,7 +80,12 @@ function Login() {
           {loading ? "signing in…" : "Sign in"}
         </Button>
       </form>
-      <Button variant="ghost" className="mt-2 w-full" size="sm" onClick={onMagicLink}>
+      <Button
+        variant="ghost"
+        className="mt-2 w-full"
+        size="sm"
+        onClick={onMagicLink}
+      >
         email me a sign-in link
       </Button>
       <div className="my-6 flex items-center gap-2 text-xs text-muted-foreground">
@@ -83,13 +94,25 @@ function Login() {
         <div className="h-px flex-1 bg-border" />
       </div>
       <div className="space-y-2">
-        <Button variant="outline" className="w-full" onClick={() => onProvider("github")}>
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={() => onProvider("github")}
+        >
           Continue with GitHub
         </Button>
-        <Button variant="outline" className="w-full" onClick={() => onProvider("gitlab")}>
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={() => onProvider("gitlab")}
+        >
           Continue with GitLab
         </Button>
-        <Button variant="outline" className="w-full" onClick={() => onProvider("google")}>
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={() => onProvider("google")}
+        >
           Continue with Google
         </Button>
       </div>

@@ -1,13 +1,15 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
 import { Button } from "@workspace/ui/components/button"
-import { ApiError,  api } from "../lib/api"
+import { ApiError, api } from "../lib/api"
 import { Editor } from "../components/editor/editor"
 import { VerifiedBadge } from "../components/verified-badge"
 import { authClient } from "../lib/auth"
-import type {ArticleDto} from "../lib/api";
+import type { ArticleDto } from "../lib/api"
 
-export const Route = createFileRoute("/$handle/a/$slug")({ component: ArticleView })
+export const Route = createFileRoute("/$handle/a/$slug")({
+  component: ArticleView,
+})
 
 function ArticleView() {
   const { handle, slug } = Route.useParams()
@@ -39,7 +41,9 @@ function ArticleView() {
     )
   }
 
-  const isOwner = Boolean(session?.user && session.user.id === article.author.id)
+  const isOwner = Boolean(
+    session?.user && session.user.id === article.author.id
+  )
 
   return (
     <main className="">
@@ -53,9 +57,13 @@ function ArticleView() {
       <header className="border-b border-border px-4 py-6">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-semibold tracking-tight">{article.title}</h1>
+            <h1 className="text-3xl font-semibold tracking-tight">
+              {article.title}
+            </h1>
             {article.subtitle && (
-              <p className="mt-2 text-base text-muted-foreground">{article.subtitle}</p>
+              <p className="mt-2 text-base text-muted-foreground">
+                {article.subtitle}
+              </p>
             )}
           </div>
           {isOwner && (
@@ -85,12 +93,14 @@ function ArticleView() {
           )}
           <span>·</span>
           <span>{article.readingMinutes} min read</span>
-          {article.editedAt && article.publishedAt && article.editedAt > article.publishedAt && (
-            <>
-              <span>·</span>
-              <span>updated</span>
-            </>
-          )}
+          {article.editedAt &&
+            article.publishedAt &&
+            article.editedAt > article.publishedAt && (
+              <>
+                <span>·</span>
+                <span>updated</span>
+              </>
+            )}
         </div>
       </header>
       <Editor initialStateJson={article.bodyJson ?? null} readOnly />

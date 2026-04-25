@@ -17,7 +17,9 @@ import { PageFrame } from "../components/page-frame"
 import { VerifiedBadge } from "../components/verified-badge"
 import type { NotificationItem, Post } from "../lib/api"
 
-export const Route = createFileRoute("/notifications")({ component: Notifications })
+export const Route = createFileRoute("/notifications")({
+  component: Notifications,
+})
 
 function Notifications() {
   const router = useRouter()
@@ -71,7 +73,9 @@ function Notifications() {
   async function markAllRead() {
     await api.notificationsMarkRead({ all: true })
     setItems((prev) =>
-      prev.map((n) => (n.readAt ? n : { ...n, readAt: new Date().toISOString() })),
+      prev.map((n) =>
+        n.readAt ? n : { ...n, readAt: new Date().toISOString() }
+      )
     )
   }
   const hasUnread = items.some((n) => !n.readAt)
@@ -121,7 +125,12 @@ function Notifications() {
             ))}
             {cursor && (
               <li className="flex justify-center py-3">
-                <Button variant="ghost" size="sm" onClick={loadMore} disabled={loadingMore}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={loadMore}
+                  disabled={loadingMore}
+                >
                   {loadingMore ? "loading…" : "load more"}
                 </Button>
               </li>
@@ -138,7 +147,8 @@ function NotificationRow({ item }: { item: NotificationItem }) {
   const iconClass = iconClassForKind(item.kind)
   const verb = verbForKind(item.kind)
   const actorLabel = item.actor
-    ? item.actor.displayName || (item.actor.handle ? `@${item.actor.handle}` : "someone")
+    ? item.actor.displayName ||
+      (item.actor.handle ? `@${item.actor.handle}` : "someone")
     : "someone"
   const actorHandle = item.actor?.handle ?? null
   const actorInitial = (item.actor?.displayName ?? actorHandle ?? "·")
@@ -152,12 +162,18 @@ function NotificationRow({ item }: { item: NotificationItem }) {
       }`}
     >
       <div className="flex items-start gap-3">
-        <div className={`mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full ${iconClass}`}>
+        <div
+          className={`mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full ${iconClass}`}
+        >
           <Icon size={18} stroke={1.75} />
         </div>
         <div className="min-w-0 flex-1 text-sm">
           {actorHandle ? (
-            <Link to="/$handle" params={{ handle: actorHandle }} className="inline-block">
+            <Link
+              to="/$handle"
+              params={{ handle: actorHandle }}
+              className="inline-block"
+            >
               <Avatar
                 initial={actorInitial}
                 src={item.actor?.avatarUrl}
@@ -190,7 +206,10 @@ function NotificationRow({ item }: { item: NotificationItem }) {
             <span className="text-muted-foreground">{verb}</span>
           </p>
           {item.target && <TargetCard post={item.target} />}
-          <time className="mt-1 block text-xs text-muted-foreground" dateTime={item.createdAt}>
+          <time
+            className="mt-1 block text-xs text-muted-foreground"
+            dateTime={item.createdAt}
+          >
             {new Date(item.createdAt).toLocaleString()}
           </time>
         </div>
@@ -217,14 +236,17 @@ function TargetCard({ post }: { post: Post }) {
       <div className="flex gap-3 p-3">
         <div className="min-w-0 flex-1">
           {post.text ? (
-            <p className="line-clamp-4 text-sm leading-relaxed whitespace-pre-wrap break-words">
+            <p className="line-clamp-4 text-sm leading-relaxed break-words whitespace-pre-wrap">
               {post.text}
             </p>
           ) : post.articleCard ? (
             <p className="line-clamp-2 text-sm">
               <span className="font-semibold">{post.articleCard.title}</span>
               {post.articleCard.subtitle && (
-                <span className="text-muted-foreground"> — {post.articleCard.subtitle}</span>
+                <span className="text-muted-foreground">
+                  {" "}
+                  — {post.articleCard.subtitle}
+                </span>
               )}
             </p>
           ) : (
@@ -233,7 +255,11 @@ function TargetCard({ post }: { post: Post }) {
         </div>
         {variant && (
           <div className="size-16 shrink-0 overflow-hidden rounded">
-            <img src={variant.url} alt="" className="h-full w-full object-cover" />
+            <img
+              src={variant.url}
+              alt=""
+              className="h-full w-full object-cover"
+            />
           </div>
         )}
       </div>
@@ -242,7 +268,11 @@ function TargetCard({ post }: { post: Post }) {
 
   if (handle) {
     return (
-      <Link to="/$handle/p/$id" params={{ handle, id: post.id }} className="block">
+      <Link
+        to="/$handle/p/$id"
+        params={{ handle, id: post.id }}
+        className="block"
+      >
         {body}
       </Link>
     )

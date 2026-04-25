@@ -66,7 +66,9 @@ function Thread() {
   const router = useRouter()
   const { data: session } = authClient.useSession()
   const me = session?.user.id ?? null
-  const [conversation, setConversation] = useState<DmConversationDetail | null>(null)
+  const [conversation, setConversation] = useState<DmConversationDetail | null>(
+    null
+  )
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [messages, setMessages] = useState<Array<DmMessage>>([])
   const [draft, setDraft] = useState("")
@@ -120,7 +122,9 @@ function Thread() {
       switch (event.type) {
         case "message":
           setMessages((prev) =>
-            prev.some((m) => m.id === event.message.id) ? prev : [...prev, event.message],
+            prev.some((m) => m.id === event.message.id)
+              ? prev
+              : [...prev, event.message]
           )
           // Whoever just sent a message obviously isn't typing anymore.
           setTypingAt((prev) => {
@@ -135,17 +139,22 @@ function Thread() {
             prev.map((m) =>
               m.id === event.messageId
                 ? { ...m, text: event.text, editedAt: event.editedAt }
-                : m,
-            ),
+                : m
+            )
           )
           break
         case "message_deleted":
           setMessages((prev) =>
             prev.map((m) =>
               m.id === event.messageId
-                ? { ...m, deletedAt: new Date().toISOString(), text: null, media: null }
-                : m,
-            ),
+                ? {
+                    ...m,
+                    deletedAt: new Date().toISOString(),
+                    text: null,
+                    media: null,
+                  }
+                : m
+            )
           )
           break
         case "reaction":
@@ -153,21 +162,28 @@ function Thread() {
             prev.map((m) => {
               if (m.id !== event.messageId) return m
               const exists = m.reactions.some(
-                (r) => r.userId === event.userId && r.emoji === event.emoji,
+                (r) => r.userId === event.userId && r.emoji === event.emoji
               )
               if (event.op === "add" && !exists) {
-                return { ...m, reactions: [...m.reactions, { userId: event.userId, emoji: event.emoji }] }
+                return {
+                  ...m,
+                  reactions: [
+                    ...m.reactions,
+                    { userId: event.userId, emoji: event.emoji },
+                  ],
+                }
               }
               if (event.op === "remove" && exists) {
                 return {
                   ...m,
                   reactions: m.reactions.filter(
-                    (r) => !(r.userId === event.userId && r.emoji === event.emoji),
+                    (r) =>
+                      !(r.userId === event.userId && r.emoji === event.emoji)
                   ),
                 }
               }
               return m
-            }),
+            })
           )
           break
         case "membership":
@@ -185,10 +201,10 @@ function Thread() {
                   members: prev.members.map((m) =>
                     m.id === event.userId
                       ? { ...m, lastReadMessageId: event.messageId }
-                      : m,
+                      : m
                   ),
                 }
-              : prev,
+              : prev
           )
           break
         case "typing":
@@ -384,169 +400,173 @@ function Thread() {
 
   return (
     <PageFrame className="flex min-h-0 flex-1 flex-col">
-    <main className="flex h-[calc(100vh-3.5rem)] flex-col">
-      <header className="flex items-center gap-3 border-b border-border bg-background/80 px-4 py-3 backdrop-blur-sm">
-        <Link
-          to="/inbox"
-          className="text-xs text-muted-foreground hover:underline"
-        >
-          ← Inbox
-        </Link>
-        <ThreadHeader conversation={conversation} peer={peer} me={me} />
-        {conversation?.kind === "group" && (
-          <Button
-            size="sm"
-            variant="ghost"
-            aria-label="conversation settings"
-            onClick={() => setSettingsOpen(true)}
+      <main className="flex h-[calc(100vh-3.5rem)] flex-col">
+        <header className="flex items-center gap-3 border-b border-border bg-background/80 px-4 py-3 backdrop-blur-sm">
+          <Link
+            to="/inbox"
+            className="text-xs text-muted-foreground hover:underline"
           >
-            <IconSettings size={16} stroke={1.75} />
-          </Button>
-        )}
-      </header>
-
-      {conversation && conversation.kind === "group" && (
-        <GroupSettingsDialog
-          open={settingsOpen}
-          onOpenChange={setSettingsOpen}
-          conversation={conversation}
-          me={me}
-          onChanged={(updated) => setConversation(updated)}
-          onLeft={() => router.navigate({ to: "/inbox" })}
-        />
-      )}
-
-      {conversation?.myRequestState === "pending" && (
-        <RequestBanner
-          conversationId={conversationId}
-          onAccepted={() =>
-            setConversation((prev) =>
-              prev ? { ...prev, myRequestState: "accepted" } : prev,
-            )
-          }
-          onDeclined={() => router.navigate({ to: "/inbox" })}
-        />
-      )}
-
-      <div ref={scrollerRef} className="flex-1 overflow-y-auto px-4 py-4">
-        {error && (
-          <p className="mx-auto mb-3 max-w-prose rounded-md border border-destructive/40 bg-destructive/5 p-2 text-center text-xs text-destructive">
-            {error}
-          </p>
-        )}
-        {messages.length === 0 && !error && (
-          <p className="mt-12 text-center text-sm text-muted-foreground">
-            Say hi 👋
-          </p>
-        )}
-
-        <ul className="flex flex-col gap-1">
-          {groups.map((group) => (
-            <GroupBlock
-              key={group.key}
-              group={group}
-              me={me}
-              members={conversation?.members}
-              conversationId={conversationId}
-              isAdmin={conversation?.myRole === "admin"}
-            />
-          ))}
-        </ul>
-
-        {typingMembers.length > 0 && (
-          <div className="mt-2 flex items-center gap-2 px-2 text-xs text-muted-foreground">
-            <span className="flex -space-x-1">
-              {typingMembers.slice(0, 3).map((m) => (
-                <Avatar
-                  key={m.id}
-                  initial={(m.displayName || m.handle || "?").slice(0, 1).toUpperCase()}
-                  src={m.avatarUrl}
-                  className="size-5 ring-2 ring-background"
-                />
-              ))}
-            </span>
-            <TypingDots />
-            <span>
-              {typingMembers.length === 1
-                ? `${typingMembers[0]?.displayName || typingMembers[0]?.handle || "Someone"} is typing…`
-                : `${typingMembers.length} people are typing…`}
-            </span>
-          </div>
-        )}
-      </div>
-
-      {pending && (
-        <div className="flex items-start gap-3 border-t border-border px-3 pt-2">
-          <div className="relative shrink-0">
-            <img
-              src={pending.previewUrl}
-              alt="attachment preview"
-              className="h-20 w-20 rounded-md border border-border object-cover"
-            />
-            <button
-              type="button"
-              onClick={clearPending}
-              aria-label="remove attachment"
-              className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full bg-background text-foreground shadow-sm ring-1 ring-border hover:bg-muted"
+            ← Inbox
+          </Link>
+          <ThreadHeader conversation={conversation} peer={peer} me={me} />
+          {conversation?.kind === "group" && (
+            <Button
+              size="sm"
+              variant="ghost"
+              aria-label="conversation settings"
+              onClick={() => setSettingsOpen(true)}
             >
-              <IconX size={12} stroke={2} />
-            </button>
-          </div>
-          <input
-            value={pending.altText}
-            onChange={(e) =>
-              setPending((prev) => (prev ? { ...prev, altText: e.target.value } : prev))
-            }
-            placeholder="Describe the image (alt text)"
-            maxLength={1000}
-            className="mt-1 flex-1 rounded-md border border-border bg-transparent px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
-          />
-        </div>
-      )}
+              <IconSettings size={16} stroke={1.75} />
+            </Button>
+          )}
+        </header>
 
-      {conversation?.myRequestState !== "pending" && (
-        <form
-          onSubmit={send}
-          className="flex items-end gap-2 border-t border-border px-3 py-3"
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={onFileChange}
+        {conversation && conversation.kind === "group" && (
+          <GroupSettingsDialog
+            open={settingsOpen}
+            onOpenChange={setSettingsOpen}
+            conversation={conversation}
+            me={me}
+            onChanged={(updated) => setConversation(updated)}
+            onLeft={() => router.navigate({ to: "/inbox" })}
           />
-          <Button
-            type="button"
-            variant="ghost"
-            aria-label="attach image"
-            disabled={sending}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <IconPaperclip size={18} stroke={1.75} />
-          </Button>
-          <textarea
-            ref={textareaRef}
-            value={draft}
-            onChange={(e) => {
-              setDraft(e.target.value)
-              if (e.target.value.length > 0) pingTyping()
-            }}
-            placeholder={pending ? "Add a caption…" : "Message"}
-            rows={1}
-            disabled={sending}
-            onKeyDown={onKeyDown}
-            className="flex-1 resize-none rounded-md border border-border bg-transparent px-3 py-2 text-sm leading-relaxed focus:ring-1 focus:ring-ring focus:outline-none disabled:opacity-60"
+        )}
+
+        {conversation?.myRequestState === "pending" && (
+          <RequestBanner
+            conversationId={conversationId}
+            onAccepted={() =>
+              setConversation((prev) =>
+                prev ? { ...prev, myRequestState: "accepted" } : prev
+              )
+            }
+            onDeclined={() => router.navigate({ to: "/inbox" })}
           />
-          <Button
-            type="submit"
-            disabled={sending || (draft.trim().length === 0 && !pending)}
+        )}
+
+        <div ref={scrollerRef} className="flex-1 overflow-y-auto px-4 py-4">
+          {error && (
+            <p className="mx-auto mb-3 max-w-prose rounded-md border border-destructive/40 bg-destructive/5 p-2 text-center text-xs text-destructive">
+              {error}
+            </p>
+          )}
+          {messages.length === 0 && !error && (
+            <p className="mt-12 text-center text-sm text-muted-foreground">
+              Say hi 👋
+            </p>
+          )}
+
+          <ul className="flex flex-col gap-1">
+            {groups.map((group) => (
+              <GroupBlock
+                key={group.key}
+                group={group}
+                me={me}
+                members={conversation?.members}
+                conversationId={conversationId}
+                isAdmin={conversation?.myRole === "admin"}
+              />
+            ))}
+          </ul>
+
+          {typingMembers.length > 0 && (
+            <div className="mt-2 flex items-center gap-2 px-2 text-xs text-muted-foreground">
+              <span className="flex -space-x-1">
+                {typingMembers.slice(0, 3).map((m) => (
+                  <Avatar
+                    key={m.id}
+                    initial={(m.displayName || m.handle || "?")
+                      .slice(0, 1)
+                      .toUpperCase()}
+                    src={m.avatarUrl}
+                    className="size-5 ring-2 ring-background"
+                  />
+                ))}
+              </span>
+              <TypingDots />
+              <span>
+                {typingMembers.length === 1
+                  ? `${typingMembers[0]?.displayName || typingMembers[0]?.handle || "Someone"} is typing…`
+                  : `${typingMembers.length} people are typing…`}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {pending && (
+          <div className="flex items-start gap-3 border-t border-border px-3 pt-2">
+            <div className="relative shrink-0">
+              <img
+                src={pending.previewUrl}
+                alt="attachment preview"
+                className="h-20 w-20 rounded-md border border-border object-cover"
+              />
+              <button
+                type="button"
+                onClick={clearPending}
+                aria-label="remove attachment"
+                className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full bg-background text-foreground shadow-sm ring-1 ring-border hover:bg-muted"
+              >
+                <IconX size={12} stroke={2} />
+              </button>
+            </div>
+            <input
+              value={pending.altText}
+              onChange={(e) =>
+                setPending((prev) =>
+                  prev ? { ...prev, altText: e.target.value } : prev
+                )
+              }
+              placeholder="Describe the image (alt text)"
+              maxLength={1000}
+              className="mt-1 flex-1 rounded-md border border-border bg-transparent px-2 py-1 text-xs focus:ring-1 focus:ring-ring focus:outline-none"
+            />
+          </div>
+        )}
+
+        {conversation?.myRequestState !== "pending" && (
+          <form
+            onSubmit={send}
+            className="flex items-end gap-2 border-t border-border px-3 py-3"
           >
-            {sending ? "…" : "Send"}
-          </Button>
-        </form>
-      )}
-    </main>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={onFileChange}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              aria-label="attach image"
+              disabled={sending}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <IconPaperclip size={18} stroke={1.75} />
+            </Button>
+            <textarea
+              ref={textareaRef}
+              value={draft}
+              onChange={(e) => {
+                setDraft(e.target.value)
+                if (e.target.value.length > 0) pingTyping()
+              }}
+              placeholder={pending ? "Add a caption…" : "Message"}
+              rows={1}
+              disabled={sending}
+              onKeyDown={onKeyDown}
+              className="flex-1 resize-none rounded-md border border-border bg-transparent px-3 py-2 text-sm leading-relaxed focus:ring-1 focus:ring-ring focus:outline-none disabled:opacity-60"
+            />
+            <Button
+              type="submit"
+              disabled={sending || (draft.trim().length === 0 && !pending)}
+            >
+              {sending ? "…" : "Send"}
+            </Button>
+          </form>
+        )}
+      </main>
     </PageFrame>
   )
 }
@@ -577,7 +597,12 @@ function RequestBanner({
   }
 
   async function decline() {
-    if (!window.confirm("Decline this message request? The sender won't be notified.")) return
+    if (
+      !window.confirm(
+        "Decline this message request? The sender won't be notified."
+      )
+    )
+      return
     setBusy(true)
     setError(null)
     try {
@@ -593,7 +618,8 @@ function RequestBanner({
   return (
     <div className="flex flex-col gap-2 border-t border-border bg-muted/30 px-4 py-3 text-xs sm:flex-row sm:items-center sm:justify-between">
       <p className="text-muted-foreground">
-        This is a message request. Accept to start the conversation or decline to remove it.
+        This is a message request. Accept to start the conversation or decline
+        to remove it.
       </p>
       <div className="flex items-center gap-2">
         {error && <span className="text-destructive">{error}</span>}
@@ -656,7 +682,9 @@ function GroupBlock({
   // Read receipts only matter on my own bubbles, on the last message of the chain.
   const seenBy =
     isMine && members
-      ? members.filter((m) => m.id !== me && m.lastReadMessageId === lastMessage.id)
+      ? members.filter(
+          (m) => m.id !== me && m.lastReadMessageId === lastMessage.id
+        )
       : []
   return (
     <>
@@ -765,7 +793,9 @@ function Bubble({
 
   const isDeleted = Boolean(message.deletedAt)
   const canEdit =
-    isMine && !isDeleted && Date.now() - new Date(message.createdAt).getTime() < MESSAGE_EDIT_WINDOW_MS
+    isMine &&
+    !isDeleted &&
+    Date.now() - new Date(message.createdAt).getTime() < MESSAGE_EDIT_WINDOW_MS
   const canDelete = !isDeleted && (isMine || isAdmin)
 
   const corners = isMine
@@ -790,7 +820,10 @@ function Bubble({
       if (r.userId === me) cur.mine = true
       map.set(r.emoji, cur)
     }
-    return Array.from(map.entries()).map(([emoji, data]) => ({ emoji, ...data }))
+    return Array.from(map.entries()).map(([emoji, data]) => ({
+      emoji,
+      ...data,
+    }))
   }, [message.reactions, me])
 
   async function saveEdit() {
@@ -832,7 +865,9 @@ function Bubble({
   const controls = !isDeleted && !editing && (
     <div
       className={`relative flex shrink-0 items-center gap-1 self-center transition-opacity ${
-        showPicker ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"
+        showPicker
+          ? "opacity-100"
+          : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"
       }`}
     >
       <button
@@ -864,7 +899,11 @@ function Bubble({
               </DropdownMenuItem>
             )}
             {canDelete && (
-              <DropdownMenuItem variant="destructive" onClick={doDelete} disabled={busy}>
+              <DropdownMenuItem
+                variant="destructive"
+                onClick={doDelete}
+                disabled={busy}
+              >
                 <IconTrash size={14} stroke={1.75} />
                 <span>Delete</span>
               </DropdownMenuItem>
@@ -900,7 +939,9 @@ function Bubble({
       {/* For my messages, controls sit to the LEFT of the bubble (away from screen edge). */}
       {isMine && controls}
 
-      <div className={`flex max-w-full flex-col gap-1 ${isMine ? "items-end" : "items-start"}`}>
+      <div
+        className={`flex max-w-full flex-col gap-1 ${isMine ? "items-end" : "items-start"}`}
+      >
         <div
           className={`max-w-full ${corners} ${bg} px-3 py-2 text-sm leading-relaxed`}
           title={new Date(message.createdAt).toLocaleString()}
@@ -924,10 +965,17 @@ function Bubble({
                 className="resize-none rounded bg-background/30 px-2 py-1 text-foreground focus:outline-none"
               />
               <div className="flex justify-end gap-2 text-[11px]">
-                <button onClick={() => setEditing(false)} className="opacity-70 hover:opacity-100">
+                <button
+                  onClick={() => setEditing(false)}
+                  className="opacity-70 hover:opacity-100"
+                >
                   Cancel
                 </button>
-                <button onClick={saveEdit} disabled={busy} className="font-semibold">
+                <button
+                  onClick={saveEdit}
+                  disabled={busy}
+                  className="font-semibold"
+                >
                   Save
                 </button>
               </div>
@@ -940,7 +988,9 @@ function Bubble({
                   <RichText text={message.text} />
                 </p>
               )}
-              {!message.media && !message.text && <em className="opacity-70">[unsupported]</em>}
+              {!message.media && !message.text && (
+                <em className="opacity-70">[unsupported]</em>
+              )}
             </>
           )}
           {isLast && !editing && (
@@ -1034,10 +1084,12 @@ function ThreadHeader({
           {others.slice(0, 2).map((m, i) => (
             <Avatar
               key={m.id}
-              initial={(m.displayName || m.handle || "?").slice(0, 1).toUpperCase()}
+              initial={(m.displayName || m.handle || "?")
+                .slice(0, 1)
+                .toUpperCase()}
               src={m.avatarUrl}
               className={`absolute size-6 ring-2 ring-background ${
-                i === 0 ? "left-0 top-0" : "bottom-0 right-0"
+                i === 0 ? "top-0 left-0" : "right-0 bottom-0"
               }`}
             />
           ))}
@@ -1045,7 +1097,8 @@ function ThreadHeader({
         <div className="min-w-0">
           <div className="truncate text-sm font-semibold">{title}</div>
           <div className="text-xs text-muted-foreground">
-            {conversation.members.length} member{conversation.members.length === 1 ? "" : "s"}
+            {conversation.members.length} member
+            {conversation.members.length === 1 ? "" : "s"}
           </div>
         </div>
       </div>
@@ -1056,14 +1109,17 @@ function ThreadHeader({
     <div className="ml-2 flex min-w-0 flex-1 items-center gap-2">
       {peer && (
         <Avatar
-          initial={(peer.displayName || peer.handle || "?").slice(0, 1).toUpperCase()}
+          initial={(peer.displayName || peer.handle || "?")
+            .slice(0, 1)
+            .toUpperCase()}
           src={peer.avatarUrl}
         />
       )}
       <div className="min-w-0">
         <div className="flex items-center gap-1 text-sm font-semibold">
           <span className="truncate">
-            {peer?.displayName || (peer?.handle ? `@${peer.handle}` : "Conversation")}
+            {peer?.displayName ||
+              (peer?.handle ? `@${peer.handle}` : "Conversation")}
           </span>
           {peer?.isVerified && <VerifiedBadge size={14} />}
         </div>
@@ -1116,7 +1172,7 @@ function GroupSettingsDialog({
       try {
         const { users } = await api.search(search.trim())
         setResults(
-          users.filter((u) => !conversation.members.some((m) => m.id === u.id)),
+          users.filter((u) => !conversation.members.some((m) => m.id === u.id))
         )
       } catch {
         setResults([])
@@ -1189,14 +1245,16 @@ function GroupSettingsDialog({
         <div className="space-y-4">
           {isAdmin ? (
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground">Name</label>
+              <label className="text-xs font-medium text-muted-foreground">
+                Name
+              </label>
               <div className="flex gap-2">
                 <input
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   maxLength={80}
                   placeholder="(no name)"
-                  className="flex-1 rounded-md border border-border bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  className="flex-1 rounded-md border border-border bg-transparent px-3 py-2 text-sm focus:ring-1 focus:ring-ring focus:outline-none"
                 />
                 <Button size="sm" disabled={busy} onClick={rename}>
                   Save
@@ -1206,7 +1264,9 @@ function GroupSettingsDialog({
           ) : (
             <div className="text-sm">
               <span className="text-muted-foreground">Name: </span>
-              <span className="font-medium">{conversation.title || "(no name)"}</span>
+              <span className="font-medium">
+                {conversation.title || "(no name)"}
+              </span>
             </div>
           )}
 
@@ -1216,23 +1276,33 @@ function GroupSettingsDialog({
             </label>
             <ul className="divide-y divide-border rounded-md border border-border">
               {conversation.members.map((m) => (
-                <li key={m.id} className="flex items-center gap-3 px-3 py-2 text-sm">
+                <li
+                  key={m.id}
+                  className="flex items-center gap-3 px-3 py-2 text-sm"
+                >
                   <Avatar
-                    initial={(m.displayName || m.handle || "?").slice(0, 1).toUpperCase()}
+                    initial={(m.displayName || m.handle || "?")
+                      .slice(0, 1)
+                      .toUpperCase()}
                     src={m.avatarUrl}
                     className="size-7"
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-1 font-medium">
                       <span className="truncate">
-                        {m.displayName || (m.handle ? `@${m.handle}` : m.id.slice(0, 8))}
+                        {m.displayName ||
+                          (m.handle ? `@${m.handle}` : m.id.slice(0, 8))}
                       </span>
                       {m.isVerified && <VerifiedBadge size={13} />}
                       {m.role === "admin" && (
-                        <span className="text-xs text-muted-foreground">(admin)</span>
+                        <span className="text-xs text-muted-foreground">
+                          (admin)
+                        </span>
                       )}
                       {m.id === me && (
-                        <span className="text-xs text-muted-foreground">(you)</span>
+                        <span className="text-xs text-muted-foreground">
+                          (you)
+                        </span>
                       )}
                     </div>
                   </div>
@@ -1253,12 +1323,14 @@ function GroupSettingsDialog({
 
           {isAdmin && (
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground">Add member</label>
+              <label className="text-xs font-medium text-muted-foreground">
+                Add member
+              </label>
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="search by handle or name"
-                className="w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                className="w-full rounded-md border border-border bg-transparent px-3 py-2 text-sm focus:ring-1 focus:ring-ring focus:outline-none"
               />
               {results.length > 0 && (
                 <ul className="divide-y divide-border rounded-md border border-border">
@@ -1270,14 +1342,17 @@ function GroupSettingsDialog({
                         className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm transition hover:bg-muted/30"
                       >
                         <Avatar
-                          initial={(u.displayName || u.handle || "?").slice(0, 1).toUpperCase()}
+                          initial={(u.displayName || u.handle || "?")
+                            .slice(0, 1)
+                            .toUpperCase()}
                           src={u.avatarUrl}
                           className="size-7"
                         />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1 font-medium">
                             <span className="truncate">
-                              {u.displayName || (u.handle ? `@${u.handle}` : u.id.slice(0, 8))}
+                              {u.displayName ||
+                                (u.handle ? `@${u.handle}` : u.id.slice(0, 8))}
                             </span>
                             {u.isVerified && <VerifiedBadge size={13} />}
                           </div>
@@ -1353,7 +1428,10 @@ function InviteSection({ conversationId }: { conversationId: string }) {
     try {
       await navigator.clipboard.writeText(url)
       setCopied(token)
-      setTimeout(() => setCopied((prev) => (prev === token ? null : prev)), 1500)
+      setTimeout(
+        () => setCopied((prev) => (prev === token ? null : prev)),
+        1500
+      )
     } catch {
       /* clipboard blocked — user can long-press the link */
     }
@@ -1384,7 +1462,11 @@ function InviteSection({ conversationId }: { conversationId: string }) {
                   <code className="flex-1 truncate rounded bg-muted px-2 py-1 text-[11px]">
                     {url}
                   </code>
-                  <Button size="sm" variant="ghost" onClick={() => copy(invite.token)}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => copy(invite.token)}
+                  >
                     {copied === invite.token ? "Copied" : "Copy"}
                   </Button>
                   <Button
@@ -1414,8 +1496,10 @@ function InviteSection({ conversationId }: { conversationId: string }) {
 
 function isLive(invite: DmInvite): boolean {
   if (invite.revokedAt) return false
-  if (invite.expiresAt && new Date(invite.expiresAt).getTime() < Date.now()) return false
-  if (invite.maxUses !== null && invite.usedCount >= invite.maxUses) return false
+  if (invite.expiresAt && new Date(invite.expiresAt).getTime() < Date.now())
+    return false
+  if (invite.maxUses !== null && invite.usedCount >= invite.maxUses)
+    return false
   return true
 }
 

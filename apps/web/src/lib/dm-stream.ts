@@ -3,7 +3,13 @@ import type { DmMessage } from "./api"
 
 export type DmEvent =
   | { type: "message"; conversationId: string; message: DmMessage }
-  | { type: "message_edited"; conversationId: string; messageId: string; text: string; editedAt: string }
+  | {
+      type: "message_edited"
+      conversationId: string
+      messageId: string
+      text: string
+      editedAt: string
+    }
   | { type: "message_deleted"; conversationId: string; messageId: string }
   | {
       type: "reaction"
@@ -45,8 +51,10 @@ function dispatch(raw: string) {
 function ensureSource() {
   if (source) return source
   // withCredentials sends the session cookie so the API can resolve the user.
-  source = new EventSource(`${API_URL}/api/dms/stream`, { withCredentials: true })
-  source.addEventListener("dm", (e) => dispatch((e).data))
+  source = new EventSource(`${API_URL}/api/dms/stream`, {
+    withCredentials: true,
+  })
+  source.addEventListener("dm", (e) => dispatch(e.data))
   // 'ready' / 'ping' don't need handlers; EventSource stays open on them.
   return source
 }

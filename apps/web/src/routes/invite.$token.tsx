@@ -8,7 +8,9 @@ import { PageFrame } from "../components/page-frame"
 import { VerifiedBadge } from "../components/verified-badge"
 import type { InvitePreview } from "../lib/api"
 
-export const Route = createFileRoute("/invite/$token")({ component: InvitePage })
+export const Route = createFileRoute("/invite/$token")({
+  component: InvitePage,
+})
 
 function InvitePage() {
   const { token } = Route.useParams()
@@ -30,10 +32,10 @@ function InvitePage() {
             ? e.code === "expired"
               ? "This invite has expired."
               : e.code === "exhausted"
-              ? "This invite has reached its max uses."
-              : e.code === "revoked"
-              ? "This invite has been revoked."
-              : "This invite is invalid or no longer exists."
+                ? "This invite has reached its max uses."
+                : e.code === "revoked"
+                  ? "This invite has been revoked."
+                  : "This invite is invalid or no longer exists."
             : "Couldn't load this invite."
         setError(msg)
       })
@@ -52,7 +54,10 @@ function InvitePage() {
     setAccepting(true)
     try {
       const { id } = await api.inviteAccept(token)
-      router.navigate({ to: "/inbox/$conversationId", params: { conversationId: id } })
+      router.navigate({
+        to: "/inbox/$conversationId",
+        params: { conversationId: id },
+      })
     } catch (e) {
       setError(e instanceof Error ? e.message : "couldn't join")
     } finally {
@@ -73,7 +78,9 @@ function InvitePage() {
   if (!preview) {
     return (
       <PageFrame>
-        <main className="px-4 py-16 text-center text-sm text-muted-foreground">loading…</main>
+        <main className="px-4 py-16 text-center text-sm text-muted-foreground">
+          loading…
+        </main>
       </PageFrame>
     )
   }
@@ -92,38 +99,44 @@ function InvitePage() {
 
   return (
     <PageFrame>
-    <main className="mx-auto max-w-md px-4 py-16">
-      <div className="rounded-lg border border-border p-6 text-center">
-        <div className="mb-4 flex justify-center -space-x-2">
-          {conv.previewMembers.slice(0, 4).map((m) => (
-            <Avatar
-              key={m.id}
-              initial={(m.displayName || m.handle || "?").slice(0, 1).toUpperCase()}
-              src={m.avatarUrl}
-              className="size-12 ring-2 ring-background"
-            />
-          ))}
-        </div>
-        <h1 className="flex items-center justify-center gap-1.5 text-lg font-semibold">
-          {title}
-          {soloPeer?.isVerified && <VerifiedBadge size={16} />}
-        </h1>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {conv.kind === "group" ? "Group conversation" : "Conversation"} ·{" "}
-          {conv.memberCount} member{conv.memberCount === 1 ? "" : "s"}
-        </p>
-        {preview.expiresAt && (
-          <p className="mt-2 text-xs text-muted-foreground">
-            Invite expires {new Date(preview.expiresAt).toLocaleString()}
+      <main className="mx-auto max-w-md px-4 py-16">
+        <div className="rounded-lg border border-border p-6 text-center">
+          <div className="mb-4 flex justify-center -space-x-2">
+            {conv.previewMembers.slice(0, 4).map((m) => (
+              <Avatar
+                key={m.id}
+                initial={(m.displayName || m.handle || "?")
+                  .slice(0, 1)
+                  .toUpperCase()}
+                src={m.avatarUrl}
+                className="size-12 ring-2 ring-background"
+              />
+            ))}
+          </div>
+          <h1 className="flex items-center justify-center gap-1.5 text-lg font-semibold">
+            {title}
+            {soloPeer?.isVerified && <VerifiedBadge size={16} />}
+          </h1>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {conv.kind === "group" ? "Group conversation" : "Conversation"} ·{" "}
+            {conv.memberCount} member{conv.memberCount === 1 ? "" : "s"}
           </p>
-        )}
-        <div className="mt-6 flex flex-col gap-2">
-          <Button onClick={accept} disabled={accepting}>
-            {accepting ? "Joining…" : session ? "Join conversation" : "Sign in to join"}
-          </Button>
+          {preview.expiresAt && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Invite expires {new Date(preview.expiresAt).toLocaleString()}
+            </p>
+          )}
+          <div className="mt-6 flex flex-col gap-2">
+            <Button onClick={accept} disabled={accepting}>
+              {accepting
+                ? "Joining…"
+                : session
+                  ? "Join conversation"
+                  : "Sign in to join"}
+            </Button>
+          </div>
         </div>
-      </div>
-    </main>
+      </main>
     </PageFrame>
   )
 }

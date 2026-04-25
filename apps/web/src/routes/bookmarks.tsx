@@ -18,13 +18,18 @@ function Bookmarks() {
 
   return (
     <PageFrame>
-    <main className="">
-      <header className="border-b border-border px-4 py-3">
-        <h1 className="text-base font-semibold">Bookmarks</h1>
-        <p className="text-xs text-muted-foreground">only you can see this list.</p>
-      </header>
-      <Feed load={load} emptyMessage="no bookmarks yet. tap the bookmark icon on a post to save it." />
-    </main>
+      <main className="">
+        <header className="border-b border-border px-4 py-3">
+          <h1 className="text-base font-semibold">Bookmarks</h1>
+          <p className="text-xs text-muted-foreground">
+            only you can see this list.
+          </p>
+        </header>
+        <Feed
+          load={load}
+          emptyMessage="no bookmarks yet. tap the bookmark icon on a post to save it."
+        />
+      </main>
     </PageFrame>
   )
 }

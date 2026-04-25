@@ -97,7 +97,7 @@ function AdminUsers() {
         setBusyId(null)
       }
     },
-    [load, q],
+    [load, q]
   )
 
   const columns = useMemo<Array<ColumnDef<AdminUser>>>(
@@ -159,7 +159,7 @@ function AdminUsers() {
           const canEdit = me?.role === "owner" && u.id !== me.id
           if (!canEdit) {
             return (
-              <span className="text-xs uppercase tracking-wider text-muted-foreground">
+              <span className="text-xs tracking-wider text-muted-foreground uppercase">
                 {u.role}
               </span>
             )
@@ -172,7 +172,7 @@ function AdminUsers() {
                     size="sm"
                     variant="ghost"
                     disabled={busyId === u.id}
-                    className="-ml-2 h-7 gap-1 text-xs uppercase tracking-wider"
+                    className="-ml-2 h-7 gap-1 text-xs tracking-wider uppercase"
                   />
                 }
               >
@@ -192,7 +192,7 @@ function AdminUsers() {
                         act(u.id, () => api.adminSetRole(u.id, r))
                       }
                     >
-                      <span className="uppercase tracking-wider">{r}</span>
+                      <span className="tracking-wider uppercase">{r}</span>
                       {r === u.role && (
                         <span className="ml-auto text-[10px] text-muted-foreground">
                           current
@@ -296,7 +296,7 @@ function AdminUsers() {
         },
       },
     ],
-    [act, busyId, me],
+    [act, busyId, me]
   )
 
   const table = useReactTable({
@@ -329,7 +329,7 @@ function AdminUsers() {
                       ? null
                       : flexRender(
                           header.column.columnDef.header,
-                          header.getContext(),
+                          header.getContext()
                         )}
                   </TableHead>
                 ))}
@@ -489,12 +489,7 @@ function ActionDialog({
           )}
         </div>
         <DialogFooter>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={onClose}
-            disabled={busy}
-          >
+          <Button size="sm" variant="ghost" onClick={onClose} disabled={busy}>
             Cancel
           </Button>
           <Button

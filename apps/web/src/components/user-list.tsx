@@ -49,10 +49,18 @@ export function UserList({
     }
   }
 
-  if (loading) return <div className="px-4 py-6 text-sm text-muted-foreground">loading…</div>
-  if (error) return <div className="px-4 py-6 text-sm text-destructive">{error}</div>
+  if (loading)
+    return (
+      <div className="px-4 py-6 text-sm text-muted-foreground">loading…</div>
+    )
+  if (error)
+    return <div className="px-4 py-6 text-sm text-destructive">{error}</div>
   if (users.length === 0)
-    return <div className="px-4 py-6 text-sm text-muted-foreground">{emptyMessage}</div>
+    return (
+      <div className="px-4 py-6 text-sm text-muted-foreground">
+        {emptyMessage}
+      </div>
+    )
 
   return (
     <div>
@@ -65,17 +73,28 @@ export function UserList({
             className="block border-b border-border px-4 py-3 hover:bg-muted/40"
           >
             <div className="flex items-center gap-1 text-sm font-medium">
-              <span className="truncate">{u.displayName || `@${u.handle}`}</span>
+              <span className="truncate">
+                {u.displayName || `@${u.handle}`}
+              </span>
               {u.isVerified && <VerifiedBadge size={14} />}
             </div>
             <div className="text-xs text-muted-foreground">@{u.handle}</div>
-            {u.bio && <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{u.bio}</p>}
+            {u.bio && (
+              <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                {u.bio}
+              </p>
+            )}
           </Link>
-        ) : null,
+        ) : null
       )}
       {cursor && (
         <div className="flex justify-center py-3">
-          <Button variant="ghost" size="sm" onClick={more} disabled={loadingMore}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={more}
+            disabled={loadingMore}
+          >
             {loadingMore ? "loading…" : "load more"}
           </Button>
         </div>

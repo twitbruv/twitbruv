@@ -21,7 +21,7 @@ export function AppHeader() {
             <IconArrowLeft size={14} stroke={1.8} />
           </button>
         )}
-        <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        <span className="text-[11px] font-semibold tracking-[0.08em] text-muted-foreground uppercase">
           {title}
         </span>
         {sub && (
