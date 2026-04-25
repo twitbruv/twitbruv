@@ -439,6 +439,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ role }),
     }),
+  adminSetHandle: (id: string, body: { handle: string; reason?: string }) =>
+    request<{ ok: true }>(`/api/admin/users/${id}/handle`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
   adminVerify: (id: string, reason?: string) =>
     request<{ ok: true }>(`/api/admin/users/${id}/verify`, {
       method: "POST",

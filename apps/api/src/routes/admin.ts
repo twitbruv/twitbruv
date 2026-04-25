@@ -3,8 +3,10 @@ import { z } from 'zod'
 import { and, desc, eq, ilike, or, sql } from '@workspace/db'
 import { schema } from '@workspace/db'
 import { assetUrl } from '@workspace/media/s3'
+import { handleSchema } from '@workspace/validators'
 import { requireAdmin, requireOwner, type HonoEnv, type Role } from '../middleware/session.ts'
 import { parseCursor } from '../lib/cursor.ts'
+import { isReservedHandle } from '../lib/handles.ts'
 
 export const adminRoute = new Hono<HonoEnv>()
 
@@ -502,6 +504,57 @@ adminRoute.post('/users/:id/unverify', async (c) => {
       subjectId: id,
       action: 'warn',
       privateNote: `verify_revoke${body.reason ? `: ${body.reason}` : ''}`,
+    })
+  })
+  return c.json({ ok: true })
+})
+
+const setHandleSchema = z.object({
+  handle: handleSchema,
+  reason: z.string().trim().min(1).max(500).optional(),
+})
+
+// Owner-only: forcibly reassign a user's handle. Useful for reclaiming squatted handles or
+// resolving impersonation reports. The handle is freed atomically — if the new handle is
+// taken or reserved we 4xx without touching the row.
+adminRoute.post('/users/:id/handle', requireOwner(), async (c) => {
+  const session = c.get('session')!
+  const { db } = c.get('ctx')
+  const id = c.req.param('id')
+  const { handle, reason } = setHandleSchema.parse(await c.req.json())
+  const normalized = handle.toLowerCase()
+
+  if (isReservedHandle(normalized)) return c.json({ error: 'reserved_handle' }, 400)
+
+  const [target] = await db
+    .select({ handle: schema.users.handle })
+    .from(schema.users)
+    .where(eq(schema.users.id, id))
+    .limit(1)
+  if (!target) return c.json({ error: 'not_found' }, 404)
+
+  // citext column ⇒ case-insensitive comparison. Allow rewriting to the same handle with a
+  // different case (e.g. fix capitalisation), but skip the conflict check in that case.
+  if (target.handle?.toLowerCase() !== normalized) {
+    const existing = await db
+      .select({ id: schema.users.id })
+      .from(schema.users)
+      .where(eq(schema.users.handle, handle))
+      .limit(1)
+    if (existing.length > 0) return c.json({ error: 'handle_taken' }, 409)
+  }
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(schema.users)
+      .set({ handle, updatedAt: new Date() })
+      .where(eq(schema.users.id, id))
+    await tx.insert(schema.moderationActions).values({
+      moderatorId: session.user.id,
+      subjectType: 'user',
+      subjectId: id,
+      action: 'warn',
+      privateNote: `handle_change: ${target.handle ?? '∅'} -> ${handle}${reason ? ` (${reason})` : ''}`,
     })
   })
   return c.json({ ok: true })
