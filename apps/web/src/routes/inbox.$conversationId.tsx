@@ -352,6 +352,7 @@ function Thread() {
       setMessages((prev) =>
         prev.some((m) => m.id === message.id) ? prev : [...prev, message]
       )
+      textareaRef.current?.focus()
     } catch (err) {
       setError(err instanceof Error ? err.message : "failed to send")
     } finally {
