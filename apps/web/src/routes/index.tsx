@@ -11,12 +11,12 @@ import { Feed } from "../components/feed"
 import { PageFrame } from "../components/page-frame"
 import { ThreadViewContent } from "../components/thread-view"
 import { homeThreadFromFeedSearch } from "../lib/home-from-feed"
-import type { Post } from "../lib/api"
 import {
   HOME_PANEL_MIN_INSET_WIDTH,
   HOME_PANEL_PRESENCE_MS,
   useInsetMinWidth,
 } from "../lib/use-media-query"
+import type { Post } from "../lib/api"
 
 type HomeSearch = { postId?: string; postHandle?: string }
 
