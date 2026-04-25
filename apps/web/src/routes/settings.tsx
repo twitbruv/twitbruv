@@ -17,9 +17,91 @@ import type { BlockedUser, MutedUser } from "../lib/api"
 
 export const Route = createFileRoute("/settings")({ component: Settings })
 
+type SettingsTab = "profile" | "account" | "sessions" | "privacy" | "danger"
+
 function Settings() {
   const router = useRouter()
   const { data: session, isPending } = authClient.useSession()
+  const { me, setMe } = useMe()
+  const [tab, setTab] = useState<SettingsTab>("profile")
+
+  useEffect(() => {
+    if (isPending) return
+    if (!session) router.navigate({ to: "/login" })
+  }, [isPending, session, router])
+
+  if (isPending || !me) {
+    return (
+      <PageFrame>
+        <main className="mx-auto max-w-xl px-4 py-8">
+          <p className="text-sm text-muted-foreground">loading…</p>
+        </main>
+      </PageFrame>
+    )
+  }
+
+  return (
+    <PageFrame>
+    <main className="mx-auto px-4 py-8">
+      <header>
+        <h1 className="text-xl font-semibold">Settings</h1>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {me.handle ? `@${me.handle}` : "no handle yet"} ·{" "}
+          {me.emailVerified ? "email verified" : "email unverified"}
+        </p>
+      </header>
+
+      {!me.handle && (
+        <div className="mt-6">
+          <ClaimHandle onClaimed={(h) => setMe({ ...me, handle: h })} />
+        </div>
+      )}
+
+      <div className="mt-6 flex gap-1 overflow-x-auto border-b border-border">
+        <SettingsTabBtn active={tab === "profile"} onClick={() => setTab("profile")} label="Profile" />
+        <SettingsTabBtn active={tab === "account"} onClick={() => setTab("account")} label="Account" />
+        <SettingsTabBtn active={tab === "sessions"} onClick={() => setTab("sessions")} label="Sessions" />
+        <SettingsTabBtn active={tab === "privacy"} onClick={() => setTab("privacy")} label="Privacy" />
+        <SettingsTabBtn active={tab === "danger"} onClick={() => setTab("danger")} label="Danger zone" />
+      </div>
+
+      <div className="mt-6">
+        {tab === "profile" && <ProfileSection />}
+        {tab === "account" && <AccountSection email={me.email} />}
+        {tab === "sessions" && <SessionsSection currentSessionId={session?.session.id ?? null} />}
+        {tab === "privacy" && <PrivacySection />}
+        {tab === "danger" && <DangerZone onDeleted={() => router.navigate({ to: "/" })} />}
+      </div>
+    </main>
+    </PageFrame>
+  )
+}
+
+function SettingsTabBtn({
+  active,
+  onClick,
+  label,
+}: {
+  active: boolean
+  onClick: () => void
+  label: string
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`whitespace-nowrap px-4 py-3 text-sm font-medium transition-colors ${
+        active
+          ? "border-b-2 border-primary text-foreground"
+          : "text-muted-foreground hover:text-foreground"
+      }`}
+    >
+      {label}
+    </button>
+  )
+}
+
+function ProfileSection() {
   const { me, setMe } = useMe()
   const [displayName, setDisplayName] = useState("")
   const [bio, setBio] = useState("")
@@ -28,17 +110,14 @@ function Settings() {
   const [status, setStatus] = useState<string | null>(null)
 
   useEffect(() => {
-    if (isPending) return
-    if (!session) router.navigate({ to: "/login" })
-  }, [isPending, session, router])
-
-  useEffect(() => {
     if (!me) return
     setDisplayName(me.displayName ?? "")
     setBio(me.bio ?? "")
     setLocation(me.location ?? "")
     setWebsiteUrl(me.websiteUrl ?? "")
   }, [me])
+
+  if (!me) return null
 
   async function onSave(e: React.FormEvent) {
     e.preventDefault()
@@ -82,31 +161,8 @@ function Settings() {
     }
   }
 
-  if (isPending || !me) {
-    return (
-      <PageFrame>
-        <main className="mx-auto max-w-xl px-4 py-8">
-          <p className="text-sm text-muted-foreground">loading…</p>
-        </main>
-      </PageFrame>
-    )
-  }
-
   return (
-    <PageFrame>
-    <main className="mx-auto space-y-8 px-4 py-8">
-      <header>
-        <h1 className="text-xl font-semibold">Settings</h1>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {me.handle ? `@${me.handle}` : "no handle yet"} ·{" "}
-          {me.emailVerified ? "email verified" : "email unverified"}
-        </p>
-      </header>
-
-      {!me.handle && (
-        <ClaimHandle onClaimed={(h) => setMe({ ...me, handle: h })} />
-      )}
-
+    <div className="space-y-8">
       <section className="space-y-6">
         <h2 className="text-sm font-semibold">Profile media</h2>
         <BannerUpload
@@ -120,12 +176,7 @@ function Settings() {
         />
       </section>
 
-      <AccountSection email={me.email} />
-      <SessionsSection currentSessionId={session?.session.id ?? null} />
-      <PrivacySection />
-      <DangerZone onDeleted={() => router.navigate({ to: "/" })} />
-
-      <form onSubmit={onSave} className="space-y-3">
+      <form onSubmit={onSave} className="space-y-3 border-t border-border pt-6">
         <h2 className="text-sm font-semibold">Profile details</h2>
         <div className="space-y-1">
           <Label htmlFor="displayName">Display name</Label>
@@ -165,8 +216,7 @@ function Settings() {
         {status && <p className="text-xs text-muted-foreground">{status}</p>}
         <Button type="submit">Save</Button>
       </form>
-    </main>
-    </PageFrame>
+    </div>
   )
 }
 
@@ -222,7 +272,7 @@ function AccountSection({ email }: { email: string }) {
   }
 
   return (
-    <section className="space-y-6 border-t border-border pt-6">
+    <section className="space-y-6">
       <h2 className="text-sm font-semibold">Account</h2>
 
       <form onSubmit={changeEmail} className="space-y-2">
@@ -317,7 +367,7 @@ function SessionsSection({ currentSessionId }: { currentSessionId: string | null
   }
 
   return (
-    <section className="space-y-3 border-t border-border pt-6">
+    <section className="space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold">Active sessions</h2>
         <Button size="sm" variant="outline" disabled={busy} onClick={revokeOthers}>
@@ -416,7 +466,7 @@ function PrivacySection() {
   }
 
   return (
-    <section className="space-y-3 border-t border-border pt-6">
+    <section className="space-y-3">
       <h2 className="text-sm font-semibold">Privacy</h2>
       <div className="flex gap-1">
         <Button
@@ -564,7 +614,7 @@ function DangerZone({ onDeleted }: { onDeleted: () => void }) {
   }
 
   return (
-    <section className="space-y-3 border-t border-destructive/40 pt-6">
+    <section className="space-y-3">
       <h2 className="text-sm font-semibold text-destructive">Danger zone</h2>
       <p className="text-xs text-muted-foreground">
         Deleting your account is permanent. Posts, articles, and DMs you authored will be removed.
