@@ -1,10 +1,11 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   flexRender,
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table"
+import { useVirtualizer } from "@tanstack/react-virtual"
 import { Button } from "@workspace/ui/components/button"
 import {
   Dialog,
@@ -305,9 +306,25 @@ function AdminUsers() {
     getCoreRowModel: getCoreRowModel(),
   })
 
+  const rows = table.getRowModel().rows
+  const tableContainerRef = useRef<HTMLDivElement>(null)
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    estimateSize: () => 64,
+    getScrollElement: () => tableContainerRef.current,
+    overscan: 8,
+  })
+  const virtualRows = rowVirtualizer.getVirtualItems()
+  const totalSize = rowVirtualizer.getTotalSize()
+  const paddingTop = virtualRows.length > 0 ? virtualRows[0].start : 0
+  const paddingBottom =
+    virtualRows.length > 0
+      ? totalSize - virtualRows[virtualRows.length - 1].end
+      : 0
+
   return (
-    <main>
-      <div className="border-b border-border p-4">
+    <main className="flex h-[calc(100dvh-5rem)] flex-col">
+      <div className="shrink-0 border-b border-border p-4">
         <Input
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -319,38 +336,68 @@ function AdminUsers() {
         <p className="p-4 text-sm text-muted-foreground">loading…</p>
       )}
       {users.length > 0 && (
-        <Table>
-          <TableHeader>
-            {table.getHeaderGroups().map((hg) => (
-              <TableRow key={hg.id}>
-                {hg.headers.map((header) => (
-                  <TableHead key={header.id}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
+        <div
+          ref={tableContainerRef}
+          className="flex-1 overflow-auto"
+        >
+          <Table>
+            <TableHeader className="sticky top-0 z-10 bg-background">
+              {table.getHeaderGroups().map((hg) => (
+                <TableRow key={hg.id}>
+                  {hg.headers.map((header) => (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {paddingTop > 0 && (
+                <tr aria-hidden="true">
+                  <td colSpan={columns.length} style={{ height: paddingTop }} />
+                </tr>
+              )}
+              {virtualRows.map((virtualRow) => {
+                const row = rows[virtualRow.index]
+                return (
+                  <TableRow
+                    key={row.id}
+                    data-index={virtualRow.index}
+                    ref={(node: HTMLTableRowElement | null) =>
+                      rowVirtualizer.measureElement(node)
+                    }
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
                         )}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {table.getRowModel().rows.map((row) => (
-              <TableRow key={row.id}>
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                )
+              })}
+              {paddingBottom > 0 && (
+                <tr aria-hidden="true">
+                  <td
+                    colSpan={columns.length}
+                    style={{ height: paddingBottom }}
+                  />
+                </tr>
+              )}
+            </TableBody>
+          </Table>
+        </div>
       )}
       {cursor && (
-        <div className="flex justify-center py-3">
+        <div className="shrink-0 border-t border-border flex justify-center py-3">
           <Button variant="ghost" size="sm" onClick={loadMore}>
             load more
           </Button>
