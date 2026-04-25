@@ -1,6 +1,6 @@
 import { Hono, type Context } from 'hono'
 import { z } from 'zod'
-import { and, desc, eq, gte, ilike, or, sql } from '@workspace/db'
+import { and, desc, eq, gte, ilike, lt, or, sql } from '@workspace/db'
 import { schema } from '@workspace/db'
 import { assetUrl } from '@workspace/media/s3'
 import { handleSchema } from '@workspace/validators'
@@ -79,7 +79,7 @@ adminRoute.get('/users', async (c) => {
     filters.push(or(ilike(schema.users.email, like), ilike(schema.users.handle, like)))
   }
   const parsedCursor = parseCursor(cursor)
-  if (parsedCursor) filters.push(sql`${schema.users.createdAt} < ${parsedCursor}`)
+  if (parsedCursor) filters.push(lt(schema.users.createdAt, parsedCursor))
 
   const rows = await db
     .select()
@@ -334,7 +334,7 @@ adminRoute.get('/reports', async (c) => {
   const filters: Array<unknown> = []
   if (status) filters.push(eq(schema.reports.status, status))
   const parsedCursor = parseCursor(cursor)
-  if (parsedCursor) filters.push(sql`${schema.reports.createdAt} < ${parsedCursor}`)
+  if (parsedCursor) filters.push(lt(schema.reports.createdAt, parsedCursor))
 
   const rows = await db
     .select({ report: schema.reports, reporter: schema.users })
