@@ -10,7 +10,9 @@ export interface SeoInput {
   description: string
   /** Absolute or root-relative path; used for og:url and the canonical link. */
   path: string
-  /** Absolute or root-relative URL for the OG/Twitter image. Falls back to /og.svg. */
+  /** Absolute or root-relative URL for the OG/Twitter image. Falls back to the
+   *  dynamic /og endpoint, which renders the brand card from APP_NAME at request
+   *  time so a rebrand never leaves a stale wordmark in the unfurl. */
   image?: string
   /** og:type — "article" for posts/articles/threads, otherwise "website" / "profile". */
   type?: "website" | "article" | "profile"
@@ -29,7 +31,7 @@ const abs = (urlOrPath: string) =>
 export function buildSeoMeta(input: SeoInput): Array<SeoMeta> {
   const title = input.rawTitle ? input.title : `${input.title} — ${APP_NAME}`
   const url = abs(input.path)
-  const image = abs(input.image ?? "/og.svg")
+  const image = abs(input.image ?? "/og")
   const type = input.type ?? "website"
 
   const meta: Array<SeoMeta> = [
