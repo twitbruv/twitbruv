@@ -5,6 +5,7 @@ import {
   IconBookmarkFilled,
   IconDots,
   IconFlag,
+  IconFolders,
   IconHeart,
   IconHeartFilled,
   IconMessageCircle,
@@ -20,6 +21,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu"
 import {
@@ -593,6 +598,9 @@ export function PostCard({
                       <span>Report</span>
                     </DropdownMenuItem>
                   )}
+                  {post.viewer?.bookmarked && (
+                    <BookmarkFolderSubmenu postId={post.id} />
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
@@ -815,6 +823,63 @@ function RepostControl({
           />
         </DialogContent>
       </Dialog>
+    </>
+  )
+}
+
+function BookmarkFolderSubmenu({ postId }: { postId: string }) {
+  const [folders, setFolders] = useState<Array<{ id: string; name: string }> | null>(null)
+  const [loading, setLoading] = useState(false)
+  async function load() {
+    if (folders !== null || loading) return
+    setLoading(true)
+    try {
+      const { folders: rows } = await api.bookmarkFolders()
+      setFolders(rows)
+    } catch {
+      setFolders([])
+    } finally {
+      setLoading(false)
+    }
+  }
+  return (
+    <>
+      <DropdownMenuSeparator />
+      <DropdownMenuSub>
+        <DropdownMenuSubTrigger onMouseEnter={load} onFocus={load}>
+          <IconFolders size={14} stroke={1.75} />
+          <span>Move to folder</span>
+        </DropdownMenuSubTrigger>
+        <DropdownMenuSubContent className="w-44">
+          <DropdownMenuItem
+            onClick={() => {
+              api.setBookmarkFolder(postId, null).catch(() => {})
+            }}
+          >
+            <span>Unsorted</span>
+          </DropdownMenuItem>
+          {folders === null && loading && (
+            <DropdownMenuItem disabled>
+              <span className="text-muted-foreground">loading…</span>
+            </DropdownMenuItem>
+          )}
+          {folders?.length === 0 && (
+            <DropdownMenuItem disabled>
+              <span className="text-muted-foreground">no folders yet</span>
+            </DropdownMenuItem>
+          )}
+          {folders?.map((f) => (
+            <DropdownMenuItem
+              key={f.id}
+              onClick={() => {
+                api.setBookmarkFolder(postId, f.id).catch(() => {})
+              }}
+            >
+              <span className="truncate">{f.name}</span>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>
     </>
   )
 }

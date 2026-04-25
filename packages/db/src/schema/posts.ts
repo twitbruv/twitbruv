@@ -108,6 +108,25 @@ export const likes = pgTable(
   ],
 )
 
+// User-owned folders for bookmarks. Bookmarks without a folder are surfaced
+// as the implicit "All bookmarks" view; bookmarks WITH a folder are shown
+// inside that folder. A bookmark can live in at most one folder, matching X.
+export const bookmarkFolders = pgTable(
+  'bookmark_folders',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('bookmark_folders_user_idx').on(t.userId, t.createdAt),
+    check('bookmark_folder_name_len', sql`char_length(${t.name}) BETWEEN 1 AND 50`),
+  ],
+)
+
 export const bookmarks = pgTable(
   'bookmarks',
   {
@@ -117,11 +136,15 @@ export const bookmarks = pgTable(
     postId: uuid('post_id')
       .notNull()
       .references(() => posts.id, { onDelete: 'cascade' }),
+    folderId: uuid('folder_id').references(() => bookmarkFolders.id, {
+      onDelete: 'set null',
+    }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     primaryKey({ columns: [t.userId, t.postId] }),
     index('bookmarks_user_idx').on(t.userId, t.createdAt),
+    index('bookmarks_folder_idx').on(t.folderId, t.createdAt),
   ],
 )
 

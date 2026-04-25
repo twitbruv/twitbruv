@@ -92,8 +92,38 @@ export const api = {
     request<{ users: Array<PublicUser>; posts: Array<Post> }>(
       `/api/search?q=${encodeURIComponent(q)}`
     ),
-  bookmarks: (cursor?: string) =>
-    request<FeedPage>(`/api/me/bookmarks${qs(cursor)}`),
+  bookmarks: (cursor?: string, folder?: string) => {
+    const params = new URLSearchParams()
+    if (cursor) params.set("cursor", cursor)
+    if (folder) params.set("folder", folder)
+    const search = params.toString()
+    return request<FeedPage>(
+      `/api/me/bookmarks${search ? `?${search}` : ""}`,
+    )
+  },
+  bookmarkFolders: () =>
+    request<{ folders: Array<BookmarkFolder>; unsortedCount: number }>(
+      "/api/me/bookmark-folders",
+    ),
+  createBookmarkFolder: (name: string) =>
+    request<{ folder: BookmarkFolder }>("/api/me/bookmark-folders", {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    }),
+  renameBookmarkFolder: (id: string, name: string) =>
+    request<{ folder: BookmarkFolder }>(`/api/me/bookmark-folders/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ name }),
+    }),
+  deleteBookmarkFolder: (id: string) =>
+    request<{ ok: true }>(`/api/me/bookmark-folders/${id}`, {
+      method: "DELETE",
+    }),
+  setBookmarkFolder: (postId: string, folderId: string | null) =>
+    request<{ ok: true }>(`/api/me/bookmarks/${postId}/folder`, {
+      method: "PUT",
+      body: JSON.stringify({ folderId }),
+    }),
   blocks: (cursor?: string) =>
     request<{ users: Array<BlockedUser>; nextCursor: string | null }>(
       `/api/me/blocks${qs(cursor)}`
@@ -692,6 +722,13 @@ export interface SelfUser {
   locale: string
   timezone: string | null
   createdAt: string
+}
+
+export interface BookmarkFolder {
+  id: string
+  name: string
+  createdAt: string
+  bookmarkCount?: number
 }
 
 export interface Thread {

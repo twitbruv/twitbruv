@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
-import { and, desc, eq, isNull, lt } from '@workspace/db'
+import { z } from 'zod'
+import { and, asc, desc, eq, isNull, lt, sql } from '@workspace/db'
 import { schema } from '@workspace/db'
 import { updateProfileSchema, claimHandleSchema } from '@workspace/validators'
 import { assetUrl, extractKey } from '@workspace/media/s3'
@@ -150,12 +151,22 @@ meRoute.get('/mutes', async (c) => {
   return c.json({ users, nextCursor })
 })
 
-// Viewer's bookmarked posts, newest bookmark first.
+// Viewer's bookmarked posts, newest bookmark first. The optional ?folder
+// query selects either a specific folder by id or the implicit "Unsorted"
+// bucket (folder=none). Without a query param, all bookmarks are returned.
 meRoute.get('/bookmarks', async (c) => {
   const session = c.get('session')!
   const { db, mediaEnv } = c.get('ctx')
   const limit = Math.min(Number(c.req.query('limit') ?? 40), 100)
   const cursor = parseCursor(c.req.query('cursor'))
+  const folderQ = c.req.query('folder')
+
+  const folderFilter =
+    folderQ === 'none'
+      ? isNull(schema.bookmarks.folderId)
+      : folderQ
+        ? eq(schema.bookmarks.folderId, folderQ)
+        : undefined
 
   const rows = await db
     .select({ post: schema.posts, author: schema.users, bookmarkedAt: schema.bookmarks.createdAt })
@@ -167,6 +178,7 @@ meRoute.get('/bookmarks', async (c) => {
         eq(schema.bookmarks.userId, session.user.id),
         isNull(schema.posts.deletedAt),
         cursor ? lt(schema.bookmarks.createdAt, cursor) : undefined,
+        folderFilter,
       ),
     )
     .orderBy(desc(schema.bookmarks.createdAt))
@@ -206,6 +218,146 @@ meRoute.get('/bookmarks', async (c) => {
   )
   const nextCursor = rows.length === limit ? rows[rows.length - 1]!.bookmarkedAt.toISOString() : null
   return c.json({ posts, nextCursor })
+})
+
+// List/create/rename/delete bookmark folders + add/remove a bookmark to/from
+// a folder. Folders are private to the viewer; only their owner can read or
+// modify them.
+meRoute.get('/bookmark-folders', async (c) => {
+  const session = c.get('session')!
+  const { db } = c.get('ctx')
+  const folders = await db
+    .select({
+      id: schema.bookmarkFolders.id,
+      name: schema.bookmarkFolders.name,
+      createdAt: schema.bookmarkFolders.createdAt,
+    })
+    .from(schema.bookmarkFolders)
+    .where(eq(schema.bookmarkFolders.userId, session.user.id))
+    .orderBy(asc(schema.bookmarkFolders.createdAt))
+  // Per-folder counts (including the "unsorted" bucket) so the UI can show
+  // counts beside each folder name.
+  const folderCounts = await db
+    .select({
+      folderId: schema.bookmarks.folderId,
+      n: sql<number>`count(*)::int`,
+    })
+    .from(schema.bookmarks)
+    .where(eq(schema.bookmarks.userId, session.user.id))
+    .groupBy(schema.bookmarks.folderId)
+  const totals = new Map<string | null, number>(
+    folderCounts.map((r) => [r.folderId, r.n]),
+  )
+  return c.json({
+    folders: folders.map((f) => ({
+      id: f.id,
+      name: f.name,
+      createdAt: f.createdAt.toISOString(),
+      bookmarkCount: totals.get(f.id) ?? 0,
+    })),
+    unsortedCount: totals.get(null) ?? 0,
+  })
+})
+
+const folderNameSchema = z.string().trim().min(1).max(50)
+
+meRoute.post('/bookmark-folders', async (c) => {
+  const session = c.get('session')!
+  const { db } = c.get('ctx')
+  const body = z.object({ name: folderNameSchema }).parse(await c.req.json())
+  const [created] = await db
+    .insert(schema.bookmarkFolders)
+    .values({ userId: session.user.id, name: body.name })
+    .returning()
+  if (!created) return c.json({ error: 'insert_failed' }, 500)
+  return c.json({
+    folder: {
+      id: created.id,
+      name: created.name,
+      createdAt: created.createdAt.toISOString(),
+      bookmarkCount: 0,
+    },
+  })
+})
+
+meRoute.patch('/bookmark-folders/:id', async (c) => {
+  const session = c.get('session')!
+  const { db } = c.get('ctx')
+  const id = c.req.param('id')
+  const body = z.object({ name: folderNameSchema }).parse(await c.req.json())
+  const [updated] = await db
+    .update(schema.bookmarkFolders)
+    .set({ name: body.name })
+    .where(
+      and(
+        eq(schema.bookmarkFolders.id, id),
+        eq(schema.bookmarkFolders.userId, session.user.id),
+      ),
+    )
+    .returning()
+  if (!updated) return c.json({ error: 'not_found' }, 404)
+  return c.json({
+    folder: {
+      id: updated.id,
+      name: updated.name,
+      createdAt: updated.createdAt.toISOString(),
+    },
+  })
+})
+
+meRoute.delete('/bookmark-folders/:id', async (c) => {
+  const session = c.get('session')!
+  const { db } = c.get('ctx')
+  const id = c.req.param('id')
+  const result = await db
+    .delete(schema.bookmarkFolders)
+    .where(
+      and(
+        eq(schema.bookmarkFolders.id, id),
+        eq(schema.bookmarkFolders.userId, session.user.id),
+      ),
+    )
+    .returning({ id: schema.bookmarkFolders.id })
+  if (result.length === 0) return c.json({ error: 'not_found' }, 404)
+  return c.json({ ok: true })
+})
+
+// Move (or remove) a bookmark to/from a folder. The bookmark itself must
+// already exist for the viewer; this endpoint never creates new bookmarks.
+meRoute.put('/bookmarks/:postId/folder', async (c) => {
+  const session = c.get('session')!
+  const { db } = c.get('ctx')
+  const postId = c.req.param('postId')
+  const body = z
+    .object({ folderId: z.string().uuid().nullable() })
+    .parse(await c.req.json())
+
+  if (body.folderId) {
+    const [folder] = await db
+      .select({ id: schema.bookmarkFolders.id })
+      .from(schema.bookmarkFolders)
+      .where(
+        and(
+          eq(schema.bookmarkFolders.id, body.folderId),
+          eq(schema.bookmarkFolders.userId, session.user.id),
+        ),
+      )
+      .limit(1)
+    if (!folder) return c.json({ error: 'folder_not_found' }, 404)
+  }
+
+  const [updated] = await db
+    .update(schema.bookmarks)
+    .set({ folderId: body.folderId })
+    .where(
+      and(
+        eq(schema.bookmarks.userId, session.user.id),
+        eq(schema.bookmarks.postId, postId),
+      ),
+    )
+    .returning({ postId: schema.bookmarks.postId })
+  if (!updated) return c.json({ error: 'bookmark_not_found' }, 404)
+  return c.json({ ok: true })
 })
 
 function toSelfDto(
