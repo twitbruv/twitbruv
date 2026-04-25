@@ -13,6 +13,52 @@ export const adminRoute = new Hono<HonoEnv>()
 // Every endpoint here requires admin or owner. Owner-only operations layer on requireOwner().
 adminRoute.use('*', requireAdmin())
 
+// Aggregate counters for the admin dashboard stat cards. Single round-trip; each branch is a
+// partial-index-friendly count(*) so it stays fast even at scale. `active` excludes banned,
+// shadowbanned, and deleted users so the four moderation buckets sum to the total.
+adminRoute.get('/stats', async (c) => {
+  const { db } = c.get('ctx')
+  const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+
+  const [row] = await db
+    .select({
+      total: sql<number>`count(*)::int`,
+      active: sql<number>`count(*) filter (where ${schema.users.banned} = false and ${schema.users.shadowBannedAt} is null and ${schema.users.deletedAt} is null)::int`,
+      banned: sql<number>`count(*) filter (where ${schema.users.banned} = true)::int`,
+      shadowBanned: sql<number>`count(*) filter (where ${schema.users.shadowBannedAt} is not null)::int`,
+      deleted: sql<number>`count(*) filter (where ${schema.users.deletedAt} is not null)::int`,
+      verified: sql<number>`count(*) filter (where ${schema.users.isVerified} = true)::int`,
+      admins: sql<number>`count(*) filter (where ${schema.users.role} in ('admin','owner'))::int`,
+      newToday: sql<number>`count(*) filter (where ${schema.users.createdAt} >= ${dayAgo})::int`,
+      newThisWeek: sql<number>`count(*) filter (where ${schema.users.createdAt} >= ${weekAgo})::int`,
+    })
+    .from(schema.users)
+
+  const [reportRow] = await db
+    .select({
+      openReports: sql<number>`count(*) filter (where ${schema.reports.status} = 'open')::int`,
+    })
+    .from(schema.reports)
+
+  return c.json({
+    users: {
+      total: row?.total ?? 0,
+      active: row?.active ?? 0,
+      banned: row?.banned ?? 0,
+      shadowBanned: row?.shadowBanned ?? 0,
+      deleted: row?.deleted ?? 0,
+      verified: row?.verified ?? 0,
+      admins: row?.admins ?? 0,
+      newToday: row?.newToday ?? 0,
+      newThisWeek: row?.newThisWeek ?? 0,
+    },
+    reports: {
+      open: reportRow?.openReports ?? 0,
+    },
+  })
+})
+
 const listQuery = z.object({
   // Cap admin search input. Without a limit, an admin (or compromised admin session) can
   // ship a massive `q` and force the planner into a wildcard ilike scan. 80 chars matches

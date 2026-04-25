@@ -409,6 +409,7 @@ export const api = {
   unpinPost: (id: string) =>
     request<{ ok: true }>(`/api/posts/${id}/pin`, { method: "DELETE" }),
 
+  adminStats: () => request<AdminStats>(`/api/admin/stats`),
   adminUsers: (q?: string, cursor?: string) => {
     const params = new URLSearchParams()
     if (q) params.set("q", q)
@@ -958,6 +959,23 @@ export interface DmMessage {
 }
 
 export type ReportStatus = "open" | "triaged" | "actioned" | "dismissed"
+
+export interface AdminStats {
+  users: {
+    total: number
+    active: number
+    banned: number
+    shadowBanned: number
+    deleted: number
+    verified: number
+    admins: number
+    newToday: number
+    newThisWeek: number
+  }
+  reports: {
+    open: number
+  }
+}
 
 export interface AdminUser {
   id: string

@@ -40,7 +40,7 @@ import { useMe } from "../lib/me"
 import { Avatar } from "../components/avatar"
 import { VerifiedBadge } from "../components/verified-badge"
 import type { ColumnDef } from "@tanstack/react-table"
-import type { AdminUser } from "../lib/api"
+import type { AdminStats, AdminUser } from "../lib/api"
 
 export const Route = createFileRoute("/admin/users")({ component: AdminUsers })
 
@@ -367,6 +367,7 @@ function AdminUsers() {
 
   return (
     <main className="flex min-h-0 flex-1 flex-col">
+      <StatCards />
       <div className="shrink-0 border-b border-border p-4">
         <Input
           value={q}
@@ -663,5 +664,74 @@ function ActionDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  )
+}
+
+function StatCards() {
+  const [stats, setStats] = useState<AdminStats | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    api
+      .adminStats()
+      .then((res) => {
+        if (!cancelled) setStats(res)
+      })
+      .catch((e) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : "failed")
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const cards: Array<{ label: string; value: number | null; tone?: "destructive" | "warning" }> = [
+    { label: "Total users", value: stats?.users.total ?? null },
+    { label: "Active", value: stats?.users.active ?? null },
+    { label: "Banned", value: stats?.users.banned ?? null, tone: "destructive" },
+    { label: "Shadowbanned", value: stats?.users.shadowBanned ?? null, tone: "warning" },
+    { label: "Deleted", value: stats?.users.deleted ?? null, tone: "destructive" },
+    { label: "Verified", value: stats?.users.verified ?? null },
+    { label: "Admins", value: stats?.users.admins ?? null },
+    { label: "New (24h)", value: stats?.users.newToday ?? null },
+    { label: "New (7d)", value: stats?.users.newThisWeek ?? null },
+    { label: "Open reports", value: stats?.reports.open ?? null, tone: "warning" },
+  ]
+
+  return (
+    <div className="shrink-0 border-b border-border p-4">
+      {error ? (
+        <p className="text-xs text-destructive">stats: {error}</p>
+      ) : (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
+          {cards.map((card) => (
+            <div
+              key={card.label}
+              className="rounded-md border border-border bg-card p-3"
+            >
+              <p className="truncate text-[10px] tracking-wider text-muted-foreground uppercase">
+                {card.label}
+              </p>
+              <p
+                className={`mt-1 text-xl font-semibold tabular-nums ${
+                  card.tone === "destructive"
+                    ? "text-destructive"
+                    : card.tone === "warning"
+                      ? "text-amber-600 dark:text-amber-500"
+                      : ""
+                }`}
+              >
+                {card.value === null ? (
+                  <span className="text-muted-foreground">…</span>
+                ) : (
+                  card.value.toLocaleString()
+                )}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
