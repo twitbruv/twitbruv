@@ -1,10 +1,14 @@
 import { Hono } from 'hono'
-import { and, desc, eq, inArray, isNull, lt, sql } from '@workspace/db'
+import { and, desc, eq, inArray, isNull, lt, ne, sql } from '@workspace/db'
 import { schema } from '@workspace/db'
 import { assetUrl } from '@workspace/media/s3'
 import { requireAuth, type HonoEnv } from '../middleware/session.ts'
 import { notificationsUnreadCacheKey } from '../lib/notify.ts'
 import { parseCursor } from '../lib/cursor.ts'
+import { toPostDto, type PostDto } from '../lib/post-dto.ts'
+import { loadPostMedia } from '../lib/post-media.ts'
+import { loadArticleCards } from '../lib/article-cards.ts'
+import { loadViewerFlags } from '../lib/viewer-flags.ts'
 
 export const notificationsRoute = new Hono<HonoEnv>()
 
@@ -22,11 +26,17 @@ notificationsRoute.get('/unread-count', async (c) => {
     c.header('x-cache', 'hit')
     return c.json(hit)
   }
+  // DMs are excluded — the messages tab carries its own unread count via
+  // /api/dms/unread-count and shouldn't double-count here.
   const [row] = await db
     .select({ n: sql<number>`count(*)::int` })
     .from(schema.notifications)
     .where(
-      and(eq(schema.notifications.userId, session.user.id), isNull(schema.notifications.readAt)),
+      and(
+        eq(schema.notifications.userId, session.user.id),
+        isNull(schema.notifications.readAt),
+        ne(schema.notifications.kind, 'dm'),
+      ),
     )
   const response = { count: row?.n ?? 0 }
   await cache.set(key, response, UNREAD_COUNT_TTL_SEC)
@@ -42,6 +52,7 @@ notificationsRoute.get('/', async (c) => {
   const cursor = parseCursor(c.req.query('cursor'))
   const unreadOnly = c.req.query('unread') === '1'
 
+  // DMs aren't surfaced here — they live in the messages tab with their own unread count.
   const rows = await db
     .select({
       n: schema.notifications,
@@ -52,12 +63,52 @@ notificationsRoute.get('/', async (c) => {
     .where(
       and(
         eq(schema.notifications.userId, session.user.id),
+        ne(schema.notifications.kind, 'dm'),
         unreadOnly ? isNull(schema.notifications.readAt) : undefined,
         cursor ? lt(schema.notifications.createdAt, cursor) : undefined,
       ),
     )
     .orderBy(desc(schema.notifications.createdAt))
     .limit(limit)
+
+  // Hydrate the post referenced by each notification so the UI can render a card preview.
+  // For replies / mentions / quotes the entity is the new post that triggered the notif;
+  // for likes / reposts it's the original (recipient's) post that was engaged with.
+  const postIds = Array.from(
+    new Set(
+      rows
+        .filter((r) => r.n.entityType === 'post' && r.n.entityId)
+        .map((r) => r.n.entityId as string),
+    ),
+  )
+
+  const [postRows, mediaMap, articleMap, viewerFlags] = await Promise.all([
+    postIds.length > 0
+      ? db
+          .select({ post: schema.posts, author: schema.users })
+          .from(schema.posts)
+          .innerJoin(schema.users, eq(schema.users.id, schema.posts.authorId))
+          .where(and(inArray(schema.posts.id, postIds), isNull(schema.posts.deletedAt)))
+      : Promise.resolve([]),
+    loadPostMedia(db, postIds),
+    loadArticleCards(db, postIds),
+    loadViewerFlags(db, session.user.id, postIds),
+  ])
+
+  const postById = new Map<string, PostDto>()
+  for (const r of postRows) {
+    postById.set(
+      r.post.id,
+      toPostDto(
+        r.post,
+        r.author,
+        viewerFlags.get(r.post.id),
+        mediaMap.get(r.post.id),
+        mediaEnv,
+        articleMap.get(r.post.id),
+      ),
+    )
+  }
 
   const items = rows.map((r) => ({
     id: r.n.id,
@@ -75,6 +126,8 @@ notificationsRoute.get('/', async (c) => {
           isVerified: r.actor.isVerified,
         }
       : null,
+    target:
+      r.n.entityType === 'post' && r.n.entityId ? postById.get(r.n.entityId) ?? null : null,
   }))
   const nextCursor = rows.length === limit ? rows[rows.length - 1]!.n.createdAt.toISOString() : null
   return c.json({ notifications: items, nextCursor })

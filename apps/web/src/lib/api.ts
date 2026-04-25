@@ -624,7 +624,6 @@ export interface NotificationItem {
     | "reply"
     | "mention"
     | "follow"
-    | "dm"
     | "article_reply"
     | "quote"
   createdAt: string
@@ -638,6 +637,9 @@ export interface NotificationItem {
     avatarUrl: string | null
     isVerified: boolean
   } | null
+  /** Hydrated for kinds whose entity is a post (like / repost / reply / mention / quote /
+   *  article_reply). Null when the post was deleted or the kind has no associated post. */
+  target: Post | null
 }
 
 export interface ArticleInput {

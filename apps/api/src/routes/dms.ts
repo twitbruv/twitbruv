@@ -5,7 +5,7 @@ import { and, desc, eq, inArray, isNull, lt, ne, or, sql } from '@workspace/db'
 import { schema, type Database } from '@workspace/db'
 import { assetUrl } from '@workspace/media/s3'
 import { requireAuth, type HonoEnv } from '../middleware/session.ts'
-import { notify, invalidateUnreadCounts } from '../lib/notify.ts'
+import { invalidateUnreadCounts } from '../lib/notify.ts'
 import { parseCursor } from '../lib/cursor.ts'
 import { dmChannel } from '../lib/pubsub.ts'
 import { toMediaDto, type MediaDto } from '../lib/post-dto.ts'
@@ -866,14 +866,11 @@ dmsRoute.post('/:id/messages', async (c) => {
         ),
       )
 
-    // Notify everyone else still in the conversation. Members in 'pending' (an unaccepted
-    // message request) are skipped so cold DMs don't ring their notification bell — the
-    // request itself is surfaced via the inbox tab badge instead.
+    // Surface this message to every other member's session (so their inbox/unread counters
+    // refresh). DMs are intentionally NOT fanned out to the notifications table — the
+    // messages tab carries its own unread count via /api/dms/unread-count.
     const others = await tx
-      .select({
-        userId: schema.conversationMembers.userId,
-        requestState: schema.conversationMembers.requestState,
-      })
+      .select({ userId: schema.conversationMembers.userId })
       .from(schema.conversationMembers)
       .where(
         and(
@@ -882,19 +879,6 @@ dmsRoute.post('/:id/messages', async (c) => {
           sql`${schema.conversationMembers.userId} <> ${me}`,
         ),
       )
-    const notifiable = others.filter((o) => o.requestState !== 'pending')
-    if (notifiable.length > 0) {
-      await notify(
-        tx,
-        notifiable.map((o) => ({
-          userId: o.userId,
-          actorId: me,
-          kind: 'dm' as const,
-          entityType: 'conversation' as const,
-          entityId: conversationId,
-        })),
-      )
-    }
     return { message: m, otherUserIds: others.map((o) => o.userId) }
   })
 
@@ -924,13 +908,11 @@ dmsRoute.post('/:id/messages', async (c) => {
 
   // Fan-out: every member (including me, so my other tabs stay in sync) gets the event.
   const recipients = [...message.otherUserIds, me]
-  const { cache } = c.get('ctx')
-  await Promise.all([
-    ...recipients.map((userId) =>
+  await Promise.all(
+    recipients.map((userId) =>
       pubsub.publish(dmChannel(userId), { type: 'message', conversationId, message: payload }),
     ),
-    invalidateUnreadCounts(cache, message.otherUserIds),
-  ])
+  )
 
   return c.json({ message: payload })
 })
