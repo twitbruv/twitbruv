@@ -26,6 +26,7 @@ function Bookmarks() {
           </p>
         </header>
         <Feed
+          queryKey={["bookmarks"]}
           load={load}
           emptyMessage="no bookmarks yet. tap the bookmark icon on a post to save it."
         />

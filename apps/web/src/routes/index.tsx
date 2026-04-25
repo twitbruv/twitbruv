@@ -139,7 +139,7 @@ function Landing() {
               ))}
             </div>
             <Feed
-              key={tab}
+              queryKey={["feed", tab]}
               load={tab === "following" ? loadFeed : loadPublic}
               emptyMessage={
                 tab === "following"

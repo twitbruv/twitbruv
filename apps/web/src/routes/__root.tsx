@@ -11,6 +11,7 @@ import { PageFrame } from "../components/page-frame"
 import { ThemeProvider, themeBootstrapScript } from "../lib/theme"
 import { APP_NAME, WEB_URL } from "../lib/env"
 import { MeProvider } from "../lib/me"
+import { QueryProvider } from "../lib/query"
 
 const DESCRIPTION = `${APP_NAME} — open-source, free-for-everyone social platform. No AI ranking, no paywalls, no ads.`
 
@@ -55,13 +56,15 @@ export const Route = createRootRoute({
   ),
   shellComponent: RootDocument,
   component: () => (
-    <ThemeProvider>
-      <MeProvider>
-        <AppShell>
-          <Outlet />
-        </AppShell>
-      </MeProvider>
-    </ThemeProvider>
+    <QueryProvider>
+      <ThemeProvider>
+        <MeProvider>
+          <AppShell>
+            <Outlet />
+          </AppShell>
+        </MeProvider>
+      </ThemeProvider>
+    </QueryProvider>
   ),
 })
 

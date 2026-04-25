@@ -147,6 +147,7 @@ function ListDetail() {
         )}
 
         <Feed
+          queryKey={["listTimeline", id]}
           load={load}
           emptyMessage={
             isOwner

@@ -160,7 +160,11 @@ function Profile() {
         </div>
       </div>
       <div className="border-t border-border">
-        <Feed load={load} emptyMessage={`@${user.handle} hasn't posted yet.`} />
+        <Feed
+          queryKey={["userPosts", handle]}
+          load={load}
+          emptyMessage={`@${user.handle} hasn't posted yet.`}
+        />
       </div>
     </main>
   )

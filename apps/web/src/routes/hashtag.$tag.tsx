@@ -21,7 +21,11 @@ function HashtagPage() {
             public posts with this hashtag
           </p>
         </header>
-        <Feed load={load} emptyMessage={`Nothing tagged #${tag} yet.`} />
+        <Feed
+          queryKey={["hashtag", tag]}
+          load={load}
+          emptyMessage={`Nothing tagged #${tag} yet.`}
+        />
       </main>
     </PageFrame>
   )

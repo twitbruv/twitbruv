@@ -1,10 +1,15 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo } from "react"
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@workspace/ui/components/button"
 import { SkeletonPostCard } from "@workspace/ui/components/skeleton"
 import { PostCard } from "./post-card"
+import type { InfiniteData } from "@tanstack/react-query"
 import type { FeedPage, Post } from "../lib/api"
 
+type FeedQueryKey = ReadonlyArray<unknown>
+
 export function Feed({
+  queryKey,
   load,
   emptyMessage = "Nothing here yet.",
   prependItem,
@@ -13,6 +18,7 @@ export function Feed({
   onOpenThread,
   activePostId,
 }: {
+  queryKey: FeedQueryKey
   load: (cursor?: string) => Promise<FeedPage>
   emptyMessage?: string
   prependItem?: Post | null
@@ -21,65 +27,83 @@ export function Feed({
   onOpenThread?: (post: Post) => void
   activePostId?: string
 }) {
-  const [posts, setPosts] = useState<Array<Post>>([])
-  const [cursor, setCursor] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [loadingMore, setLoadingMore] = useState(false)
+  const queryClient = useQueryClient()
+  const queryKeyHash = JSON.stringify(queryKey)
 
-  const filterPosts = (posts: Array<Post>) => {
-    if (hideReplies) return posts.filter((p) => !p.replyToId)
-    if (onlyReplies) return posts.filter((p) => p.replyToId)
-    return posts
-  }
-
-  useEffect(() => {
-    let cancel = false
-    setLoading(true)
-    load()
-      .then((page) => {
-        if (cancel) return
-        setPosts(filterPosts(page.posts))
-        setCursor(page.nextCursor)
-      })
-      .catch((e) => {
-        if (!cancel) setError(e instanceof Error ? e.message : "failed to load")
-      })
-      .finally(() => {
-        if (!cancel) setLoading(false)
-      })
-    return () => {
-      cancel = true
-    }
-  }, [hideReplies, load, onlyReplies])
+  const {
+    data,
+    error,
+    isPending,
+    fetchNextPage,
+    isFetchingNextPage,
+    hasNextPage,
+  } = useInfiniteQuery<FeedPage, Error, InfiniteData<FeedPage, string | undefined>, FeedQueryKey, string | undefined>({
+    queryKey,
+    queryFn: ({ pageParam }) => load(pageParam),
+    initialPageParam: undefined,
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
+  })
 
   useEffect(() => {
     if (!prependItem) return
-    setPosts((prev) =>
-      prev.some((p) => p.id === prependItem.id) ? prev : [prependItem, ...prev]
+    queryClient.setQueryData<InfiniteData<FeedPage, string | undefined>>(
+      queryKey,
+      (current) => {
+        if (!current || current.pages.length === 0) return current
+        const exists = current.pages.some((page) =>
+          page.posts.some((p) => p.id === prependItem.id),
+        )
+        if (exists) return current
+        const [first, ...rest] = current.pages
+        return {
+          ...current,
+          pages: [{ ...first, posts: [prependItem, ...first.posts] }, ...rest],
+        }
+      },
     )
-  }, [prependItem])
+    // queryKeyHash captures the key identity; queryKey ref may change each render.
+  }, [prependItem, queryClient, queryKeyHash])
 
-  async function loadMore() {
-    if (!cursor || loadingMore) return
-    setLoadingMore(true)
-    try {
-      const page = await load(cursor)
-      setPosts((prev) => [...prev, ...filterPosts(page.posts)])
-      setCursor(page.nextCursor)
-    } finally {
-      setLoadingMore(false)
-    }
-  }
+  const posts = useMemo(() => {
+    const all = data?.pages.flatMap((p) => p.posts) ?? []
+    if (hideReplies) return all.filter((p) => !p.replyToId)
+    if (onlyReplies) return all.filter((p) => p.replyToId)
+    return all
+  }, [data, hideReplies, onlyReplies])
 
   function replace(next: Post) {
-    setPosts((prev) => prev.map((p) => (p.id === next.id ? next : p)))
-  }
-  function remove(id: string) {
-    setPosts((prev) => prev.filter((p) => p.id !== id))
+    queryClient.setQueryData<InfiniteData<FeedPage, string | undefined>>(
+      queryKey,
+      (current) => {
+        if (!current) return current
+        return {
+          ...current,
+          pages: current.pages.map((page) => ({
+            ...page,
+            posts: page.posts.map((p) => (p.id === next.id ? next : p)),
+          })),
+        }
+      },
+    )
   }
 
-  if (loading)
+  function remove(id: string) {
+    queryClient.setQueryData<InfiniteData<FeedPage, string | undefined>>(
+      queryKey,
+      (current) => {
+        if (!current) return current
+        return {
+          ...current,
+          pages: current.pages.map((page) => ({
+            ...page,
+            posts: page.posts.filter((p) => p.id !== id),
+          })),
+        }
+      },
+    )
+  }
+
+  if (isPending)
     return (
       <div>
         {Array.from({ length: 4 }).map((_, i) => (
@@ -88,7 +112,11 @@ export function Feed({
       </div>
     )
   if (error)
-    return <div className="px-4 py-6 text-sm text-destructive">{error}</div>
+    return (
+      <div className="px-4 py-6 text-sm text-destructive">
+        {error.message}
+      </div>
+    )
   if (posts.length === 0)
     return (
       <div className="p-8 text-center text-sm text-muted-foreground">
@@ -110,15 +138,15 @@ export function Feed({
           }
         />
       ))}
-      {cursor && (
+      {hasNextPage && (
         <div className="flex justify-center py-3">
           <Button
             variant="ghost"
             size="sm"
-            onClick={loadMore}
-            disabled={loadingMore}
+            onClick={() => fetchNextPage()}
+            disabled={isFetchingNextPage}
           >
-            {loadingMore ? "loading…" : "load more"}
+            {isFetchingNextPage ? "loading…" : "load more"}
           </Button>
         </div>
       )}

@@ -23,6 +23,7 @@
     "@tabler/icons-react": "^3.41.1",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-hotkeys": "^0.9.1",
+    "@tanstack/react-query": "^5.100.3",
     "@tanstack/react-router": "^1.132.0",
     "@tanstack/react-start": "^1.132.0",
     "@tanstack/react-table": "^8.21.3",
