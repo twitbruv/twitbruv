@@ -99,6 +99,7 @@ function PostCard({ post }: { post: Post }) {
           { label: "likes", value: post.counts.likes },
           { label: "reposts", value: post.counts.reposts },
           { label: "replies", value: post.counts.replies },
+          { label: "saves", value: post.counts.bookmarks },
         ]}
       />
     </div>
