@@ -108,6 +108,7 @@ meRoute.get('/blocks', async (c) => {
     displayName: r.user.displayName,
     avatarUrl: assetUrl(mediaEnv, r.user.avatarUrl),
     isVerified: r.user.isVerified,
+    role: r.user.role,
     blockedAt: r.block.createdAt.toISOString(),
   }))
   const nextCursor =
@@ -142,6 +143,7 @@ meRoute.get('/mutes', async (c) => {
     displayName: r.user.displayName,
     avatarUrl: assetUrl(mediaEnv, r.user.avatarUrl),
     isVerified: r.user.isVerified,
+    role: r.user.role,
     mutedAt: r.mute.createdAt.toISOString(),
     scope: r.mute.scope,
   }))

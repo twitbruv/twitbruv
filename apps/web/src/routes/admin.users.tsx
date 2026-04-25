@@ -124,12 +124,16 @@ function AdminUsers() {
                     className="flex items-center gap-1 text-sm font-semibold hover:underline"
                   >
                     {u.displayName ?? u.handle}
-                    {u.isVerified && <VerifiedBadge size={14} />}
+                    {u.isVerified && (
+                      <VerifiedBadge size={14} role={u.role} />
+                    )}
                   </Link>
                 ) : (
                   <span className="flex items-center gap-1 text-sm font-semibold">
                     {u.displayName ?? u.email}
-                    {u.isVerified && <VerifiedBadge size={14} />}
+                    {u.isVerified && (
+                      <VerifiedBadge size={14} role={u.role} />
+                    )}
                   </span>
                 )}
                 {u.handle && (

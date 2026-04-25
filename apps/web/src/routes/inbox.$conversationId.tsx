@@ -1121,7 +1121,9 @@ function ThreadHeader({
             {peer?.displayName ||
               (peer?.handle ? `@${peer.handle}` : "Conversation")}
           </span>
-          {peer?.isVerified && <VerifiedBadge size={14} />}
+          {peer?.isVerified && (
+            <VerifiedBadge size={14} role={peer.role} />
+          )}
         </div>
         {peer?.handle && (
           <Link
@@ -1293,8 +1295,10 @@ function GroupSettingsDialog({
                         {m.displayName ||
                           (m.handle ? `@${m.handle}` : m.id.slice(0, 8))}
                       </span>
-                      {m.isVerified && <VerifiedBadge size={13} />}
-                      {m.role === "admin" && (
+                      {m.isVerified && (
+                        <VerifiedBadge size={13} role={m.role} />
+                      )}
+                      {m.chatRole === "admin" && (
                         <span className="text-xs text-muted-foreground">
                           (admin)
                         </span>
@@ -1354,7 +1358,9 @@ function GroupSettingsDialog({
                               {u.displayName ||
                                 (u.handle ? `@${u.handle}` : u.id.slice(0, 8))}
                             </span>
-                            {u.isVerified && <VerifiedBadge size={13} />}
+                            {u.isVerified && (
+                              <VerifiedBadge size={13} role={u.role} />
+                            )}
                           </div>
                           {u.handle && (
                             <div className="truncate text-xs text-muted-foreground">

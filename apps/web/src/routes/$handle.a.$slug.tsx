@@ -82,7 +82,9 @@ function ArticleView() {
               className="flex items-center gap-1 font-medium text-foreground hover:underline"
             >
               {article.author.displayName || `@${article.author.handle}`}
-              {article.author.isVerified && <VerifiedBadge size={14} />}
+              {article.author.isVerified && (
+                <VerifiedBadge size={14} role={article.author.role} />
+              )}
             </Link>
           )}
           <span>·</span>

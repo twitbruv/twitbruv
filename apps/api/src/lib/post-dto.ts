@@ -51,6 +51,7 @@ export interface PostDto {
     avatarUrl: string | null
     isVerified: boolean
     isBot: boolean
+    role: 'user' | 'admin' | 'owner'
   }
   counts: {
     likes: number
@@ -127,6 +128,7 @@ export function toPostDto(
       avatarUrl: env ? assetUrl(env, author.avatarUrl) : author.avatarUrl,
       isVerified: author.isVerified,
       isBot: author.isBot,
+      role: author.role,
     },
     counts: {
       likes: post.likeCount,

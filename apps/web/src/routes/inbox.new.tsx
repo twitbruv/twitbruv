@@ -110,7 +110,9 @@ function NewConversation() {
                   <span className="flex items-center gap-1 font-medium">
                     {u.displayName ||
                       (u.handle ? `@${u.handle}` : u.id.slice(0, 8))}
-                    {u.isVerified && <VerifiedBadge size={12} />}
+                    {u.isVerified && (
+                      <VerifiedBadge size={12} role={u.role} />
+                    )}
                   </span>
                   <button
                     type="button"
@@ -180,7 +182,9 @@ function NewConversation() {
                           {u.displayName ||
                             (u.handle ? `@${u.handle}` : u.id.slice(0, 8))}
                         </span>
-                        {u.isVerified && <VerifiedBadge size={14} />}
+                        {u.isVerified && (
+                          <VerifiedBadge size={14} role={u.role} />
+                        )}
                       </div>
                       {u.handle && (
                         <div className="truncate text-xs text-muted-foreground">

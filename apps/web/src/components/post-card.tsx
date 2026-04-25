@@ -146,7 +146,9 @@ function QuoteEmbed({ post }: { post: Post }) {
           <div className="flex items-center gap-2 text-xs">
             <span className="flex items-center gap-1 font-semibold text-foreground">
               {post.author.displayName || `@${handle ?? "unknown"}`}
-              {post.author.isVerified && <VerifiedBadge size={13} />}
+              {post.author.isVerified && (
+                <VerifiedBadge size={13} role={post.author.role} />
+              )}
             </span>
             {handle && <span className="text-muted-foreground">@{handle}</span>}
             <span className="text-muted-foreground">·</span>
@@ -458,7 +460,9 @@ export function PostCard({
               Reposted by{" "}
               {outerPost.author.displayName || `@${outerPost.author.handle}`}
             </span>
-            {outerPost.author.isVerified && <VerifiedBadge size={12} />}
+            {outerPost.author.isVerified && (
+              <VerifiedBadge size={12} role={outerPost.author.role} />
+            )}
           </span>
         </Link>
       )}
@@ -501,12 +505,16 @@ export function PostCard({
                 className="flex items-center gap-1 font-semibold text-foreground hover:underline"
               >
                 {post.author.displayName || `@${authorHandle}`}
-                {post.author.isVerified && <VerifiedBadge size={15} />}
+                {post.author.isVerified && (
+                  <VerifiedBadge size={15} role={post.author.role} />
+                )}
               </Link>
             ) : (
               <span className="flex items-center gap-1 font-semibold text-foreground">
                 {post.author.displayName ?? "unknown"}
-                {post.author.isVerified && <VerifiedBadge size={15} />}
+                {post.author.isVerified && (
+                  <VerifiedBadge size={15} role={post.author.role} />
+                )}
               </span>
             )}
             {authorHandle && (

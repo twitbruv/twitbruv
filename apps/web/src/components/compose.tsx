@@ -256,7 +256,9 @@ export function Compose({
               <span className="flex items-center gap-1 font-medium text-foreground">
                 {quoted.author.displayName ||
                   `@${quoted.author.handle ?? "unknown"}`}
-                {quoted.author.isVerified && <VerifiedBadge size={13} />}
+                {quoted.author.isVerified && (
+                  <VerifiedBadge size={13} role={quoted.author.role} />
+                )}
               </span>
               {quoted.author.handle && <span>@{quoted.author.handle}</span>}
             </div>

@@ -494,6 +494,7 @@ export interface Post {
     avatarUrl: string | null
     isVerified: boolean
     isBot: boolean
+    role: "user" | "admin" | "owner"
   }
   counts: {
     likes: number
@@ -590,6 +591,7 @@ export interface UserListMember {
   displayName: string | null
   avatarUrl: string | null
   isVerified: boolean
+  role: "user" | "admin" | "owner"
   addedAt: string
 }
 
@@ -632,6 +634,7 @@ export interface PublicUser {
   bannerUrl: string | null
   isVerified: boolean
   isBot: boolean
+  role: "user" | "admin" | "owner"
   createdAt: string
 }
 
@@ -661,6 +664,7 @@ export interface BlockedUser {
   displayName: string | null
   avatarUrl: string | null
   isVerified: boolean
+  role: "user" | "admin" | "owner"
   blockedAt: string
 }
 
@@ -670,6 +674,7 @@ export interface MutedUser {
   displayName: string | null
   avatarUrl: string | null
   isVerified: boolean
+  role: "user" | "admin" | "owner"
   mutedAt: string
   scope: "feed" | "notifications" | "both"
 }
@@ -720,6 +725,7 @@ export interface NotificationItem {
     displayName: string | null
     avatarUrl: string | null
     isVerified: boolean
+    role: "user" | "admin" | "owner"
   } | null
   /** Hydrated for kinds whose entity is a post (like / repost / reply / mention / quote /
    *  article_reply). Null when the post was deleted or the kind has no associated post. */
@@ -773,6 +779,7 @@ export interface ArticleDto {
     displayName: string | null
     avatarUrl: string | null
     isVerified: boolean
+    role: "user" | "admin" | "owner"
   }
 }
 
@@ -782,6 +789,7 @@ export interface DmMember {
   displayName: string | null
   avatarUrl: string | null
   isVerified: boolean
+  role: "user" | "admin" | "owner"
 }
 
 export type DmRequestState = "none" | "pending" | "accepted" | "declined"
@@ -812,7 +820,7 @@ export interface DmConversationDetail {
   myRole: "member" | "admin"
   myRequestState: DmRequestState
   members: Array<
-    DmMember & { role: "member" | "admin"; lastReadMessageId: string | null }
+    DmMember & { chatRole: "member" | "admin"; lastReadMessageId: string | null }
   >
 }
 
@@ -838,6 +846,7 @@ export interface InvitePreview {
       displayName: string | null
       avatarUrl: string | null
       isVerified: boolean
+      role: "user" | "admin" | "owner"
     }>
   }
   expiresAt: string | null
