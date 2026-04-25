@@ -444,6 +444,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+  adminDeleteUser: (id: string, body: { reason?: string } = {}) =>
+    request<{ ok: true }>(`/api/admin/users/${id}`, {
+      method: "DELETE",
+      body: JSON.stringify(body),
+    }),
   adminVerify: (id: string, reason?: string) =>
     request<{ ok: true }>(`/api/admin/users/${id}/verify`, {
       method: "POST",

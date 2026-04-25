@@ -584,6 +584,47 @@ adminRoute.delete('/posts/:id', async (c) => {
   return c.json({ ok: true })
 })
 
+const deleteUserSchema = z.object({
+  reason: z.string().trim().min(1).max(500).optional(),
+})
+
+// Owner-only: soft-delete a user account. Sets deletedAt so the user disappears from feeds,
+// profile lookups, and search (every read path filters on isNull(deletedAt)). Sessions are
+// wiped so the account is logged out everywhere on the next request. Reversible by clearing
+// deletedAt directly in the DB if needed.
+adminRoute.delete('/users/:id', requireOwner(), async (c) => {
+  const session = c.get('session')!
+  const { db } = c.get('ctx')
+  const id = c.req.param('id')
+  const body = deleteUserSchema.parse(await c.req.json().catch(() => ({})))
+
+  if (id === session.user.id) return c.json({ error: 'cannot_delete_self' }, 400)
+
+  const [target] = await db
+    .select({ deletedAt: schema.users.deletedAt })
+    .from(schema.users)
+    .where(eq(schema.users.id, id))
+    .limit(1)
+  if (!target) return c.json({ error: 'not_found' }, 404)
+  if (target.deletedAt) return c.json({ error: 'already_deleted' }, 409)
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(schema.users)
+      .set({ deletedAt: new Date(), updatedAt: new Date() })
+      .where(eq(schema.users.id, id))
+    await tx.delete(schema.sessions).where(eq(schema.sessions.userId, id))
+    await tx.insert(schema.moderationActions).values({
+      moderatorId: session.user.id,
+      subjectType: 'user',
+      subjectId: id,
+      action: 'delete',
+      publicReason: body.reason ?? null,
+    })
+  })
+  return c.json({ ok: true })
+})
+
 // Prevent admins from acting on other admins or owners. Owners can act on anyone (except self,
 // which is checked separately in the caller).
 async function guardTargetRank(c: Context<HonoEnv>, targetId: string) {

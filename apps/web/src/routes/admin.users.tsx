@@ -50,6 +50,7 @@ type ActionDialogState =
   | { kind: "shadow"; user: AdminUser }
   | { kind: "verify"; user: AdminUser }
   | { kind: "handle"; user: AdminUser }
+  | { kind: "delete"; user: AdminUser }
   | null
 
 function AdminUsers() {
@@ -302,6 +303,16 @@ function AdminUsers() {
                   Handle
                 </Button>
               )}
+              {me?.role === "owner" && !u.deletedAt && (
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  disabled={busyId === u.id || u.id === me.id}
+                  onClick={() => setDialog({ kind: "delete", user: u })}
+                >
+                  Delete
+                </Button>
+              )}
             </div>
           )
         },
@@ -399,6 +410,7 @@ function ActionDialog({
   const [reason, setReason] = useState("")
   const [hours, setHours] = useState("")
   const [handle, setHandle] = useState("")
+  const [confirm, setConfirm] = useState("")
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -407,6 +419,7 @@ function ActionDialog({
       setReason("")
       setHours("")
       setHandle(state.kind === "handle" ? (state.user.handle ?? "") : "")
+      setConfirm("")
       setSubmitError(null)
       setBusy(false)
     }
@@ -422,6 +435,7 @@ function ActionDialog({
 
   const u = state.user
   const subject = `@${u.handle ?? u.email}`
+  const deleteConfirmText = u.handle ?? u.email
 
   const config = {
     ban: {
@@ -479,6 +493,16 @@ function ActionDialog({
           handle: handle.trim(),
           reason: reason.trim() || undefined,
         }),
+    },
+    delete: {
+      title: `Delete account ${subject}`,
+      description:
+        "Soft-deletes the account: removes them from feeds, profiles, and search, and signs them out everywhere. Reversible from the database.",
+      submitLabel: "Delete account",
+      submitVariant: "destructive" as const,
+      showDuration: false,
+      run: () =>
+        api.adminDeleteUser(u.id, { reason: reason.trim() || undefined }),
     },
   }[state.kind]
 
@@ -538,6 +562,21 @@ function ActionDialog({
               />
             </label>
           )}
+          {state.kind === "delete" && (
+            <label className="flex flex-col gap-1 text-xs">
+              <span className="text-muted-foreground">
+                Type <code className="rounded bg-muted px-1">{deleteConfirmText}</code> to confirm
+              </span>
+              <Input
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                placeholder={deleteConfirmText}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+              />
+            </label>
+          )}
           {submitError && (
             <p className="text-xs text-destructive">{submitError}</p>
           )}
@@ -550,7 +589,7 @@ function ActionDialog({
             size="sm"
             variant={config.submitVariant}
             onClick={submit}
-            disabled={busy}
+            disabled={busy || (state.kind === "delete" && confirm !== deleteConfirmText)}
           >
             {busy ? "Working…" : config.submitLabel}
           </Button>
