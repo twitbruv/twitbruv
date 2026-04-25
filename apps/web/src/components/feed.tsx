@@ -8,10 +8,16 @@ export function Feed({
   load,
   emptyMessage = "Nothing here yet.",
   prependItem,
+  hideReplies = false,
+  onlyReplies = false,
 }: {
   load: (cursor?: string) => Promise<FeedPage>
   emptyMessage?: string
   prependItem?: Post | null
+  /** Filter out posts that are replies (have a replyToId) */
+  hideReplies?: boolean
+  /** Only show posts that are replies (have a replyToId) */
+  onlyReplies?: boolean
 }) {
   const [posts, setPosts] = useState<Array<Post>>([])
   const [cursor, setCursor] = useState<string | null>(null)
@@ -19,13 +25,20 @@ export function Feed({
   const [error, setError] = useState<string | null>(null)
   const [loadingMore, setLoadingMore] = useState(false)
 
+  // Filter function for hiding/showing replies
+  const filterPosts = (posts: Post[]) => {
+    if (hideReplies) return posts.filter((p) => !p.replyToId)
+    if (onlyReplies) return posts.filter((p) => p.replyToId)
+    return posts
+  }
+
   useEffect(() => {
     let cancel = false
     setLoading(true)
     load()
       .then((page) => {
         if (cancel) return
-        setPosts(page.posts)
+        setPosts(filterPosts(page.posts))
         setCursor(page.nextCursor)
       })
       .catch((e) => {
@@ -51,7 +64,7 @@ export function Feed({
     setLoadingMore(true)
     try {
       const page = await load(cursor)
-      setPosts((prev) => [...prev, ...page.posts])
+      setPosts((prev) => [...prev, ...filterPosts(page.posts)])
       setCursor(page.nextCursor)
     } finally {
       setLoadingMore(false)
