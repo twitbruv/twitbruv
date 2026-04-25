@@ -59,9 +59,11 @@ function ThreadView() {
         ? {
             ancestors: t.ancestors.map((p) => (p.id === next.id ? next : p)),
             post: t.post && t.post.id === next.id ? next : t.post,
-            replies: t.replies.map((p) => (p.id === next.id ? next : p)),
+            replies: t.replies.map((p) =>
+              p.id === next.id ? { ...p, ...next } : p,
+            ),
           }
-        : t
+        : t,
     )
   }
 
@@ -79,9 +81,9 @@ function ThreadView() {
                   },
                 }
               : t.post,
-            replies: [...t.replies, post],
+            replies: [...t.replies, { ...post, descendantReplyCount: 0 }],
           }
-        : t
+        : t,
     )
   }
 
@@ -142,14 +144,25 @@ function ThreadView() {
       {thread.replies.length > 0 && (
         <div>
           {thread.replies.map((p) => (
-            <Link
-              key={p.id}
-              to="/$handle/p/$id"
-              params={{ handle: p.author.handle ?? "", id: p.id }}
-              className="block border-b border-border py-3 pr-4 pl-8 transition-colors hover:bg-muted/30"
-            >
-              <ReplyCard post={p} onChange={replace} />
-            </Link>
+            <div key={p.id}>
+              <Link
+                to="/$handle/p/$id"
+                params={{ handle: p.author.handle ?? "", id: p.id }}
+                className="block border-b border-border py-3 pr-4 pl-8 transition-colors hover:bg-muted/30"
+              >
+                <ReplyCard post={p} onChange={replace} />
+              </Link>
+              {p.descendantReplyCount > 0 && p.author.handle && (
+                <Link
+                  to="/$handle/p/$id"
+                  params={{ handle: p.author.handle, id: p.id }}
+                  className="block border-b border-border bg-muted/10 px-4 py-2 pl-16 text-xs text-primary hover:underline"
+                >
+                  View {p.descendantReplyCount} more{" "}
+                  {p.descendantReplyCount === 1 ? "reply" : "replies"}
+                </Link>
+              )}
+            </div>
           ))}
         </div>
       )}

@@ -694,10 +694,17 @@ export interface SelfUser {
   createdAt: string
 }
 
+export interface ThreadReply extends Post {
+  /** Number of direct (non-deleted) replies to this reply. The thread route only ships
+   *  the first hop of replies; if this is non-zero, the UI shows a
+   *  "View N more replies" affordance that opens the reply's own thread page. */
+  descendantReplyCount: number
+}
+
 export interface Thread {
   ancestors: Array<Post>
   post: Post | null
-  replies: Array<Post>
+  replies: Array<ThreadReply>
 }
 
 export interface NotificationItem {

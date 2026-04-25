@@ -478,6 +478,28 @@ postsRoute.get('/:id/thread', async (c) => {
     .orderBy(asc(schema.posts.createdAt))
     .limit(100)
 
+  // For each immediate reply, count how many further replies it has (one hop, non-deleted).
+  // This lets the UI render a "View N more replies" affordance without doing the recursive
+  // walk for every reply ahead of time.
+  const replyIds = replies.map((r) => r.post.id)
+  const descendantCounts = new Map<string, number>()
+  if (replyIds.length > 0) {
+    const rows = await db
+      .select({
+        id: schema.posts.replyToId,
+        n: sql<number>`count(*)::int`,
+      })
+      .from(schema.posts)
+      .where(
+        and(
+          inArray(schema.posts.replyToId, replyIds),
+          isNull(schema.posts.deletedAt),
+        ),
+      )
+      .groupBy(schema.posts.replyToId)
+    for (const r of rows) if (r.id) descendantCounts.set(r.id, r.n)
+  }
+
   const allIds = [...ancestorPostRows.map((r) => r.post.id), target.id, ...replies.map((r) => r.post.id)]
   const env = c.get('ctx').mediaEnv
   const allRepostRows = [
@@ -529,8 +551,8 @@ postsRoute.get('/:id/thread', async (c) => {
           pollMap.get(target.id),
         )
       : null,
-    replies: replies.map((r) =>
-      toPostDto(
+    replies: replies.map((r) => ({
+      ...toPostDto(
         r.post,
         r.author,
         flags.get(r.post.id),
@@ -541,7 +563,8 @@ postsRoute.get('/:id/thread', async (c) => {
         quoteMap.get(r.post.id),
         pollMap.get(r.post.id),
       ),
-    ),
+      descendantReplyCount: descendantCounts.get(r.post.id) ?? 0,
+    })),
   })
 })
 
