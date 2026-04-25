@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "ioredis": "^5.8.0"
+    "hono": "^4.7.11",
+    "ioredis": "^5.8.0",
+    "pino": "^9.6.0"
   },
   "devDependencies": {
     "@types/node": "^25.1.0",

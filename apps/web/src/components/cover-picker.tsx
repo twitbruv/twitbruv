@@ -72,7 +72,7 @@ export function CoverPicker({
             variant="ghost"
             onClick={clear}
             aria-label="remove cover"
-            className="absolute right-2 top-2 size-7 rounded-full bg-background/80 backdrop-blur-sm"
+            className="absolute top-2 right-2 size-7 rounded-full bg-background/80 backdrop-blur-sm"
           >
             <IconX size={14} />
           </Button>

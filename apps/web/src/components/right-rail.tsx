@@ -4,7 +4,10 @@ import { APP_NAME } from "../lib/env"
 import { api } from "../lib/api"
 
 export function RightRail() {
-  const [trending, setTrending] = useState<Array<{ tag: string; postCount: number }> | null>(null)
+  const [trending, setTrending] = useState<Array<{
+    tag: string
+    postCount: number
+  }> | null>(null)
 
   useEffect(() => {
     let cancel = false

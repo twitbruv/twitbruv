@@ -8,365 +8,365 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root'
-import { Route as SignupRouteImport } from './routes/signup'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as SearchRouteImport } from './routes/search'
-import { Route as NotificationsRouteImport } from './routes/notifications'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as InboxRouteImport } from './routes/inbox'
-import { Route as DraftsRouteImport } from './routes/drafts'
-import { Route as BookmarksRouteImport } from './routes/bookmarks'
-import { Route as AnalyticsRouteImport } from './routes/analytics'
-import { Route as AdminRouteImport } from './routes/admin'
-import { Route as HandleRouteImport } from './routes/$handle'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as ListsIndexRouteImport } from './routes/lists.index'
-import { Route as InboxIndexRouteImport } from './routes/inbox.index'
-import { Route as AdminIndexRouteImport } from './routes/admin.index'
-import { Route as HandleIndexRouteImport } from './routes/$handle.index'
-import { Route as ListsIdRouteImport } from './routes/lists.$id'
-import { Route as InviteTokenRouteImport } from './routes/invite.$token'
-import { Route as InboxNewRouteImport } from './routes/inbox.new'
-import { Route as InboxConversationIdRouteImport } from './routes/inbox.$conversationId'
-import { Route as HashtagTagRouteImport } from './routes/hashtag.$tag'
-import { Route as ArticlesNewRouteImport } from './routes/articles.new'
-import { Route as AdminUsersRouteImport } from './routes/admin.users'
-import { Route as AdminReportsRouteImport } from './routes/admin.reports'
-import { Route as HandleFollowingRouteImport } from './routes/$handle.following'
-import { Route as HandleFollowersRouteImport } from './routes/$handle.followers'
-import { Route as ArticlesIdEditRouteImport } from './routes/articles.$id.edit'
-import { Route as HandlePIdRouteImport } from './routes/$handle.p.$id'
-import { Route as HandleASlugRouteImport } from './routes/$handle.a.$slug'
+import { Route as rootRouteImport } from "./routes/__root"
+import { Route as SignupRouteImport } from "./routes/signup"
+import { Route as SettingsRouteImport } from "./routes/settings"
+import { Route as SearchRouteImport } from "./routes/search"
+import { Route as NotificationsRouteImport } from "./routes/notifications"
+import { Route as LoginRouteImport } from "./routes/login"
+import { Route as InboxRouteImport } from "./routes/inbox"
+import { Route as DraftsRouteImport } from "./routes/drafts"
+import { Route as BookmarksRouteImport } from "./routes/bookmarks"
+import { Route as AnalyticsRouteImport } from "./routes/analytics"
+import { Route as AdminRouteImport } from "./routes/admin"
+import { Route as HandleRouteImport } from "./routes/$handle"
+import { Route as IndexRouteImport } from "./routes/index"
+import { Route as ListsIndexRouteImport } from "./routes/lists.index"
+import { Route as InboxIndexRouteImport } from "./routes/inbox.index"
+import { Route as AdminIndexRouteImport } from "./routes/admin.index"
+import { Route as HandleIndexRouteImport } from "./routes/$handle.index"
+import { Route as ListsIdRouteImport } from "./routes/lists.$id"
+import { Route as InviteTokenRouteImport } from "./routes/invite.$token"
+import { Route as InboxNewRouteImport } from "./routes/inbox.new"
+import { Route as InboxConversationIdRouteImport } from "./routes/inbox.$conversationId"
+import { Route as HashtagTagRouteImport } from "./routes/hashtag.$tag"
+import { Route as ArticlesNewRouteImport } from "./routes/articles.new"
+import { Route as AdminUsersRouteImport } from "./routes/admin.users"
+import { Route as AdminReportsRouteImport } from "./routes/admin.reports"
+import { Route as HandleFollowingRouteImport } from "./routes/$handle.following"
+import { Route as HandleFollowersRouteImport } from "./routes/$handle.followers"
+import { Route as ArticlesIdEditRouteImport } from "./routes/articles.$id.edit"
+import { Route as HandlePIdRouteImport } from "./routes/$handle.p.$id"
+import { Route as HandleASlugRouteImport } from "./routes/$handle.a.$slug"
 
 const SignupRoute = SignupRouteImport.update({
-  id: '/signup',
-  path: '/signup',
+  id: "/signup",
+  path: "/signup",
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
+  id: "/settings",
+  path: "/settings",
   getParentRoute: () => rootRouteImport,
 } as any)
 const SearchRoute = SearchRouteImport.update({
-  id: '/search',
-  path: '/search',
+  id: "/search",
+  path: "/search",
   getParentRoute: () => rootRouteImport,
 } as any)
 const NotificationsRoute = NotificationsRouteImport.update({
-  id: '/notifications',
-  path: '/notifications',
+  id: "/notifications",
+  path: "/notifications",
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
+  id: "/login",
+  path: "/login",
   getParentRoute: () => rootRouteImport,
 } as any)
 const InboxRoute = InboxRouteImport.update({
-  id: '/inbox',
-  path: '/inbox',
+  id: "/inbox",
+  path: "/inbox",
   getParentRoute: () => rootRouteImport,
 } as any)
 const DraftsRoute = DraftsRouteImport.update({
-  id: '/drafts',
-  path: '/drafts',
+  id: "/drafts",
+  path: "/drafts",
   getParentRoute: () => rootRouteImport,
 } as any)
 const BookmarksRoute = BookmarksRouteImport.update({
-  id: '/bookmarks',
-  path: '/bookmarks',
+  id: "/bookmarks",
+  path: "/bookmarks",
   getParentRoute: () => rootRouteImport,
 } as any)
 const AnalyticsRoute = AnalyticsRouteImport.update({
-  id: '/analytics',
-  path: '/analytics',
+  id: "/analytics",
+  path: "/analytics",
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
+  id: "/admin",
+  path: "/admin",
   getParentRoute: () => rootRouteImport,
 } as any)
 const HandleRoute = HandleRouteImport.update({
-  id: '/$handle',
-  path: '/$handle',
+  id: "/$handle",
+  path: "/$handle",
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+  id: "/",
+  path: "/",
   getParentRoute: () => rootRouteImport,
 } as any)
 const ListsIndexRoute = ListsIndexRouteImport.update({
-  id: '/lists/',
-  path: '/lists/',
+  id: "/lists/",
+  path: "/lists/",
   getParentRoute: () => rootRouteImport,
 } as any)
 const InboxIndexRoute = InboxIndexRouteImport.update({
-  id: '/',
-  path: '/',
+  id: "/",
+  path: "/",
   getParentRoute: () => InboxRoute,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
-  id: '/',
-  path: '/',
+  id: "/",
+  path: "/",
   getParentRoute: () => AdminRoute,
 } as any)
 const HandleIndexRoute = HandleIndexRouteImport.update({
-  id: '/',
-  path: '/',
+  id: "/",
+  path: "/",
   getParentRoute: () => HandleRoute,
 } as any)
 const ListsIdRoute = ListsIdRouteImport.update({
-  id: '/lists/$id',
-  path: '/lists/$id',
+  id: "/lists/$id",
+  path: "/lists/$id",
   getParentRoute: () => rootRouteImport,
 } as any)
 const InviteTokenRoute = InviteTokenRouteImport.update({
-  id: '/invite/$token',
-  path: '/invite/$token',
+  id: "/invite/$token",
+  path: "/invite/$token",
   getParentRoute: () => rootRouteImport,
 } as any)
 const InboxNewRoute = InboxNewRouteImport.update({
-  id: '/new',
-  path: '/new',
+  id: "/new",
+  path: "/new",
   getParentRoute: () => InboxRoute,
 } as any)
 const InboxConversationIdRoute = InboxConversationIdRouteImport.update({
-  id: '/$conversationId',
-  path: '/$conversationId',
+  id: "/$conversationId",
+  path: "/$conversationId",
   getParentRoute: () => InboxRoute,
 } as any)
 const HashtagTagRoute = HashtagTagRouteImport.update({
-  id: '/hashtag/$tag',
-  path: '/hashtag/$tag',
+  id: "/hashtag/$tag",
+  path: "/hashtag/$tag",
   getParentRoute: () => rootRouteImport,
 } as any)
 const ArticlesNewRoute = ArticlesNewRouteImport.update({
-  id: '/articles/new',
-  path: '/articles/new',
+  id: "/articles/new",
+  path: "/articles/new",
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
-  id: '/users',
-  path: '/users',
+  id: "/users",
+  path: "/users",
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminReportsRoute = AdminReportsRouteImport.update({
-  id: '/reports',
-  path: '/reports',
+  id: "/reports",
+  path: "/reports",
   getParentRoute: () => AdminRoute,
 } as any)
 const HandleFollowingRoute = HandleFollowingRouteImport.update({
-  id: '/following',
-  path: '/following',
+  id: "/following",
+  path: "/following",
   getParentRoute: () => HandleRoute,
 } as any)
 const HandleFollowersRoute = HandleFollowersRouteImport.update({
-  id: '/followers',
-  path: '/followers',
+  id: "/followers",
+  path: "/followers",
   getParentRoute: () => HandleRoute,
 } as any)
 const ArticlesIdEditRoute = ArticlesIdEditRouteImport.update({
-  id: '/articles/$id/edit',
-  path: '/articles/$id/edit',
+  id: "/articles/$id/edit",
+  path: "/articles/$id/edit",
   getParentRoute: () => rootRouteImport,
 } as any)
 const HandlePIdRoute = HandlePIdRouteImport.update({
-  id: '/p/$id',
-  path: '/p/$id',
+  id: "/p/$id",
+  path: "/p/$id",
   getParentRoute: () => HandleRoute,
 } as any)
 const HandleASlugRoute = HandleASlugRouteImport.update({
-  id: '/a/$slug',
-  path: '/a/$slug',
+  id: "/a/$slug",
+  path: "/a/$slug",
   getParentRoute: () => HandleRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/$handle': typeof HandleRouteWithChildren
-  '/admin': typeof AdminRouteWithChildren
-  '/analytics': typeof AnalyticsRoute
-  '/bookmarks': typeof BookmarksRoute
-  '/drafts': typeof DraftsRoute
-  '/inbox': typeof InboxRouteWithChildren
-  '/login': typeof LoginRoute
-  '/notifications': typeof NotificationsRoute
-  '/search': typeof SearchRoute
-  '/settings': typeof SettingsRoute
-  '/signup': typeof SignupRoute
-  '/$handle/followers': typeof HandleFollowersRoute
-  '/$handle/following': typeof HandleFollowingRoute
-  '/admin/reports': typeof AdminReportsRoute
-  '/admin/users': typeof AdminUsersRoute
-  '/articles/new': typeof ArticlesNewRoute
-  '/hashtag/$tag': typeof HashtagTagRoute
-  '/inbox/$conversationId': typeof InboxConversationIdRoute
-  '/inbox/new': typeof InboxNewRoute
-  '/invite/$token': typeof InviteTokenRoute
-  '/lists/$id': typeof ListsIdRoute
-  '/$handle/': typeof HandleIndexRoute
-  '/admin/': typeof AdminIndexRoute
-  '/inbox/': typeof InboxIndexRoute
-  '/lists/': typeof ListsIndexRoute
-  '/$handle/a/$slug': typeof HandleASlugRoute
-  '/$handle/p/$id': typeof HandlePIdRoute
-  '/articles/$id/edit': typeof ArticlesIdEditRoute
+  "/": typeof IndexRoute
+  "/$handle": typeof HandleRouteWithChildren
+  "/admin": typeof AdminRouteWithChildren
+  "/analytics": typeof AnalyticsRoute
+  "/bookmarks": typeof BookmarksRoute
+  "/drafts": typeof DraftsRoute
+  "/inbox": typeof InboxRouteWithChildren
+  "/login": typeof LoginRoute
+  "/notifications": typeof NotificationsRoute
+  "/search": typeof SearchRoute
+  "/settings": typeof SettingsRoute
+  "/signup": typeof SignupRoute
+  "/$handle/followers": typeof HandleFollowersRoute
+  "/$handle/following": typeof HandleFollowingRoute
+  "/admin/reports": typeof AdminReportsRoute
+  "/admin/users": typeof AdminUsersRoute
+  "/articles/new": typeof ArticlesNewRoute
+  "/hashtag/$tag": typeof HashtagTagRoute
+  "/inbox/$conversationId": typeof InboxConversationIdRoute
+  "/inbox/new": typeof InboxNewRoute
+  "/invite/$token": typeof InviteTokenRoute
+  "/lists/$id": typeof ListsIdRoute
+  "/$handle/": typeof HandleIndexRoute
+  "/admin/": typeof AdminIndexRoute
+  "/inbox/": typeof InboxIndexRoute
+  "/lists/": typeof ListsIndexRoute
+  "/$handle/a/$slug": typeof HandleASlugRoute
+  "/$handle/p/$id": typeof HandlePIdRoute
+  "/articles/$id/edit": typeof ArticlesIdEditRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/analytics': typeof AnalyticsRoute
-  '/bookmarks': typeof BookmarksRoute
-  '/drafts': typeof DraftsRoute
-  '/login': typeof LoginRoute
-  '/notifications': typeof NotificationsRoute
-  '/search': typeof SearchRoute
-  '/settings': typeof SettingsRoute
-  '/signup': typeof SignupRoute
-  '/$handle/followers': typeof HandleFollowersRoute
-  '/$handle/following': typeof HandleFollowingRoute
-  '/admin/reports': typeof AdminReportsRoute
-  '/admin/users': typeof AdminUsersRoute
-  '/articles/new': typeof ArticlesNewRoute
-  '/hashtag/$tag': typeof HashtagTagRoute
-  '/inbox/$conversationId': typeof InboxConversationIdRoute
-  '/inbox/new': typeof InboxNewRoute
-  '/invite/$token': typeof InviteTokenRoute
-  '/lists/$id': typeof ListsIdRoute
-  '/$handle': typeof HandleIndexRoute
-  '/admin': typeof AdminIndexRoute
-  '/inbox': typeof InboxIndexRoute
-  '/lists': typeof ListsIndexRoute
-  '/$handle/a/$slug': typeof HandleASlugRoute
-  '/$handle/p/$id': typeof HandlePIdRoute
-  '/articles/$id/edit': typeof ArticlesIdEditRoute
+  "/": typeof IndexRoute
+  "/analytics": typeof AnalyticsRoute
+  "/bookmarks": typeof BookmarksRoute
+  "/drafts": typeof DraftsRoute
+  "/login": typeof LoginRoute
+  "/notifications": typeof NotificationsRoute
+  "/search": typeof SearchRoute
+  "/settings": typeof SettingsRoute
+  "/signup": typeof SignupRoute
+  "/$handle/followers": typeof HandleFollowersRoute
+  "/$handle/following": typeof HandleFollowingRoute
+  "/admin/reports": typeof AdminReportsRoute
+  "/admin/users": typeof AdminUsersRoute
+  "/articles/new": typeof ArticlesNewRoute
+  "/hashtag/$tag": typeof HashtagTagRoute
+  "/inbox/$conversationId": typeof InboxConversationIdRoute
+  "/inbox/new": typeof InboxNewRoute
+  "/invite/$token": typeof InviteTokenRoute
+  "/lists/$id": typeof ListsIdRoute
+  "/$handle": typeof HandleIndexRoute
+  "/admin": typeof AdminIndexRoute
+  "/inbox": typeof InboxIndexRoute
+  "/lists": typeof ListsIndexRoute
+  "/$handle/a/$slug": typeof HandleASlugRoute
+  "/$handle/p/$id": typeof HandlePIdRoute
+  "/articles/$id/edit": typeof ArticlesIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/$handle': typeof HandleRouteWithChildren
-  '/admin': typeof AdminRouteWithChildren
-  '/analytics': typeof AnalyticsRoute
-  '/bookmarks': typeof BookmarksRoute
-  '/drafts': typeof DraftsRoute
-  '/inbox': typeof InboxRouteWithChildren
-  '/login': typeof LoginRoute
-  '/notifications': typeof NotificationsRoute
-  '/search': typeof SearchRoute
-  '/settings': typeof SettingsRoute
-  '/signup': typeof SignupRoute
-  '/$handle/followers': typeof HandleFollowersRoute
-  '/$handle/following': typeof HandleFollowingRoute
-  '/admin/reports': typeof AdminReportsRoute
-  '/admin/users': typeof AdminUsersRoute
-  '/articles/new': typeof ArticlesNewRoute
-  '/hashtag/$tag': typeof HashtagTagRoute
-  '/inbox/$conversationId': typeof InboxConversationIdRoute
-  '/inbox/new': typeof InboxNewRoute
-  '/invite/$token': typeof InviteTokenRoute
-  '/lists/$id': typeof ListsIdRoute
-  '/$handle/': typeof HandleIndexRoute
-  '/admin/': typeof AdminIndexRoute
-  '/inbox/': typeof InboxIndexRoute
-  '/lists/': typeof ListsIndexRoute
-  '/$handle/a/$slug': typeof HandleASlugRoute
-  '/$handle/p/$id': typeof HandlePIdRoute
-  '/articles/$id/edit': typeof ArticlesIdEditRoute
+  "/": typeof IndexRoute
+  "/$handle": typeof HandleRouteWithChildren
+  "/admin": typeof AdminRouteWithChildren
+  "/analytics": typeof AnalyticsRoute
+  "/bookmarks": typeof BookmarksRoute
+  "/drafts": typeof DraftsRoute
+  "/inbox": typeof InboxRouteWithChildren
+  "/login": typeof LoginRoute
+  "/notifications": typeof NotificationsRoute
+  "/search": typeof SearchRoute
+  "/settings": typeof SettingsRoute
+  "/signup": typeof SignupRoute
+  "/$handle/followers": typeof HandleFollowersRoute
+  "/$handle/following": typeof HandleFollowingRoute
+  "/admin/reports": typeof AdminReportsRoute
+  "/admin/users": typeof AdminUsersRoute
+  "/articles/new": typeof ArticlesNewRoute
+  "/hashtag/$tag": typeof HashtagTagRoute
+  "/inbox/$conversationId": typeof InboxConversationIdRoute
+  "/inbox/new": typeof InboxNewRoute
+  "/invite/$token": typeof InviteTokenRoute
+  "/lists/$id": typeof ListsIdRoute
+  "/$handle/": typeof HandleIndexRoute
+  "/admin/": typeof AdminIndexRoute
+  "/inbox/": typeof InboxIndexRoute
+  "/lists/": typeof ListsIndexRoute
+  "/$handle/a/$slug": typeof HandleASlugRoute
+  "/$handle/p/$id": typeof HandlePIdRoute
+  "/articles/$id/edit": typeof ArticlesIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/'
-    | '/$handle'
-    | '/admin'
-    | '/analytics'
-    | '/bookmarks'
-    | '/drafts'
-    | '/inbox'
-    | '/login'
-    | '/notifications'
-    | '/search'
-    | '/settings'
-    | '/signup'
-    | '/$handle/followers'
-    | '/$handle/following'
-    | '/admin/reports'
-    | '/admin/users'
-    | '/articles/new'
-    | '/hashtag/$tag'
-    | '/inbox/$conversationId'
-    | '/inbox/new'
-    | '/invite/$token'
-    | '/lists/$id'
-    | '/$handle/'
-    | '/admin/'
-    | '/inbox/'
-    | '/lists/'
-    | '/$handle/a/$slug'
-    | '/$handle/p/$id'
-    | '/articles/$id/edit'
+    | "/"
+    | "/$handle"
+    | "/admin"
+    | "/analytics"
+    | "/bookmarks"
+    | "/drafts"
+    | "/inbox"
+    | "/login"
+    | "/notifications"
+    | "/search"
+    | "/settings"
+    | "/signup"
+    | "/$handle/followers"
+    | "/$handle/following"
+    | "/admin/reports"
+    | "/admin/users"
+    | "/articles/new"
+    | "/hashtag/$tag"
+    | "/inbox/$conversationId"
+    | "/inbox/new"
+    | "/invite/$token"
+    | "/lists/$id"
+    | "/$handle/"
+    | "/admin/"
+    | "/inbox/"
+    | "/lists/"
+    | "/$handle/a/$slug"
+    | "/$handle/p/$id"
+    | "/articles/$id/edit"
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
-    | '/analytics'
-    | '/bookmarks'
-    | '/drafts'
-    | '/login'
-    | '/notifications'
-    | '/search'
-    | '/settings'
-    | '/signup'
-    | '/$handle/followers'
-    | '/$handle/following'
-    | '/admin/reports'
-    | '/admin/users'
-    | '/articles/new'
-    | '/hashtag/$tag'
-    | '/inbox/$conversationId'
-    | '/inbox/new'
-    | '/invite/$token'
-    | '/lists/$id'
-    | '/$handle'
-    | '/admin'
-    | '/inbox'
-    | '/lists'
-    | '/$handle/a/$slug'
-    | '/$handle/p/$id'
-    | '/articles/$id/edit'
+    | "/"
+    | "/analytics"
+    | "/bookmarks"
+    | "/drafts"
+    | "/login"
+    | "/notifications"
+    | "/search"
+    | "/settings"
+    | "/signup"
+    | "/$handle/followers"
+    | "/$handle/following"
+    | "/admin/reports"
+    | "/admin/users"
+    | "/articles/new"
+    | "/hashtag/$tag"
+    | "/inbox/$conversationId"
+    | "/inbox/new"
+    | "/invite/$token"
+    | "/lists/$id"
+    | "/$handle"
+    | "/admin"
+    | "/inbox"
+    | "/lists"
+    | "/$handle/a/$slug"
+    | "/$handle/p/$id"
+    | "/articles/$id/edit"
   id:
-    | '__root__'
-    | '/'
-    | '/$handle'
-    | '/admin'
-    | '/analytics'
-    | '/bookmarks'
-    | '/drafts'
-    | '/inbox'
-    | '/login'
-    | '/notifications'
-    | '/search'
-    | '/settings'
-    | '/signup'
-    | '/$handle/followers'
-    | '/$handle/following'
-    | '/admin/reports'
-    | '/admin/users'
-    | '/articles/new'
-    | '/hashtag/$tag'
-    | '/inbox/$conversationId'
-    | '/inbox/new'
-    | '/invite/$token'
-    | '/lists/$id'
-    | '/$handle/'
-    | '/admin/'
-    | '/inbox/'
-    | '/lists/'
-    | '/$handle/a/$slug'
-    | '/$handle/p/$id'
-    | '/articles/$id/edit'
+    | "__root__"
+    | "/"
+    | "/$handle"
+    | "/admin"
+    | "/analytics"
+    | "/bookmarks"
+    | "/drafts"
+    | "/inbox"
+    | "/login"
+    | "/notifications"
+    | "/search"
+    | "/settings"
+    | "/signup"
+    | "/$handle/followers"
+    | "/$handle/following"
+    | "/admin/reports"
+    | "/admin/users"
+    | "/articles/new"
+    | "/hashtag/$tag"
+    | "/inbox/$conversationId"
+    | "/inbox/new"
+    | "/invite/$token"
+    | "/lists/$id"
+    | "/$handle/"
+    | "/admin/"
+    | "/inbox/"
+    | "/lists/"
+    | "/$handle/a/$slug"
+    | "/$handle/p/$id"
+    | "/articles/$id/edit"
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -390,208 +390,208 @@ export interface RootRouteChildren {
   ArticlesIdEditRoute: typeof ArticlesIdEditRoute
 }
 
-declare module '@tanstack/react-router' {
+declare module "@tanstack/react-router" {
   interface FileRoutesByPath {
-    '/signup': {
-      id: '/signup'
-      path: '/signup'
-      fullPath: '/signup'
+    "/signup": {
+      id: "/signup"
+      path: "/signup"
+      fullPath: "/signup"
       preLoaderRoute: typeof SignupRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
+    "/settings": {
+      id: "/settings"
+      path: "/settings"
+      fullPath: "/settings"
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/search': {
-      id: '/search'
-      path: '/search'
-      fullPath: '/search'
+    "/search": {
+      id: "/search"
+      path: "/search"
+      fullPath: "/search"
       preLoaderRoute: typeof SearchRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/notifications': {
-      id: '/notifications'
-      path: '/notifications'
-      fullPath: '/notifications'
+    "/notifications": {
+      id: "/notifications"
+      path: "/notifications"
+      fullPath: "/notifications"
       preLoaderRoute: typeof NotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
+    "/login": {
+      id: "/login"
+      path: "/login"
+      fullPath: "/login"
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/inbox': {
-      id: '/inbox'
-      path: '/inbox'
-      fullPath: '/inbox'
+    "/inbox": {
+      id: "/inbox"
+      path: "/inbox"
+      fullPath: "/inbox"
       preLoaderRoute: typeof InboxRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/drafts': {
-      id: '/drafts'
-      path: '/drafts'
-      fullPath: '/drafts'
+    "/drafts": {
+      id: "/drafts"
+      path: "/drafts"
+      fullPath: "/drafts"
       preLoaderRoute: typeof DraftsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/bookmarks': {
-      id: '/bookmarks'
-      path: '/bookmarks'
-      fullPath: '/bookmarks'
+    "/bookmarks": {
+      id: "/bookmarks"
+      path: "/bookmarks"
+      fullPath: "/bookmarks"
       preLoaderRoute: typeof BookmarksRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/analytics': {
-      id: '/analytics'
-      path: '/analytics'
-      fullPath: '/analytics'
+    "/analytics": {
+      id: "/analytics"
+      path: "/analytics"
+      fullPath: "/analytics"
       preLoaderRoute: typeof AnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
+    "/admin": {
+      id: "/admin"
+      path: "/admin"
+      fullPath: "/admin"
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/$handle': {
-      id: '/$handle'
-      path: '/$handle'
-      fullPath: '/$handle'
+    "/$handle": {
+      id: "/$handle"
+      path: "/$handle"
+      fullPath: "/$handle"
       preLoaderRoute: typeof HandleRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
+    "/": {
+      id: "/"
+      path: "/"
+      fullPath: "/"
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lists/': {
-      id: '/lists/'
-      path: '/lists'
-      fullPath: '/lists/'
+    "/lists/": {
+      id: "/lists/"
+      path: "/lists"
+      fullPath: "/lists/"
       preLoaderRoute: typeof ListsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/inbox/': {
-      id: '/inbox/'
-      path: '/'
-      fullPath: '/inbox/'
+    "/inbox/": {
+      id: "/inbox/"
+      path: "/"
+      fullPath: "/inbox/"
       preLoaderRoute: typeof InboxIndexRouteImport
       parentRoute: typeof InboxRoute
     }
-    '/admin/': {
-      id: '/admin/'
-      path: '/'
-      fullPath: '/admin/'
+    "/admin/": {
+      id: "/admin/"
+      path: "/"
+      fullPath: "/admin/"
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/$handle/': {
-      id: '/$handle/'
-      path: '/'
-      fullPath: '/$handle/'
+    "/$handle/": {
+      id: "/$handle/"
+      path: "/"
+      fullPath: "/$handle/"
       preLoaderRoute: typeof HandleIndexRouteImport
       parentRoute: typeof HandleRoute
     }
-    '/lists/$id': {
-      id: '/lists/$id'
-      path: '/lists/$id'
-      fullPath: '/lists/$id'
+    "/lists/$id": {
+      id: "/lists/$id"
+      path: "/lists/$id"
+      fullPath: "/lists/$id"
       preLoaderRoute: typeof ListsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/invite/$token': {
-      id: '/invite/$token'
-      path: '/invite/$token'
-      fullPath: '/invite/$token'
+    "/invite/$token": {
+      id: "/invite/$token"
+      path: "/invite/$token"
+      fullPath: "/invite/$token"
       preLoaderRoute: typeof InviteTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/inbox/new': {
-      id: '/inbox/new'
-      path: '/new'
-      fullPath: '/inbox/new'
+    "/inbox/new": {
+      id: "/inbox/new"
+      path: "/new"
+      fullPath: "/inbox/new"
       preLoaderRoute: typeof InboxNewRouteImport
       parentRoute: typeof InboxRoute
     }
-    '/inbox/$conversationId': {
-      id: '/inbox/$conversationId'
-      path: '/$conversationId'
-      fullPath: '/inbox/$conversationId'
+    "/inbox/$conversationId": {
+      id: "/inbox/$conversationId"
+      path: "/$conversationId"
+      fullPath: "/inbox/$conversationId"
       preLoaderRoute: typeof InboxConversationIdRouteImport
       parentRoute: typeof InboxRoute
     }
-    '/hashtag/$tag': {
-      id: '/hashtag/$tag'
-      path: '/hashtag/$tag'
-      fullPath: '/hashtag/$tag'
+    "/hashtag/$tag": {
+      id: "/hashtag/$tag"
+      path: "/hashtag/$tag"
+      fullPath: "/hashtag/$tag"
       preLoaderRoute: typeof HashtagTagRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/articles/new': {
-      id: '/articles/new'
-      path: '/articles/new'
-      fullPath: '/articles/new'
+    "/articles/new": {
+      id: "/articles/new"
+      path: "/articles/new"
+      fullPath: "/articles/new"
       preLoaderRoute: typeof ArticlesNewRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/users': {
-      id: '/admin/users'
-      path: '/users'
-      fullPath: '/admin/users'
+    "/admin/users": {
+      id: "/admin/users"
+      path: "/users"
+      fullPath: "/admin/users"
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/admin/reports': {
-      id: '/admin/reports'
-      path: '/reports'
-      fullPath: '/admin/reports'
+    "/admin/reports": {
+      id: "/admin/reports"
+      path: "/reports"
+      fullPath: "/admin/reports"
       preLoaderRoute: typeof AdminReportsRouteImport
       parentRoute: typeof AdminRoute
     }
-    '/$handle/following': {
-      id: '/$handle/following'
-      path: '/following'
-      fullPath: '/$handle/following'
+    "/$handle/following": {
+      id: "/$handle/following"
+      path: "/following"
+      fullPath: "/$handle/following"
       preLoaderRoute: typeof HandleFollowingRouteImport
       parentRoute: typeof HandleRoute
     }
-    '/$handle/followers': {
-      id: '/$handle/followers'
-      path: '/followers'
-      fullPath: '/$handle/followers'
+    "/$handle/followers": {
+      id: "/$handle/followers"
+      path: "/followers"
+      fullPath: "/$handle/followers"
       preLoaderRoute: typeof HandleFollowersRouteImport
       parentRoute: typeof HandleRoute
     }
-    '/articles/$id/edit': {
-      id: '/articles/$id/edit'
-      path: '/articles/$id/edit'
-      fullPath: '/articles/$id/edit'
+    "/articles/$id/edit": {
+      id: "/articles/$id/edit"
+      path: "/articles/$id/edit"
+      fullPath: "/articles/$id/edit"
       preLoaderRoute: typeof ArticlesIdEditRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/$handle/p/$id': {
-      id: '/$handle/p/$id'
-      path: '/p/$id'
-      fullPath: '/$handle/p/$id'
+    "/$handle/p/$id": {
+      id: "/$handle/p/$id"
+      path: "/p/$id"
+      fullPath: "/$handle/p/$id"
       preLoaderRoute: typeof HandlePIdRouteImport
       parentRoute: typeof HandleRoute
     }
-    '/$handle/a/$slug': {
-      id: '/$handle/a/$slug'
-      path: '/a/$slug'
-      fullPath: '/$handle/a/$slug'
+    "/$handle/a/$slug": {
+      id: "/$handle/a/$slug"
+      path: "/a/$slug"
+      fullPath: "/$handle/a/$slug"
       preLoaderRoute: typeof HandleASlugRouteImport
       parentRoute: typeof HandleRoute
     }
@@ -669,9 +669,9 @@ export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
 
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
+import type { getRouter } from "./router.tsx"
+import type { createStart } from "@tanstack/react-start"
+declare module "@tanstack/react-start" {
   interface Register {
     ssr: true
     router: Awaited<ReturnType<typeof getRouter>>

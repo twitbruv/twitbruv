@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router"
+import { Link, useLocation } from "@tanstack/react-router"
 import {
   IconBell,
   IconBookmark,
@@ -21,6 +21,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
+  useSidebar,
 } from "@workspace/ui/components/sidebar"
 import { TooltipProvider } from "@workspace/ui/components/tooltip"
 import { useEffect, useState } from "react"
@@ -38,11 +39,11 @@ import type { ReactNode } from "react"
 export function AppShell({ children }: { children: ReactNode }) {
   const { data: session, isPending } = authClient.useSession()
   const { me } = useMe()
+  const location = useLocation()
   const unread = useUnreadNotifications(Boolean(session))
   const dmUnread = useUnreadDms(Boolean(session))
+  const isInbox = location.pathname.startsWith("/inbox")
 
-  // Render the lightweight public shell while we don't have a confirmed session. This covers
-  // SSR (no session yet), the brief client hydration window, and any time the user is logged out.
   if (isPending || !session) return <PublicShell>{children}</PublicShell>
 
   return (
@@ -188,14 +189,14 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <SidebarInset>
           <AppHeader />
-          <div className="flex min-h-0 flex-1 flex-col">
+          <div className="@container/inset flex min-h-0 flex-1 flex-col">
             <main className="flex min-h-0 w-full min-w-0 flex-1 flex-col border-border">
               {children}
             </main>
-            {/* <RightRail /> */}
           </div>
-          <ComposeFab />
+          {!isInbox && <ComposeFab />}
         </SidebarInset>
+        <SidebarCloseOnNavigate />
       </SidebarProvider>
     </TooltipProvider>
   )
@@ -213,9 +214,7 @@ function useUnreadNotifications(enabled: boolean) {
       try {
         const { count } = await api.notificationsUnreadCount()
         if (!cancel) setCount(count)
-      } catch {
-        /* network blip; try again next tick */
-      }
+      } catch {}
     }
     tick()
     const iv = setInterval(tick, 60_000)
@@ -239,16 +238,10 @@ function useUnreadDms(enabled: boolean) {
       try {
         const { count } = await api.dmUnreadCount()
         if (!cancel) setCount(count)
-      } catch {
-        /* network blip; will reconcile on the next stream event or slow poll */
-      }
+      } catch {}
     }
     refresh()
-    // Slow background reconcile in case the SSE stream silently stalls.
     const iv = setInterval(refresh, 120_000)
-    // Nudge the count whenever the stream surfaces a message or read event — that covers both
-    // "new message arrived" (increment) and "I read somewhere else" (decrement) without needing
-    // to compute deltas locally.
     const unsubscribe = subscribeToDmStream(() => {
       refresh()
     })
@@ -259,4 +252,15 @@ function useUnreadDms(enabled: boolean) {
     }
   }, [enabled])
   return count
+}
+
+function SidebarCloseOnNavigate() {
+  const location = useLocation()
+  const { setOpenMobile } = useSidebar()
+
+  useEffect(() => {
+    setOpenMobile(false)
+  }, [location.pathname, setOpenMobile])
+
+  return null
 }

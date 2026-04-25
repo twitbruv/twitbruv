@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { IconChartBar, IconPhoto, IconX } from "@tabler/icons-react"
+import { IconChartBar, IconPhoto, IconUsers, IconX } from "@tabler/icons-react"
 import { Button } from "@workspace/ui/components/button"
 import {
   POLL_MAX_OPTIONS,
@@ -46,6 +46,7 @@ export function Compose({
   quoteOfId,
   quoted,
   placeholder = "What's happening?",
+  collapsible = false,
 }: {
   onCreated?: (post: Post) => void
   replyToId?: string
@@ -53,11 +54,19 @@ export function Compose({
   /** When quoting, render a summary of the quoted post so the author knows what's attached. */
   quoted?: Post
   placeholder?: string
+  /** When true, render a single-line collapsed view until the user focuses the input. */
+  collapsible?: boolean
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { me } = useMe()
-  const dKey = useMemo(() => draftKey({ replyToId, quoteOfId }), [replyToId, quoteOfId])
+  const dKey = useMemo(
+    () => draftKey({ replyToId, quoteOfId }),
+    [replyToId, quoteOfId]
+  )
   const [text, setText] = useState(() => loadDraft(dKey))
+  const [expanded, setExpanded] = useState(
+    () => !collapsible || loadDraft(dKey).length > 0
+  )
   // Persist drafts on every keystroke. Tiny localStorage write — fine without debouncing.
   useEffect(() => {
     saveDraft(dKey, text)
@@ -66,6 +75,12 @@ export function Compose({
   const [poll, setPoll] = useState<PollDraft | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Replies inherit their thread's restriction; only let the user pick on
+  // top-level posts and quotes (which start a new thread).
+  const [replyRestriction, setReplyRestriction] = useState<
+    "anyone" | "following" | "mentioned"
+  >("anyone")
+  const showReplyControl = !replyToId
   const avatarInitial = (me?.displayName ?? me?.handle ?? "·")
     .slice(0, 1)
     .toUpperCase()
@@ -76,10 +91,14 @@ export function Compose({
     .map((a) => a.media!.id)
   const pollValid =
     !poll ||
-    (poll.options.filter((o) => o.trim().length > 0).length >= POLL_MIN_OPTIONS &&
+    (poll.options.filter((o) => o.trim().length > 0).length >=
+      POLL_MIN_OPTIONS &&
       poll.options.every((o) => o.length <= POLL_OPTION_MAX_LEN))
   const hasContent =
-    text.trim().length > 0 || readyMediaIds.length > 0 || Boolean(quoteOfId) || Boolean(poll)
+    text.trim().length > 0 ||
+    readyMediaIds.length > 0 ||
+    Boolean(quoteOfId) ||
+    Boolean(poll)
   const noneUploading = attachments.every((a) => a.status !== "uploading")
   const canSubmit =
     hasContent && remaining >= 0 && noneUploading && pollValid && !loading
@@ -87,7 +106,11 @@ export function Compose({
   function startPoll() {
     if (poll) return
     // Polls and media are mutually exclusive (matches Twitter / Mastodon).
-    setPoll({ options: ["", ""], durationMinutes: 60 * 24, allowMultiple: false })
+    setPoll({
+      options: ["", ""],
+      durationMinutes: 60 * 24,
+      allowMultiple: false,
+    })
   }
   function updatePollOption(idx: number, value: string) {
     if (!poll) return
@@ -158,12 +181,17 @@ export function Compose({
       // Push alt text just before send. Best-effort — failures don't block the post itself.
       await Promise.all(
         attachments
-          .filter((a) => a.status === "ready" && a.media && a.altText.trim().length > 0)
-          .map((a) => setAltText(a.media!.id, a.altText).catch(() => {})),
+          .filter(
+            (a) =>
+              a.status === "ready" && a.media && a.altText.trim().length > 0
+          )
+          .map((a) => setAltText(a.media!.id, a.altText).catch(() => {}))
       )
       const pollPayload: PollInput | undefined = poll
         ? {
-            options: poll.options.map((o) => o.trim()).filter((o) => o.length > 0),
+            options: poll.options
+              .map((o) => o.trim())
+              .filter((o) => o.length > 0),
             durationMinutes: poll.durationMinutes,
             allowMultiple: poll.allowMultiple,
           }
@@ -174,12 +202,14 @@ export function Compose({
         quoteOfId,
         mediaIds: readyMediaIds.length > 0 ? readyMediaIds : undefined,
         poll: pollPayload,
+        replyRestriction: showReplyControl ? replyRestriction : undefined,
       })
       setText("")
       clearDraft(dKey)
       attachments.forEach((a) => URL.revokeObjectURL(a.previewUrl))
       setAttachments([])
       setPoll(null)
+      if (collapsible) setExpanded(false)
       onCreated?.(post)
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "failed to post")
@@ -221,8 +251,9 @@ export function Compose({
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
+          onFocus={() => setExpanded(true)}
           placeholder={placeholder}
-          rows={3}
+          rows={expanded ? 3 : 1}
           className="w-full resize-none bg-transparent text-[15px] leading-relaxed placeholder:text-muted-foreground focus:outline-none"
         />
 
@@ -230,19 +261,24 @@ export function Compose({
           <div className="mt-2 rounded-md border border-border p-3 text-sm">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span className="flex items-center gap-1 font-medium text-foreground">
-                {quoted.author.displayName || `@${quoted.author.handle ?? "unknown"}`}
-                {quoted.author.isVerified && <VerifiedBadge size={13} />}
+                {quoted.author.displayName ||
+                  `@${quoted.author.handle ?? "unknown"}`}
+                {quoted.author.isVerified && (
+                  <VerifiedBadge size={13} role={quoted.author.role} />
+                )}
               </span>
               {quoted.author.handle && <span>@{quoted.author.handle}</span>}
             </div>
-            <p className="mt-1 line-clamp-3 whitespace-pre-wrap break-words">{quoted.text}</p>
+            <p className="mt-1 line-clamp-3 break-words whitespace-pre-wrap">
+              {quoted.text}
+            </p>
           </div>
         )}
 
         {poll && (
           <div className="mt-3 space-y-2 rounded-md border border-border p-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                 Poll
               </span>
               <button
@@ -260,7 +296,7 @@ export function Compose({
                   onChange={(e) => updatePollOption(idx, e.target.value)}
                   placeholder={`Choice ${idx + 1}`}
                   maxLength={POLL_OPTION_MAX_LEN}
-                  className="flex-1 rounded-md border border-border bg-transparent px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                  className="flex-1 rounded-md border border-border bg-transparent px-2 py-1 text-sm focus:ring-1 focus:ring-ring focus:outline-none"
                 />
                 {poll.options.length > POLL_MIN_OPTIONS && (
                   <Button
@@ -290,7 +326,10 @@ export function Compose({
                 <select
                   value={poll.durationMinutes}
                   onChange={(e) =>
-                    setPoll({ ...poll, durationMinutes: Number(e.target.value) })
+                    setPoll({
+                      ...poll,
+                      durationMinutes: Number(e.target.value),
+                    })
                   }
                   className="rounded-md border border-border bg-background px-1 py-0.5 text-xs"
                 >
@@ -350,71 +389,111 @@ export function Compose({
                   onChange={(e) =>
                     setAttachments((prev) =>
                       prev.map((x) =>
-                        x.tempId === a.tempId ? { ...x, altText: e.target.value } : x,
-                      ),
+                        x.tempId === a.tempId
+                          ? { ...x, altText: e.target.value }
+                          : x
+                      )
                     )
                   }
                   disabled={a.status !== "ready"}
                   placeholder="Describe for screen readers"
                   maxLength={1000}
-                  className="w-full rounded-md border border-border bg-transparent px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
+                  className="w-full rounded-md border border-border bg-transparent px-2 py-1 text-xs focus:ring-1 focus:ring-ring focus:outline-none disabled:opacity-50"
                 />
               </div>
             ))}
           </div>
         )}
 
-        <div className="mt-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/avif,image/gif,image/heic,image/heif"
-              multiple
-              hidden
-              onChange={(e) => {
-                addFiles(e.target.files)
-                e.target.value = ""
-              }}
-            />
-            <Button
-              variant="ghost"
-              size="icon"
-              disabled={attachments.length >= MAX_ATTACHMENTS || Boolean(poll)}
-              onClick={() => fileInputRef.current?.click()}
-              aria-label="add image"
-            >
-              <IconPhoto size={18} stroke={1.75} />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              disabled={Boolean(poll) || attachments.length > 0 || Boolean(replyToId) || Boolean(quoteOfId)}
-              onClick={startPoll}
-              aria-label="add poll"
-              title="Add a poll"
-            >
-              <IconChartBar size={18} stroke={1.75} />
-            </Button>
-            <span
-              className={`text-xs ${
-                remaining < 0
-                  ? "text-destructive"
-                  : remaining < 20
-                    ? "text-amber-600"
-                    : "text-muted-foreground"
-              }`}
-            >
-              {remaining}
-            </span>
+        {expanded && (
+          <div className="mt-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/avif,image/gif,image/heic,image/heif"
+                multiple
+                hidden
+                onChange={(e) => {
+                  addFiles(e.target.files)
+                  e.target.value = ""
+                }}
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                disabled={
+                  attachments.length >= MAX_ATTACHMENTS || Boolean(poll)
+                }
+                onClick={() => fileInputRef.current?.click()}
+                aria-label="add image"
+              >
+                <IconPhoto size={18} stroke={1.75} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                disabled={
+                  Boolean(poll) ||
+                  attachments.length > 0 ||
+                  Boolean(replyToId) ||
+                  Boolean(quoteOfId)
+                }
+                onClick={startPoll}
+                aria-label="add poll"
+                title="Add a poll"
+              >
+                <IconChartBar size={18} stroke={1.75} />
+              </Button>
+              {showReplyControl && (
+                <label
+                  className="flex items-center gap-1.5 rounded-md border border-transparent px-1.5 py-0.5 text-xs text-muted-foreground hover:border-border hover:text-foreground"
+                  title="Who can reply to this post"
+                >
+                  <IconUsers size={14} stroke={1.75} />
+                  <select
+                    value={replyRestriction}
+                    onChange={(e) =>
+                      setReplyRestriction(
+                        e.target.value as "anyone" | "following" | "mentioned"
+                      )
+                    }
+                    className="bg-transparent text-xs focus:outline-none"
+                  >
+                    <option value="anyone">Everyone can reply</option>
+                    <option value="following">People you follow</option>
+                    <option value="mentioned">Only people you mention</option>
+                  </select>
+                </label>
+              )}
+              <span
+                className={`text-xs ${
+                  remaining < 0
+                    ? "text-destructive"
+                    : remaining < 20
+                      ? "text-amber-600"
+                      : "text-muted-foreground"
+                }`}
+              >
+                {remaining}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              {error && (
+                <span className="text-xs text-destructive">{error}</span>
+              )}
+              <Button type="submit" disabled={!canSubmit} size="lg">
+                {loading
+                  ? "Posting…"
+                  : replyToId
+                    ? "Reply"
+                    : quoteOfId
+                      ? "Quote"
+                      : "Post"}
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            {error && <span className="text-xs text-destructive">{error}</span>}
-            <Button type="submit" disabled={!canSubmit} size="lg">
-              {loading ? "Posting…" : replyToId ? "Reply" : quoteOfId ? "Quote" : "Post"}
-            </Button>
-          </div>
-        </div>
+        )}
       </div>
     </form>
   )

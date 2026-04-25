@@ -52,7 +52,9 @@ if (typeof window !== "undefined") {
     if (buffer.length === 0) return
     const events = buffer.splice(0, buffer.length)
     try {
-      const blob = new Blob([JSON.stringify({ events })], { type: "application/json" })
+      const blob = new Blob([JSON.stringify({ events })], {
+        type: "application/json",
+      })
       navigator.sendBeacon(`${API_URL}/api/analytics/ingest`, blob)
     } catch {
       /* ignore */

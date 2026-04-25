@@ -64,7 +64,7 @@ export function PollBlock({
         totalVotes: poll.totalVotes + optionIds.length,
         viewerVoteOptionIds: optionIds,
         options: poll.options.map((o) =>
-          optionSet.has(o.id) ? { ...o, voteCount: o.voteCount + 1 } : o,
+          optionSet.has(o.id) ? { ...o, voteCount: o.voteCount + 1 } : o
         ),
       })
       setSelected(new Set())
@@ -79,8 +79,10 @@ export function PollBlock({
     <div className="mt-2 rounded-md border border-border p-3">
       <ul className="space-y-1.5">
         {poll.options.map((opt) => {
-          const pct = poll.totalVotes > 0 ? (opt.voteCount / poll.totalVotes) * 100 : 0
-          const isViewerChoice = poll.viewerVoteOptionIds?.includes(opt.id) ?? false
+          const pct =
+            poll.totalVotes > 0 ? (opt.voteCount / poll.totalVotes) * 100 : 0
+          const isViewerChoice =
+            poll.viewerVoteOptionIds?.includes(opt.id) ?? false
           const isSelected = selected.has(opt.id)
           if (showResults) {
             return (
@@ -93,7 +95,9 @@ export function PollBlock({
                   />
                   <div className="relative flex items-center justify-between gap-3 px-3 py-2 text-sm">
                     <span className="flex items-center gap-2 font-medium">
-                      {isViewerChoice && <span className="text-primary">✓</span>}
+                      {isViewerChoice && (
+                        <span className="text-primary">✓</span>
+                      )}
                       {opt.text}
                     </span>
                     <span className="text-xs text-muted-foreground tabular-nums">
@@ -126,7 +130,8 @@ export function PollBlock({
       </ul>
       <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
         <span>
-          {poll.totalVotes} {poll.totalVotes === 1 ? "vote" : "votes"} · {formatTimeLeft(closesAt - now)}
+          {poll.totalVotes} {poll.totalVotes === 1 ? "vote" : "votes"} ·{" "}
+          {formatTimeLeft(closesAt - now)}
         </span>
         {!showResults && (
           <button

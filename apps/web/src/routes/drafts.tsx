@@ -25,7 +25,9 @@ function Drafts() {
   const refresh = useCallback(async () => {
     setError(null)
     try {
-      const { items } = await api.scheduledPosts(tab === "drafts" ? "draft" : "scheduled")
+      const { items } = await api.scheduledPosts(
+        tab === "drafts" ? "draft" : "scheduled"
+      )
       setItems(items)
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "load failed")
@@ -74,57 +76,60 @@ function Drafts() {
 
   return (
     <PageFrame>
-    <main>
-      <header className="border-b border-border px-4 py-3">
-        <h1 className="text-base font-semibold">Drafts &amp; scheduled</h1>
-        <p className="text-xs text-muted-foreground">
-          Drafts are private. Scheduled posts publish automatically at the chosen time.
-        </p>
-      </header>
-      <div className="flex border-b border-border">
-        {(["drafts", "scheduled"] as Array<Tab>).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`flex-1 px-4 py-3 text-sm font-medium transition ${
-              tab === t
-                ? "border-b-2 border-primary text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {t === "drafts" ? "Drafts" : "Scheduled"}
-          </button>
-        ))}
-      </div>
-
-      {error && (
-        <div className="border-b border-border bg-destructive/10 px-4 py-2 text-xs text-destructive">
-          {error}
-        </div>
-      )}
-
-      {items === null ? (
-        <p className="px-4 py-8 text-center text-sm text-muted-foreground">loading…</p>
-      ) : items.length === 0 ? (
-        <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-          {tab === "drafts" ? "no drafts saved yet." : "no scheduled posts."}
-        </p>
-      ) : (
-        <ul className="divide-y divide-border">
-          {items.map((item) => (
-            <DraftRow
-              key={item.id}
-              item={item}
-              busy={busyId === item.id}
-              onPublish={() => publish(item.id)}
-              onDelete={() => remove(item.id)}
-              onReschedule={(t) => reschedule(item.id, t)}
-              tab={tab}
-            />
+      <main>
+        <header className="border-b border-border px-4 py-3">
+          <h1 className="text-base font-semibold">Drafts &amp; scheduled</h1>
+          <p className="text-xs text-muted-foreground">
+            Drafts are private. Scheduled posts publish automatically at the
+            chosen time.
+          </p>
+        </header>
+        <div className="flex border-b border-border">
+          {(["drafts", "scheduled"] as Array<Tab>).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`flex-1 px-4 py-3 text-sm font-medium transition ${
+                tab === t
+                  ? "border-b-2 border-primary text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t === "drafts" ? "Drafts" : "Scheduled"}
+            </button>
           ))}
-        </ul>
-      )}
-    </main>
+        </div>
+
+        {error && (
+          <div className="border-b border-border bg-destructive/10 px-4 py-2 text-xs text-destructive">
+            {error}
+          </div>
+        )}
+
+        {items === null ? (
+          <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+            loading…
+          </p>
+        ) : items.length === 0 ? (
+          <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+            {tab === "drafts" ? "no drafts saved yet." : "no scheduled posts."}
+          </p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {items.map((item) => (
+              <DraftRow
+                key={item.id}
+                item={item}
+                busy={busyId === item.id}
+                onPublish={() => publish(item.id)}
+                onDelete={() => remove(item.id)}
+                onReschedule={(t) => reschedule(item.id, t)}
+                tab={tab}
+              />
+            ))}
+          </ul>
+        )}
+      </main>
     </PageFrame>
   )
 }
@@ -146,13 +151,15 @@ function DraftRow({
 }) {
   const [editing, setEditing] = useState(false)
   const [scheduleAt, setScheduleAt] = useState<string>(
-    item.scheduledFor ? toLocalInput(item.scheduledFor) : "",
+    item.scheduledFor ? toLocalInput(item.scheduledFor) : ""
   )
 
   return (
     <li className="px-4 py-3">
-      <p className="whitespace-pre-wrap break-words text-sm">
-        {item.text || <span className="text-muted-foreground">(empty draft)</span>}
+      <p className="text-sm break-words whitespace-pre-wrap">
+        {item.text || (
+          <span className="text-muted-foreground">(empty draft)</span>
+        )}
       </p>
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
         <span>
@@ -162,14 +169,25 @@ function DraftRow({
         </span>
         <div className="flex items-center gap-1">
           {!editing && (
-            <Button size="sm" variant="ghost" onClick={() => setEditing(true)} disabled={busy}>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setEditing(true)}
+              disabled={busy}
+            >
               Schedule
             </Button>
           )}
           <Button size="sm" variant="ghost" onClick={onPublish} disabled={busy}>
             Post now
           </Button>
-          <Button size="sm" variant="ghost" onClick={onDelete} disabled={busy} className="text-destructive">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onDelete}
+            disabled={busy}
+            className="text-destructive"
+          >
             Delete
           </Button>
         </div>
@@ -207,7 +225,12 @@ function DraftRow({
               Move to drafts
             </Button>
           )}
-          <Button size="sm" variant="ghost" onClick={() => setEditing(false)} disabled={busy}>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setEditing(false)}
+            disabled={busy}
+          >
             Cancel
           </Button>
         </div>

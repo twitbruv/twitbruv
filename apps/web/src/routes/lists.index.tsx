@@ -36,71 +36,76 @@ function ListsIndex() {
 
   return (
     <PageFrame>
-    <main>
-      <header className="flex items-center justify-between border-b border-border px-4 py-3">
-        <div>
-          <h1 className="text-base font-semibold">Lists</h1>
-          <p className="text-xs text-muted-foreground">
-            Curate users into private or public timelines.
+      <main>
+        <header className="flex items-center justify-between border-b border-border px-4 py-3">
+          <div>
+            <h1 className="text-base font-semibold">Lists</h1>
+            <p className="text-xs text-muted-foreground">
+              Curate users into private or public timelines.
+            </p>
+          </div>
+          <Button size="sm" onClick={() => setCreating((v) => !v)}>
+            {creating ? "Cancel" : "New list"}
+          </Button>
+        </header>
+
+        {creating && (
+          <CreateListForm
+            onCancel={() => setCreating(false)}
+            onCreated={async () => {
+              setCreating(false)
+              await refresh()
+            }}
+          />
+        )}
+
+        {error && (
+          <div className="border-b border-border bg-destructive/10 px-4 py-2 text-xs text-destructive">
+            {error}
+          </div>
+        )}
+
+        {lists === null ? (
+          <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+            loading…
           </p>
-        </div>
-        <Button size="sm" onClick={() => setCreating((v) => !v)}>
-          {creating ? "Cancel" : "New list"}
-        </Button>
-      </header>
-
-      {creating && (
-        <CreateListForm
-          onCancel={() => setCreating(false)}
-          onCreated={async () => {
-            setCreating(false)
-            await refresh()
-          }}
-        />
-      )}
-
-      {error && (
-        <div className="border-b border-border bg-destructive/10 px-4 py-2 text-xs text-destructive">
-          {error}
-        </div>
-      )}
-
-      {lists === null ? (
-        <p className="px-4 py-8 text-center text-sm text-muted-foreground">loading…</p>
-      ) : lists.length === 0 ? (
-        <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-          no lists yet. Create one to start curating.
-        </p>
-      ) : (
-        <ul className="divide-y divide-border">
-          {lists.map((list) => (
-            <li key={list.id}>
-              <Link
-                to="/lists/$id"
-                params={{ id: list.id }}
-                className="block px-4 py-3 transition hover:bg-muted/40"
-              >
-                <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-semibold">{list.title}</h2>
-                  {list.isPrivate && (
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <IconLock size={12} /> private
-                    </span>
+        ) : lists.length === 0 ? (
+          <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+            no lists yet. Create one to start curating.
+          </p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {lists.map((list) => (
+              <li key={list.id}>
+                <Link
+                  to="/lists/$id"
+                  params={{ id: list.id }}
+                  className="block px-4 py-3 transition hover:bg-muted/40"
+                >
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-semibold">{list.title}</h2>
+                    {list.isPrivate && (
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <IconLock size={12} /> private
+                      </span>
+                    )}
+                  </div>
+                  {list.description && (
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {list.description}
+                    </p>
                   )}
-                </div>
-                {list.description && (
-                  <p className="mt-1 text-sm text-muted-foreground">{list.description}</p>
-                )}
-                <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                  <IconUsers size={12} />
-                  {list.memberCount} {list.memberCount === 1 ? "member" : "members"}
-                </p>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-    </main>
+                  <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                    <IconUsers size={12} />
+                    {list.memberCount}{" "}
+                    {list.memberCount === 1 ? "member" : "members"}
+                  </p>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </main>
     </PageFrame>
   )
 }
@@ -147,7 +152,11 @@ function CreateListForm({
       await onCreated()
     } catch (e) {
       const msg = e instanceof ApiError ? e.message : "create failed"
-      setError(e instanceof ApiError && e.code === "slug_taken" ? "slug already in use" : msg)
+      setError(
+        e instanceof ApiError && e.code === "slug_taken"
+          ? "slug already in use"
+          : msg
+      )
     } finally {
       setBusy(false)
     }
@@ -161,14 +170,14 @@ function CreateListForm({
           onChange={(e) => setTitle(e.target.value)}
           placeholder="List name"
           maxLength={LIST_TITLE_MAX}
-          className="w-full rounded-md border border-border bg-transparent px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          className="w-full rounded-md border border-border bg-transparent px-2 py-1 text-sm focus:ring-1 focus:ring-ring focus:outline-none"
         />
         <input
           value={slug}
           onChange={(e) => setSlug(e.target.value)}
           placeholder={`slug (auto: ${slugFromTitle(title) || "your-slug"})`}
           maxLength={40}
-          className="w-full rounded-md border border-border bg-transparent px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+          className="w-full rounded-md border border-border bg-transparent px-2 py-1 text-xs focus:ring-1 focus:ring-ring focus:outline-none"
         />
         <textarea
           value={description}
@@ -176,7 +185,7 @@ function CreateListForm({
           placeholder="Description (optional)"
           rows={2}
           maxLength={280}
-          className="w-full resize-none rounded-md border border-border bg-transparent px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          className="w-full resize-none rounded-md border border-border bg-transparent px-2 py-1 text-sm focus:ring-1 focus:ring-ring focus:outline-none"
         />
         <label className="flex items-center gap-2 text-xs text-muted-foreground">
           <input
@@ -193,7 +202,11 @@ function CreateListForm({
         <Button size="sm" variant="ghost" onClick={onCancel} disabled={busy}>
           Cancel
         </Button>
-        <Button size="sm" type="submit" disabled={busy || !title.trim() || !slugValid}>
+        <Button
+          size="sm"
+          type="submit"
+          disabled={busy || !title.trim() || !slugValid}
+        >
           {busy ? "Creating…" : "Create list"}
         </Button>
       </div>

@@ -36,9 +36,10 @@ meRoute.patch('/', async (c) => {
   // treated as "clear this field" (→ null). Missing keys are left untouched.
   const patch: Partial<typeof schema.users.$inferInsert> = { updatedAt: new Date() }
   const has = (k: string) => Object.prototype.hasOwnProperty.call(raw, k)
-  if (has('displayName')) patch.displayName = body.displayName ?? null
-  if (has('bio')) patch.bio = body.bio ?? null
-  if (has('location')) patch.location = body.location ?? null
+  // Empty string from the client means "clear this field" → store NULL.
+  if (has('displayName')) patch.displayName = body.displayName || null
+  if (has('bio')) patch.bio = body.bio || null
+  if (has('location')) patch.location = body.location || null
   if (has('websiteUrl')) patch.websiteUrl = body.websiteUrl || null
   // Store the bare object key so we never have to migrate when the asset host changes.
   if (has('avatarUrl'))
@@ -107,6 +108,7 @@ meRoute.get('/blocks', async (c) => {
     displayName: r.user.displayName,
     avatarUrl: assetUrl(mediaEnv, r.user.avatarUrl),
     isVerified: r.user.isVerified,
+    role: r.user.role,
     blockedAt: r.block.createdAt.toISOString(),
   }))
   const nextCursor =
@@ -141,6 +143,7 @@ meRoute.get('/mutes', async (c) => {
     displayName: r.user.displayName,
     avatarUrl: assetUrl(mediaEnv, r.user.avatarUrl),
     isVerified: r.user.isVerified,
+    role: r.user.role,
     mutedAt: r.mute.createdAt.toISOString(),
     scope: r.mute.scope,
   }))

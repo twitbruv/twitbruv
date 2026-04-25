@@ -3,7 +3,7 @@
 import * as React from "react"
 import { mergeProps } from "@base-ui/react/merge-props"
 import { useRender } from "@base-ui/react/use-render"
-import {  cva } from "class-variance-authority"
+import { cva } from "class-variance-authority"
 
 import { IconLayoutSidebar } from "@tabler/icons-react"
 import { useIsMobile } from "@workspace/ui/hooks/use-mobile"
@@ -24,7 +24,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@workspace/ui/components/tooltip"
-import type {VariantProps} from "class-variance-authority";
+import type { VariantProps } from "class-variance-authority"
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7

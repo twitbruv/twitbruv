@@ -8,7 +8,7 @@ import { loadEnv, type Env } from './env.ts'
 import { createCache, type Cache } from './cache.ts'
 import { createPubSub, type PubSub } from './pubsub.ts'
 import { createLogger, type Logger } from './logger.ts'
-import { makeRateLimit } from './rate-limit.ts'
+import { makeRateLimit } from '@workspace/rate-limit'
 
 export interface AppContext {
   env: Env
@@ -88,7 +88,7 @@ export async function buildContext(): Promise<AppContext> {
   const cache = createCache(env.REDIS_URL)
   const pubsub = createPubSub(env.REDIS_URL)
   const log = createLogger(env)
-  const rateLimit = makeRateLimit(env.REDIS_URL)
+  const rateLimit = makeRateLimit(env.REDIS_URL, log)
 
   return { env, db, mailer, auth, s3, mediaEnv, boss, cache, pubsub, log, rateLimit }
 }

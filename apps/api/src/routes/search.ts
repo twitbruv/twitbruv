@@ -40,6 +40,7 @@ searchRoute.get('/', async (c) => {
       bannerUrl: schema.users.bannerUrl,
       isVerified: schema.users.isVerified,
       isBot: schema.users.isBot,
+      role: schema.users.role,
       createdAt: schema.users.createdAt,
     })
     .from(schema.users)

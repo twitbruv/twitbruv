@@ -21,7 +21,12 @@ function SignUp() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-    const parsed = signUpSchema.safeParse({ email, password, handle, displayName })
+    const parsed = signUpSchema.safeParse({
+      email,
+      password,
+      handle,
+      displayName,
+    })
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message ?? "invalid input")
       return
@@ -71,7 +76,13 @@ function SignUp() {
         </div>
         <div className="space-y-1">
           <Label htmlFor="email">Email</Label>
-          <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <Input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
         </div>
         <div className="space-y-1">
           <Label htmlFor="password">Password</Label>
@@ -83,7 +94,9 @@ function SignUp() {
             minLength={10}
             required
           />
-          <p className="text-xs text-muted-foreground">At least 10 characters.</p>
+          <p className="text-xs text-muted-foreground">
+            At least 10 characters.
+          </p>
         </div>
         {error && <p className="text-xs text-destructive">{error}</p>}
         <Button type="submit" className="w-full" disabled={loading} size="lg">

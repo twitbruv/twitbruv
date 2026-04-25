@@ -59,6 +59,7 @@ function toArticleDto(
       displayName: author.displayName,
       avatarUrl: assetUrl(env, author.avatarUrl),
       isVerified: author.isVerified,
+      role: author.role,
     },
   }
 }

@@ -31,7 +31,7 @@ function AdminLayout() {
   }
 
   return (
-    <div className="mx-auto w-full min-w-0 border-x border-b md:max-w-6xl">
+    <div>
       <header className="sticky top-0 z-10 border-b border-border bg-background/80 px-4 py-3 backdrop-blur-sm">
         <div className="flex items-baseline justify-between">
           <h1 className="text-base font-semibold">Admin</h1>

@@ -1,17 +1,20 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
 import { useCallback, useEffect, useState } from "react"
-import { ApiError,  api } from "../lib/api"
+import { Button } from "@workspace/ui/components/button"
+import { ApiError, api } from "../lib/api"
 import { Feed } from "../components/feed"
 import { ProfileActions } from "../components/profile-actions"
 import { ImageLightbox } from "../components/image-lightbox"
 import { RichText } from "../components/rich-text"
 import { VerifiedBadge } from "../components/verified-badge"
-import type {PublicProfile} from "../lib/api";
+import { useMe } from "../lib/me"
+import type { PublicProfile } from "../lib/api"
 
 export const Route = createFileRoute("/$handle/")({ component: Profile })
 
 function Profile() {
   const { handle } = Route.useParams()
+  const { me } = useMe()
   const [user, setUser] = useState<PublicProfile | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -89,13 +92,24 @@ function Profile() {
             </div>
           </ImageLightbox>
           <div className="pb-1">
-            <ProfileActions profile={user} onChange={setUser} />
+            {me?.id === user.id ? (
+              <Button
+                size="sm"
+                variant="outline"
+                nativeButton={false}
+                render={<Link to="/settings" hash="profile" />}
+              >
+                Edit profile
+              </Button>
+            ) : (
+              <ProfileActions profile={user} onChange={setUser} />
+            )}
           </div>
         </div>
         <div className="mt-3">
           <h1 className="flex items-center gap-1.5 text-xl font-semibold">
             {displayName}
-            {user.isVerified && <VerifiedBadge size={20} />}
+            {user.isVerified && <VerifiedBadge size={20} role={user.role} />}
           </h1>
           <p className="text-sm text-muted-foreground">@{user.handle}</p>
         </div>
@@ -146,7 +160,11 @@ function Profile() {
         </div>
       </div>
       <div className="border-t border-border">
-        <Feed load={load} emptyMessage={`@${user.handle} hasn't posted yet.`} />
+        <Feed
+          queryKey={["userPosts", handle]}
+          load={load}
+          emptyMessage={`@${user.handle} hasn't posted yet.`}
+        />
       </div>
     </main>
   )

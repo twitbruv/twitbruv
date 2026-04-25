@@ -13,8 +13,10 @@ export const bioSchema = z.string().max(280)
 export const locationSchema = z.string().max(50)
 export const websiteSchema = z.string().url().max(200)
 
+// Profile text fields accept an empty string in update payloads to mean
+// "clear this field". The API converts empty strings to NULL before writing.
 export const updateProfileSchema = z.object({
-  displayName: displayNameSchema.optional(),
+  displayName: displayNameSchema.optional().or(z.literal('')),
   bio: bioSchema.optional(),
   location: locationSchema.optional(),
   websiteUrl: websiteSchema.optional().or(z.literal('')),

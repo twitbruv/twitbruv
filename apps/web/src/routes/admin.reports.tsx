@@ -32,9 +32,16 @@ import type {
   ReportStatus,
 } from "../lib/api"
 
-export const Route = createFileRoute("/admin/reports")({ component: AdminReports })
+export const Route = createFileRoute("/admin/reports")({
+  component: AdminReports,
+})
 
-const STATUSES: Array<ReportStatus> = ["open", "triaged", "actioned", "dismissed"]
+const STATUSES: Array<ReportStatus> = [
+  "open",
+  "triaged",
+  "actioned",
+  "dismissed",
+]
 type Resolution = "triaged" | "actioned" | "dismissed"
 
 function AdminReports() {
@@ -113,9 +120,7 @@ function AdminReports() {
                   @{rep.handle}
                 </Link>
               ) : (
-                <span className="text-xs text-muted-foreground">
-                  (unknown)
-                </span>
+                <span className="text-xs text-muted-foreground">(unknown)</span>
               )}
             </div>
           )
@@ -131,7 +136,7 @@ function AdminReports() {
         ),
       },
     ],
-    [],
+    []
   )
 
   const table = useReactTable({
@@ -161,7 +166,9 @@ function AdminReports() {
         <p className="p-4 text-sm text-muted-foreground">loading…</p>
       )}
       {!loading && reports.length === 0 && (
-        <p className="p-4 text-sm text-muted-foreground">No {status} reports.</p>
+        <p className="p-4 text-sm text-muted-foreground">
+          No {status} reports.
+        </p>
       )}
       {reports.length > 0 && (
         <Table>
@@ -174,7 +181,7 @@ function AdminReports() {
                       ? null
                       : flexRender(
                           header.column.columnDef.header,
-                          header.getContext(),
+                          header.getContext()
                         )}
                   </TableHead>
                 ))}
@@ -365,7 +372,7 @@ function Section({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
         {label}
       </span>
       {children}
@@ -373,11 +380,7 @@ function Section({
   )
 }
 
-function Reporter({
-  reporter,
-}: {
-  reporter: AdminReportDetail["reporter"]
-}) {
+function Reporter({ reporter }: { reporter: AdminReportDetail["reporter"] }) {
   if (!reporter) {
     return (
       <Section label="Reporter">
@@ -411,11 +414,7 @@ function Reporter({
   )
 }
 
-function SubjectPreview({
-  subject,
-}: {
-  subject: AdminReportSubject | null
-}) {
+function SubjectPreview({ subject }: { subject: AdminReportSubject | null }) {
   if (!subject) {
     return (
       <Section label="Subject">
@@ -465,7 +464,7 @@ function SubjectPreview({
               Marked sensitive{p.contentWarning ? `: ${p.contentWarning}` : ""}
             </p>
           )}
-          <p className="whitespace-pre-wrap text-sm">{p.text}</p>
+          <p className="text-sm whitespace-pre-wrap">{p.text}</p>
           {p.author?.handle && (
             <Link
               to="/$handle/p/$id"
@@ -487,7 +486,9 @@ function SubjectPreview({
       <Section label="Reported user">
         <div className="flex items-center gap-2 rounded-md border border-border p-3">
           <Avatar
-            initial={(u.displayName || u.handle || "?").slice(0, 1).toUpperCase()}
+            initial={(u.displayName || u.handle || "?")
+              .slice(0, 1)
+              .toUpperCase()}
             src={u.avatarUrl}
             className="size-8 shrink-0"
           />

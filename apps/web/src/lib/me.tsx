@@ -1,8 +1,14 @@
-import {  createContext, useCallback, useContext, useEffect, useState } from "react"
-import {  api } from "./api"
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react"
+import { api } from "./api"
 import { authClient } from "./auth"
-import type {ReactNode} from "react";
-import type {SelfUser} from "./api";
+import type { ReactNode } from "react"
+import type { SelfUser } from "./api"
 
 interface MeContextValue {
   me: SelfUser | null

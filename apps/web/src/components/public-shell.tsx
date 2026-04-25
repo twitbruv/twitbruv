@@ -14,10 +14,15 @@ export function PublicShell({ children }: { children: ReactNode }) {
           <span className="text-base font-semibold">{APP_NAME}</span>
         </Link>
         <nav className="flex items-center gap-2">
-          <Button size="sm" variant="ghost" render={<Link to="/login" />}>
+          <Button
+            size="sm"
+            variant="ghost"
+            nativeButton={false}
+            render={<Link to="/login" />}
+          >
             Sign in
           </Button>
-          <Button size="sm" render={<Link to="/signup" />}>
+          <Button size="sm" nativeButton={false} render={<Link to="/signup" />}>
             Sign up
           </Button>
         </nav>

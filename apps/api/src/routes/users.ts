@@ -84,6 +84,7 @@ usersRoute.get('/:handle', async (c) => {
       bannerUrl: assetUrl(mediaEnv, user.bannerUrl),
       isVerified: user.isVerified,
       isBot: user.isBot,
+      role: user.role,
       createdAt: user.createdAt,
       counts: {
         followers: followers?.n ?? 0,
@@ -323,6 +324,7 @@ usersRoute.get('/:handle/articles/:slug', async (c) => {
         displayName: user.displayName,
         avatarUrl: assetUrl(mediaEnv, user.avatarUrl),
         isVerified: user.isVerified,
+        role: user.role,
       },
     },
   })
@@ -518,6 +520,7 @@ function publicUser(
     bannerUrl: assetUrl(env, u.bannerUrl),
     isVerified: u.isVerified,
     isBot: u.isBot,
+    role: u.role,
     createdAt: u.createdAt,
   }
 }

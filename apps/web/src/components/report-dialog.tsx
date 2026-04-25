@@ -10,16 +10,36 @@ import { ApiError, api } from "../lib/api"
 import type { ReportReason } from "../lib/api"
 
 const REASONS: Array<{ value: ReportReason; label: string; help: string }> = [
-  { value: "spam", label: "Spam", help: "Repeated unsolicited posts, scams, or self-promo" },
-  { value: "harassment", label: "Harassment", help: "Targeted insults, threats, or intimidation" },
+  {
+    value: "spam",
+    label: "Spam",
+    help: "Repeated unsolicited posts, scams, or self-promo",
+  },
+  {
+    value: "harassment",
+    label: "Harassment",
+    help: "Targeted insults, threats, or intimidation",
+  },
   {
     value: "csam",
     label: "Child sexual abuse material",
     help: "Sexual content involving minors. Reports here go to the top of the queue.",
   },
-  { value: "violence", label: "Violence or self-harm", help: "Graphic violence, threats, or self-harm" },
-  { value: "impersonation", label: "Impersonation", help: "Pretending to be someone they aren't" },
-  { value: "illegal", label: "Illegal activity", help: "Promoting illegal goods or services" },
+  {
+    value: "violence",
+    label: "Violence or self-harm",
+    help: "Graphic violence, threats, or self-harm",
+  },
+  {
+    value: "impersonation",
+    label: "Impersonation",
+    help: "Pretending to be someone they aren't",
+  },
+  {
+    value: "illegal",
+    label: "Illegal activity",
+    help: "Promoting illegal goods or services",
+  },
   { value: "other", label: "Other", help: "Doesn't fit the above" },
 ]
 
@@ -66,7 +86,7 @@ export function ReportDialog({
       setStatus(
         res.deduped
           ? "You've already reported this — thanks. Mods will take a look."
-          : "Reported. Thanks — mods will take a look.",
+          : "Reported. Thanks — mods will take a look."
       )
       setTimeout(close, 1200)
     } catch (e) {
@@ -81,7 +101,14 @@ export function ReportDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            Report {subjectLabel ? <span className="font-normal text-muted-foreground">{subjectLabel}</span> : "this"}
+            Report{" "}
+            {subjectLabel ? (
+              <span className="font-normal text-muted-foreground">
+                {subjectLabel}
+              </span>
+            ) : (
+              "this"
+            )}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
@@ -99,7 +126,9 @@ export function ReportDialog({
                   />
                   <div className="min-w-0 flex-1">
                     <div className="font-medium">{r.label}</div>
-                    <div className="text-xs text-muted-foreground">{r.help}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {r.help}
+                    </div>
                   </div>
                 </label>
               </li>
@@ -111,7 +140,7 @@ export function ReportDialog({
             placeholder="Optional details for the moderation team"
             maxLength={1000}
             rows={3}
-            className="w-full resize-none rounded-md border border-border bg-transparent px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            className="w-full resize-none rounded-md border border-border bg-transparent px-3 py-2 text-sm focus:ring-1 focus:ring-ring focus:outline-none"
           />
           {status && <p className="text-xs text-muted-foreground">{status}</p>}
           <div className="flex justify-end gap-2">
