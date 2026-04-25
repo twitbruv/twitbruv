@@ -44,6 +44,9 @@ export interface PostDto {
   sensitive: boolean
   contentWarning: string | null
   replyRestriction: 'anyone' | 'following' | 'mentioned'
+  /** Set when the conversation root author hid this reply. The thread renderer
+   *  collapses these by default behind a "Show hidden replies" affordance. */
+  hidden?: boolean
   author: {
     id: string
     handle: string | null
@@ -51,6 +54,7 @@ export interface PostDto {
     avatarUrl: string | null
     isVerified: boolean
     isBot: boolean
+    role: 'user' | 'admin' | 'owner'
   }
   counts: {
     likes: number
@@ -120,6 +124,7 @@ export function toPostDto(
     sensitive: post.sensitive,
     contentWarning: post.contentWarning,
     replyRestriction: post.replyRestriction,
+    ...(post.hiddenAt ? { hidden: true } : {}),
     author: {
       id: author.id,
       handle: author.handle,
@@ -127,6 +132,7 @@ export function toPostDto(
       avatarUrl: env ? assetUrl(env, author.avatarUrl) : author.avatarUrl,
       isVerified: author.isVerified,
       isBot: author.isBot,
+      role: author.role,
     },
     counts: {
       likes: post.likeCount,

@@ -4,6 +4,8 @@ import {
   IconBookmark,
   IconBookmarkFilled,
   IconDots,
+  IconEye,
+  IconEyeOff,
   IconFlag,
   IconFolders,
   IconHeart,
@@ -45,7 +47,7 @@ import { ImageLightbox } from "./image-lightbox"
 import { Compose } from "./compose"
 import { PollBlock } from "./poll-block"
 import { VerifiedBadge } from "./verified-badge"
-import type { Post } from "../lib/api"
+import type { Post, PostEdit } from "../lib/api"
 
 function relativeTime(iso: string): string {
   const d = new Date(iso).getTime()
@@ -151,7 +153,9 @@ function QuoteEmbed({ post }: { post: Post }) {
           <div className="flex items-center gap-2 text-xs">
             <span className="flex items-center gap-1 font-semibold text-foreground">
               {post.author.displayName || `@${handle ?? "unknown"}`}
-              {post.author.isVerified && <VerifiedBadge size={13} />}
+              {post.author.isVerified && (
+                <VerifiedBadge size={13} role={post.author.role} />
+              )}
             </span>
             {handle && <span className="text-muted-foreground">@{handle}</span>}
             <span className="text-muted-foreground">·</span>
@@ -247,6 +251,7 @@ export function PostCard({
   onOpenThread,
   active = false,
   disableThreadNavigation = false,
+  canHide = false,
 }: {
   post: Post
   onChange?: (post: Post) => void
@@ -254,6 +259,9 @@ export function PostCard({
   onOpenThread?: (post: Post) => void
   active?: boolean
   disableThreadNavigation?: boolean
+  /** When true (set by the thread page when the viewer authored the conversation
+   *  root, or by admin tooling for moderators), expose Hide/Unhide reply menu items. */
+  canHide?: boolean
 }) {
   const navigate = useNavigate()
   const { data: session } = authClient.useSession()
@@ -315,6 +323,7 @@ export function PostCard({
   const [reportOpen, setReportOpen] = useState(false)
   const [editText, setEditText] = useState(post.text)
   const [editError, setEditError] = useState<string | null>(null)
+  const [historyOpen, setHistoryOpen] = useState(false)
   const authorHandle = post.author.handle
   const showProfileLink = Boolean(authorHandle)
   const showPostLink = Boolean(authorHandle && !disableThreadNavigation)
@@ -463,7 +472,9 @@ export function PostCard({
               Reposted by{" "}
               {outerPost.author.displayName || `@${outerPost.author.handle}`}
             </span>
-            {outerPost.author.isVerified && <VerifiedBadge size={12} />}
+            {outerPost.author.isVerified && (
+              <VerifiedBadge size={12} role={outerPost.author.role} />
+            )}
           </span>
         </Link>
       )}
@@ -506,12 +517,16 @@ export function PostCard({
                 className="flex items-center gap-1 font-semibold text-foreground hover:underline"
               >
                 {post.author.displayName || `@${authorHandle}`}
-                {post.author.isVerified && <VerifiedBadge size={15} />}
+                {post.author.isVerified && (
+                  <VerifiedBadge size={15} role={post.author.role} />
+                )}
               </Link>
             ) : (
               <span className="flex items-center gap-1 font-semibold text-foreground">
                 {post.author.displayName ?? "unknown"}
-                {post.author.isVerified && <VerifiedBadge size={15} />}
+                {post.author.isVerified && (
+                  <VerifiedBadge size={15} role={post.author.role} />
+                )}
               </span>
             )}
             {authorHandle && (
@@ -535,7 +550,14 @@ export function PostCard({
               </time>
             )}
             {post.editedAt && (
-              <span className="text-xs text-muted-foreground">(edited)</span>
+              <button
+                type="button"
+                onClick={() => setHistoryOpen(true)}
+                className="text-xs text-muted-foreground hover:underline"
+                title="View edit history"
+              >
+                (edited)
+              </button>
             )}
             {(isOwner || session) && (
               <DropdownMenu>
@@ -592,6 +614,26 @@ export function PostCard({
                       <span>Delete</span>
                     </DropdownMenuItem>
                   )}
+                  {canHide && !isOwner && (
+                    <DropdownMenuItem
+                      onClick={async () => {
+                        try {
+                          if (post.hidden) await api.unhidePost(post.id)
+                          else await api.hidePost(post.id)
+                          onChange?.({ ...post, hidden: !post.hidden })
+                        } catch {
+                          /* surfaced via stale state on refresh */
+                        }
+                      }}
+                    >
+                      {post.hidden ? (
+                        <IconEye size={14} stroke={1.75} />
+                      ) : (
+                        <IconEyeOff size={14} stroke={1.75} />
+                      )}
+                      <span>{post.hidden ? "Unhide reply" : "Hide reply"}</span>
+                    </DropdownMenuItem>
+                  )}
                   {!isOwner && (
                     <DropdownMenuItem onClick={() => setReportOpen(true)}>
                       <IconFlag size={14} stroke={1.75} />
@@ -612,6 +654,11 @@ export function PostCard({
               subjectLabel={
                 authorHandle ? `@${authorHandle}'s post` : "this post"
               }
+            />
+            <EditHistoryDialog
+              open={historyOpen}
+              onOpenChange={setHistoryOpen}
+              post={post}
             />
           </header>
           {editing ? (
@@ -881,5 +928,72 @@ function BookmarkFolderSubmenu({ postId }: { postId: string }) {
         </DropdownMenuSubContent>
       </DropdownMenuSub>
     </>
+function EditHistoryDialog({
+  open,
+  onOpenChange,
+  post,
+}: {
+  open: boolean
+  onOpenChange: (next: boolean) => void
+  post: Post
+}) {
+  const [edits, setEdits] = useState<Array<PostEdit> | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    setError(null)
+    setEdits(null)
+    api
+      .postEdits(post.id)
+      .then(({ edits: rows }) => setEdits(rows))
+      .catch((e) =>
+        setError(e instanceof ApiError ? e.message : "couldn't load history")
+      )
+  }, [open, post.id])
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="text-sm font-semibold">
+            Edit history
+          </DialogTitle>
+          <DialogDescription className="sr-only">
+            Previous versions of this post, newest first.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="max-h-[60vh] space-y-3 overflow-y-auto pt-2">
+          <div className="rounded-md border border-border p-3">
+            <div className="mb-1 text-xs text-muted-foreground">
+              Current version
+              {post.editedAt
+                ? ` · edited ${new Date(post.editedAt).toLocaleString()}`
+                : ""}
+            </div>
+            <p className="text-sm leading-relaxed whitespace-pre-wrap">
+              {post.text}
+            </p>
+          </div>
+          {error && <p className="text-xs text-destructive">{error}</p>}
+          {!error && edits === null && (
+            <p className="text-xs text-muted-foreground">loading…</p>
+          )}
+          {edits && edits.length === 0 && (
+            <p className="text-xs text-muted-foreground">No prior versions.</p>
+          )}
+          {edits?.map((edit) => (
+            <div key={edit.id} className="rounded-md border border-border p-3">
+              <div className="mb-1 text-xs text-muted-foreground">
+                Replaced at {new Date(edit.editedAt).toLocaleString()}
+              </div>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground">
+                {edit.previousText}
+              </p>
+            </div>
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }

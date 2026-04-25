@@ -76,7 +76,7 @@ export function UserList({
               <span className="truncate">
                 {u.displayName || `@${u.handle}`}
               </span>
-              {u.isVerified && <VerifiedBadge size={14} />}
+              {u.isVerified && <VerifiedBadge size={14} role={u.role} />}
             </div>
             <div className="text-xs text-muted-foreground">@{u.handle}</div>
             {u.bio && (

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { IconChartBar, IconPhoto, IconX } from "@tabler/icons-react"
+import { IconChartBar, IconPhoto, IconUsers, IconX } from "@tabler/icons-react"
 import { Button } from "@workspace/ui/components/button"
 import {
   POLL_MAX_OPTIONS,
@@ -75,6 +75,12 @@ export function Compose({
   const [poll, setPoll] = useState<PollDraft | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Replies inherit their thread's restriction; only let the user pick on
+  // top-level posts and quotes (which start a new thread).
+  const [replyRestriction, setReplyRestriction] = useState<
+    "anyone" | "following" | "mentioned"
+  >("anyone")
+  const showReplyControl = !replyToId
   const avatarInitial = (me?.displayName ?? me?.handle ?? "·")
     .slice(0, 1)
     .toUpperCase()
@@ -196,6 +202,7 @@ export function Compose({
         quoteOfId,
         mediaIds: readyMediaIds.length > 0 ? readyMediaIds : undefined,
         poll: pollPayload,
+        replyRestriction: showReplyControl ? replyRestriction : undefined,
       })
       setText("")
       clearDraft(dKey)
@@ -256,7 +263,9 @@ export function Compose({
               <span className="flex items-center gap-1 font-medium text-foreground">
                 {quoted.author.displayName ||
                   `@${quoted.author.handle ?? "unknown"}`}
-                {quoted.author.isVerified && <VerifiedBadge size={13} />}
+                {quoted.author.isVerified && (
+                  <VerifiedBadge size={13} role={quoted.author.role} />
+                )}
               </span>
               {quoted.author.handle && <span>@{quoted.author.handle}</span>}
             </div>
@@ -436,6 +445,27 @@ export function Compose({
               >
                 <IconChartBar size={18} stroke={1.75} />
               </Button>
+              {showReplyControl && (
+                <label
+                  className="flex items-center gap-1.5 rounded-md border border-transparent px-1.5 py-0.5 text-xs text-muted-foreground hover:border-border hover:text-foreground"
+                  title="Who can reply to this post"
+                >
+                  <IconUsers size={14} stroke={1.75} />
+                  <select
+                    value={replyRestriction}
+                    onChange={(e) =>
+                      setReplyRestriction(
+                        e.target.value as "anyone" | "following" | "mentioned"
+                      )
+                    }
+                    className="bg-transparent text-xs focus:outline-none"
+                  >
+                    <option value="anyone">Everyone can reply</option>
+                    <option value="following">People you follow</option>
+                    <option value="mentioned">Only people you mention</option>
+                  </select>
+                </label>
+              )}
               <span
                 className={`text-xs ${
                   remaining < 0

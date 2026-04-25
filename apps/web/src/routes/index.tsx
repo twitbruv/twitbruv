@@ -59,6 +59,7 @@ function Landing() {
           to: "/",
           search: { postId: post.id, postHandle: handle },
           replace: Boolean(selectedThread),
+          resetScroll: false,
         })
         return
       }
@@ -71,7 +72,7 @@ function Landing() {
     [isDesktop, navigate, selectedThread]
   )
   const closeThread = useCallback(() => {
-    navigate({ to: "/", search: {}, replace: true })
+    navigate({ to: "/", search: {}, replace: true, resetScroll: false })
   }, [navigate])
 
   useEffect(() => {
@@ -98,10 +99,10 @@ function Landing() {
   if (session) {
     const needsHandle = me && !me.handle
     return (
-      <main className="@min-[1120px]/inset:flex @min-[1120px]/inset:justify-center @min-[1120px]/inset:overflow-x-clip">
-        <div className="@min-[1120px]/inset:flex @min-[1120px]/inset:min-h-[calc(100vh-3rem)] @min-[1120px]/inset:w-[1120px] @min-[1120px]/inset:items-start">
+      <main className="@min-[1120px]/inset:flex @min-[1120px]/inset:h-[calc(100svh-3rem)] @min-[1120px]/inset:min-h-0 @min-[1120px]/inset:justify-center @min-[1120px]/inset:overflow-hidden">
+        <div className="@min-[1120px]/inset:flex @min-[1120px]/inset:h-full @min-[1120px]/inset:min-h-0 @min-[1120px]/inset:w-[1120px] @min-[1120px]/inset:items-stretch">
           <div
-            className={`mx-auto w-full min-w-0 border-border md:max-w-[640px] md:border-x @min-[1120px]/inset:mx-0 @min-[1120px]/inset:max-w-none @min-[1120px]/inset:w-[640px] @min-[1120px]/inset:shrink-0 @min-[1120px]/inset:border-x @min-[1120px]/inset:border-border @min-[1120px]/inset:transition-transform @min-[1120px]/inset:duration-300 @min-[1120px]/inset:ease-out @min-[1120px]/inset:[will-change:transform] @min-[1120px]/inset:[contain:layout] ${
+            className={`mx-auto w-full min-w-0 border-border md:max-w-[640px] md:border-x @min-[1120px]/inset:mx-0 @min-[1120px]/inset:flex @min-[1120px]/inset:h-full @min-[1120px]/inset:min-h-0 @min-[1120px]/inset:w-[640px] @min-[1120px]/inset:max-w-none @min-[1120px]/inset:shrink-0 @min-[1120px]/inset:flex-col @min-[1120px]/inset:overflow-y-auto @min-[1120px]/inset:border-x @min-[1120px]/inset:border-border @min-[1120px]/inset:transition-transform @min-[1120px]/inset:duration-300 @min-[1120px]/inset:ease-out @min-[1120px]/inset:[will-change:transform] @min-[1120px]/inset:[contain:layout] ${
               panelThread
                 ? "@min-[1120px]/inset:translate-x-0"
                 : "@min-[1120px]/inset:translate-x-[240px]"
@@ -152,10 +153,10 @@ function Landing() {
             />
           </div>
 
-          <div className="hidden @min-[1120px]/inset:block @min-[1120px]/inset:w-[480px] @min-[1120px]/inset:shrink-0 @min-[1120px]/inset:[contain:layout]">
+          <div className="hidden @min-[1120px]/inset:block @min-[1120px]/inset:h-full @min-[1120px]/inset:min-h-0 @min-[1120px]/inset:w-[480px] @min-[1120px]/inset:shrink-0 @min-[1120px]/inset:[contain:layout]">
             {panelThread && (
               <div
-                className={`sticky top-0 h-[calc(100vh-3rem)] overflow-hidden border-l border-border bg-background transition-transform duration-300 ease-out [will-change:transform] ${
+                className={`h-full overflow-hidden border-l border-border bg-background transition-transform duration-300 ease-out [will-change:transform] ${
                   selectedThread
                     ? "translate-x-0"
                     : "pointer-events-none translate-x-full"

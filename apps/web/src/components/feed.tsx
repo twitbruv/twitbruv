@@ -37,7 +37,13 @@ export function Feed({
     fetchNextPage,
     isFetchingNextPage,
     hasNextPage,
-  } = useInfiniteQuery<FeedPage, Error, InfiniteData<FeedPage, string | undefined>, FeedQueryKey, string | undefined>({
+  } = useInfiniteQuery<
+    FeedPage,
+    Error,
+    InfiniteData<FeedPage, string | undefined>,
+    FeedQueryKey,
+    string | undefined
+  >({
     queryKey,
     queryFn: ({ pageParam }) => load(pageParam),
     initialPageParam: undefined,
@@ -51,7 +57,7 @@ export function Feed({
       (current) => {
         if (!current || current.pages.length === 0) return current
         const exists = current.pages.some((page) =>
-          page.posts.some((p) => p.id === prependItem.id),
+          page.posts.some((p) => p.id === prependItem.id)
         )
         if (exists) return current
         const [first, ...rest] = current.pages
@@ -59,7 +65,7 @@ export function Feed({
           ...current,
           pages: [{ ...first, posts: [prependItem, ...first.posts] }, ...rest],
         }
-      },
+      }
     )
     // queryKeyHash captures the key identity; queryKey ref may change each render.
   }, [prependItem, queryClient, queryKeyHash])
@@ -83,7 +89,7 @@ export function Feed({
             posts: page.posts.map((p) => (p.id === next.id ? next : p)),
           })),
         }
-      },
+      }
     )
   }
 
@@ -99,7 +105,7 @@ export function Feed({
             posts: page.posts.filter((p) => p.id !== id),
           })),
         }
-      },
+      }
     )
   }
 
@@ -113,9 +119,7 @@ export function Feed({
     )
   if (error)
     return (
-      <div className="px-4 py-6 text-sm text-destructive">
-        {error.message}
-      </div>
+      <div className="px-4 py-6 text-sm text-destructive">{error.message}</div>
     )
   if (posts.length === 0)
     return (

@@ -195,12 +195,16 @@ function NotificationRow({ item }: { item: NotificationItem }) {
                 className="inline-flex items-center gap-1 align-middle font-semibold hover:underline"
               >
                 {actorLabel}
-                {item.actor?.isVerified && <VerifiedBadge size={14} />}
+                {item.actor?.isVerified && (
+                  <VerifiedBadge size={14} role={item.actor.role} />
+                )}
               </Link>
             ) : (
               <span className="inline-flex items-center gap-1 align-middle font-semibold">
                 {actorLabel}
-                {item.actor?.isVerified && <VerifiedBadge size={14} />}
+                {item.actor?.isVerified && (
+                  <VerifiedBadge size={14} role={item.actor.role} />
+                )}
               </span>
             )}{" "}
             <span className="text-muted-foreground">{verb}</span>
