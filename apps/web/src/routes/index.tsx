@@ -12,10 +12,13 @@ import type { Post } from "../lib/api"
 
 export const Route = createFileRoute("/")({ component: Landing })
 
+type FeedTab = "following" | "all"
+
 function Landing() {
   const { data: session, isPending } = authClient.useSession()
   const { me } = useMe()
   const [newPost, setNewPost] = useState<Post | null>(null)
+  const [tab, setTab] = useState<FeedTab>("following")
 
   const loadFeed = useCallback((cursor?: string) => api.feed(cursor), [])
   const loadPublic = useCallback(
@@ -51,14 +54,34 @@ function Landing() {
         ) : (
           <Compose onCreated={(p) => setNewPost(p)} />
         )}
-        <Feed
-          load={loadFeed}
-          emptyMessage="Follow people to see posts here. Try the public timeline below."
-          prependItem={newPost}
-        />
-        <section className="border-t border-border">
-          <Feed load={loadPublic} emptyMessage="No posts yet. Be the first." />
-        </section>
+        <div className="flex border-b border-border">
+          {(["following", "all"] as Array<FeedTab>).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`flex-1 px-4 py-3 text-sm font-medium transition ${
+                tab === t
+                  ? "border-b-2 border-primary text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t === "following" ? "Following" : "All"}
+            </button>
+          ))}
+        </div>
+        {tab === "following" ? (
+          <Feed
+            load={loadFeed}
+            emptyMessage="Follow people to see posts here. Switch to All to see the public timeline."
+            prependItem={newPost}
+          />
+        ) : (
+          <Feed
+            load={loadPublic}
+            emptyMessage="No posts yet. Be the first."
+            prependItem={newPost}
+          />
+        )}
         </main>
       </PageFrame>
     )
