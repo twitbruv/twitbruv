@@ -29,7 +29,7 @@ export const Route = createFileRoute("/")({
   }),
 })
 
-type FeedTab = "following" | "all"
+type FeedTab = "following" | "network" | "all"
 
 function Landing() {
   const navigate = Route.useNavigate()
@@ -48,8 +48,13 @@ function Landing() {
   const loadFeed = useCallback((cursor?: string) => api.feed(cursor), [])
   const loadPublic = useCallback(
     (cursor?: string) => api.publicTimeline(cursor),
-    []
+    [],
   )
+  const loadNetwork = useCallback(
+    (cursor?: string) => api.networkFeed(cursor),
+    [],
+  )
+
   const openThread = useCallback(
     (post: Post) => {
       const handle = post.author.handle
@@ -68,7 +73,7 @@ function Landing() {
         search: homeThreadFromFeedSearch(post.id, handle),
       })
     },
-    [isDesktop, navigate, selectedThread]
+    [isDesktop, navigate, selectedThread],
   )
   const closeThread = useCallback(() => {
     navigate({ to: "/", search: {}, replace: true })
@@ -81,7 +86,7 @@ function Landing() {
       params: { handle: selectedThread.handle, id: selectedThread.id },
       search: homeThreadFromFeedSearch(
         selectedThread.id,
-        selectedThread.handle
+        selectedThread.handle,
       ),
       replace: true,
     })
@@ -124,7 +129,7 @@ function Landing() {
               <Compose onCreated={(p) => setNewPost(p)} collapsible />
             )}
             <div className="flex border-b border-border">
-              {(["following", "all"] as Array<FeedTab>).map((t) => (
+              {(["following", "network", "all"] as Array<FeedTab>).map((t) => (
                 <button
                   key={t}
                   onClick={() => setTab(t)}
@@ -134,21 +139,65 @@ function Landing() {
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  {t === "following" ? "Following" : "All"}
+                  {t === "following"
+                    ? "Following"
+                    : t === "network"
+                      ? "Network"
+                      : "All"}
                 </button>
               ))}
             </div>
             <Feed
               queryKey={["feed", tab]}
-              load={tab === "following" ? loadFeed : loadPublic}
+              load={
+                tab === "following"
+                  ? loadFeed
+                  : tab === "network"
+                    ? loadNetwork
+                    : loadPublic
+              }
               emptyMessage={
                 tab === "following"
                   ? "Follow people to see posts here. Switch to All to see the public timeline."
-                  : "No posts yet. Be the first."
+                  : tab === "network"
+                    ? "No posts from your network's likes/reposts yet."
+                    : "No posts yet. Be the first."
               }
               prependItem={newPost}
               onOpenThread={openThread}
               activePostId={panelThread?.id}
+              renderActivityBanner={
+                tab === "network"
+                  ? (p) => {
+                      const np = p as Post & {
+                        networkActors?: Array<{
+                          id: string
+                          handle: string | null
+                          displayName: string | null
+                        }>
+                        networkActorTotal?: number
+                      }
+                      if (!np.networkActors || np.networkActors.length === 0)
+                        return null
+                      const first = np.networkActors[0]
+                      const more = (np.networkActorTotal ?? 1) - 1
+                      const name =
+                        first.displayName ||
+                        (first.handle ? `@${first.handle}` : "Someone")
+                      return (
+                        <div className="ml-10 flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <span>
+                            {name}
+                            {more > 0
+                              ? ` and ${more} other${more === 1 ? "" : "s"}`
+                              : ""}{" "}
+                            liked or reposted
+                          </span>
+                        </div>
+                      )
+                    }
+                  : undefined
+              }
             />
           </div>
 

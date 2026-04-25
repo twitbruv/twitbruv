@@ -8,6 +8,11 @@ import type { FeedPage, Post } from "../lib/api"
 
 type FeedQueryKey = ReadonlyArray<unknown>
 
+interface FeedLoaderPage {
+  posts: Array<Post>
+  nextCursor: string | null
+}
+
 export function Feed({
   queryKey,
   load,
@@ -17,15 +22,19 @@ export function Feed({
   onlyReplies = false,
   onOpenThread,
   activePostId,
+  renderActivityBanner,
 }: {
   queryKey: FeedQueryKey
-  load: (cursor?: string) => Promise<FeedPage>
+  load: (cursor?: string) => Promise<FeedLoaderPage | FeedPage>
   emptyMessage?: string
   prependItem?: Post | null
   hideReplies?: boolean
   onlyReplies?: boolean
   onOpenThread?: (post: Post) => void
   activePostId?: string
+  /** Optional banner rendered above each post card (e.g. "Lucas liked this"
+   *  on the network feed). Returning null skips the banner for that row. */
+  renderActivityBanner?: (post: Post) => React.ReactNode
 }) {
   const queryClient = useQueryClient()
   const queryKeyHash = JSON.stringify(queryKey)
@@ -126,18 +135,27 @@ export function Feed({
 
   return (
     <div>
-      {posts.map((post) => (
-        <PostCard
-          key={post.id}
-          post={post}
-          onChange={replace}
-          onRemove={remove}
-          onOpenThread={onOpenThread}
-          active={
-            activePostId === post.id || activePostId === post.repostOf?.id
-          }
-        />
-      ))}
+      {posts.map((post) => {
+        const banner = renderActivityBanner?.(post)
+        return (
+          <div key={post.id}>
+            {banner && (
+              <div className="border-b border-border/50 px-4 pt-2">
+                {banner}
+              </div>
+            )}
+            <PostCard
+              post={post}
+              onChange={replace}
+              onRemove={remove}
+              onOpenThread={onOpenThread}
+              active={
+                activePostId === post.id || activePostId === post.repostOf?.id
+              }
+            />
+          </div>
+        )
+      })}
       {hasNextPage && (
         <div className="flex justify-center py-3">
           <Button

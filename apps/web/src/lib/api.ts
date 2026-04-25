@@ -77,6 +77,8 @@ export const api = {
     request<{ ok: true }>(`/api/users/${h(handle)}/mute`, { method: "DELETE" }),
 
   feed: (cursor?: string) => request<FeedPage>(`/api/feed${qs(cursor)}`),
+  networkFeed: (cursor?: string) =>
+    request<NetworkFeedPage>(`/api/feed/network${qs(cursor)}`),
   publicTimeline: (cursor?: string) =>
     request<FeedPage>(`/api/posts${qs(cursor)}`),
   hashtag: (tag: string, cursor?: string) =>
@@ -612,6 +614,25 @@ export interface PostMedia {
   altText: string | null
   processingState: "pending" | "processing" | "ready" | "failed" | "flagged"
   variants: Array<{ kind: string; url: string; width: number; height: number }>
+}
+
+export interface NetworkActor {
+  id: string
+  handle: string | null
+  displayName: string | null
+}
+
+export interface NetworkPost extends Post {
+  /** Up to 3 follows that liked or reposted this post. The full count is in
+   *  `networkActorTotal`. Surfaces the "Lucas + N others liked this" banner. */
+  networkActors: Array<NetworkActor>
+  networkActorTotal: number
+  networkActivityAt: string
+}
+
+export interface NetworkFeedPage {
+  posts: Array<NetworkPost>
+  nextCursor: string | null
 }
 
 export interface FeedPage {
