@@ -1,0 +1,155 @@
+import { createServerFileRoute } from "@tanstack/react-start/server"
+import { ImageResponse } from "@vercel/og"
+import { api } from "../lib/api"
+import {
+  OG_HEADERS,
+  OG_SIZE,
+  OgAvatar,
+  OgFrame,
+  OgStats,
+  getOgFonts,
+  truncate,
+} from "../lib/og-image"
+import type { PublicProfile } from "../lib/api"
+
+function ProfileCard({ user }: { user: PublicProfile }) {
+  const display = user.displayName || `@${user.handle}`
+  const initial = (user.displayName ?? user.handle ?? "·").slice(0, 1)
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        flex: 1,
+        gap: 28,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 28,
+        }}
+      >
+        <OgAvatar src={user.avatarUrl} initial={initial} size={140} />
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 4,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 14,
+              fontSize: 64,
+              fontWeight: 800,
+              letterSpacing: -1.5,
+              lineHeight: 1.05,
+            }}
+          >
+            {truncate(display, 30)}
+            {user.isVerified && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 40,
+                  height: 40,
+                  borderRadius: 999,
+                  background:
+                    "linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%)",
+                  fontSize: 28,
+                  fontWeight: 800,
+                  color: "#0a0a0a",
+                }}
+              >
+                ✓
+              </div>
+            )}
+          </div>
+          <div style={{ fontSize: 30, color: "rgba(255,255,255,0.6)" }}>
+            @{user.handle}
+          </div>
+        </div>
+      </div>
+
+      {user.bio && (
+        <div
+          style={{
+            display: "flex",
+            fontSize: 28,
+            lineHeight: 1.4,
+            color: "rgba(255,255,255,0.78)",
+          }}
+        >
+          {truncate(user.bio, 220)}
+        </div>
+      )}
+
+      <div style={{ marginTop: "auto" }}>
+        <OgStats
+          items={[
+            { label: "followers", value: user.counts.followers },
+            { label: "following", value: user.counts.following },
+            { label: "posts", value: user.counts.posts },
+          ]}
+        />
+      </div>
+    </div>
+  )
+}
+
+function NotFoundCard({ handle }: { handle: string }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flex: 1,
+        alignItems: "center",
+        fontSize: 64,
+        fontWeight: 700,
+        color: "rgba(255,255,255,0.85)",
+        letterSpacing: -1,
+      }}
+    >
+      @{handle} doesn't exist here.
+    </div>
+  )
+}
+
+export const ServerRoute = createServerFileRoute().methods({
+  GET: async ({ params }) => {
+    const fonts = await getOgFonts()
+    let user: PublicProfile | null = null
+    try {
+      user = (await api.user(params.handle)).user
+    } catch {
+      // Fall through to placeholder card.
+    }
+    return new ImageResponse(
+      (
+        <OgFrame
+          eyebrow={user ? `Profile · @${user.handle}` : "Profile"}
+          seed={params.handle}
+        >
+          {user ? (
+            <ProfileCard user={user} />
+          ) : (
+            <NotFoundCard handle={params.handle} />
+          )}
+        </OgFrame>
+      ),
+      {
+        ...OG_SIZE,
+        fonts,
+        headers: OG_HEADERS,
+        status: user ? 200 : 404,
+      }
+    )
+  },
+})

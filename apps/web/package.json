@@ -29,6 +29,7 @@
     "@tanstack/react-table": "^8.21.3",
     "@tanstack/react-virtual": "^3.13.24",
     "@tanstack/router-plugin": "^1.132.0",
+    "@vercel/og": "^0.6.8",
     "@workspace/auth": "workspace:*",
     "@workspace/ui": "workspace:*",
     "@workspace/validators": "workspace:*",
