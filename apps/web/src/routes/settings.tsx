@@ -133,6 +133,8 @@ function ProfileSection() {
     firstInput?.focus({ preventScroll: true })
   }, [me])
 
+  if (!me) return null
+
   async function onSave(e: React.FormEvent) {
     e.preventDefault()
     setStatus(null)
@@ -192,12 +194,7 @@ function ProfileSection() {
         />
       </section>
 
-      <AccountSection email={me.email} />
-      <SessionsSection currentSessionId={session?.session.id ?? null} />
-      <PrivacySection />
-      <DangerZone onDeleted={() => router.navigate({ to: "/" })} />
-
-      <form onSubmit={onSave} id="profile" className="scroll-mt-4 space-y-3">
+      <form onSubmit={onSave} id="profile" className="scroll-mt-4 space-y-3 border-t border-border pt-6">
         <h2 className="text-sm font-semibold">Profile details</h2>
         <div className="space-y-1">
           <Label htmlFor="displayName">Display name</Label>
