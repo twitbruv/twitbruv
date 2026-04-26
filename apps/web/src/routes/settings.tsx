@@ -6,6 +6,7 @@ import { Label } from "@workspace/ui/components/label"
 import { Switch } from "@workspace/ui/components/switch"
 import { updateProfileSchema } from "@workspace/validators"
 import { Textarea } from "@workspace/ui/components/textarea"
+import { trackedAction } from "../lib/analytics"
 import { ApiError, api } from "../lib/api"
 import { authClient } from "../lib/auth"
 import { useMe } from "../lib/me"
@@ -209,7 +210,11 @@ function ProfileSection() {
       return
     }
     try {
-      const { user: next } = await api.updateMe(parsed.data)
+      const { user: next } = await trackedAction(
+        "profile_updated",
+        () => api.updateMe(parsed.data),
+        () => ({ fields: Object.keys(parsed.data).join(",") }),
+      )
       setMe(next)
       setStatus("saved")
     } catch (err) {
@@ -223,14 +228,21 @@ function ProfileSection() {
   }) {
     try {
       // api.updateMe accepts empty string to clear; null gets normalized to empty.
-      const { user } = await api.updateMe({
-        ...(patch.avatarUrl !== undefined
-          ? { avatarUrl: patch.avatarUrl ?? "" }
-          : {}),
-        ...(patch.bannerUrl !== undefined
-          ? { bannerUrl: patch.bannerUrl ?? "" }
-          : {}),
-      })
+      const { user } = await trackedAction(
+        "profile_updated",
+        () =>
+          api.updateMe({
+            ...(patch.avatarUrl !== undefined
+              ? { avatarUrl: patch.avatarUrl ?? "" }
+              : {}),
+            ...(patch.bannerUrl !== undefined
+              ? { bannerUrl: patch.bannerUrl ?? "" }
+              : {}),
+          }),
+        () => ({
+          fields: Object.keys(patch).join(","),
+        }),
+      )
       setMe(user)
     } catch (e) {
       setStatus(e instanceof ApiError ? e.message : "update failed")
@@ -567,7 +579,11 @@ function PrivacySection() {
   async function unblock(handle: string, id: string) {
     setBusyId(id)
     try {
-      await api.unblock(handle)
+      await trackedAction(
+        "user_unblocked",
+        () => api.unblock(handle),
+        () => ({ target_user_id: id, target_handle: handle }),
+      )
       setBlocks((prev) => (prev ? prev.filter((u) => u.id !== id) : prev))
     } finally {
       setBusyId(null)
@@ -577,7 +593,11 @@ function PrivacySection() {
   async function unmute(handle: string, id: string) {
     setBusyId(id)
     try {
-      await api.unmute(handle)
+      await trackedAction(
+        "user_unmuted",
+        () => api.unmute(handle),
+        () => ({ target_user_id: id, target_handle: handle }),
+      )
       setMutes((prev) => (prev ? prev.filter((u) => u.id !== id) : prev))
     } finally {
       setBusyId(null)

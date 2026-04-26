@@ -3,6 +3,7 @@ import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import { handleSchema } from "@workspace/validators"
+import { trackedAction } from "../lib/analytics"
 import { ApiError, api } from "../lib/api"
 
 export function ClaimHandle({
@@ -24,7 +25,11 @@ export function ClaimHandle({
     }
     setLoading(true)
     try {
-      const { user } = await api.claimHandle(handle)
+      const { user } = await trackedAction(
+        "handle_claimed",
+        () => api.claimHandle(handle),
+        ({ user }) => ({ handle: user.handle ?? handle }),
+      )
       if (user.handle) onClaimed(user.handle)
     } catch (err) {
       if (err instanceof ApiError) {

@@ -4,6 +4,7 @@ import { XIcon } from "@phosphor-icons/react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
+import { trackedAction } from "../lib/analytics"
 import { api } from "../lib/api"
 import { Avatar } from "../components/avatar"
 import { usePageHeader } from "../components/app-page-header"
@@ -66,8 +67,20 @@ function NewConversation() {
       const first = ids[0]
       const { id } =
         ids.length === 1 && first
-          ? await api.dmStart(first)
-          : await api.dmCreateGroup(ids, title.trim() || undefined)
+          ? await trackedAction(
+              "dm_started",
+              () => api.dmStart(first),
+              ({ id }) => ({ target_user_id: first, conversation_id: id }),
+            )
+          : await trackedAction(
+              "dm_group_created",
+              () => api.dmCreateGroup(ids, title.trim() || undefined),
+              ({ id }) => ({
+                conversation_id: id,
+                member_count: ids.length,
+                has_title: title.trim().length > 0,
+              }),
+            )
       router.navigate({
         to: "/inbox/$conversationId",
         params: { conversationId: id },

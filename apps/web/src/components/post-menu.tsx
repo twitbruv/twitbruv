@@ -15,6 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu"
+import { trackedAction } from "../lib/analytics"
 import { ApiError, api } from "../lib/api"
 import { authClient } from "../lib/auth"
 import { ReportDialog } from "./report-dialog"
@@ -55,7 +56,14 @@ export function PostMenu({
     if (!confirm("Delete this post?")) return
     setBusy(true)
     try {
-      await api.deletePost(post.id)
+      await trackedAction(
+        "post_deleted",
+        () => api.deletePost(post.id),
+        () => ({
+          post_id: post.id,
+          author_is_self: post.author.id === session?.user?.id,
+        }),
+      )
       onRemove?.()
     } catch (e) {
       alert(e instanceof ApiError ? e.message : "delete failed")
@@ -66,8 +74,19 @@ export function PostMenu({
 
   async function togglePin() {
     try {
-      if (post.pinned) await api.unpinPost(post.id)
-      else await api.pinPost(post.id)
+      if (post.pinned) {
+        await trackedAction(
+          "post_unpinned",
+          () => api.unpinPost(post.id),
+          () => ({ post_id: post.id }),
+        )
+      } else {
+        await trackedAction(
+          "post_pinned",
+          () => api.pinPost(post.id),
+          () => ({ post_id: post.id }),
+        )
+      }
       onChange?.({ ...post, pinned: !post.pinned })
     } catch {
       /* surfaced via stale state on refresh */
@@ -76,8 +95,19 @@ export function PostMenu({
 
   async function toggleHide() {
     try {
-      if (post.hidden) await api.unhidePost(post.id)
-      else await api.hidePost(post.id)
+      if (post.hidden) {
+        await trackedAction(
+          "post_unhidden",
+          () => api.unhidePost(post.id),
+          () => ({ post_id: post.id }),
+        )
+      } else {
+        await trackedAction(
+          "post_hidden",
+          () => api.hidePost(post.id),
+          () => ({ post_id: post.id }),
+        )
+      }
       onChange?.({ ...post, hidden: !post.hidden })
     } catch {
       /* surfaced via stale state on refresh */

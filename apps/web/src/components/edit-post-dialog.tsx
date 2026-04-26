@@ -8,6 +8,7 @@ import {
 } from "@workspace/ui/components/dialog"
 import { Textarea } from "@workspace/ui/components/textarea"
 import { POST_MAX_LEN } from "@workspace/validators"
+import { trackedAction } from "../lib/analytics"
 import { ApiError, api } from "../lib/api"
 import type { Post } from "../lib/api"
 
@@ -46,7 +47,11 @@ export function EditPostDialog({
     setBusy(true)
     setError(null)
     try {
-      const { post: updated } = await api.editPost(post.id, text)
+      const { post: updated } = await trackedAction(
+        "post_edited",
+        () => api.editPost(post.id, text),
+        () => ({ post_id: post.id, char_count: text.length }),
+      )
       onSaved(updated)
       onOpenChange(false)
     } catch (e) {

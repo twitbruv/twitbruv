@@ -2,6 +2,7 @@ import { createFileRoute, useRouter } from "@tanstack/react-router"
 import { useEffect, useMemo, useState } from "react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
+import { trackedAction } from "../lib/analytics"
 import { ApiError, api } from "../lib/api"
 import { authClient } from "../lib/auth"
 import { Editor } from "../components/editor/editor"
@@ -57,17 +58,22 @@ function EditArticle() {
     setSaving(status === "draft" ? "draft" : "publish")
     setError(null)
     try {
-      const { article: updated } = await api.updateArticle(article.id, {
-        title: title.trim(),
-        subtitle: subtitle.trim() || undefined,
-        bodyJson: body?.stateJson ?? article.bodyJson,
-        bodyText: body?.text ?? article.bodyText,
-        // `undefined` = leave alone, `null`/value = explicit change.
-        ...(coverMediaId !== undefined
-          ? { coverMediaId: coverMediaId ?? undefined }
-          : {}),
-        status,
-      })
+      const { article: updated } = await trackedAction(
+        "article_updated",
+        () =>
+          api.updateArticle(article.id, {
+            title: title.trim(),
+            subtitle: subtitle.trim() || undefined,
+            bodyJson: body?.stateJson ?? article.bodyJson,
+            bodyText: body?.text ?? article.bodyText,
+            // `undefined` = leave alone, `null`/value = explicit change.
+            ...(coverMediaId !== undefined
+              ? { coverMediaId: coverMediaId ?? undefined }
+              : {}),
+            status,
+          }),
+        ({ article: a }) => ({ article_id: a.id, status }),
+      )
       setArticle(updated)
       if (status === "published" && updated.author.handle) {
         router.navigate({

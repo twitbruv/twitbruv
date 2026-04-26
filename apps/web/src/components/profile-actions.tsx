@@ -14,6 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu"
+import { trackedAction } from "../lib/analytics"
 import { api } from "../lib/api"
 import { ReportDialog } from "./report-dialog"
 import type { PublicProfile } from "../lib/api"
@@ -39,7 +40,11 @@ export function ProfileActions({
     if (busy) return
     setBusy("message")
     try {
-      const { id } = await api.dmStart(profile.id)
+      const { id } = await trackedAction(
+        "dm_started",
+        () => api.dmStart(profile.id),
+        ({ id }) => ({ target_user_id: profile.id, conversation_id: id }),
+      )
       router.navigate({
         to: "/inbox/$conversationId",
         params: { conversationId: id },
@@ -96,7 +101,16 @@ export function ProfileActions({
           run(
             "follow",
             !v.following,
-            () => (v.following ? api.unfollow(h) : api.follow(h)),
+            () =>
+              v.following
+                ? trackedAction("user_unfollowed", () => api.unfollow(h), () => ({
+                    target_user_id: profile.id,
+                    target_handle: h,
+                  }))
+                : trackedAction("user_followed", () => api.follow(h), () => ({
+                    target_user_id: profile.id,
+                    target_handle: h,
+                  })),
             "following",
             v.following ? -1 : 1
           )
@@ -118,7 +132,17 @@ export function ProfileActions({
               run(
                 "mute",
                 !v.muting,
-                () => (v.muting ? api.unmute(h) : api.mute(h)),
+                () =>
+                  v.muting
+                    ? trackedAction("user_unmuted", () => api.unmute(h), () => ({
+                        target_user_id: profile.id,
+                        target_handle: h,
+                      }))
+                    : trackedAction("user_muted", () => api.mute(h), () => ({
+                        target_user_id: profile.id,
+                        target_handle: h,
+                        scope: "feed",
+                      })),
                 "muting"
               )
             }
@@ -137,7 +161,16 @@ export function ProfileActions({
               run(
                 "block",
                 !v.blocking,
-                () => (v.blocking ? api.unblock(h) : api.block(h)),
+                () =>
+                  v.blocking
+                    ? trackedAction("user_unblocked", () => api.unblock(h), () => ({
+                        target_user_id: profile.id,
+                        target_handle: h,
+                      }))
+                    : trackedAction("user_blocked", () => api.block(h), () => ({
+                        target_user_id: profile.id,
+                        target_handle: h,
+                      })),
                 "blocking"
               )
             }}

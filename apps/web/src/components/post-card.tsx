@@ -24,7 +24,7 @@ import {
   DialogTitle,
 } from "@workspace/ui/components/dialog"
 import { POST_MAX_LEN } from "@workspace/validators"
-import { recordImpression } from "../lib/analytics"
+import { recordImpression, trackedAction } from "../lib/analytics"
 import { ApiError, api } from "../lib/api"
 import { RichText } from "./rich-text"
 import { MacfolioCardFromText } from "./macfolio-card"
@@ -368,7 +368,11 @@ export function PostCard({
     setBusy(true)
     setEditError(null)
     try {
-      const { post: updated } = await api.editPost(post.id, editText)
+      const { post: updated } = await trackedAction(
+        "post_edited",
+        () => api.editPost(post.id, editText),
+        () => ({ post_id: post.id, char_count: editText.length }),
+      )
       emit(updated)
       setEditing(false)
     } catch (e) {
@@ -400,17 +404,22 @@ export function PostCard({
   function toggleLike() {
     if (busy || !post.viewer) return
     const liked = !post.viewer.liked
+    const props = () => ({ post_id: post.id, author_id: post.author.id })
     optimistic(
       {
         counts: { ...post.counts, likes: post.counts.likes + (liked ? 1 : -1) },
         viewer: { ...post.viewer, liked },
       },
-      () => (liked ? api.like(post.id) : api.unlike(post.id))
+      () =>
+        liked
+          ? trackedAction("post_liked", () => api.like(post.id), props)
+          : trackedAction("post_unliked", () => api.unlike(post.id), props),
     )
   }
   function toggleBookmark() {
     if (busy || !post.viewer) return
     const bookmarked = !post.viewer.bookmarked
+    const props = () => ({ post_id: post.id, author_id: post.author.id })
     optimistic(
       {
         counts: {
@@ -419,12 +428,20 @@ export function PostCard({
         },
         viewer: { ...post.viewer, bookmarked },
       },
-      () => (bookmarked ? api.bookmark(post.id) : api.unbookmark(post.id))
+      () =>
+        bookmarked
+          ? trackedAction("post_bookmarked", () => api.bookmark(post.id), props)
+          : trackedAction(
+              "post_unbookmarked",
+              () => api.unbookmark(post.id),
+              props,
+            ),
     )
   }
   function toggleRepost() {
     if (busy || !post.viewer) return
     const reposted = !post.viewer.reposted
+    const props = () => ({ post_id: post.id, author_id: post.author.id })
     optimistic(
       {
         counts: {
@@ -433,7 +450,10 @@ export function PostCard({
         },
         viewer: { ...post.viewer, reposted },
       },
-      () => (reposted ? api.repost(post.id) : api.unrepost(post.id))
+      () =>
+        reposted
+          ? trackedAction("post_reposted", () => api.repost(post.id), props)
+          : trackedAction("post_unreposted", () => api.unrepost(post.id), props),
     )
   }
 

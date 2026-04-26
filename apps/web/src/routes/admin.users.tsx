@@ -35,6 +35,7 @@ import {
   TableRow,
 } from "@workspace/ui/components/table"
 import { CaretDownIcon } from "@phosphor-icons/react"
+import { trackedAction } from "../lib/analytics"
 import { api } from "../lib/api"
 import { useInfiniteScrollSentinel } from "../lib/use-infinite-scroll-sentinel"
 import { useMe } from "../lib/me"
@@ -219,7 +220,13 @@ function AdminUsers() {
                       disabled={r === u.role}
                       onClick={() =>
                         r !== u.role &&
-                        act(u.id, () => api.adminSetRole(u.id, r))
+                        act(u.id, () =>
+                          trackedAction(
+                            "admin_user_role_set",
+                            () => api.adminSetRole(u.id, r),
+                            () => ({ target_user_id: u.id, role: r }),
+                          ),
+                        )
                       }
                     >
                       <span className="tracking-wider uppercase">{r}</span>
@@ -280,7 +287,15 @@ function AdminUsers() {
                   size="sm"
                   variant="outline"
                   disabled={busyId === u.id}
-                  onClick={() => act(u.id, () => api.adminUnban(u.id))}
+                  onClick={() =>
+                    act(u.id, () =>
+                      trackedAction(
+                        "admin_user_unbanned",
+                        () => api.adminUnban(u.id),
+                        () => ({ target_user_id: u.id }),
+                      ),
+                    )
+                  }
                 >
                   Unban
                 </Button>
@@ -299,7 +314,15 @@ function AdminUsers() {
                   size="sm"
                   variant="outline"
                   disabled={busyId === u.id}
-                  onClick={() => act(u.id, () => api.adminUnshadowban(u.id))}
+                  onClick={() =>
+                    act(u.id, () =>
+                      trackedAction(
+                        "admin_user_unshadowbanned",
+                        () => api.adminUnshadowban(u.id),
+                        () => ({ target_user_id: u.id }),
+                      ),
+                    )
+                  }
                 >
                   Unshadow
                 </Button>
@@ -532,10 +555,19 @@ function ActionDialog({
           hours.trim() && Number.isFinite(Number(hours))
             ? Number(hours)
             : undefined
-        return api.adminBan(u.id, {
-          reason: reason.trim() || undefined,
-          durationHours,
-        })
+        return trackedAction(
+          "admin_user_banned",
+          () =>
+            api.adminBan(u.id, {
+              reason: reason.trim() || undefined,
+              durationHours,
+            }),
+          () => ({
+            target_user_id: u.id,
+            has_reason: reason.trim().length > 0,
+            duration_hours: durationHours ?? null,
+          }),
+        )
       },
     },
     shadow: {
@@ -546,7 +578,15 @@ function ActionDialog({
       submitVariant: "default" as const,
       showDuration: false,
       run: () =>
-        api.adminShadowban(u.id, { reason: reason.trim() || undefined }),
+        trackedAction(
+          "admin_user_shadowbanned",
+          () =>
+            api.adminShadowban(u.id, { reason: reason.trim() || undefined }),
+          () => ({
+            target_user_id: u.id,
+            has_reason: reason.trim().length > 0,
+          }),
+        ),
     },
     verify: {
       title: u.isVerified
@@ -560,8 +600,16 @@ function ActionDialog({
       showDuration: false,
       run: () =>
         u.isVerified
-          ? api.adminUnverify(u.id, reason.trim() || undefined)
-          : api.adminVerify(u.id, reason.trim() || undefined),
+          ? trackedAction(
+              "admin_user_unverified",
+              () => api.adminUnverify(u.id, reason.trim() || undefined),
+              () => ({ target_user_id: u.id }),
+            )
+          : trackedAction(
+              "admin_user_verified",
+              () => api.adminVerify(u.id, reason.trim() || undefined),
+              () => ({ target_user_id: u.id }),
+            ),
     },
     handle: {
       title: `Change handle for ${subject}`,
@@ -571,10 +619,15 @@ function ActionDialog({
       submitVariant: "default" as const,
       showDuration: false,
       run: () =>
-        api.adminSetHandle(u.id, {
-          handle: handle.trim(),
-          reason: reason.trim() || undefined,
-        }),
+        trackedAction(
+          "admin_user_handle_set",
+          () =>
+            api.adminSetHandle(u.id, {
+              handle: handle.trim(),
+              reason: reason.trim() || undefined,
+            }),
+          () => ({ target_user_id: u.id }),
+        ),
     },
     delete: {
       title: `Delete account ${subject}`,
@@ -584,7 +637,15 @@ function ActionDialog({
       submitVariant: "destructive" as const,
       showDuration: false,
       run: () =>
-        api.adminDeleteUser(u.id, { reason: reason.trim() || undefined }),
+        trackedAction(
+          "admin_user_deleted",
+          () =>
+            api.adminDeleteUser(u.id, { reason: reason.trim() || undefined }),
+          () => ({
+            target_user_id: u.id,
+            has_reason: reason.trim().length > 0,
+          }),
+        ),
     },
   }[state.kind]
 

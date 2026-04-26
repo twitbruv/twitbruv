@@ -11,6 +11,7 @@ import {
   RadioGroupItem,
 } from "@workspace/ui/components/radio-group"
 import { Textarea } from "@workspace/ui/components/textarea"
+import { trackedAction } from "../lib/analytics"
 import { ApiError, api } from "../lib/api"
 import type { ReportReason } from "../lib/api"
 
@@ -82,12 +83,22 @@ export function ReportDialog({
     setBusy(true)
     setStatus(null)
     try {
-      const res = await api.report({
-        subjectType,
-        subjectId,
-        reason,
-        details: details.trim().length > 0 ? details.trim() : undefined,
-      })
+      const res = await trackedAction(
+        "content_reported",
+        () =>
+          api.report({
+            subjectType,
+            subjectId,
+            reason,
+            details: details.trim().length > 0 ? details.trim() : undefined,
+          }),
+        () => ({
+          subject_type: subjectType,
+          subject_id: subjectId,
+          reason,
+          has_details: details.trim().length > 0,
+        }),
+      )
       setStatus(
         res.deduped
           ? "You've already reported this — thanks. Mods will take a look."
