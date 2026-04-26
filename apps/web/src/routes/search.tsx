@@ -253,7 +253,11 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
                     onClick={async () => {
                       setSaved((prev) => prev.filter((x) => x.id !== s.id))
                       try {
-                        await api.deleteSavedSearch(s.id)
+                        await trackedAction(
+                          "search_saved_deleted",
+                          () => api.deleteSavedSearch(s.id),
+                          () => ({ search_id: s.id }),
+                        )
                       } catch {
                         /* refetch on next mount */
                       }

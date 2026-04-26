@@ -61,7 +61,7 @@ export function PostMenu({
         () => api.deletePost(post.id),
         () => ({
           post_id: post.id,
-          author_is_self: post.author.id === session.user.id,
+          author_is_self: post.author.id === session?.user.id,
         }),
       )
       onRemove?.()
@@ -73,6 +73,8 @@ export function PostMenu({
   }
 
   async function togglePin() {
+    if (busy) return
+    setBusy(true)
     try {
       if (post.pinned) {
         await trackedAction(
@@ -90,10 +92,14 @@ export function PostMenu({
       onChange?.({ ...post, pinned: !post.pinned })
     } catch {
       /* surfaced via stale state on refresh */
+    } finally {
+      setBusy(false)
     }
   }
 
   async function toggleHide() {
+    if (busy) return
+    setBusy(true)
     try {
       if (post.hidden) {
         await trackedAction(
@@ -111,6 +117,8 @@ export function PostMenu({
       onChange?.({ ...post, hidden: !post.hidden })
     } catch {
       /* surfaced via stale state on refresh */
+    } finally {
+      setBusy(false)
     }
   }
 
