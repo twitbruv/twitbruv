@@ -71,8 +71,10 @@ export interface TrackFn {
  */
 export function createTracker(apiKey: string | undefined, websiteId: string | undefined, log: Logger): TrackFn {
   if (!apiKey || !websiteId) {
+    log.info('analytics_disabled (set DATABUDDY_API_KEY + DATABUDDY_WEBSITE_ID to enable)')
     return () => {}
   }
+  log.info('analytics_enabled')
 
   const client = new Databuddy({
     apiKey,
