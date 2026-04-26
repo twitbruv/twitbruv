@@ -15,6 +15,7 @@ import { attachReplyParents } from '../lib/reply-parents.ts'
 import { loadPolls } from '../lib/polls.ts'
 import { loadGithubCards } from '../lib/github-cards.ts'
 import { parseCursor } from '../lib/cursor.ts'
+import { markOnline } from '../lib/presence.ts'
 
 export const meRoute = new Hono<HonoEnv>()
 
@@ -22,7 +23,7 @@ meRoute.use('*', requireAuth())
 
 meRoute.get('/', async (c) => {
   const session = c.get('session')!
-  const { db } = c.get('ctx')
+  const { db, cache } = c.get('ctx')
   const [user] = await db.select().from(schema.users).where(eq(schema.users.id, session.user.id)).limit(1)
   if (!user) return c.json({ error: 'not_found' }, 404)
   // Authoritative liveness check. The session middleware already rejects banned users, but
@@ -31,6 +32,10 @@ meRoute.get('/', async (c) => {
   // signs out on 401, so keeping this in sync with the DB bounds the lag for kicking
   // banned, suspended, or soft-deleted users.
   if (user.banned || user.deletedAt) return c.json({ error: 'unauthorized' }, 401)
+  // Presence heartbeat: the MeProvider polls this endpoint every ~30s while the tab is
+  // visible, so reusing it as the heartbeat costs zero extra requests and naturally tracks
+  // "tab open + foregrounded" rather than "session exists".
+  void markOnline(cache, user.id)
   return c.json({ user: toSelfDto(user, c.get('ctx').mediaEnv) })
 })
 

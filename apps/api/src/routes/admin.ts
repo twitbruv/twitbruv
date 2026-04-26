@@ -7,6 +7,7 @@ import { handleSchema } from '@workspace/validators'
 import { requireAdmin, requireOwner, type HonoEnv, type Role } from '../middleware/session.ts'
 import { parseCursor } from '../lib/cursor.ts'
 import { isReservedHandle } from '../lib/handles.ts'
+import { getOnlineCount, getOnlineUserIds } from '../lib/presence.ts'
 
 export const adminRoute = new Hono<HonoEnv>()
 
@@ -166,6 +167,46 @@ adminRoute.get('/stats', async (c) => {
       dismissed: reportRow?.dismissed ?? 0,
     },
   })
+})
+
+// Live presence snapshot: how many users have an open, foregrounded tab right now plus a
+// small sample of who they are. Backed by a Redis sorted set written by the /api/me
+// heartbeat, so it costs one ZREMRANGEBYSCORE + ZCARD (+ ZREVRANGE + a small user lookup)
+// per call — cheap enough to poll from the admin dashboard.
+adminRoute.get('/online', async (c) => {
+  const { db, mediaEnv, cache } = c.get('ctx')
+  const count = await getOnlineCount(cache)
+  const ids = count > 0 ? await getOnlineUserIds(cache, 12) : []
+  let sample: Array<{
+    id: string
+    handle: string | null
+    displayName: string | null
+    avatarUrl: string | null
+  }> = []
+  if (ids.length > 0) {
+    const rows = await db
+      .select({
+        id: schema.users.id,
+        handle: schema.users.handle,
+        displayName: schema.users.displayName,
+        avatarUrl: schema.users.avatarUrl,
+      })
+      .from(schema.users)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .where(sql`${schema.users.id} = any(${ids as any})`)
+    // Preserve the heartbeat-recency order from Redis; the SQL `IN` result is unordered.
+    const byId = new Map(rows.map((r) => [r.id, r]))
+    sample = ids
+      .map((id) => byId.get(id))
+      .filter((r): r is (typeof rows)[number] => Boolean(r))
+      .map((r) => ({
+        id: r.id,
+        handle: r.handle,
+        displayName: r.displayName,
+        avatarUrl: assetUrl(mediaEnv, r.avatarUrl),
+      }))
+  }
+  return c.json({ count, sample })
 })
 
 const listQuery = z.object({
