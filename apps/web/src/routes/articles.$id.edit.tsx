@@ -65,10 +65,8 @@ function EditArticle() {
           subtitle: subtitle.trim() || undefined,
           bodyJson: body?.stateJson ?? article.bodyJson,
           bodyText: body?.text ?? article.bodyText,
-          // `undefined` = leave alone, `null`/value = explicit change.
-          ...(coverMediaId !== undefined
-            ? { coverMediaId: coverMediaId ?? undefined }
-            : {}),
+          // `undefined` = leave alone, `null` = clear, value = set.
+          ...(coverMediaId !== undefined ? { coverMediaId } : {}),
           status,
         })
         setArticle(updated)
