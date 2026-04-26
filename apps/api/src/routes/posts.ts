@@ -273,10 +273,7 @@ postsRoute.post('/', requireAuth(), async (c) => {
   )
   await attachReplyParents({ db, viewerId: session.user.id, env, posts: [dto] })
   c.get('ctx').track('post_created', session.user.id, {
-    has_media: !!body.mediaIds?.length,
-    has_poll: !!body.poll,
-    is_reply: !!body.replyToId,
-    is_quote: !!body.quoteOfId,
+    type: body.replyToId ? 'reply' : body.quoteOfId ? 'quote' : 'original',
   })
   return c.json({ post: dto }, 201)
 })
