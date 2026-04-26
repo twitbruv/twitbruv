@@ -100,7 +100,12 @@ function Login() {
                 required
               />
             </div>
-            <Button type="submit" className="w-full" disabled={loading} size="lg">
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={loading}
+              size="lg"
+            >
               {loading ? "Signing in…" : "Sign in"}
             </Button>
           </form>
@@ -128,7 +133,10 @@ function Login() {
           */}
           <p className="text-center text-xs text-muted-foreground">
             No account?{" "}
-            <Link to="/signup" className="text-foreground underline-offset-4 hover:underline">
+            <Link
+              to="/signup"
+              className="text-foreground underline-offset-4 hover:underline"
+            >
               Create one
             </Link>
           </p>

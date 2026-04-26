@@ -1,4 +1,8 @@
-import { Alert, AlertDescription, AlertTitle } from "@workspace/ui/components/alert"
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@workspace/ui/components/alert"
 import {
   Empty,
   EmptyDescription,
@@ -32,7 +36,7 @@ export function PageHeader({
       )}
     >
       <div className="min-w-0">
-        <h1 className="text-base font-semibold leading-tight">{title}</h1>
+        <h1 className="text-base leading-tight font-semibold">{title}</h1>
         {description && (
           <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
         )}
@@ -42,7 +46,15 @@ export function PageHeader({
   )
 }
 
-export function PageError({ title, message, className }: { title?: string; message: string; className?: string }) {
+export function PageError({
+  title,
+  message,
+  className,
+}: {
+  title?: string
+  message: string
+  className?: string
+}) {
   return (
     <div className={cn("p-4", className)}>
       <Alert variant="destructive" className="text-left">
@@ -56,7 +68,10 @@ export function PageError({ title, message, className }: { title?: string; messa
 export function PageLoading({
   label = "Loading…",
   className,
-}: { label?: string; className?: string }) {
+}: {
+  label?: string
+  className?: string
+}) {
   return (
     <p className={cn("px-4 py-6 text-sm text-muted-foreground", className)}>
       {label}

@@ -24,7 +24,8 @@ export function GithubBlock({ handle }: Props) {
         if (!cancelled) setData(res)
       })
       .catch((e) => {
-        if (!cancelled) setError(e instanceof ApiError ? e.message : "load_failed")
+        if (!cancelled)
+          setError(e instanceof ApiError ? e.message : "load_failed")
       })
     return () => {
       cancelled = true
@@ -51,12 +52,12 @@ export function GithubBlock({ handle }: Props) {
           </span>
         </h2>
         <div className="text-xs text-muted-foreground">
-          <span className="tabular-nums font-medium text-foreground">
+          <span className="font-medium text-foreground tabular-nums">
             {data.contributions.totalContributions.toLocaleString()}
           </span>{" "}
           contributions in the last year
           {data.stale && (
-            <span className="ml-1.5 text-[10px] uppercase tracking-wider">
+            <span className="ml-1.5 text-[10px] tracking-wider uppercase">
               · cached
             </span>
           )}

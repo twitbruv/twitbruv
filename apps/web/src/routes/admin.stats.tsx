@@ -20,7 +20,9 @@ import type { AdminOnline, AdminStats } from "../lib/api"
 // presence heartbeat (30s) so the number ticks visibly instead of jumping in 30s steps.
 const ONLINE_POLL_MS = 10_000
 
-export const Route = createFileRoute("/admin/stats")({ component: AdminStatsPage })
+export const Route = createFileRoute("/admin/stats")({
+  component: AdminStatsPage,
+})
 
 // Tailwind palette tokens for each section. Listed verbatim so the JIT picks them up — building
 // these strings dynamically would skip the safelist and the colours would silently disappear.
@@ -70,7 +72,10 @@ const compactFormatter = new Intl.NumberFormat("en", {
 })
 const fullFormatter = new Intl.NumberFormat("en")
 
-function formatStat(value: number | null | undefined, compact: boolean): string {
+function formatStat(
+  value: number | null | undefined,
+  compact: boolean
+): string {
   if (value === null || value === undefined) return "…"
   return compact && value >= 10_000
     ? compactFormatter.format(value)
@@ -96,17 +101,21 @@ function HeroCard({
   const isLoading = value === null || value === undefined
   return (
     <div className="group relative overflow-hidden rounded-lg border border-border bg-card p-4 transition-colors hover:border-foreground/20">
-      <div className={`pointer-events-none absolute -right-6 -top-6 size-20 rounded-full opacity-60 blur-2xl ${a.bg}`} />
+      <div
+        className={`pointer-events-none absolute -top-6 -right-6 size-20 rounded-full opacity-60 blur-2xl ${a.bg}`}
+      />
       <div className="relative flex items-start justify-between gap-2">
         <p className="text-[10px] font-medium tracking-[0.12em] text-muted-foreground uppercase">
           {label}
         </p>
-        <span className={`flex size-7 items-center justify-center rounded-md ring-1 ${a.bg} ${a.text} ${a.ring}`}>
+        <span
+          className={`flex size-7 items-center justify-center rounded-md ring-1 ${a.bg} ${a.text} ${a.ring}`}
+        >
           <Icon className="size-4" weight="bold" />
         </span>
       </div>
       <p
-        className={`relative mt-3 text-3xl font-semibold tabular-nums tracking-tight ${
+        className={`relative mt-3 text-3xl font-semibold tracking-tight tabular-nums ${
           isLoading ? "text-muted-foreground" : ""
         }`}
         title={isLoading ? undefined : fullFormatter.format(value)}
@@ -197,7 +206,7 @@ function OnlineNow({ online }: { online: AdminOnline | null }) {
     (s.displayName ?? s.handle ?? "?").trim().slice(0, 1).toUpperCase()
   return (
     <div className="relative overflow-hidden rounded-lg border border-border bg-card p-4">
-      <div className="pointer-events-none absolute -right-8 -top-8 size-24 rounded-full bg-emerald-500/10 opacity-60 blur-2xl" />
+      <div className="pointer-events-none absolute -top-8 -right-8 size-24 rounded-full bg-emerald-500/10 opacity-60 blur-2xl" />
       <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <span className="relative flex size-9 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-600 ring-1 ring-emerald-500/30 dark:text-emerald-400">
@@ -209,7 +218,7 @@ function OnlineNow({ online }: { online: AdminOnline | null }) {
               Online now
             </p>
             <p
-              className={`text-2xl font-semibold tabular-nums tracking-tight ${
+              className={`text-2xl font-semibold tracking-tight tabular-nums ${
                 isLoading ? "text-muted-foreground" : ""
               }`}
               title={count === null ? undefined : fullFormatter.format(count)}
@@ -231,7 +240,11 @@ function OnlineNow({ online }: { online: AdminOnline | null }) {
                   className="inline-flex size-7 items-center justify-center overflow-hidden rounded-full border-2 border-card bg-muted text-[10px] font-semibold text-muted-foreground"
                 >
                   {u.avatarUrl ? (
-                    <img src={u.avatarUrl} alt="" className="size-full object-cover" />
+                    <img
+                      src={u.avatarUrl}
+                      alt=""
+                      className="size-full object-cover"
+                    />
                   ) : (
                     initials(u)
                   )}
@@ -239,7 +252,7 @@ function OnlineNow({ online }: { online: AdminOnline | null }) {
               ))}
             </div>
             {count !== null && count > shownSample.length && (
-              <span className="text-[11px] tabular-nums text-muted-foreground">
+              <span className="text-[11px] text-muted-foreground tabular-nums">
                 +{fullFormatter.format(count - shownSample.length)}
               </span>
             )}
@@ -367,11 +380,31 @@ function AdminStatsPage() {
             <MiniStat label="Active" value={stats?.users.active} />
             <MiniStat label="Verified" value={stats?.users.verified} />
             <MiniStat label="Admins" value={stats?.users.admins} />
-            <MiniStat label="Banned" value={stats?.users.banned} tone="destructive" />
-            <MiniStat label="Shadow" value={stats?.users.shadowBanned} tone="warning" />
-            <MiniStat label="Deleted" value={stats?.users.deleted} tone="destructive" />
-            <MiniStat label="New 24h" value={stats?.users.newToday} tone="positive" />
-            <MiniStat label="New 7d" value={stats?.users.newThisWeek} tone="positive" />
+            <MiniStat
+              label="Banned"
+              value={stats?.users.banned}
+              tone="destructive"
+            />
+            <MiniStat
+              label="Shadow"
+              value={stats?.users.shadowBanned}
+              tone="warning"
+            />
+            <MiniStat
+              label="Deleted"
+              value={stats?.users.deleted}
+              tone="destructive"
+            />
+            <MiniStat
+              label="New 24h"
+              value={stats?.users.newToday}
+              tone="positive"
+            />
+            <MiniStat
+              label="New 7d"
+              value={stats?.users.newThisWeek}
+              tone="positive"
+            />
           </Section>
 
           <Section title="Posts" icon={ChatCircleIcon} accent="violet">
@@ -381,14 +414,30 @@ function AdminStatsPage() {
             <MiniStat label="Reposts" value={stats?.posts.reposts} />
             <MiniStat label="Quotes" value={stats?.posts.quotes} />
             <MiniStat label="Edited" value={stats?.posts.edited} />
-            <MiniStat label="Sensitive" value={stats?.posts.sensitive} tone="warning" />
-            <MiniStat label="Deleted" value={stats?.posts.deleted} tone="destructive" />
-            <MiniStat label="New 24h" value={stats?.posts.newToday} tone="positive" />
+            <MiniStat
+              label="Sensitive"
+              value={stats?.posts.sensitive}
+              tone="warning"
+            />
+            <MiniStat
+              label="Deleted"
+              value={stats?.posts.deleted}
+              tone="destructive"
+            />
+            <MiniStat
+              label="New 24h"
+              value={stats?.posts.newToday}
+              tone="positive"
+            />
           </Section>
 
           <Section title="Engagement" icon={HeartIcon} accent="rose">
             <MiniStat label="Likes" value={stats?.engagement.likes} />
-            <MiniStat label="Likes 24h" value={stats?.engagement.likesToday} tone="positive" />
+            <MiniStat
+              label="Likes 24h"
+              value={stats?.engagement.likesToday}
+              tone="positive"
+            />
             <MiniStat label="Bookmarks" value={stats?.engagement.bookmarks} />
             <MiniStat label="Reposts" value={stats?.engagement.reposts} />
             <MiniStat label="Quotes" value={stats?.engagement.quotes} />
@@ -396,23 +445,45 @@ function AdminStatsPage() {
           </Section>
 
           <Section title="Reach" icon={EyeIcon} accent="fuchsia">
-            <MiniStat label="Impressions" value={stats?.posts.totalImpressions} />
-            <MiniStat label="Conversations" value={stats?.messaging.conversations} />
+            <MiniStat
+              label="Impressions"
+              value={stats?.posts.totalImpressions}
+            />
+            <MiniStat
+              label="Conversations"
+              value={stats?.messaging.conversations}
+            />
             <MiniStat label="Messages" value={stats?.messaging.messages} />
           </Section>
 
           <Section title="Social graph" icon={UsersThreeIcon} accent="emerald">
             <MiniStat label="Follows" value={stats?.social.follows} />
-            <MiniStat label="Follows 24h" value={stats?.social.followsToday} tone="positive" />
-            <MiniStat label="Blocks" value={stats?.social.blocks} tone="destructive" />
-            <MiniStat label="Mutes" value={stats?.social.mutes} tone="warning" />
+            <MiniStat
+              label="Follows 24h"
+              value={stats?.social.followsToday}
+              tone="positive"
+            />
+            <MiniStat
+              label="Blocks"
+              value={stats?.social.blocks}
+              tone="destructive"
+            />
+            <MiniStat
+              label="Mutes"
+              value={stats?.social.mutes}
+              tone="warning"
+            />
           </Section>
 
           <Section title="Reports" icon={FlagIcon} accent="amber">
             <MiniStat label="Total" value={stats?.reports.total} />
             <MiniStat label="Open" value={stats?.reports.open} tone="warning" />
             <MiniStat label="Triaged" value={stats?.reports.triaged} />
-            <MiniStat label="Actioned" value={stats?.reports.actioned} tone="positive" />
+            <MiniStat
+              label="Actioned"
+              value={stats?.reports.actioned}
+              tone="positive"
+            />
             <MiniStat label="Dismissed" value={stats?.reports.dismissed} />
           </Section>
         </div>

@@ -1,9 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query"
-import {
-  useVirtualizer,
-  useWindowVirtualizer,
-} from "@tanstack/react-virtual"
+import { useVirtualizer, useWindowVirtualizer } from "@tanstack/react-virtual"
 import { SkeletonPostCard } from "@workspace/ui/components/skeleton"
 import { PageEmpty, PageError } from "./page-surface"
 import { PostCard } from "./post-card"
@@ -173,12 +170,9 @@ export function Feed({
         ))}
       </div>
     )
-  if (error)
-    return <PageError message={error.message} className="px-4 py-6" />
+  if (error) return <PageError message={error.message} className="px-4 py-6" />
   if (posts.length === 0)
-    return (
-      <PageEmpty title="Nothing here yet" description={emptyMessage} />
-    )
+    return <PageEmpty title="Nothing here yet" description={emptyMessage} />
 
   const renderRow = (post: Post) => {
     const banner = renderActivityBanner?.(post)
@@ -274,7 +268,13 @@ function WindowFeedList({
     getItemKey: (i) => posts[i].id,
   })
 
-  useInfiniteScroll(sentinelRef, null, hasNextPage, isFetchingNextPage, fetchNextPage)
+  useInfiniteScroll(
+    sentinelRef,
+    null,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage
+  )
 
   const virtualItems = virtualizer.getVirtualItems()
   const totalSize = virtualizer.getTotalSize()

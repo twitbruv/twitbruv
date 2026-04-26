@@ -88,59 +88,59 @@ export function ChatWidget() {
 
   return (
     <MotionConfig reducedMotion="user">
-    <div className="fixed right-4 bottom-4 z-50">
-      <motion.div
-        onClick={!open && !closing ? () => setOpen(true) : undefined}
-        initial={false}
-        animate={
-          isExpanded
-            ? { scale: 1, opacity: 1, height: activeConversation ? 512 : 380 }
-            : { scale: 0, opacity: 0, height: 380 }
-        }
-        style={{
-          originX: 1,
-          originY: 1,
-        }}
-        transition={{
-          type: "tween",
-          duration: 0.35,
-          ease: [0.32, 0, 0, 1],
-          height: { duration: 0.25, ease: [0.32, 0, 0, 1] },
-          scale: { duration: 0.38, ease: [0.32, 0, 0, 1] },
-        }}
-        className={`absolute right-0 bottom-0 w-80 overflow-hidden rounded-2xl border border-border bg-background shadow-xl ${isExpanded ? "" : "pointer-events-none"}`}
-      >
-        {activeConversation ? (
-          <ChatView
-            conversation={activeConversation}
-            onBack={handleBack}
-            onClose={handleClose}
-          />
-        ) : (
-          <ConversationList
-            conversations={conversations}
-            onSelect={setActiveConversation}
-            onClose={handleClose}
-          />
-        )}
-      </motion.div>
+      <div className="fixed right-4 bottom-4 z-50">
+        <motion.div
+          onClick={!open && !closing ? () => setOpen(true) : undefined}
+          initial={false}
+          animate={
+            isExpanded
+              ? { scale: 1, opacity: 1, height: activeConversation ? 512 : 380 }
+              : { scale: 0, opacity: 0, height: 380 }
+          }
+          style={{
+            originX: 1,
+            originY: 1,
+          }}
+          transition={{
+            type: "tween",
+            duration: 0.35,
+            ease: [0.32, 0, 0, 1],
+            height: { duration: 0.25, ease: [0.32, 0, 0, 1] },
+            scale: { duration: 0.38, ease: [0.32, 0, 0, 1] },
+          }}
+          className={`absolute right-0 bottom-0 w-80 overflow-hidden rounded-2xl border border-border bg-background shadow-xl ${isExpanded ? "" : "pointer-events-none"}`}
+        >
+          {activeConversation ? (
+            <ChatView
+              conversation={activeConversation}
+              onBack={handleBack}
+              onClose={handleClose}
+            />
+          ) : (
+            <ConversationList
+              conversations={conversations}
+              onSelect={setActiveConversation}
+              onClose={handleClose}
+            />
+          )}
+        </motion.div>
 
-      {/* FAB button - always present, fades when panel is open */}
-      <motion.div
-        onClick={() => setOpen(true)}
-        initial={false}
-        animate={{ opacity: isExpanded ? 0 : 1 }}
-        transition={{ duration: 0.2, delay: isExpanded ? 0 : 0.15 }}
-        className={`flex size-14 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl shadow-primary/30 ${isExpanded ? "pointer-events-none" : ""} `}
-      >
-        <ChatIcon className="size-6" />
-        {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex size-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground">
-            {unreadCount > 9 ? "9+" : unreadCount}
-          </span>
-        )}
-      </motion.div>
-    </div>
+        {/* FAB button - always present, fades when panel is open */}
+        <motion.div
+          onClick={() => setOpen(true)}
+          initial={false}
+          animate={{ opacity: isExpanded ? 0 : 1 }}
+          transition={{ duration: 0.2, delay: isExpanded ? 0 : 0.15 }}
+          className={`flex size-14 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl shadow-primary/30 ${isExpanded ? "pointer-events-none" : ""} `}
+        >
+          <ChatIcon className="size-6" />
+          {unreadCount > 0 && (
+            <span className="text-destructive-foreground absolute -top-1 -right-1 flex size-5 items-center justify-center rounded-full bg-destructive text-[10px] font-bold">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
+        </motion.div>
+      </div>
     </MotionConfig>
   )
 }
@@ -311,9 +311,9 @@ function ChatView({
         mediaId = media.id
       }
       const { message } = await api.dmSend(conversation.id, {
-            text: trimmed || undefined,
-            mediaId,
-          })
+        text: trimmed || undefined,
+        mediaId,
+      })
       setMessages((prev) => [...prev, message])
       setText("")
       clearPending()

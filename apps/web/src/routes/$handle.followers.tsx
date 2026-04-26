@@ -29,7 +29,7 @@ function Followers() {
           >
             ← @{handle}
           </Link>
-          <h1 className="truncate text-base font-semibold leading-tight text-foreground">
+          <h1 className="truncate text-base leading-tight font-semibold text-foreground">
             Followers
           </h1>
         </div>

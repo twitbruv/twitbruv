@@ -8,10 +8,7 @@ import {
   useState,
 } from "react"
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query"
-import {
-  useVirtualizer,
-  useWindowVirtualizer,
-} from "@tanstack/react-virtual"
+import { useVirtualizer, useWindowVirtualizer } from "@tanstack/react-virtual"
 import {
   AtIcon,
   ChatCircleIcon,
@@ -335,9 +332,7 @@ function ContainerNotificationsList({
 
   return (
     <div>
-      <div
-        style={{ height: totalSize, position: "relative", width: "100%" }}
-      >
+      <div style={{ height: totalSize, position: "relative", width: "100%" }}>
         {virtualItems.map((vi) => {
           const item = items[vi.index]
           return (

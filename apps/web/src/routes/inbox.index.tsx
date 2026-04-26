@@ -138,9 +138,7 @@ function ConversationList({
     return (
       <PageEmpty
         title={
-          folder === "requests"
-            ? "No message requests"
-            : "No conversations yet"
+          folder === "requests" ? "No message requests" : "No conversations yet"
         }
         description={
           folder === "requests"

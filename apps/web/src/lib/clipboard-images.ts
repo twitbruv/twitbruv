@@ -1,6 +1,6 @@
-export function getPastedImageFiles(
-  e: { clipboardData: DataTransfer | null }
-): Array<File> {
+export function getPastedImageFiles(e: {
+  clipboardData: DataTransfer | null
+}): Array<File> {
   const cd = e.clipboardData
   if (!cd) return []
   const out: Array<File> = []

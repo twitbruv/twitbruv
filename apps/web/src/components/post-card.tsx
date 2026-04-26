@@ -408,10 +408,7 @@ export function PostCard({
         counts: { ...post.counts, likes: post.counts.likes + (liked ? 1 : -1) },
         viewer: { ...post.viewer, liked },
       },
-      () =>
-        liked
-          ? api.like(post.id)
-          : api.unlike(post.id)
+      () => (liked ? api.like(post.id) : api.unlike(post.id))
     )
   }
   function toggleBookmark() {
@@ -425,10 +422,7 @@ export function PostCard({
         },
         viewer: { ...post.viewer, bookmarked },
       },
-      () =>
-        bookmarked
-          ? api.bookmark(post.id)
-          : api.unbookmark(post.id)
+      () => (bookmarked ? api.bookmark(post.id) : api.unbookmark(post.id))
     )
   }
   function toggleRepost() {
@@ -442,10 +436,7 @@ export function PostCard({
         },
         viewer: { ...post.viewer, reposted },
       },
-      () =>
-        reposted
-          ? api.repost(post.id)
-          : api.unrepost(post.id)
+      () => (reposted ? api.repost(post.id) : api.unrepost(post.id))
     )
   }
 

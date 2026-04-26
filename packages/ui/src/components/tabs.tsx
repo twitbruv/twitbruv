@@ -1,8 +1,7 @@
 import { Tabs as TabsPrimitive } from "@base-ui/react/tabs"
-import {  cva } from "class-variance-authority"
+import { cva } from "class-variance-authority"
 import { cn } from "@workspace/ui/lib/utils"
-import type {VariantProps} from "class-variance-authority";
-
+import type { VariantProps } from "class-variance-authority"
 
 function Tabs({
   className,

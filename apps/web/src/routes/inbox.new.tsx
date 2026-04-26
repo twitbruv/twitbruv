@@ -135,7 +135,10 @@ function NewConversation() {
           )}
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="new-dm-search" className="text-xs text-muted-foreground">
+            <Label
+              htmlFor="new-dm-search"
+              className="text-xs text-muted-foreground"
+            >
               Search
             </Label>
             <Input
@@ -148,7 +151,10 @@ function NewConversation() {
 
           {isGroup && (
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="new-dm-group-title" className="text-xs text-muted-foreground">
+              <Label
+                htmlFor="new-dm-group-title"
+                className="text-xs text-muted-foreground"
+              >
                 Group name
               </Label>
               <Input

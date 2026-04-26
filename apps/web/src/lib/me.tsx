@@ -44,7 +44,10 @@ export function MeProvider({ children }: { children: ReactNode }) {
       // network blip), the local state is cleared and the redirect will land them on
       // the public login page where they can re-auth.
     }
-    if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+    if (
+      typeof window !== "undefined" &&
+      window.location.pathname !== "/login"
+    ) {
       window.location.assign("/login")
     }
   }, [])

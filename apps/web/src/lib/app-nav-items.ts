@@ -1,0 +1,71 @@
+import {
+  BellIcon,
+  BookmarkIcon,
+  ChartBarIcon,
+  ClockIcon,
+  EnvelopeIcon,
+  HouseIcon,
+  ListIcon,
+  MagnifyingGlassIcon,
+  PencilIcon,
+  UserIcon,
+} from "@phosphor-icons/react"
+
+export const APP_NAV_ITEMS = [
+  {
+    to: "/",
+    label: "Home",
+    tooltip: "home",
+    icon: HouseIcon,
+    mobileDock: true,
+  },
+  {
+    to: "/search",
+    label: "Search",
+    tooltip: "search",
+    icon: MagnifyingGlassIcon,
+    mobileDock: true,
+  },
+  {
+    to: "/notifications",
+    label: "Notifications",
+    tooltip: "notifications",
+    icon: BellIcon,
+    badge: "notifications" as const,
+    mobileDock: true,
+  },
+  {
+    to: "/inbox",
+    label: "Messages",
+    tooltip: "messages",
+    icon: EnvelopeIcon,
+    badge: "messages" as const,
+  },
+  {
+    to: "/analytics",
+    label: "Analytics",
+    tooltip: "analytics",
+    icon: ChartBarIcon,
+  },
+  {
+    to: "/bookmarks",
+    label: "Bookmarks",
+    tooltip: "bookmarks",
+    icon: BookmarkIcon,
+  },
+  { to: "/lists", label: "Lists", tooltip: "lists", icon: ListIcon },
+  { to: "/drafts", label: "Drafts", tooltip: "drafts", icon: ClockIcon },
+  {
+    to: "/articles/new",
+    label: "Write Article",
+    tooltip: "write article",
+    icon: PencilIcon,
+  },
+  {
+    to: "/$handle",
+    label: "Profile",
+    tooltip: "profile",
+    icon: UserIcon,
+    kind: "profile" as const,
+  },
+] as const

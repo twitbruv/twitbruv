@@ -13,7 +13,10 @@ export const Route = createFileRoute("/$handle/a/$slug")({
   component: ArticleView,
   loader: async ({ params }) => {
     try {
-      const { article } = await api.userArticleBySlug(params.handle, params.slug)
+      const { article } = await api.userArticleBySlug(
+        params.handle,
+        params.slug
+      )
       return { article }
     } catch {
       return { article: null }
@@ -42,7 +45,8 @@ export const Route = createFileRoute("/$handle/a/$slug")({
         title: article.title,
         description,
         path,
-        image: article.coverUrl ?? `/og/article/${params.handle}/${params.slug}`,
+        image:
+          article.coverUrl ?? `/og/article/${params.handle}/${params.slug}`,
         type: "article",
         largeCard: true,
         publishedTime: article.publishedAt ?? undefined,

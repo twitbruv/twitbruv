@@ -302,9 +302,9 @@ function ReportSheet({
     setBusy(next)
     try {
       await api.adminResolveReport(detail.id, {
-            status: next,
-            resolutionNote: note.trim() || undefined,
-          })
+        status: next,
+        resolutionNote: note.trim() || undefined,
+      })
       onResolved()
     } finally {
       setBusy(null)

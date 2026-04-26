@@ -1,11 +1,5 @@
 import { Link } from "@tanstack/react-router"
-import {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react"
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { useWindowVirtualizer } from "@tanstack/react-virtual"
 import { useInfiniteScrollSentinel } from "../lib/use-infinite-scroll-sentinel"
 import { VerifiedBadge } from "./verified-badge"
@@ -96,9 +90,7 @@ export function UserList({
       // it flips false; without this delay it would re-fire its initial
       // intersection callback immediately and busy-loop the API on a
       // persistent failure.
-      await new Promise((resolve) =>
-        setTimeout(resolve, LOAD_MORE_BACKOFF_MS)
-      )
+      await new Promise((resolve) => setTimeout(resolve, LOAD_MORE_BACKOFF_MS))
     } finally {
       if (requestId === requestIdRef.current) {
         setLoadingMore(false)

@@ -36,13 +36,13 @@ function NewArticle() {
       setError(null)
       try {
         const { article } = await api.createArticle({
-              title: title.trim(),
-              subtitle: subtitle.trim() || undefined,
-              bodyJson: body.stateJson,
-              bodyText: body.text,
-              coverMediaId: coverMediaId ?? undefined,
-              status,
-            })
+          title: title.trim(),
+          subtitle: subtitle.trim() || undefined,
+          bodyJson: body.stateJson,
+          bodyText: body.text,
+          coverMediaId: coverMediaId ?? undefined,
+          status,
+        })
         if (status === "published" && article.author.handle) {
           router.navigate({
             to: "/$handle/a/$slug",

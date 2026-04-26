@@ -1,6 +1,10 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
 import { useCallback, useState } from "react"
-import { Alert, AlertDescription, AlertTitle } from "@workspace/ui/components/alert"
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@workspace/ui/components/alert"
 import { Button } from "@workspace/ui/components/button"
 import {
   Card,
@@ -37,11 +41,11 @@ function Landing() {
   const loadFeed = useCallback((cursor?: string) => api.feed(cursor), [])
   const loadPublic = useCallback(
     (cursor?: string) => api.publicTimeline(cursor),
-    [],
+    []
   )
   const loadNetwork = useCallback(
     (cursor?: string) => api.networkFeed(cursor),
-    [],
+    []
   )
 
   if (isPending) {
@@ -60,11 +64,15 @@ function Landing() {
           <Alert className="m-4">
             <AlertTitle>Finish setup</AlertTitle>
             <AlertDescription>
-              Choose a handle so others can find you. Handles are permanent
-              in v1.
+              Choose a handle so others can find you. Handles are permanent in
+              v1.
             </AlertDescription>
             <div className="mt-3">
-              <Button size="sm" nativeButton={false} render={<Link to="/settings" />}>
+              <Button
+                size="sm"
+                nativeButton={false}
+                render={<Link to="/settings" />}
+              >
                 Claim your handle
               </Button>
             </div>

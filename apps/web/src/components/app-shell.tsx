@@ -16,11 +16,15 @@ import {
 } from "@workspace/ui/components/dialog"
 import { Button } from "@workspace/ui/components/button"
 import { useEffect } from "react"
+import { useIsMobile } from "@workspace/ui/hooks/use-mobile"
+import { cn } from "@workspace/ui/lib/utils"
 import { authClient } from "../lib/auth"
 import { api } from "../lib/api"
+import { useMobileKeyboardOpen } from "../hooks/use-mobile-keyboard-open"
 import { AppPageHeaderProvider } from "./app-page-header"
 import { AppHeader } from "./app-header"
 import { AppSidebar } from "./app-sidebar"
+import { MobileTabBar } from "./mobile-tab-bar"
 import { PublicShell } from "./public-shell"
 import { ComposeFab } from "./compose-fab"
 import type { ReactNode } from "react"
@@ -29,23 +33,35 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { data: session, isPending } = authClient.useSession()
   const location = useLocation()
   const isInbox = location.pathname.startsWith("/inbox")
+  const isMobile = useIsMobile()
+  const keyboardOpen = useMobileKeyboardOpen()
 
   if (isPending || !session) return <PublicShell>{children}</PublicShell>
+
+  const showMobileTabBar = isMobile && !keyboardOpen
 
   return (
     <TooltipProvider>
       <ChessChallengePoller enabled={Boolean(session)} />
       <AppPageHeaderProvider>
         <SidebarProvider>
-          <AppSidebar enabled={Boolean(session)} />
+          {!isMobile ? <AppSidebar enabled={Boolean(session)} /> : null}
 
-          <SidebarInset>
+          <SidebarInset
+            className={cn(
+              showMobileTabBar &&
+                "pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] md:pb-0"
+            )}
+          >
             <AppHeader />
             <div className="@container/inset w-full min-w-0">
               <main className="w-full min-w-0 border-border">{children}</main>
             </div>
-            {!isInbox && <ComposeFab />}
+            {!isInbox && (
+              <ComposeFab stackAboveMobileTabBar={showMobileTabBar} />
+            )}
           </SidebarInset>
+          {isMobile ? <MobileTabBar enabled={Boolean(session)} /> : null}
           <SidebarCloseOnNavigate />
         </SidebarProvider>
       </AppPageHeaderProvider>

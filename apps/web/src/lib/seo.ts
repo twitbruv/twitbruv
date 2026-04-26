@@ -1,6 +1,8 @@
 import { APP_NAME, WEB_URL } from "./env"
 
-export type SeoMeta = { name?: string; property?: string; content: string } | { title: string }
+export type SeoMeta =
+  | { name?: string; property?: string; content: string }
+  | { title: string }
 
 export interface SeoInput {
   /** Final page title; the helper appends " — {APP_NAME}" unless `rawTitle` is set. */
@@ -53,7 +55,10 @@ export function buildSeoMeta(input: SeoInput): Array<SeoMeta> {
   ]
 
   if (input.publishedTime) {
-    meta.push({ property: "article:published_time", content: input.publishedTime })
+    meta.push({
+      property: "article:published_time",
+      content: input.publishedTime,
+    })
   }
   if (input.authorHandle) {
     meta.push({ property: "article:author", content: `@${input.authorHandle}` })

@@ -28,9 +28,7 @@ export function PublicShell({ children }: { children: ReactNode }) {
         </nav>
       </header>
       <div className="w-full min-w-0">
-        <main className="w-full min-w-0 border-border">
-          {children}
-        </main>
+        <main className="w-full min-w-0 border-border">{children}</main>
       </div>
     </div>
   )

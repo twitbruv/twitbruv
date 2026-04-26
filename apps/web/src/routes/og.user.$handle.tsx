@@ -146,18 +146,16 @@ export const Route = createFileRoute("/og/user/$handle")({
         }
         const avatarSrc = await loadOgImage(user?.avatarUrl)
         return new ImageResponse(
-          (
-            <OgFrame
-              eyebrow={user ? `Profile · @${user.handle}` : "Profile"}
-              seed={params.handle}
-            >
-              {user ? (
-                <ProfileCard user={user} avatarSrc={avatarSrc} />
-              ) : (
-                <NotFoundCard handle={params.handle} />
-              )}
-            </OgFrame>
-          ),
+          <OgFrame
+            eyebrow={user ? `Profile · @${user.handle}` : "Profile"}
+            seed={params.handle}
+          >
+            {user ? (
+              <ProfileCard user={user} avatarSrc={avatarSrc} />
+            ) : (
+              <NotFoundCard handle={params.handle} />
+            )}
+          </OgFrame>,
           {
             ...OG_SIZE,
             fonts,

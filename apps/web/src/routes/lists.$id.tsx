@@ -130,7 +130,9 @@ function ListDetail() {
   return (
     <PageFrame>
       <main>
-        {error && <PageError message={error} className="border-b border-border" />}
+        {error && (
+          <PageError message={error} className="border-b border-border" />
+        )}
 
         {isOwner && showAdd && (
           <ManageMembers listId={id} members={members} onChanged={refresh} />
@@ -240,7 +242,10 @@ function ManageMembers({
         </ul>
       )}
       <div className="mt-3">
-        <Label htmlFor="list-member-search" className="text-xs text-muted-foreground">
+        <Label
+          htmlFor="list-member-search"
+          className="text-xs text-muted-foreground"
+        >
           Add a user
         </Label>
         <Input

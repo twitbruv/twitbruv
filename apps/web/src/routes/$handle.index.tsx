@@ -223,7 +223,9 @@ function Profile() {
             </>
           )}
           <span>
-            <span className="font-semibold tabular-nums">{user.counts.posts}</span>{" "}
+            <span className="font-semibold tabular-nums">
+              {user.counts.posts}
+            </span>{" "}
             <span className="text-muted-foreground">posts</span>
           </span>
         </div>
@@ -268,7 +270,10 @@ function ProfileLists({ handle }: { handle: string }) {
     }
   }, [handle])
 
-  if ((pinned === null || pinned.length === 0) && (listedOn === null || listedOn.length === 0)) {
+  if (
+    (pinned === null || pinned.length === 0) &&
+    (listedOn === null || listedOn.length === 0)
+  ) {
     return null
   }
   return (
@@ -287,7 +292,7 @@ function ProfileLists({ handle }: { handle: string }) {
                 className="rounded-full border border-border bg-muted/40 px-2.5 py-1 hover:bg-muted"
               >
                 {l.title}
-                <span className="ml-1.5 tabular-nums text-muted-foreground">
+                <span className="ml-1.5 text-muted-foreground tabular-nums">
                   {l.memberCount}
                 </span>
               </Link>
@@ -310,7 +315,9 @@ function ProfileLists({ handle }: { handle: string }) {
               >
                 {l.title}
                 {l.ownerHandle && (
-                  <span className="ml-1.5 text-muted-foreground">@{l.ownerHandle}</span>
+                  <span className="ml-1.5 text-muted-foreground">
+                    @{l.ownerHandle}
+                  </span>
                 )}
               </Link>
             ))}

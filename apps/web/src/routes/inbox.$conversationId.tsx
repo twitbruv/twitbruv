@@ -1218,17 +1218,14 @@ function ThreadAppHeaderTitle({
       {back}
       {p && (
         <Avatar
-          initial={(p.displayName || p.handle || "?")
-            .slice(0, 1)
-            .toUpperCase()}
+          initial={(p.displayName || p.handle || "?").slice(0, 1).toUpperCase()}
           src={p.avatarUrl}
           className="size-8 shrink-0"
         />
       )}
       <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden text-sm">
         <span className="truncate font-semibold text-foreground">
-          {p?.displayName ||
-            (p?.handle ? `@${p.handle}` : "Conversation")}
+          {p?.displayName || (p?.handle ? `@${p.handle}` : "Conversation")}
         </span>
         {p?.isVerified && <VerifiedBadge size={14} role={p.role} />}
         {p?.handle && (

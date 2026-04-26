@@ -9,9 +9,14 @@ import {
   DialogTrigger,
 } from "@workspace/ui/components/dialog"
 import { Button } from "@workspace/ui/components/button"
+import { cn } from "@workspace/ui/lib/utils"
 import { Compose } from "./compose"
 
-export function ComposeFab() {
+export function ComposeFab({
+  stackAboveMobileTabBar = false,
+}: {
+  stackAboveMobileTabBar?: boolean
+}) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -21,7 +26,12 @@ export function ComposeFab() {
           <Button
             variant="default"
             size="icon"
-            className="fixed right-6 bottom-6 size-14 rounded-full shadow-lg shadow-primary/30"
+            className={cn(
+              "fixed right-6 size-14 rounded-full shadow-lg shadow-primary/30",
+              stackAboveMobileTabBar
+                ? "bottom-[calc(1.5rem+3.5rem+env(safe-area-inset-bottom,0px))]"
+                : "bottom-6"
+            )}
           >
             <NotePencilIcon className="size-6" />
           </Button>

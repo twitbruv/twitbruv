@@ -96,10 +96,7 @@ export function ProfileActions({
           run(
             "follow",
             !v.following,
-            () =>
-              v.following
-                ? api.unfollow(h)
-                : api.follow(h),
+            () => (v.following ? api.unfollow(h) : api.follow(h)),
             "following",
             v.following ? -1 : 1
           )
@@ -121,10 +118,7 @@ export function ProfileActions({
               run(
                 "mute",
                 !v.muting,
-                () =>
-                  v.muting
-                    ? api.unmute(h)
-                    : api.mute(h),
+                () => (v.muting ? api.unmute(h) : api.mute(h)),
                 "muting"
               )
             }
@@ -143,10 +137,7 @@ export function ProfileActions({
               run(
                 "block",
                 !v.blocking,
-                () =>
-                  v.blocking
-                    ? api.unblock(h)
-                    : api.block(h),
+                () => (v.blocking ? api.unblock(h) : api.block(h)),
                 "blocking"
               )
             }}

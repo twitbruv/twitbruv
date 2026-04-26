@@ -37,7 +37,10 @@ async function fetchInterWeight(weight: FontWeight): Promise<ArrayBuffer> {
     })
   ).text()
   const match = css.match(/src:\s*url\((https:\/\/[^)]+)\)/)
-  if (!match) throw new Error(`Inter ${weight}: could not parse font url from Google Fonts CSS`)
+  if (!match)
+    throw new Error(
+      `Inter ${weight}: could not parse font url from Google Fonts CSS`
+    )
   return await (await fetch(match[1])).arrayBuffer()
 }
 
@@ -69,15 +72,21 @@ export async function getOgFonts(): Promise<Array<FontEntry>> {
  *  paint. Returns null on any error so callers fall back to the initial chip rather
  *  than 500ing the unfurler. */
 export async function loadOgImage(
-  src: string | null | undefined,
+  src: string | null | undefined
 ): Promise<string | null> {
   if (!src) return null
   // Pass data URLs straight through; nothing to fetch.
   if (src.startsWith("data:")) return src
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), OG_IMAGE_FETCH_TIMEOUT_MS)
+  const timeout = setTimeout(
+    () => controller.abort(),
+    OG_IMAGE_FETCH_TIMEOUT_MS
+  )
   try {
-    const res = await fetch(src, { redirect: "follow", signal: controller.signal })
+    const res = await fetch(src, {
+      redirect: "follow",
+      signal: controller.signal,
+    })
     if (!res.ok) return null
     const buf = Buffer.from(await res.arrayBuffer())
     if (buf.byteLength === 0 || buf.byteLength > OG_IMAGE_MAX_BYTES) return null
@@ -204,8 +213,7 @@ export function OgFrame({ eyebrow, seed, children }: OgFrameProps) {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              background:
-                "linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%)",
+              background: "linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%)",
               fontSize: 22,
               fontWeight: 800,
               color: "#0a0a0a",

@@ -1,10 +1,18 @@
-import { Outlet, createFileRoute, useRouter, useRouterState } from "@tanstack/react-router"
+import {
+  Outlet,
+  createFileRoute,
+  useRouter,
+  useRouterState,
+} from "@tanstack/react-router"
 import { useEffect, useMemo } from "react"
 import { authClient } from "../lib/auth"
 import { useMe } from "../lib/me"
 import { usePageHeader } from "../components/app-page-header"
 import { PageLoading } from "../components/page-surface"
-import { UnderlineTabLink, UnderlineTabRow } from "../components/underline-tab-row"
+import {
+  UnderlineTabLink,
+  UnderlineTabRow,
+} from "../components/underline-tab-row"
 
 export const Route = createFileRoute("/admin")({ component: AdminLayout })
 
@@ -31,9 +39,7 @@ function AdminLayout() {
     }
     return {
       title: "Admin" as const,
-      action: (
-        <span className="text-xs text-muted-foreground">{me.role}</span>
-      ),
+      action: <span className="text-xs text-muted-foreground">{me.role}</span>,
     }
   }, [session, me])
   usePageHeader(appHeader)

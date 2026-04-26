@@ -117,30 +117,27 @@ export const Route = createFileRoute("/og/article/$handle/$slug")({
         const fonts = await getOgFonts()
         let article: ArticleDto | null = null
         try {
-          article = (
-            await api.userArticleBySlug(params.handle, params.slug)
-          ).article
+          article = (await api.userArticleBySlug(params.handle, params.slug))
+            .article
         } catch {
           // Fall through to placeholder card.
         }
         const avatarSrc = await loadOgImage(article?.author.avatarUrl)
         return new ImageResponse(
-          (
-            <OgFrame
-              eyebrow={`Article · @${params.handle}`}
-              seed={`${params.handle}/${params.slug}`}
-            >
-              {article ? (
-                <ArticleCard
-                  article={article}
-                  handle={params.handle}
-                  avatarSrc={avatarSrc}
-                />
-              ) : (
-                <NotFoundCard />
-              )}
-            </OgFrame>
-          ),
+          <OgFrame
+            eyebrow={`Article · @${params.handle}`}
+            seed={`${params.handle}/${params.slug}`}
+          >
+            {article ? (
+              <ArticleCard
+                article={article}
+                handle={params.handle}
+                avatarSrc={avatarSrc}
+              />
+            ) : (
+              <NotFoundCard />
+            )}
+          </OgFrame>,
           {
             ...OG_SIZE,
             fonts,

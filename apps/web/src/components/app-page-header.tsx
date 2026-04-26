@@ -1,9 +1,4 @@
-import {
-  createContext,
-  useContext,
-  useLayoutEffect,
-  useState,
-} from "react"
+import { createContext, useContext, useLayoutEffect, useState } from "react"
 import { cn } from "@workspace/ui/lib/utils"
 import type { ReactNode } from "react"
 
@@ -26,9 +21,7 @@ const AppPageHeaderContext = createContext<AppPageHeaderContextValue | null>(
 export function AppPageHeaderProvider({ children }: { children: ReactNode }) {
   const [header, setPageHeader] = useState<AppPageHeaderSpec>(null)
   return (
-    <AppPageHeaderContext.Provider
-      value={{ header, setPageHeader }}
-    >
+    <AppPageHeaderContext.Provider value={{ header, setPageHeader }}>
       {children}
     </AppPageHeaderContext.Provider>
   )
@@ -69,7 +62,7 @@ export function AppPageHeaderContent({
         {spec.plainTitle ? (
           spec.title
         ) : (
-          <h1 className="text-base font-semibold leading-tight text-foreground">
+          <h1 className="text-base leading-tight font-semibold text-foreground">
             {spec.title}
           </h1>
         )}

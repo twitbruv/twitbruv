@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { ChartBarIcon, ImageIcon, UsersIcon, XIcon } from "@phosphor-icons/react"
+import {
+  ChartBarIcon,
+  ImageIcon,
+  UsersIcon,
+  XIcon,
+} from "@phosphor-icons/react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
@@ -232,13 +237,13 @@ export function Compose({
           }
         : undefined
       const { post } = await api.createPost({
-            text: text.trim(),
-            replyToId,
-            quoteOfId,
-            mediaIds: readyMediaIds.length > 0 ? readyMediaIds : undefined,
-            poll: pollPayload,
-            replyRestriction: showReplyControl ? replyRestriction : undefined,
-          })
+        text: text.trim(),
+        replyToId,
+        quoteOfId,
+        mediaIds: readyMediaIds.length > 0 ? readyMediaIds : undefined,
+        poll: pollPayload,
+        replyRestriction: showReplyControl ? replyRestriction : undefined,
+      })
       setText("")
       clearDraft(dKey)
       attachments.forEach((a) => URL.revokeObjectURL(a.previewUrl))
@@ -391,13 +396,18 @@ export function Compose({
                 </Select>
               </div>
               <div className="flex items-center gap-2">
-                <Label htmlFor="poll-multi" className="text-xs text-muted-foreground">
+                <Label
+                  htmlFor="poll-multi"
+                  className="text-xs text-muted-foreground"
+                >
                   Multiple choice
                 </Label>
                 <Switch
                   id="poll-multi"
                   checked={poll.allowMultiple}
-                  onCheckedChange={(v) => setPoll({ ...poll, allowMultiple: v })}
+                  onCheckedChange={(v) =>
+                    setPoll({ ...poll, allowMultiple: v })
+                  }
                   size="sm"
                 />
               </div>
@@ -497,12 +507,10 @@ export function Compose({
               </Button>
               {showReplyControl && (
                 <div
-                  className="flex min-w-0 max-w-[min(100%,12rem)] items-center gap-1.5"
+                  className="flex max-w-[min(100%,12rem)] min-w-0 items-center gap-1.5"
                   title="Who can reply"
                 >
-                  <UsersIcon
-                    className="size-3.5 shrink-0 text-muted-foreground"
-                  />
+                  <UsersIcon className="size-3.5 shrink-0 text-muted-foreground" />
                   <Select
                     value={replyRestriction}
                     onValueChange={(v) =>
@@ -511,13 +519,20 @@ export function Compose({
                       )
                     }
                   >
-                    <SelectTrigger size="sm" className="h-7 min-w-0 flex-1 text-xs">
+                    <SelectTrigger
+                      size="sm"
+                      className="h-7 min-w-0 flex-1 text-xs"
+                    >
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="anyone">Everyone can reply</SelectItem>
-                      <SelectItem value="following">People you follow</SelectItem>
-                      <SelectItem value="mentioned">Only people you @mention</SelectItem>
+                      <SelectItem value="following">
+                        People you follow
+                      </SelectItem>
+                      <SelectItem value="mentioned">
+                        Only people you @mention
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

@@ -61,14 +61,14 @@ function EditArticle() {
       setError(null)
       try {
         const { article: updated } = await api.updateArticle(article.id, {
-              title: title.trim(),
-              subtitle: subtitle.trim() || undefined,
-              bodyJson: body?.stateJson ?? article.bodyJson,
-              bodyText: body?.text ?? article.bodyText,
-              // `undefined` = leave alone, `null` = clear, value = set.
-              ...(coverMediaId !== undefined ? { coverMediaId } : {}),
-              status,
-            })
+          title: title.trim(),
+          subtitle: subtitle.trim() || undefined,
+          bodyJson: body?.stateJson ?? article.bodyJson,
+          bodyText: body?.text ?? article.bodyText,
+          // `undefined` = leave alone, `null` = clear, value = set.
+          ...(coverMediaId !== undefined ? { coverMediaId } : {}),
+          status,
+        })
         setArticle(updated)
         if (status === "published" && updated.author.handle) {
           router.navigate({

@@ -80,7 +80,8 @@ const SORT_LABELS: Record<AdminPostSort, string> = {
 function compactNumber(n: number): string {
   if (!Number.isFinite(n)) return "0"
   if (n < 1000) return String(n)
-  if (n < 1_000_000) return `${(n / 1000).toFixed(n < 10_000 ? 1 : 0).replace(/\.0$/, "")}k`
+  if (n < 1_000_000)
+    return `${(n / 1000).toFixed(n < 10_000 ? 1 : 0).replace(/\.0$/, "")}k`
   if (n < 1_000_000_000)
     return `${(n / 1_000_000).toFixed(n < 10_000_000 ? 1 : 0).replace(/\.0$/, "")}M`
   return `${(n / 1_000_000_000).toFixed(1).replace(/\.0$/, "")}B`
@@ -121,7 +122,9 @@ function StatHeader({
       type="button"
       onClick={() => onSort(sortKey)}
       className={`flex items-center gap-1 text-xs ${
-        active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+        active
+          ? "text-foreground"
+          : "text-muted-foreground hover:text-foreground"
       }`}
     >
       {icon}
@@ -164,7 +167,7 @@ function AdminPosts() {
       o: "asc" | "desc",
       t: TypeFilter,
       v: VisibilityFilter,
-      st: StatusFilter,
+      st: StatusFilter
     ) => {
       const gen = ++generationRef.current
       setLoading(true)
@@ -188,7 +191,7 @@ function AdminPosts() {
         if (generationRef.current === gen) setLoading(false)
       }
     },
-    [],
+    []
   )
 
   // The two effects below split the load triggers: q is debounced so we don't fire a request
@@ -247,7 +250,7 @@ function AdminPosts() {
         setOrder("desc")
       }
     },
-    [sort],
+    [sort]
   )
 
   const columns = useMemo<Array<ColumnDef<AdminPost>>>(
@@ -258,12 +261,16 @@ function AdminPosts() {
         cell: ({ row }) => {
           const a = row.original.author
           if (!a) {
-            return <span className="text-xs text-muted-foreground">(unknown)</span>
+            return (
+              <span className="text-xs text-muted-foreground">(unknown)</span>
+            )
           }
           return (
             <div className="flex min-w-0 items-center gap-2">
               <Avatar
-                initial={(a.displayName || a.handle || "?").slice(0, 1).toUpperCase()}
+                initial={(a.displayName || a.handle || "?")
+                  .slice(0, 1)
+                  .toUpperCase()}
                 src={a.avatarUrl}
                 className="size-7 shrink-0"
               />
@@ -275,7 +282,9 @@ function AdminPosts() {
                     className="flex items-center gap-1 text-xs font-semibold hover:underline"
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <span className="truncate">{a.displayName ?? a.handle}</span>
+                    <span className="truncate">
+                      {a.displayName ?? a.handle}
+                    </span>
                     {a.isVerified && <VerifiedBadge size={12} role={a.role} />}
                   </Link>
                 ) : (
@@ -477,7 +486,7 @@ function AdminPosts() {
         },
       },
     ],
-    [sort, order, busyId, onHeaderSort],
+    [sort, order, busyId, onHeaderSort]
   )
 
   const table = useReactTable({
@@ -626,7 +635,7 @@ function AdminPosts() {
                         ? null
                         : flexRender(
                             header.column.columnDef.header,
-                            header.getContext(),
+                            header.getContext()
                           )}
                     </TableHead>
                   ))}
@@ -653,7 +662,7 @@ function AdminPosts() {
                       <TableCell key={cell.id} className="align-top">
                         {flexRender(
                           cell.column.columnDef.cell,
-                          cell.getContext(),
+                          cell.getContext()
                         )}
                       </TableCell>
                     ))}

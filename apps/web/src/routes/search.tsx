@@ -55,7 +55,7 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
   const isChessSearch = query.toLowerCase() === "chess"
   const [challengeTarget, setChallengeTarget] = useState("")
   const [challengeError, setChallengeError] = useState<string | null>(null)
-  
+
   async function submitChallenge(e: React.FormEvent) {
     e.preventDefault()
     setChallengeError(null)
@@ -80,8 +80,8 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
       .then(({ items }) => setSaved(items))
       .catch((e) =>
         setSavedError(
-          e instanceof ApiError ? e.message : "couldn't load saved searches",
-        ),
+          e instanceof ApiError ? e.message : "couldn't load saved searches"
+        )
       )
   }, [me])
 
@@ -122,10 +122,7 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
     navigate({ to: "/search", search: { q: term } })
   }
 
-  const appHeader = useMemo(
-    () => ({ title: "Search" as const }),
-    []
-  )
+  const appHeader = useMemo(() => ({ title: "Search" as const }), [])
   usePageHeader(appHeader)
 
   async function toggleSaved() {
@@ -146,11 +143,11 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
       try {
         const { item } = await api.saveSearch(query)
         setSaved((prev) =>
-          prev.some((s) => s.id === item.id) ? prev : [...prev, item],
+          prev.some((s) => s.id === item.id) ? prev : [...prev, item]
         )
       } catch (e) {
         setSavedError(
-          e instanceof ApiError ? e.message : "couldn't save search",
+          e instanceof ApiError ? e.message : "couldn't save search"
         )
       }
     }
@@ -195,20 +192,25 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
                   )}
                 </button>
                 <details className="text-muted-foreground">
-                  <summary className="cursor-pointer select-none">Operators</summary>
+                  <summary className="cursor-pointer select-none">
+                    Operators
+                  </summary>
                   <div className="mt-1 max-w-md text-right text-[11px] leading-snug">
                     <code>from:user</code> · <code>to:user</code> ·{" "}
                     <code>has:media</code> · <code>has:link</code> ·{" "}
                     <code>has:poll</code> · <code>lang:en</code> ·{" "}
-                    <code>since:YYYY-MM-DD</code> · <code>until:YYYY-MM-DD</code>{" "}
-                    · <code>min_likes:10</code> · <code>min_replies:5</code>
+                    <code>since:YYYY-MM-DD</code> ·{" "}
+                    <code>until:YYYY-MM-DD</code> · <code>min_likes:10</code> ·{" "}
+                    <code>min_replies:5</code>
                   </div>
                 </details>
               </div>
             )}
             {savedError && (
               <Alert variant="destructive" className="mt-2 text-left">
-                <AlertDescription className="text-xs">{savedError}</AlertDescription>
+                <AlertDescription className="text-xs">
+                  {savedError}
+                </AlertDescription>
               </Alert>
             )}
           </form>
@@ -255,35 +257,48 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
         )}
 
         {isChessSearch && (
-          <section className="border-b border-border p-4 flex items-center justify-between hover:bg-muted/40">
+          <section className="flex items-center justify-between border-b border-border p-4 hover:bg-muted/40">
             <div className="flex items-center gap-4">
-              <div className="flex items-center justify-center size-12 rounded bg-muted">
+              <div className="flex size-12 items-center justify-center rounded bg-muted">
                 <HorseIcon size={24} className="text-foreground" />
               </div>
               <div>
                 <h3 className="font-semibold">Play chess online</h3>
-                <p className="text-sm text-muted-foreground">Challenge friends or find a match.</p>
+                <p className="text-sm text-muted-foreground">
+                  Challenge friends or find a match.
+                </p>
               </div>
             </div>
-            
+
             <Dialog>
               <Button render={<DialogTrigger />}>Play now</Button>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Challenge to Chess</DialogTitle>
                 </DialogHeader>
-                <form onSubmit={submitChallenge} className="flex flex-col gap-4 mt-4">
+                <form
+                  onSubmit={submitChallenge}
+                  className="mt-4 flex flex-col gap-4"
+                >
                   <div className="flex flex-col gap-2">
-                    <label htmlFor="targetUser" className="text-sm font-medium">Opponent's Handle</label>
-                    <Input 
+                    <label htmlFor="targetUser" className="text-sm font-medium">
+                      Opponent's Handle
+                    </label>
+                    <Input
                       id="targetUser"
-                      placeholder="@handle" 
+                      placeholder="@handle"
                       value={challengeTarget}
                       onChange={(e) => setChallengeTarget(e.target.value)}
                     />
-                    {challengeError && <p className="text-xs text-destructive">{challengeError}</p>}
+                    {challengeError && (
+                      <p className="text-xs text-destructive">
+                        {challengeError}
+                      </p>
+                    )}
                   </div>
-                  <Button type="submit" disabled={!challengeTarget}>Send Challenge</Button>
+                  <Button type="submit" disabled={!challengeTarget}>
+                    Send Challenge
+                  </Button>
                 </form>
               </DialogContent>
             </Dialog>
@@ -329,7 +344,7 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
                         </p>
                       )}
                     </Link>
-                  ) : null,
+                  ) : null
                 )}
               </section>
             )}

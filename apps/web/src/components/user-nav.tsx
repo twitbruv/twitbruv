@@ -106,8 +106,7 @@ export function UserNav({ user }: { user: SelfUser }) {
                 <MoonIcon size={16} /> <span>Dark</span>
               </DropdownMenuRadioItem>
               <DropdownMenuRadioItem value="system">
-                <DesktopIcon size={16} />{" "}
-                <span>System</span>
+                <DesktopIcon size={16} /> <span>System</span>
               </DropdownMenuRadioItem>
             </DropdownMenuRadioGroup>
           </DropdownMenuSubContent>

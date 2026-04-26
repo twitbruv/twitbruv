@@ -4,7 +4,11 @@ import { createFileRoute } from "@tanstack/react-router"
 import "@tanstack/react-start"
 import { WEB_URL } from "../lib/env"
 
-const STATIC_URLS: Array<{ path: string; changefreq: string; priority: number }> = [
+const STATIC_URLS: Array<{
+  path: string
+  changefreq: string
+  priority: number
+}> = [
   { path: "/", changefreq: "daily", priority: 1.0 },
   { path: "/login", changefreq: "monthly", priority: 0.4 },
   { path: "/signup", changefreq: "monthly", priority: 0.6 },

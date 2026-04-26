@@ -125,7 +125,6 @@ function AdminUsers() {
     }
   }, [cursor, loadingMore, q])
 
-
   const act = useCallback(
     async (userId: string, op: () => Promise<unknown>) => {
       setBusyId(userId)
@@ -231,9 +230,7 @@ function AdminUsers() {
                         disabled={r === u.role}
                         onClick={() =>
                           r !== u.role &&
-                          act(u.id, () =>
-                            api.adminSetRole(u.id, r),
-                          )
+                          act(u.id, () => api.adminSetRole(u.id, r))
                         }
                       >
                         <span className="tracking-wider uppercase">{r}</span>
@@ -298,11 +295,7 @@ function AdminUsers() {
                   size="sm"
                   variant="outline"
                   disabled={busyId === u.id}
-                  onClick={() =>
-                    act(u.id, () =>
-                      api.adminUnban(u.id),
-                    )
-                  }
+                  onClick={() => act(u.id, () => api.adminUnban(u.id))}
                 >
                   Unban
                 </Button>
@@ -321,11 +314,7 @@ function AdminUsers() {
                   size="sm"
                   variant="outline"
                   disabled={busyId === u.id}
-                  onClick={() =>
-                    act(u.id, () =>
-                      api.adminUnshadowban(u.id),
-                    )
-                  }
+                  onClick={() => act(u.id, () => api.adminUnshadowban(u.id))}
                 >
                   Unshadow
                 </Button>
@@ -570,9 +559,9 @@ function ActionDialog({
             ? Number(hours)
             : undefined
         return api.adminBan(u.id, {
-              reason: reason.trim() || undefined,
-              durationHours,
-            })
+          reason: reason.trim() || undefined,
+          durationHours,
+        })
       },
     },
     shadow: {
@@ -609,9 +598,9 @@ function ActionDialog({
       showDuration: false,
       run: () =>
         api.adminSetHandle(u.id, {
-              handle: handle.trim(),
-              reason: reason.trim() || undefined,
-            }),
+          handle: handle.trim(),
+          reason: reason.trim() || undefined,
+        }),
     },
     delete: {
       title: `Delete account ${subject}`,
@@ -647,7 +636,10 @@ function ActionDialog({
         <div className="flex flex-col gap-3">
           {state.kind === "handle" && (
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="admin-action-handle" className="text-xs text-muted-foreground">
+              <Label
+                htmlFor="admin-action-handle"
+                className="text-xs text-muted-foreground"
+              >
                 New handle
               </Label>
               <Input
@@ -662,7 +654,10 @@ function ActionDialog({
             </div>
           )}
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="admin-action-reason" className="text-xs text-muted-foreground">
+            <Label
+              htmlFor="admin-action-reason"
+              className="text-xs text-muted-foreground"
+            >
               Reason (optional)
             </Label>
             <Input
@@ -674,7 +669,10 @@ function ActionDialog({
           </div>
           {config.showDuration && (
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="admin-action-hours" className="text-xs text-muted-foreground">
+              <Label
+                htmlFor="admin-action-hours"
+                className="text-xs text-muted-foreground"
+              >
                 Duration in hours (blank = permanent)
               </Label>
               <Input
@@ -688,8 +686,15 @@ function ActionDialog({
           )}
           {state.kind === "delete" && (
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="admin-action-confirm" className="text-xs text-muted-foreground">
-                Type <code className="rounded bg-muted px-1">{deleteConfirmText}</code> to confirm
+              <Label
+                htmlFor="admin-action-confirm"
+                className="text-xs text-muted-foreground"
+              >
+                Type{" "}
+                <code className="rounded bg-muted px-1">
+                  {deleteConfirmText}
+                </code>{" "}
+                to confirm
               </Label>
               <Input
                 id="admin-action-confirm"
@@ -714,7 +719,9 @@ function ActionDialog({
             size="sm"
             variant={config.submitVariant}
             onClick={submit}
-            disabled={busy || (state.kind === "delete" && confirm !== deleteConfirmText)}
+            disabled={
+              busy || (state.kind === "delete" && confirm !== deleteConfirmText)
+            }
           >
             {busy ? "Working…" : config.submitLabel}
           </Button>
@@ -822,9 +829,7 @@ function UserDetailSheet({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1 text-sm font-semibold">
                     {u.displayName ?? u.handle ?? u.email}
-                    {u.isVerified && (
-                      <VerifiedBadge size={14} role={u.role} />
-                    )}
+                    {u.isVerified && <VerifiedBadge size={14} role={u.role} />}
                   </div>
                   {u.handle && (
                     <Link
@@ -843,7 +848,7 @@ function UserDetailSheet({
 
               {u.bio && (
                 <DetailSection label="Bio">
-                  <p className="whitespace-pre-wrap text-xs">{u.bio}</p>
+                  <p className="text-xs whitespace-pre-wrap">{u.bio}</p>
                 </DetailSection>
               )}
 
@@ -965,9 +970,7 @@ function UserDetailSheet({
                 label={`Recent posts (${detail.recentPosts.length})`}
               >
                 {detail.recentPosts.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">
-                    No posts yet.
-                  </p>
+                  <p className="text-xs text-muted-foreground">No posts yet.</p>
                 ) : (
                   <ul className="flex flex-col gap-2">
                     {detail.recentPosts.map((p) => (

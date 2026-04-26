@@ -83,11 +83,11 @@ export function ReportDialog({
     setStatus(null)
     try {
       const res = await api.report({
-            subjectType,
-            subjectId,
-            reason,
-            details: details.trim().length > 0 ? details.trim() : undefined,
-          })
+        subjectType,
+        subjectId,
+        reason,
+        details: details.trim().length > 0 ? details.trim() : undefined,
+      })
       setStatus(
         res.deduped
           ? "You've already reported this — thanks. Mods will take a look."

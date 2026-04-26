@@ -33,7 +33,7 @@ function HashtagPage() {
       plainTitle: true,
       title: (
         <div className="flex w-full min-w-0 flex-col">
-          <h1 className="truncate text-base font-semibold leading-tight text-foreground">
+          <h1 className="truncate text-base leading-tight font-semibold text-foreground">
             #{tag}
           </h1>
           <p className="text-xs text-muted-foreground">

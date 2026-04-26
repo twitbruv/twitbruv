@@ -492,15 +492,17 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
-  adminPosts: (params: {
-    q?: string
-    cursor?: string
-    sort?: AdminPostSort
-    order?: "asc" | "desc"
-    type?: AdminPostType | "any"
-    visibility?: "public" | "followers" | "unlisted" | "any"
-    status?: "active" | "deleted" | "sensitive" | "any"
-  } = {}) => {
+  adminPosts: (
+    params: {
+      q?: string
+      cursor?: string
+      sort?: AdminPostSort
+      order?: "asc" | "desc"
+      type?: AdminPostType | "any"
+      visibility?: "public" | "followers" | "unlisted" | "any"
+      status?: "active" | "deleted" | "sensitive" | "any"
+    } = {}
+  ) => {
     const sp = new URLSearchParams()
     if (params.q) sp.set("q", params.q)
     if (params.cursor) sp.set("cursor", params.cursor)
@@ -509,7 +511,8 @@ export const api = {
     if (params.type && params.type !== "any") sp.set("type", params.type)
     if (params.visibility && params.visibility !== "any")
       sp.set("visibility", params.visibility)
-    if (params.status && params.status !== "any") sp.set("status", params.status)
+    if (params.status && params.status !== "any")
+      sp.set("status", params.status)
     return request<{ posts: Array<AdminPost>; nextCursor: string | null }>(
       `/api/admin/posts${sp.toString() ? `?${sp.toString()}` : ""}`
     )
@@ -556,11 +559,21 @@ export const api = {
   chessActiveGames: () =>
     request<{ games: Array<ChessGame> }>("/api/chess/active"),
   chessPendingGames: () =>
-    request<{ games: Array<{ id: string; whitePlayerId: string; blackPlayerId: string; createdAt: string; challenger: PublicUser }> }>("/api/chess/pending"),
+    request<{
+      games: Array<{
+        id: string
+        whitePlayerId: string
+        blackPlayerId: string
+        createdAt: string
+        challenger: PublicUser
+      }>
+    }>("/api/chess/pending"),
   chessAcceptGame: (id: string) =>
     request<{ game: ChessGame }>(`/api/chess/${id}/accept`, { method: "POST" }),
   chessDeclineGame: (id: string) =>
-    request<{ game: ChessGame }>(`/api/chess/${id}/decline`, { method: "POST" }),
+    request<{ game: ChessGame }>(`/api/chess/${id}/decline`, {
+      method: "POST",
+    }),
   chessLeaderboard: () =>
     request<{ leaderboard: Array<ChessStats> }>("/api/chess/leaderboard"),
   chessGame: (id: string) => request<{ game: ChessGame }>(`/api/chess/${id}`),

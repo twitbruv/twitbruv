@@ -129,7 +129,10 @@ function Analytics() {
       title: "Analytics" as const,
       action: (
         <Select value={String(days)} onValueChange={onDays}>
-          <SelectTrigger size="sm" className="h-8 w-full min-w-[8rem] sm:w-auto">
+          <SelectTrigger
+            size="sm"
+            className="h-8 w-full min-w-[8rem] sm:w-auto"
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -175,215 +178,197 @@ function AnalyticsLoaded({
   const engagementTotal = data.totals.engagements
 
   return (
-        <div className="flex flex-col gap-6 px-4 py-4">
-          <section>
-            <h2 className="text-sm font-semibold">Audience and reach</h2>
-            <p className="text-xs text-muted-foreground">
-              Follower and following totals are current; new-follower counts use
-              only the selected window.
-            </p>
-            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <SnapshotCard
-                icon={<UsersIcon size={18} />}
-                label="Followers"
-                value={data.snapshot.followerCount.toLocaleString()}
-                hint={`+${data.totals.newFollowers.toLocaleString()} this period`}
-              />
-              <SnapshotCard
-                icon={<UserCircleIcon size={18} />}
-                label="Following"
-                value={data.snapshot.followingCount.toLocaleString()}
-                hint="Accounts you follow"
-              />
-              <SnapshotCard
-                icon={<UserPlusIcon size={18} />}
-                label="New followers"
-                value={data.totals.newFollowers.toLocaleString()}
-                hint="First-time follows in this window"
-              />
-            </div>
-          </section>
-
-          <section>
-            <h2 className="text-sm font-semibold">Content you published</h2>
-            <p className="text-xs text-muted-foreground">
-              Posts and articles first published during the window (reposts
-              counted separately).
-            </p>
-            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <SnapshotCard
-                icon={<ChatCircleIcon size={18} />}
-                label="Original posts"
-                value={data.snapshot.originalPosts.toLocaleString()}
-                hint="Excludes repost rows"
-              />
-              <SnapshotCard
-                icon={<RepeatIcon size={18} />}
-                label="Reposts"
-                value={data.snapshot.repostsAuthored.toLocaleString()}
-                hint="Shares of other people's posts"
-              />
-              <SnapshotCard
-                icon={<ArticleIcon size={18} />}
-                label="Articles published"
-                value={data.snapshot.articlesPublished.toLocaleString()}
-                hint="Long-form pieces went live"
-              />
-            </div>
-          </section>
-
-          <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <Stat
-              icon={<EyeIcon size={18} />}
-              label="Impressions"
-              value={data.totals.impressions}
-              hint="Feed or profile surfaces of your posts (client-reported)"
-            />
-            <Stat
-              icon={<LightningIcon size={18} />}
-              label="Engagements"
-              value={data.totals.engagements}
-              hint="Likes, reposts, replies, bookmarks, quotes on your posts"
-            />
-            <Stat
-              icon={<TrendUpIcon size={18} />}
-              label="Engagement rate"
-              value={`${(data.totals.engagementRate * 100).toFixed(1)}%`}
-              hint={
-                data.totals.impressions === 0
-                  ? "No impressions yet in this window"
-                  : `${data.totals.engagements.toLocaleString()} ÷ ${data.totals.impressions.toLocaleString()} impressions`
-              }
-            />
-          </section>
-
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <section className="rounded-md border border-border p-4">
-              <h2 className="flex items-center gap-2 text-sm font-semibold">
-                <EyeIcon
-                  size={16}
-                  className="text-muted-foreground"
-                />
-                Impressions per day
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                How often your posts were surfaced to viewers (same source as
-                headline impressions).
-              </p>
-              <DailySparkline
-                series={impressionSeries}
-                emptyLabel="No impressions recorded in this period."
-              />
-            </section>
-            <section className="rounded-md border border-border p-4">
-              <h2 className="flex items-center gap-2 text-sm font-semibold">
-                <UserPlusIcon
-                  size={16}
-                  className="text-muted-foreground"
-                />
-                New follows per day
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                New followers only; unfollows are not subtracted here.
-              </p>
-              <DailySparkline
-                series={followerSeries}
-                emptyLabel="No new followers in this period."
-              />
-            </section>
-          </div>
-
-          <section className="rounded-md border border-border">
-            <header className="border-b border-border px-4 py-3">
-              <h2 className="text-sm font-semibold">Engagement breakdown</h2>
-              <p className="text-xs text-muted-foreground">
-                Actions others took on your posts in this window. Share shows
-                fraction of total engagements.
-              </p>
-            </header>
-            <ul className="divide-y divide-border px-4 py-1">
-              <BreakdownRow
-                icon={<HeartIcon className="size-4 shrink-0" />}
-                label="Likes"
-                value={data.totals.likes}
-                share={
-                  engagementTotal > 0 ? data.totals.likes / engagementTotal : 0
-                }
-              />
-              <BreakdownRow
-                icon={<RepeatIcon className="size-4 shrink-0" />}
-                label="Reposts"
-                value={data.totals.reposts}
-                share={
-                  engagementTotal > 0
-                    ? data.totals.reposts / engagementTotal
-                    : 0
-                }
-              />
-              <BreakdownRow
-                icon={
-                  <ChatCircleIcon
-                    className="size-4 shrink-0"
-                  />
-                }
-                label="Replies"
-                value={data.totals.replies}
-                share={
-                  engagementTotal > 0
-                    ? data.totals.replies / engagementTotal
-                    : 0
-                }
-              />
-              <BreakdownRow
-                icon={<QuotesIcon className="size-4 shrink-0" />}
-                label="Quotes"
-                value={data.totals.quotes}
-                share={
-                  engagementTotal > 0 ? data.totals.quotes / engagementTotal : 0
-                }
-              />
-              <BreakdownRow
-                icon={
-                  <BookmarkIcon className="size-4 shrink-0" />
-                }
-                label="Bookmarks"
-                value={data.totals.bookmarks}
-                share={
-                  engagementTotal > 0
-                    ? data.totals.bookmarks / engagementTotal
-                    : 0
-                }
-              />
-            </ul>
-            {engagementTotal === 0 && (
-              <p className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
-                No engagements in this window yet. Posting publicly and getting
-                replies or likes will populate this section.
-              </p>
-            )}
-          </section>
-
-          <section className="rounded-md border border-border">
-            <header className="border-b border-border px-4 py-3">
-              <h2 className="text-sm font-semibold">Top posts</h2>
-              <p className="text-xs text-muted-foreground">
-                Your posts from this period, ranked by lifetime engagement
-                counters (likes, reposts, replies, bookmarks, quotes).
-              </p>
-            </header>
-            {data.topPosts.length === 0 ? (
-              <p className="p-4 text-sm text-muted-foreground">
-                No posts in this period yet.
-              </p>
-            ) : (
-              <ul>
-                {data.topPosts.map((p) => (
-                  <TopPostRow key={p.id} post={p} />
-                ))}
-              </ul>
-            )}
-          </section>
+    <div className="flex flex-col gap-6 px-4 py-4">
+      <section>
+        <h2 className="text-sm font-semibold">Audience and reach</h2>
+        <p className="text-xs text-muted-foreground">
+          Follower and following totals are current; new-follower counts use
+          only the selected window.
+        </p>
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <SnapshotCard
+            icon={<UsersIcon size={18} />}
+            label="Followers"
+            value={data.snapshot.followerCount.toLocaleString()}
+            hint={`+${data.totals.newFollowers.toLocaleString()} this period`}
+          />
+          <SnapshotCard
+            icon={<UserCircleIcon size={18} />}
+            label="Following"
+            value={data.snapshot.followingCount.toLocaleString()}
+            hint="Accounts you follow"
+          />
+          <SnapshotCard
+            icon={<UserPlusIcon size={18} />}
+            label="New followers"
+            value={data.totals.newFollowers.toLocaleString()}
+            hint="First-time follows in this window"
+          />
         </div>
+      </section>
+
+      <section>
+        <h2 className="text-sm font-semibold">Content you published</h2>
+        <p className="text-xs text-muted-foreground">
+          Posts and articles first published during the window (reposts counted
+          separately).
+        </p>
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <SnapshotCard
+            icon={<ChatCircleIcon size={18} />}
+            label="Original posts"
+            value={data.snapshot.originalPosts.toLocaleString()}
+            hint="Excludes repost rows"
+          />
+          <SnapshotCard
+            icon={<RepeatIcon size={18} />}
+            label="Reposts"
+            value={data.snapshot.repostsAuthored.toLocaleString()}
+            hint="Shares of other people's posts"
+          />
+          <SnapshotCard
+            icon={<ArticleIcon size={18} />}
+            label="Articles published"
+            value={data.snapshot.articlesPublished.toLocaleString()}
+            hint="Long-form pieces went live"
+          />
+        </div>
+      </section>
+
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <Stat
+          icon={<EyeIcon size={18} />}
+          label="Impressions"
+          value={data.totals.impressions}
+          hint="Feed or profile surfaces of your posts (client-reported)"
+        />
+        <Stat
+          icon={<LightningIcon size={18} />}
+          label="Engagements"
+          value={data.totals.engagements}
+          hint="Likes, reposts, replies, bookmarks, quotes on your posts"
+        />
+        <Stat
+          icon={<TrendUpIcon size={18} />}
+          label="Engagement rate"
+          value={`${(data.totals.engagementRate * 100).toFixed(1)}%`}
+          hint={
+            data.totals.impressions === 0
+              ? "No impressions yet in this window"
+              : `${data.totals.engagements.toLocaleString()} ÷ ${data.totals.impressions.toLocaleString()} impressions`
+          }
+        />
+      </section>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <section className="rounded-md border border-border p-4">
+          <h2 className="flex items-center gap-2 text-sm font-semibold">
+            <EyeIcon size={16} className="text-muted-foreground" />
+            Impressions per day
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            How often your posts were surfaced to viewers (same source as
+            headline impressions).
+          </p>
+          <DailySparkline
+            series={impressionSeries}
+            emptyLabel="No impressions recorded in this period."
+          />
+        </section>
+        <section className="rounded-md border border-border p-4">
+          <h2 className="flex items-center gap-2 text-sm font-semibold">
+            <UserPlusIcon size={16} className="text-muted-foreground" />
+            New follows per day
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            New followers only; unfollows are not subtracted here.
+          </p>
+          <DailySparkline
+            series={followerSeries}
+            emptyLabel="No new followers in this period."
+          />
+        </section>
+      </div>
+
+      <section className="rounded-md border border-border">
+        <header className="border-b border-border px-4 py-3">
+          <h2 className="text-sm font-semibold">Engagement breakdown</h2>
+          <p className="text-xs text-muted-foreground">
+            Actions others took on your posts in this window. Share shows
+            fraction of total engagements.
+          </p>
+        </header>
+        <ul className="divide-y divide-border px-4 py-1">
+          <BreakdownRow
+            icon={<HeartIcon className="size-4 shrink-0" />}
+            label="Likes"
+            value={data.totals.likes}
+            share={
+              engagementTotal > 0 ? data.totals.likes / engagementTotal : 0
+            }
+          />
+          <BreakdownRow
+            icon={<RepeatIcon className="size-4 shrink-0" />}
+            label="Reposts"
+            value={data.totals.reposts}
+            share={
+              engagementTotal > 0 ? data.totals.reposts / engagementTotal : 0
+            }
+          />
+          <BreakdownRow
+            icon={<ChatCircleIcon className="size-4 shrink-0" />}
+            label="Replies"
+            value={data.totals.replies}
+            share={
+              engagementTotal > 0 ? data.totals.replies / engagementTotal : 0
+            }
+          />
+          <BreakdownRow
+            icon={<QuotesIcon className="size-4 shrink-0" />}
+            label="Quotes"
+            value={data.totals.quotes}
+            share={
+              engagementTotal > 0 ? data.totals.quotes / engagementTotal : 0
+            }
+          />
+          <BreakdownRow
+            icon={<BookmarkIcon className="size-4 shrink-0" />}
+            label="Bookmarks"
+            value={data.totals.bookmarks}
+            share={
+              engagementTotal > 0 ? data.totals.bookmarks / engagementTotal : 0
+            }
+          />
+        </ul>
+        {engagementTotal === 0 && (
+          <p className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
+            No engagements in this window yet. Posting publicly and getting
+            replies or likes will populate this section.
+          </p>
+        )}
+      </section>
+
+      <section className="rounded-md border border-border">
+        <header className="border-b border-border px-4 py-3">
+          <h2 className="text-sm font-semibold">Top posts</h2>
+          <p className="text-xs text-muted-foreground">
+            Your posts from this period, ranked by lifetime engagement counters
+            (likes, reposts, replies, bookmarks, quotes).
+          </p>
+        </header>
+        {data.topPosts.length === 0 ? (
+          <p className="p-4 text-sm text-muted-foreground">
+            No posts in this period yet.
+          </p>
+        ) : (
+          <ul>
+            {data.topPosts.map((p) => (
+              <TopPostRow key={p.id} post={p} />
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
   )
 }
 
@@ -520,17 +505,11 @@ function TopPostRow({ post: p }: { post: Post }) {
             <span className="text-xs tabular-nums">{p.counts.reposts}</span>
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <ChatCircleIcon
-              className="size-4 shrink-0"
-              aria-hidden
-            />
+            <ChatCircleIcon className="size-4 shrink-0" aria-hidden />
             <span className="text-xs tabular-nums">{p.counts.replies}</span>
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <BookmarkIcon
-              className="size-4 shrink-0"
-              aria-hidden
-            />
+            <BookmarkIcon className="size-4 shrink-0" aria-hidden />
             <span className="text-xs tabular-nums">{p.counts.bookmarks}</span>
           </span>
           <span className="inline-flex items-center gap-1.5">
