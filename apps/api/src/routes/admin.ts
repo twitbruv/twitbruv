@@ -13,48 +13,157 @@ export const adminRoute = new Hono<HonoEnv>()
 // Every endpoint here requires admin or owner. Owner-only operations layer on requireOwner().
 adminRoute.use('*', requireAdmin())
 
-// Aggregate counters for the admin dashboard stat cards. Single round-trip; each branch is a
-// partial-index-friendly count(*) so it stays fast even at scale. `active` excludes banned,
-// shadowbanned, and deleted users so the four moderation buckets sum to the total.
+// Aggregate counters for the admin dashboard stat cards. All groups run in parallel as a
+// single Promise.all; within each query every branch is a partial-index-friendly count(*)
+// filter so we get a wide picture from a small number of round-trips. `active` users excludes
+// banned, shadowbanned, and deleted users so the four moderation buckets sum to the total.
 adminRoute.get('/stats', async (c) => {
   const { db } = c.get('ctx')
   const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
 
-  const [row] = await db
-    .select({
-      total: sql<number>`count(*)::int`,
-      active: sql<number>`count(*) filter (where ${schema.users.banned} = false and ${schema.users.shadowBannedAt} is null and ${schema.users.deletedAt} is null)::int`,
-      banned: sql<number>`count(*) filter (where ${schema.users.banned} = true)::int`,
-      shadowBanned: sql<number>`count(*) filter (where ${schema.users.shadowBannedAt} is not null)::int`,
-      deleted: sql<number>`count(*) filter (where ${schema.users.deletedAt} is not null)::int`,
-      verified: sql<number>`count(*) filter (where ${schema.users.isVerified} = true)::int`,
-      admins: sql<number>`count(*) filter (where ${schema.users.role} in ('admin','owner'))::int`,
-      newToday: sql<number>`count(*) filter (where ${gte(schema.users.createdAt, dayAgo)})::int`,
-      newThisWeek: sql<number>`count(*) filter (where ${gte(schema.users.createdAt, weekAgo)})::int`,
-    })
-    .from(schema.users)
+  const [userRows, reportRows, postRows, engagementRows, socialRows, messagingRows] =
+    await Promise.all([
+      db
+        .select({
+          total: sql<number>`count(*)::int`,
+          active: sql<number>`count(*) filter (where ${schema.users.banned} = false and ${schema.users.shadowBannedAt} is null and ${schema.users.deletedAt} is null)::int`,
+          banned: sql<number>`count(*) filter (where ${schema.users.banned} = true)::int`,
+          shadowBanned: sql<number>`count(*) filter (where ${schema.users.shadowBannedAt} is not null)::int`,
+          deleted: sql<number>`count(*) filter (where ${schema.users.deletedAt} is not null)::int`,
+          verified: sql<number>`count(*) filter (where ${schema.users.isVerified} = true)::int`,
+          admins: sql<number>`count(*) filter (where ${schema.users.role} in ('admin','owner'))::int`,
+          newToday: sql<number>`count(*) filter (where ${gte(schema.users.createdAt, dayAgo)})::int`,
+          newThisWeek: sql<number>`count(*) filter (where ${gte(schema.users.createdAt, weekAgo)})::int`,
+        })
+        .from(schema.users),
+      db
+        .select({
+          open: sql<number>`count(*) filter (where ${schema.reports.status} = 'open')::int`,
+          triaged: sql<number>`count(*) filter (where ${schema.reports.status} = 'triaged')::int`,
+          actioned: sql<number>`count(*) filter (where ${schema.reports.status} = 'actioned')::int`,
+          dismissed: sql<number>`count(*) filter (where ${schema.reports.status} = 'dismissed')::int`,
+          total: sql<number>`count(*)::int`,
+        })
+        .from(schema.reports),
+      // Posts taxonomy: replies, reposts, and quotes are all rows in `posts` distinguished by
+      // the foreign keys they set. `original` excludes all three so the buckets partition the
+      // (non-deleted) total. Impressions/likes/reposts/bookmarks/replies are summed off the
+      // counter columns on the post row so we don't have to scan likes/bookmarks tables.
+      db
+        .select({
+          total: sql<number>`count(*) filter (where ${schema.posts.deletedAt} is null)::int`,
+          deleted: sql<number>`count(*) filter (where ${schema.posts.deletedAt} is not null)::int`,
+          original: sql<number>`count(*) filter (where ${schema.posts.deletedAt} is null and ${schema.posts.replyToId} is null and ${schema.posts.repostOfId} is null and ${schema.posts.quoteOfId} is null)::int`,
+          replies: sql<number>`count(*) filter (where ${schema.posts.deletedAt} is null and ${schema.posts.replyToId} is not null)::int`,
+          reposts: sql<number>`count(*) filter (where ${schema.posts.deletedAt} is null and ${schema.posts.repostOfId} is not null)::int`,
+          quotes: sql<number>`count(*) filter (where ${schema.posts.deletedAt} is null and ${schema.posts.quoteOfId} is not null)::int`,
+          sensitive: sql<number>`count(*) filter (where ${schema.posts.deletedAt} is null and ${schema.posts.sensitive} = true)::int`,
+          edited: sql<number>`count(*) filter (where ${schema.posts.deletedAt} is null and ${schema.posts.editedAt} is not null)::int`,
+          newToday: sql<number>`count(*) filter (where ${gte(schema.posts.createdAt, dayAgo)} and ${schema.posts.deletedAt} is null)::int`,
+          newThisWeek: sql<number>`count(*) filter (where ${gte(schema.posts.createdAt, weekAgo)} and ${schema.posts.deletedAt} is null)::int`,
+          // Impressions live only on the post row (no relation table to sum from). bigint cast
+          // keeps us safe past 2.1B aggregate impressions; ::text preserves precision in
+          // transit (sum() returns numeric in PG) and we parse back to Number client-side.
+          totalImpressions: sql<string>`coalesce(sum(${schema.posts.impressionCount}) filter (where ${schema.posts.deletedAt} is null), 0)::bigint::text`,
+        })
+        .from(schema.posts),
+      // Counts off the relation tables for canonical totals (the post-counter sums above
+      // double-count if a post is both repost and quote, etc.). These are partial-index
+      // friendly count(*) queries on small composite keys.
+      Promise.all([
+        db.select({ count: sql<number>`count(*)::int` }).from(schema.likes),
+        db.select({ count: sql<number>`count(*)::int` }).from(schema.bookmarks),
+        db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(schema.likes)
+          .where(gte(schema.likes.createdAt, dayAgo)),
+      ]).then(([likes, bookmarks, likesToday]) => ({
+        likes: likes[0]?.count ?? 0,
+        bookmarks: bookmarks[0]?.count ?? 0,
+        likesToday: likesToday[0]?.count ?? 0,
+      })),
+      Promise.all([
+        db.select({ count: sql<number>`count(*)::int` }).from(schema.follows),
+        db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(schema.follows)
+          .where(gte(schema.follows.createdAt, dayAgo)),
+        db.select({ count: sql<number>`count(*)::int` }).from(schema.blocks),
+        db.select({ count: sql<number>`count(*)::int` }).from(schema.mutes),
+      ]).then(([follows, followsToday, blocks, mutes]) => ({
+        follows: follows[0]?.count ?? 0,
+        followsToday: followsToday[0]?.count ?? 0,
+        blocks: blocks[0]?.count ?? 0,
+        mutes: mutes[0]?.count ?? 0,
+      })),
+      Promise.all([
+        db.select({ count: sql<number>`count(*)::int` }).from(schema.conversations),
+        db
+          .select({ count: sql<number>`count(*) filter (where ${schema.messages.deletedAt} is null)::int` })
+          .from(schema.messages),
+      ]).then(([conversations, messages]) => ({
+        conversations: conversations[0]?.count ?? 0,
+        messages: messages[0]?.count ?? 0,
+      })),
+    ])
 
-  const [reportRow] = await db
-    .select({
-      openReports: sql<number>`count(*) filter (where ${schema.reports.status} = 'open')::int`,
-    })
-    .from(schema.reports)
+  const userRow = userRows[0]
+  const reportRow = reportRows[0]
+  const postRow = postRows[0]
 
   return c.json({
     users: {
-      total: row?.total ?? 0,
-      active: row?.active ?? 0,
-      banned: row?.banned ?? 0,
-      shadowBanned: row?.shadowBanned ?? 0,
-      deleted: row?.deleted ?? 0,
-      verified: row?.verified ?? 0,
-      admins: row?.admins ?? 0,
-      newToday: row?.newToday ?? 0,
-      newThisWeek: row?.newThisWeek ?? 0,
+      total: userRow?.total ?? 0,
+      active: userRow?.active ?? 0,
+      banned: userRow?.banned ?? 0,
+      shadowBanned: userRow?.shadowBanned ?? 0,
+      deleted: userRow?.deleted ?? 0,
+      verified: userRow?.verified ?? 0,
+      admins: userRow?.admins ?? 0,
+      newToday: userRow?.newToday ?? 0,
+      newThisWeek: userRow?.newThisWeek ?? 0,
+    },
+    posts: {
+      total: postRow?.total ?? 0,
+      original: postRow?.original ?? 0,
+      replies: postRow?.replies ?? 0,
+      reposts: postRow?.reposts ?? 0,
+      quotes: postRow?.quotes ?? 0,
+      deleted: postRow?.deleted ?? 0,
+      sensitive: postRow?.sensitive ?? 0,
+      edited: postRow?.edited ?? 0,
+      newToday: postRow?.newToday ?? 0,
+      newThisWeek: postRow?.newThisWeek ?? 0,
+      // sum() returns numeric in PG; we cast to text to preserve precision in transit and
+      // parse back to number client-side. JS number is safe up to 2^53 which covers any
+      // realistic engagement total.
+      totalImpressions: Number(postRow?.totalImpressions ?? 0),
+    },
+    engagement: {
+      likes: engagementRows.likes,
+      likesToday: engagementRows.likesToday,
+      bookmarks: engagementRows.bookmarks,
+      reposts: postRow?.reposts ?? 0,
+      quotes: postRow?.quotes ?? 0,
+      replies: postRow?.replies ?? 0,
+    },
+    social: {
+      follows: socialRows.follows,
+      followsToday: socialRows.followsToday,
+      blocks: socialRows.blocks,
+      mutes: socialRows.mutes,
+    },
+    messaging: {
+      conversations: messagingRows.conversations,
+      messages: messagingRows.messages,
     },
     reports: {
-      open: reportRow?.openReports ?? 0,
+      total: reportRow?.total ?? 0,
+      open: reportRow?.open ?? 0,
+      triaged: reportRow?.triaged ?? 0,
+      actioned: reportRow?.actioned ?? 0,
+      dismissed: reportRow?.dismissed ?? 0,
     },
   })
 })

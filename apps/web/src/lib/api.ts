@@ -1019,8 +1019,43 @@ export interface AdminStats {
     newToday: number
     newThisWeek: number
   }
+  posts: {
+    total: number
+    original: number
+    replies: number
+    reposts: number
+    quotes: number
+    deleted: number
+    sensitive: number
+    edited: number
+    newToday: number
+    newThisWeek: number
+    totalImpressions: number
+  }
+  engagement: {
+    likes: number
+    likesToday: number
+    bookmarks: number
+    reposts: number
+    quotes: number
+    replies: number
+  }
+  social: {
+    follows: number
+    followsToday: number
+    blocks: number
+    mutes: number
+  }
+  messaging: {
+    conversations: number
+    messages: number
+  }
   reports: {
+    total: number
     open: number
+    triaged: number
+    actioned: number
+    dismissed: number
   }
 }
 
