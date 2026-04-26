@@ -151,7 +151,7 @@ function ChessGamePage() {
                 options={{
                   position: chess.fen(),
                   onPieceDrop: ({ sourceSquare, targetSquare }) =>
-                    onDrop(sourceSquare as string, targetSquare as string),
+                    onDrop(sourceSquare, targetSquare as string),
                   boardOrientation: orientation,
                   animationDurationInMs: 200,
                 }}

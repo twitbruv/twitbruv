@@ -2,9 +2,9 @@ import { Link, createFileRoute, useRouter } from "@tanstack/react-router"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   DotsThreeIcon,
+  GearIcon,
   PaperclipIcon,
   PencilIcon,
-  GearIcon,
   TrashIcon,
   XIcon,
 } from "@phosphor-icons/react"

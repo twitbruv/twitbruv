@@ -333,8 +333,8 @@ function ChessChallengePoller({ enabled }: { enabled: boolean }) {
         <DialogHeader>
           <DialogTitle>Chess Challenge!</DialogTitle>
           <DialogDescription>
-            {pendingGame?.challenger?.displayName ||
-              pendingGame?.challenger?.handle ||
+            {pendingGame?.challenger.displayName ||
+              pendingGame?.challenger.handle ||
               "Someone"}{" "}
             has challenged you to a game of Chess.
           </DialogDescription>
