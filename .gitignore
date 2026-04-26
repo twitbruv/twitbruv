@@ -36,3 +36,6 @@ npm-debug.log*
 .DS_Store
 *.pem
 packages/media/tsconfig.tsbuildinfo
+
+# Local-only ad-hoc scripts (password resets, dev utilities, etc.)
+apps/api/scripts/

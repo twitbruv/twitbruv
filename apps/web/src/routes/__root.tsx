@@ -5,6 +5,7 @@ import {
   Scripts,
   createRootRoute,
 } from "@tanstack/react-router"
+import { IconContext } from "@phosphor-icons/react"
 
 import appCss from "@workspace/ui/globals.css?url"
 import { Button } from "@workspace/ui/components/button"
@@ -74,15 +75,17 @@ export const Route = createRootRoute({
   ),
   shellComponent: RootDocument,
   component: () => (
-    <QueryProvider>
-      <ThemeProvider>
-        <MeProvider>
-          <AppShell>
-            <Outlet />
-          </AppShell>
-        </MeProvider>
-      </ThemeProvider>
-    </QueryProvider>
+    <IconContext.Provider value={{ weight: "duotone" }}>
+      <QueryProvider>
+        <ThemeProvider>
+          <MeProvider>
+            <AppShell>
+              <Outlet />
+            </AppShell>
+          </MeProvider>
+        </ThemeProvider>
+      </QueryProvider>
+    </IconContext.Provider>
   ),
 })
 

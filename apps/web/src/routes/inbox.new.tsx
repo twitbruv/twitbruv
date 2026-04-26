@@ -1,12 +1,13 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router"
-import { useEffect, useState } from "react"
-import { IconX } from "@tabler/icons-react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { XIcon } from "@phosphor-icons/react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import { api } from "../lib/api"
 import { Avatar } from "../components/avatar"
-import { PageError, PageHeader } from "../components/page-surface"
+import { usePageHeader } from "../components/app-page-header"
+import { PageError } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
 import { VerifiedBadge } from "../components/verified-badge"
 import type { PublicUser } from "../lib/api"
@@ -56,7 +57,7 @@ function NewConversation() {
     setSelected((prev) => prev.filter((u) => u.id !== id))
   }
 
-  async function start() {
+  const start = useCallback(async () => {
     if (selected.length === 0 || busy) return
     setBusy(true)
     setError(null)
@@ -76,27 +77,30 @@ function NewConversation() {
     } finally {
       setBusy(false)
     }
-  }
+  }, [selected, busy, title, router])
 
   const isGroup = selected.length >= 2
+
+  const appHeader = useMemo(
+    () => ({
+      title: "New conversation" as const,
+      action: (
+        <Button
+          size="sm"
+          disabled={selected.length === 0 || busy}
+          onClick={start}
+        >
+          {busy ? "…" : isGroup ? "Create group" : "Message"}
+        </Button>
+      ),
+    }),
+    [selected.length, busy, isGroup, start]
+  )
+  usePageHeader(appHeader)
 
   return (
     <PageFrame>
       <main>
-        <PageHeader
-          sticky
-          title="New conversation"
-          action={
-            <Button
-              size="sm"
-              disabled={selected.length === 0 || busy}
-              onClick={start}
-            >
-              {busy ? "…" : isGroup ? "Create group" : "Message"}
-            </Button>
-          }
-        />
-
         <div className="flex flex-col gap-4 px-4 py-4">
           {selected.length > 0 && (
             <div className="flex flex-wrap gap-2">
@@ -123,7 +127,7 @@ function NewConversation() {
                     aria-label={`remove ${u.handle ?? u.id}`}
                     className="ml-0.5 text-muted-foreground hover:text-foreground"
                   >
-                    <IconX size={12} stroke={2} />
+                    <XIcon size={12} />
                   </button>
                 </span>
               ))}

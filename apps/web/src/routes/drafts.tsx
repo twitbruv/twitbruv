@@ -1,15 +1,11 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { ApiError, api } from "../lib/api"
 import { authClient } from "../lib/auth"
-import {
-  PageEmpty,
-  PageError,
-  PageHeader,
-  PageLoading,
-} from "../components/page-surface"
+import { usePageHeader } from "../components/app-page-header"
+import { PageEmpty, PageError, PageLoading } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
 import {
   UnderlineTabButton,
@@ -73,6 +69,14 @@ function Drafts() {
       setBusyId(null)
     }
   }
+  const appHeader = useMemo(
+    () => ({
+      title: "Drafts & scheduled" as const,
+    }),
+    []
+  )
+  usePageHeader(appHeader)
+
   async function reschedule(id: string, scheduledFor: string | null) {
     setBusyId(id)
     try {
@@ -88,10 +92,6 @@ function Drafts() {
   return (
     <PageFrame>
       <main>
-        <PageHeader
-          title="Drafts & scheduled"
-          description="Drafts stay private. Scheduled posts publish at the time you set."
-        />
         <UnderlineTabRow>
           {(["drafts", "scheduled"] as Array<Tab>).map((t) => (
             <UnderlineTabButton

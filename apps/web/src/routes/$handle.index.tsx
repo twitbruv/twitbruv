@@ -6,6 +6,7 @@ import { Feed } from "../components/feed"
 import { ProfileActions } from "../components/profile-actions"
 import { ImageLightbox } from "../components/image-lightbox"
 import { RichText } from "../components/rich-text"
+import { MacfolioCardFromText } from "../components/macfolio-card"
 import { VerifiedBadge } from "../components/verified-badge"
 import { NotFoundPanel, PageLoading } from "../components/page-surface"
 import { useMe } from "../lib/me"
@@ -180,6 +181,7 @@ function Profile() {
             <RichText text={user.bio} />
           </p>
         )}
+        {user.bio && <MacfolioCardFromText text={user.bio} />}
         <div className="mt-3 flex items-center gap-3 text-xs text-muted-foreground">
           {user.location && <span>{user.location}</span>}
           {user.websiteUrl && (

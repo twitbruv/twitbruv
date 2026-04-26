@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { IconPencilPlus } from "@tabler/icons-react"
+import { NotePencilIcon } from "@phosphor-icons/react"
 import {
   Dialog,
   DialogContent,
@@ -23,7 +23,7 @@ export function ComposeFab() {
             size="icon"
             className="fixed right-6 bottom-6 size-14 rounded-full shadow-lg shadow-primary/30"
           >
-            <IconPencilPlus className="size-6" />
+            <NotePencilIcon className="size-6" />
           </Button>
         }
       />

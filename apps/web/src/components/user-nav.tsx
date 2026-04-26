@@ -1,13 +1,13 @@
 import { Link, useRouter } from "@tanstack/react-router"
 import {
-  IconDeviceDesktop,
-  IconLogout,
-  IconMoon,
-  IconSettings,
-  IconShield,
-  IconSun,
-  IconUser,
-} from "@tabler/icons-react"
+  DesktopIcon,
+  SignOutIcon,
+  MoonIcon,
+  GearIcon,
+  ShieldIcon,
+  SunIcon,
+  UserIcon,
+} from "@phosphor-icons/react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -91,18 +91,18 @@ export function UserNav({ user }: { user: SelfUser }) {
           <DropdownMenuItem
             render={<Link to="/$handle" params={{ handle: user.handle }} />}
           >
-            <IconUser size={16} stroke={1.75} />
+            <UserIcon size={16} />
             <span>Profile</span>
           </DropdownMenuItem>
         )}
         {(user.role === "admin" || user.role === "owner") && (
           <DropdownMenuItem render={<Link to="/admin" />}>
-            <IconShield size={16} stroke={1.75} />
+            <ShieldIcon size={16} />
             <span>Admin</span>
           </DropdownMenuItem>
         )}
         <DropdownMenuItem render={<Link to="/settings" />}>
-          <IconSettings size={16} stroke={1.75} />
+          <GearIcon size={16} />
           <span>Settings</span>
         </DropdownMenuItem>
         <DropdownMenuSub>
@@ -116,13 +116,13 @@ export function UserNav({ user }: { user: SelfUser }) {
               onValueChange={(v) => setTheme(v as Theme)}
             >
               <DropdownMenuRadioItem value="light">
-                <IconSun size={16} stroke={1.75} /> <span>Light</span>
+                <SunIcon size={16} /> <span>Light</span>
               </DropdownMenuRadioItem>
               <DropdownMenuRadioItem value="dark">
-                <IconMoon size={16} stroke={1.75} /> <span>Dark</span>
+                <MoonIcon size={16} /> <span>Dark</span>
               </DropdownMenuRadioItem>
               <DropdownMenuRadioItem value="system">
-                <IconDeviceDesktop size={16} stroke={1.75} />{" "}
+                <DesktopIcon size={16} />{" "}
                 <span>System</span>
               </DropdownMenuRadioItem>
             </DropdownMenuRadioGroup>
@@ -130,7 +130,7 @@ export function UserNav({ user }: { user: SelfUser }) {
         </DropdownMenuSub>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={onSignOut}>
-          <IconLogout size={16} stroke={1.75} />
+          <SignOutIcon size={16} />
           <span>Sign out</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -139,7 +139,7 @@ export function UserNav({ user }: { user: SelfUser }) {
 }
 
 function ThemeIcon({ theme }: { theme: Theme }) {
-  if (theme === "dark") return <IconMoon size={16} stroke={1.75} />
-  if (theme === "light") return <IconSun size={16} stroke={1.75} />
-  return <IconDeviceDesktop size={16} stroke={1.75} />
+  if (theme === "dark") return <MoonIcon size={16} />
+  if (theme === "light") return <SunIcon size={16} />
+  return <DesktopIcon size={16} />
 }

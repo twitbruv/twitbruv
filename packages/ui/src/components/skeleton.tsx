@@ -31,7 +31,6 @@ function SkeletonParagraph({ lines = 3 }: { lines?: number }) {
   )
 }
 
-/** Post-row placeholder for feed/profile loading states. */
 function SkeletonPostCard() {
   return (
     <div className="flex gap-3 border-b border-border px-4 py-4">

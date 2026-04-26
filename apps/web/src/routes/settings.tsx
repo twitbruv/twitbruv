@@ -1,5 +1,5 @@
 import { Link, createFileRoute, useRouter } from "@tanstack/react-router"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
@@ -12,6 +12,7 @@ import { ClaimHandle } from "../components/claim-handle"
 import { AvatarUpload } from "../components/avatar-upload"
 import { BannerUpload } from "../components/banner-upload"
 import { Avatar } from "../components/avatar"
+import { usePageHeader } from "../components/app-page-header"
 import { PageLoading } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
 import {
@@ -66,6 +67,9 @@ function Settings() {
     if (!session) router.navigate({ to: "/login" })
   }, [isPending, session, router])
 
+  const appHeader = useMemo(() => (!me ? null : { title: "Settings" as const }), [me])
+  usePageHeader(appHeader)
+
   if (isPending || !me) {
     return (
       <PageFrame>
@@ -79,14 +83,6 @@ function Settings() {
   return (
     <PageFrame>
       <main className="mx-auto px-4 py-8">
-        <header>
-          <h1 className="text-xl font-semibold">Settings</h1>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {me.handle ? `@${me.handle}` : "no handle yet"} ·{" "}
-            {me.emailVerified ? "email verified" : "email unverified"}
-          </p>
-        </header>
-
         {!me.handle && (
           <div className="mt-6">
             <ClaimHandle onClaimed={(h) => setMe({ ...me, handle: h })} />

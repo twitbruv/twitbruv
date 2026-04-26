@@ -1,22 +1,19 @@
 import { Link, useNavigate } from "@tanstack/react-router"
 import { useEffect, useRef, useState } from "react"
 import {
-  IconBookmark,
-  IconBookmarkFilled,
-  IconDots,
-  IconEye,
-  IconEyeOff,
-  IconFlag,
-  IconHeart,
-  IconHeartFilled,
-  IconMessageCircle,
-  IconPencil,
-  IconPin,
-  IconPinFilled,
-  IconQuote,
-  IconRepeat,
-  IconTrash,
-} from "@tabler/icons-react"
+  BookmarkIcon,
+  DotsThreeIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  FlagIcon,
+  HeartIcon,
+  ChatCircleIcon,
+  PencilIcon,
+  PushPinIcon,
+  QuotesIcon,
+  RepeatIcon,
+  TrashIcon,
+} from "@phosphor-icons/react"
 import { Button } from "@workspace/ui/components/button"
 import { Textarea } from "@workspace/ui/components/textarea"
 import {
@@ -37,6 +34,7 @@ import { recordImpression } from "../lib/analytics"
 import { authClient } from "../lib/auth"
 import { ApiError, api } from "../lib/api"
 import { RichText } from "./rich-text"
+import { MacfolioCardFromText } from "./macfolio-card"
 import { ReportDialog } from "./report-dialog"
 import { Avatar } from "./avatar"
 import { ImageLightbox } from "./image-lightbox"
@@ -441,7 +439,7 @@ export function PostCard({
     >
       {outerPost.pinned && (
         <div className="mb-2 ml-10 flex items-center gap-1.5 text-xs text-muted-foreground">
-          <IconPinFilled size={14} stroke={1.75} />
+          <PushPinIcon size={14} weight="fill" />
           <span>Pinned</span>
         </div>
       )}
@@ -451,7 +449,7 @@ export function PostCard({
           params={{ handle: outerPost.author.handle }}
           className="mb-2 ml-10 flex items-center gap-1.5 text-xs text-muted-foreground hover:underline"
         >
-          <IconRepeat size={14} stroke={1.75} />
+          <RepeatIcon size={14} />
           <span className="flex items-center gap-1">
             <span>
               Reposted by{" "}
@@ -548,7 +546,7 @@ export function PostCard({
                       variant="ghost"
                       size="icon-sm"
                       className="ml-auto size-5"
-                      render={<IconDots size={8} />}
+                      render={<DotsThreeIcon size={8} />}
                     />
                   }
                 />
@@ -564,7 +562,7 @@ export function PostCard({
                         setEditText(post.text)
                       }}
                     >
-                      <IconPencil size={14} stroke={1.75} />
+                      <PencilIcon size={14} />
                       <span>Edit</span>
                     </DropdownMenuItem>
                   )}
@@ -581,7 +579,7 @@ export function PostCard({
                           } catch {}
                         }}
                       >
-                        <IconPin size={14} stroke={1.75} />
+                        <PushPinIcon size={14} />
                         <span>{post.pinned ? "Unpin" : "Pin to profile"}</span>
                       </DropdownMenuItem>
                     )}
@@ -591,7 +589,7 @@ export function PostCard({
                       onClick={onDelete}
                       disabled={busy}
                     >
-                      <IconTrash size={14} stroke={1.75} />
+                      <TrashIcon size={14} />
                       <span>Delete</span>
                     </DropdownMenuItem>
                   )}
@@ -608,16 +606,16 @@ export function PostCard({
                       }}
                     >
                       {post.hidden ? (
-                        <IconEye size={14} stroke={1.75} />
+                        <EyeIcon size={14} />
                       ) : (
-                        <IconEyeOff size={14} stroke={1.75} />
+                        <EyeSlashIcon size={14} />
                       )}
                       <span>{post.hidden ? "Unhide reply" : "Hide reply"}</span>
                     </DropdownMenuItem>
                   )}
                   {!isOwner && (
                     <DropdownMenuItem onClick={() => setReportOpen(true)}>
-                      <IconFlag size={14} stroke={1.75} />
+                      <FlagIcon size={14} />
                       <span>Report</span>
                     </DropdownMenuItem>
                   )}
@@ -684,6 +682,7 @@ export function PostCard({
               <RichText text={post.text} />
             </p>
           )}
+          {!editing && <MacfolioCardFromText text={post.text} />}
           {post.articleCard && <ArticleCardBlock card={post.articleCard} />}
           {post.media && post.media.length > 0 && (
             <MediaGrid media={post.media} />
@@ -710,7 +709,7 @@ export function PostCard({
                     params={{ handle: authorHandle, id: post.id }}
                     className="flex items-center gap-2 hover:text-foreground"
                   >
-                    <IconMessageCircle className="size-4" />
+                    <ChatCircleIcon className="size-4" />
                     <span className="text-xs">{post.counts.replies}</span>
                   </Link>
                 }
@@ -738,9 +737,9 @@ export function PostCard({
               aria-pressed={post.viewer?.liked}
             >
               {post.viewer?.liked ? (
-                <IconHeartFilled className="size-4" />
+                <HeartIcon className="size-4" weight="fill" />
               ) : (
-                <IconHeart className="size-4" />
+                <HeartIcon className="size-4" />
               )}
               <span className="text-xs">{post.counts.likes}</span>
             </Button>
@@ -753,9 +752,9 @@ export function PostCard({
               aria-pressed={post.viewer?.bookmarked}
             >
               {post.viewer?.bookmarked ? (
-                <IconBookmarkFilled className="size-4" />
+                <BookmarkIcon className="size-4" weight="fill" />
               ) : (
-                <IconBookmark className="size-4" />
+                <BookmarkIcon className="size-4" />
               )}
               <span className="text-xs">{post.counts.bookmarks}</span>
             </Button>
@@ -791,7 +790,7 @@ function RepostControl({
         className="flex cursor-pointer items-center gap-2 text-foreground transition hover:text-foreground"
         aria-pressed
       >
-        <IconRepeat className="size-4" />
+        <RepeatIcon className="size-4" />
         <span className="text-xs">
           {post.counts.reposts + post.counts.quotes}
         </span>
@@ -810,7 +809,7 @@ function RepostControl({
               disabled={disabled}
               className="flex cursor-pointer items-center gap-2 transition hover:text-foreground"
             >
-              <IconRepeat className="size-4" />
+              <RepeatIcon className="size-4" />
               <span className="text-xs">
                 {post.counts.reposts + post.counts.quotes}
               </span>
@@ -819,11 +818,11 @@ function RepostControl({
         />
         <DropdownMenuContent align="start" sideOffset={4} className="w-40">
           <DropdownMenuItem onClick={onToggleRepost}>
-            <IconRepeat className="size-3.5" />
+            <RepeatIcon className="size-3.5" />
             <span>Repost</span>
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setQuoteOpen(true)}>
-            <IconQuote className="size-3.5" />
+            <QuotesIcon className="size-3.5" />
             <span>Quote post</span>
           </DropdownMenuItem>
         </DropdownMenuContent>

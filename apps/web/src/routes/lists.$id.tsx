@@ -1,14 +1,15 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router"
-import { useCallback, useEffect, useState } from "react"
-import { IconLock, IconTrash, IconX } from "@tabler/icons-react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { LockIcon, TrashIcon, XIcon } from "@phosphor-icons/react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import { ApiError, api } from "../lib/api"
 import { authClient } from "../lib/auth"
+import { usePageHeader } from "../components/app-page-header"
 import { Avatar } from "../components/avatar"
 import { Feed } from "../components/feed"
-import { PageEmpty, PageError, PageHeader, PageLoading } from "../components/page-surface"
+import { PageEmpty, PageError, PageLoading } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
 import type { PublicUser, UserList, UserListMember } from "../lib/api"
 
@@ -51,7 +52,7 @@ function ListDetail() {
     [id]
   )
 
-  async function removeList() {
+  const removeList = useCallback(async () => {
     if (!confirm("Delete this list?")) return
     try {
       await api.deleteList(id)
@@ -59,7 +60,46 @@ function ListDetail() {
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "delete failed")
     }
-  }
+  }, [id, router])
+
+  const appHeader = useMemo(() => {
+    if (loading || !list) return null
+    return {
+      className: "items-start",
+      title: (
+        <span className="inline-flex min-w-0 items-center gap-2">
+          <span className="truncate">{list.title}</span>
+          {list.isPrivate ? (
+            <span className="inline-flex shrink-0 items-center gap-0.5 text-xs font-normal text-muted-foreground">
+              <LockIcon size={12} />
+              Private
+            </span>
+          ) : null}
+        </span>
+      ),
+      action: isOwner ? (
+        <div className="flex shrink-0 items-center gap-1">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setShowAdd((v) => !v)}
+          >
+            {showAdd ? "Done" : "Manage"}
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={removeList}
+            className="text-destructive"
+          >
+            <TrashIcon size={14} /> Delete
+          </Button>
+        </div>
+      ) : undefined,
+    }
+  }, [loading, list, isOwner, showAdd, removeList])
+
+  usePageHeader(appHeader)
 
   if (loading) {
     return (
@@ -91,51 +131,6 @@ function ListDetail() {
     <PageFrame>
       <main>
         {error && <PageError message={error} className="border-b border-border" />}
-        <PageHeader
-          className="items-start"
-          title={
-            <span className="inline-flex min-w-0 items-center gap-2">
-              <span className="truncate">{list.title}</span>
-              {list.isPrivate ? (
-                <span className="inline-flex shrink-0 items-center gap-0.5 text-xs font-normal text-muted-foreground">
-                  <IconLock size={12} />
-                  Private
-                </span>
-              ) : null}
-            </span>
-          }
-          description={[
-            list.description,
-            `By ${
-              list.ownerHandle ? `@${list.ownerHandle}` : "unknown"
-            } · ${list.memberCount} ${
-              list.memberCount === 1 ? "member" : "members"
-            }`,
-          ]
-            .filter(Boolean)
-            .join(" · ")}
-          action={
-            isOwner ? (
-              <div className="flex shrink-0 items-center gap-1">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setShowAdd((v) => !v)}
-                >
-                  {showAdd ? "Done" : "Manage"}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={removeList}
-                  className="text-destructive"
-                >
-                  <IconTrash size={14} /> Delete
-                </Button>
-              </div>
-            ) : undefined
-          }
-        />
 
         {isOwner && showAdd && (
           <ManageMembers listId={id} members={members} onChanged={refresh} />
@@ -238,7 +233,7 @@ function ManageMembers({
                 className="shrink-0 text-muted-foreground hover:text-destructive"
                 aria-label="Remove"
               >
-                <IconX size={12} stroke={2} />
+                <XIcon size={12} />
               </Button>
             </li>
           ))}

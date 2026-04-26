@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router"
+import { MacfolioPill, isMacfolioUrl } from "./macfolio-card"
 import type { ReactNode } from "react"
 
 type Part =
@@ -59,6 +60,9 @@ export function RichText({ text }: { text: string }): ReactNode {
               {p.value}
             </Link>
           )
+        }
+        if (isMacfolioUrl(p.value)) {
+          return <MacfolioPill key={i} url={p.value} />
         }
         return (
           <a

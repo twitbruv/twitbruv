@@ -1,16 +1,13 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
-import { useEffect, useState } from "react"
-import { IconPencilPlus } from "@tabler/icons-react"
+import { useEffect, useMemo, useState } from "react"
+import { NotePencilIcon } from "@phosphor-icons/react"
 import { Button } from "@workspace/ui/components/button"
 import { Badge } from "@workspace/ui/components/badge"
 import { Skeleton, SkeletonAvatar } from "@workspace/ui/components/skeleton"
 import { api } from "../lib/api"
+import { usePageHeader } from "../components/app-page-header"
 import { Avatar } from "../components/avatar"
-import {
-  PageEmpty,
-  PageError,
-  PageHeader,
-} from "../components/page-surface"
+import { PageEmpty, PageError } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
 import {
   UnderlineTabButton,
@@ -28,24 +25,28 @@ function InboxList() {
   const [folder, setFolder] = useState<Folder>("inbox")
   const [requestCount, setRequestCount] = useState(0)
 
+  const appHeader = useMemo(
+    () => ({
+      title: "Messages" as const,
+      action: (
+        <Button
+          size="sm"
+          variant="outline"
+          nativeButton={false}
+          render={<Link to="/inbox/new" />}
+        >
+          <NotePencilIcon size={14} />
+          New
+        </Button>
+      ),
+    }),
+    []
+  )
+  usePageHeader(appHeader)
+
   return (
     <PageFrame>
       <main>
-        <PageHeader
-          sticky
-          title="Messages"
-          action={
-            <Button
-              size="sm"
-              variant="outline"
-              nativeButton={false}
-              render={<Link to="/inbox/new" />}
-            >
-              <IconPencilPlus size={14} stroke={1.75} />
-              New
-            </Button>
-          }
-        />
         <UnderlineTabRow>
           <UnderlineTabButton
             active={folder === "inbox"}

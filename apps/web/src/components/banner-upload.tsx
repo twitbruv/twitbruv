@@ -1,6 +1,7 @@
 import { useRef, useState } from "react"
-import { IconCamera, IconTrash } from "@tabler/icons-react"
+import { CameraIcon, TrashIcon } from "@phosphor-icons/react"
 import { Button } from "@workspace/ui/components/button"
+import { getPastedImageFiles } from "../lib/clipboard-images"
 import { pickVariantUrl, uploadImage } from "../lib/media"
 
 export function BannerUpload({
@@ -54,6 +55,14 @@ export function BannerUpload({
     if (file) upload(file)
   }
 
+  function onPaste(e: React.ClipboardEvent) {
+    if (uploading) return
+    const files = getPastedImageFiles(e)
+    if (files.length === 0) return
+    e.preventDefault()
+    void upload(files[0])
+  }
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
@@ -70,7 +79,7 @@ export function BannerUpload({
               onClick={() => onChange(null)}
               className="text-destructive hover:underline"
             >
-              <IconTrash className="size-4" /> Remove
+              <TrashIcon className="size-4" /> Remove
             </Button>
           )}
         </div>
@@ -83,6 +92,7 @@ export function BannerUpload({
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
+        onPaste={onPaste}
         className={`group relative block h-36 w-full overflow-hidden rounded-md border bg-muted transition ${
           dragOver ? "border-primary ring-2 ring-primary" : "border-border"
         }`}
@@ -104,7 +114,7 @@ export function BannerUpload({
               : "bg-background/0 opacity-0 group-hover:bg-background/30 group-hover:opacity-100"
           }`}
         >
-          <IconCamera className="size-4" />
+          <CameraIcon className="size-4" />
         </div>
       </Button>
       <input

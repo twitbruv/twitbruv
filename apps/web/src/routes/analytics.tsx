@@ -1,19 +1,19 @@
 import { Link, createFileRoute, useRouter } from "@tanstack/react-router"
 import {
-  IconArticle,
-  IconBolt,
-  IconBookmark,
-  IconEye,
-  IconHeart,
-  IconMessageCircle,
-  IconQuote,
-  IconRepeat,
-  IconTrendingUp,
-  IconUserPlus,
-  IconUserSearch,
-  IconUsers,
-} from "@tabler/icons-react"
-import { useEffect, useMemo, useState } from "react"
+  ArticleIcon,
+  LightningIcon,
+  BookmarkIcon,
+  EyeIcon,
+  HeartIcon,
+  ChatCircleIcon,
+  QuotesIcon,
+  RepeatIcon,
+  TrendUpIcon,
+  UserPlusIcon,
+  UserCircleIcon,
+  UsersIcon,
+} from "@phosphor-icons/react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   Select,
   SelectContent,
@@ -23,24 +23,13 @@ import {
 } from "@workspace/ui/components/select"
 import { api } from "../lib/api"
 import { authClient } from "../lib/auth"
+import { usePageHeader } from "../components/app-page-header"
 import { PageFrame } from "../components/page-frame"
-import { PageError, PageHeader, PageLoading } from "../components/page-surface"
+import { PageError, PageLoading } from "../components/page-surface"
 import type { ReactNode } from "react"
 import type { AnalyticsOverview, Post } from "../lib/api"
 
 export const Route = createFileRoute("/analytics")({ component: Analytics })
-
-function formatPeriodStart(iso: string) {
-  try {
-    return new Date(iso).toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    })
-  } catch {
-    return iso
-  }
-}
 
 function formatPostAge(iso: string): string {
   const d = new Date(iso).getTime()
@@ -130,33 +119,34 @@ function Analytics() {
       .catch((e) => setError(e instanceof Error ? e.message : "failed to load"))
   }, [session, days])
 
+  const onDays = useCallback((v: string | null) => {
+    if (v == null) return
+    setDays(Number(v))
+  }, [])
+
+  const appHeader = useMemo(
+    () => ({
+      title: "Analytics" as const,
+      action: (
+        <Select value={String(days)} onValueChange={onDays}>
+          <SelectTrigger size="sm" className="h-8 w-full min-w-[8rem] sm:w-auto">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="7">Last 7 days</SelectItem>
+            <SelectItem value="28">Last 28 days</SelectItem>
+            <SelectItem value="90">Last 90 days</SelectItem>
+          </SelectContent>
+        </Select>
+      ),
+    }),
+    [days, onDays]
+  )
+  usePageHeader(appHeader)
+
   return (
     <PageFrame>
       <main>
-        <PageHeader
-          title="Analytics"
-          description={
-            data
-              ? `Window from ${formatPeriodStart(data.period.since)} · ${data.period.days} days · Free, self-reported only`
-              : "Free, self-reported only"
-          }
-          action={
-            <Select
-              value={String(days)}
-              onValueChange={(v) => setDays(Number(v))}
-            >
-              <SelectTrigger size="sm" className="h-8 w-full min-w-[8rem] sm:w-auto">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="7">Last 7 days</SelectItem>
-                <SelectItem value="28">Last 28 days</SelectItem>
-                <SelectItem value="90">Last 90 days</SelectItem>
-              </SelectContent>
-            </Select>
-          }
-        />
-
         {error && <PageError message={error} />}
         {!data && !error && <PageLoading label="Loading…" />}
 
@@ -194,19 +184,19 @@ function AnalyticsLoaded({
             </p>
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <SnapshotCard
-                icon={<IconUsers size={18} stroke={1.75} />}
+                icon={<UsersIcon size={18} />}
                 label="Followers"
                 value={data.snapshot.followerCount.toLocaleString()}
                 hint={`+${data.totals.newFollowers.toLocaleString()} this period`}
               />
               <SnapshotCard
-                icon={<IconUserSearch size={18} stroke={1.75} />}
+                icon={<UserCircleIcon size={18} />}
                 label="Following"
                 value={data.snapshot.followingCount.toLocaleString()}
                 hint="Accounts you follow"
               />
               <SnapshotCard
-                icon={<IconUserPlus size={18} stroke={1.75} />}
+                icon={<UserPlusIcon size={18} />}
                 label="New followers"
                 value={data.totals.newFollowers.toLocaleString()}
                 hint="First-time follows in this window"
@@ -222,19 +212,19 @@ function AnalyticsLoaded({
             </p>
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
               <SnapshotCard
-                icon={<IconMessageCircle size={18} stroke={1.75} />}
+                icon={<ChatCircleIcon size={18} />}
                 label="Original posts"
                 value={data.snapshot.originalPosts.toLocaleString()}
                 hint="Excludes repost rows"
               />
               <SnapshotCard
-                icon={<IconRepeat size={18} stroke={1.75} />}
+                icon={<RepeatIcon size={18} />}
                 label="Reposts"
                 value={data.snapshot.repostsAuthored.toLocaleString()}
                 hint="Shares of other people's posts"
               />
               <SnapshotCard
-                icon={<IconArticle size={18} stroke={1.75} />}
+                icon={<ArticleIcon size={18} />}
                 label="Articles published"
                 value={data.snapshot.articlesPublished.toLocaleString()}
                 hint="Long-form pieces went live"
@@ -244,19 +234,19 @@ function AnalyticsLoaded({
 
           <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Stat
-              icon={<IconEye size={18} stroke={1.75} />}
+              icon={<EyeIcon size={18} />}
               label="Impressions"
               value={data.totals.impressions}
               hint="Feed or profile surfaces of your posts (client-reported)"
             />
             <Stat
-              icon={<IconBolt size={18} stroke={1.75} />}
+              icon={<LightningIcon size={18} />}
               label="Engagements"
               value={data.totals.engagements}
               hint="Likes, reposts, replies, bookmarks, quotes on your posts"
             />
             <Stat
-              icon={<IconTrendingUp size={18} stroke={1.75} />}
+              icon={<TrendUpIcon size={18} />}
               label="Engagement rate"
               value={`${(data.totals.engagementRate * 100).toFixed(1)}%`}
               hint={
@@ -270,9 +260,8 @@ function AnalyticsLoaded({
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <section className="rounded-md border border-border p-4">
               <h2 className="flex items-center gap-2 text-sm font-semibold">
-                <IconEye
+                <EyeIcon
                   size={16}
-                  stroke={1.75}
                   className="text-muted-foreground"
                 />
                 Impressions per day
@@ -288,9 +277,8 @@ function AnalyticsLoaded({
             </section>
             <section className="rounded-md border border-border p-4">
               <h2 className="flex items-center gap-2 text-sm font-semibold">
-                <IconUserPlus
+                <UserPlusIcon
                   size={16}
-                  stroke={1.75}
                   className="text-muted-foreground"
                 />
                 New follows per day
@@ -315,7 +303,7 @@ function AnalyticsLoaded({
             </header>
             <ul className="divide-y divide-border px-4 py-1">
               <BreakdownRow
-                icon={<IconHeart className="size-4 shrink-0" stroke={1.75} />}
+                icon={<HeartIcon className="size-4 shrink-0" />}
                 label="Likes"
                 value={data.totals.likes}
                 share={
@@ -323,7 +311,7 @@ function AnalyticsLoaded({
                 }
               />
               <BreakdownRow
-                icon={<IconRepeat className="size-4 shrink-0" stroke={1.75} />}
+                icon={<RepeatIcon className="size-4 shrink-0" />}
                 label="Reposts"
                 value={data.totals.reposts}
                 share={
@@ -334,9 +322,8 @@ function AnalyticsLoaded({
               />
               <BreakdownRow
                 icon={
-                  <IconMessageCircle
+                  <ChatCircleIcon
                     className="size-4 shrink-0"
-                    stroke={1.75}
                   />
                 }
                 label="Replies"
@@ -348,7 +335,7 @@ function AnalyticsLoaded({
                 }
               />
               <BreakdownRow
-                icon={<IconQuote className="size-4 shrink-0" stroke={1.75} />}
+                icon={<QuotesIcon className="size-4 shrink-0" />}
                 label="Quotes"
                 value={data.totals.quotes}
                 share={
@@ -357,7 +344,7 @@ function AnalyticsLoaded({
               />
               <BreakdownRow
                 icon={
-                  <IconBookmark className="size-4 shrink-0" stroke={1.75} />
+                  <BookmarkIcon className="size-4 shrink-0" />
                 }
                 label="Bookmarks"
                 value={data.totals.bookmarks}
@@ -525,31 +512,29 @@ function TopPostRow({ post: p }: { post: Post }) {
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
-            <IconHeart className="size-4 shrink-0" stroke={1.75} aria-hidden />
+            <HeartIcon className="size-4 shrink-0" aria-hidden />
             <span className="text-xs tabular-nums">{p.counts.likes}</span>
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <IconRepeat className="size-4 shrink-0" stroke={1.75} aria-hidden />
+            <RepeatIcon className="size-4 shrink-0" aria-hidden />
             <span className="text-xs tabular-nums">{p.counts.reposts}</span>
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <IconMessageCircle
+            <ChatCircleIcon
               className="size-4 shrink-0"
-              stroke={1.75}
               aria-hidden
             />
             <span className="text-xs tabular-nums">{p.counts.replies}</span>
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <IconBookmark
+            <BookmarkIcon
               className="size-4 shrink-0"
-              stroke={1.75}
               aria-hidden
             />
             <span className="text-xs tabular-nums">{p.counts.bookmarks}</span>
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <IconQuote className="size-4 shrink-0" stroke={1.75} aria-hidden />
+            <QuotesIcon className="size-4 shrink-0" aria-hidden />
             <span className="text-xs tabular-nums">{p.counts.quotes}</span>
           </span>
         </div>

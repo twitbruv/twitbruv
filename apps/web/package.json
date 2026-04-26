@@ -20,7 +20,7 @@
     "@lexical/rich-text": "^0.37.0",
     "@lexical/selection": "^0.37.0",
     "@lexical/utils": "^0.37.0",
-    "@tabler/icons-react": "^3.41.1",
+    "@phosphor-icons/react": "^2.1.10",
     "@tailwindcss/vite": "^4.1.18",
     "@tanstack/react-hotkeys": "^0.9.1",
     "@tanstack/react-query": "^5.100.3",

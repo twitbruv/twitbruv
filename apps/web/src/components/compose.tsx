@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { IconChartBar, IconPhoto, IconUsers, IconX } from "@tabler/icons-react"
+import { ChartBarIcon, ImageIcon, UsersIcon, XIcon } from "@phosphor-icons/react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
@@ -20,6 +20,7 @@ import {
 } from "@workspace/validators"
 import { ApiError, api } from "../lib/api"
 import { setAltText, uploadImage } from "../lib/media"
+import { getPastedImageFiles } from "../lib/clipboard-images"
 import { clearDraft, draftKey, loadDraft, saveDraft } from "../lib/drafts"
 import { useMe } from "../lib/me"
 import { VerifiedBadge } from "./verified-badge"
@@ -159,10 +160,13 @@ export function Compose({
     })
   }
 
-  async function addFiles(files: FileList | null) {
-    if (!files) return
+  async function addFiles(files: FileList | ReadonlyArray<File> | null) {
+    if (files == null) return
     const room = MAX_ATTACHMENTS - attachments.length
-    const incoming = Array.from(files).slice(0, room)
+    const incoming = (Array.isArray(files) ? files : Array.from(files)).slice(
+      0,
+      room
+    )
     for (const file of incoming) {
       if (!file.type.startsWith("image/")) continue
       const tempId = crypto.randomUUID()
@@ -258,6 +262,14 @@ export function Compose({
     addFiles(e.dataTransfer.files)
   }
 
+  function onPaste(e: React.ClipboardEvent) {
+    if (attachments.length >= MAX_ATTACHMENTS) return
+    const files = getPastedImageFiles(e)
+    if (files.length === 0) return
+    e.preventDefault()
+    void addFiles(files)
+  }
+
   return (
     <form
       onSubmit={onSubmit}
@@ -283,6 +295,7 @@ export function Compose({
           value={text}
           onChange={(e) => setText(e.target.value)}
           onFocus={() => setExpanded(true)}
+          onPaste={onPaste}
           placeholder={placeholder}
           rows={expanded ? 3 : 1}
           className="border-0 bg-transparent px-0 py-0 text-[15px] leading-relaxed shadow-none focus-visible:ring-0"
@@ -338,7 +351,7 @@ export function Compose({
                     onClick={() => removePollOption(opt.id)}
                     aria-label="remove option"
                   >
-                    <IconX size={14} />
+                    <XIcon size={14} />
                   </Button>
                 )}
               </div>
@@ -418,7 +431,7 @@ export function Compose({
                     onClick={() => removeAttachment(a.tempId)}
                     aria-label="remove attachment"
                   >
-                    <IconX size={14} />
+                    <XIcon size={14} />
                   </Button>
                 </div>
                 <Input
@@ -465,7 +478,7 @@ export function Compose({
                 onClick={() => fileInputRef.current?.click()}
                 aria-label="add image"
               >
-                <IconPhoto size={18} stroke={1.75} />
+                <ImageIcon size={18} />
               </Button>
               <Button
                 variant="ghost"
@@ -480,16 +493,15 @@ export function Compose({
                 aria-label="add poll"
                 title="Add a poll"
               >
-                <IconChartBar size={18} stroke={1.75} />
+                <ChartBarIcon size={18} />
               </Button>
               {showReplyControl && (
                 <div
                   className="flex min-w-0 max-w-[min(100%,12rem)] items-center gap-1.5"
                   title="Who can reply"
                 >
-                  <IconUsers
+                  <UsersIcon
                     className="size-3.5 shrink-0 text-muted-foreground"
-                    stroke={1.75}
                   />
                   <Select
                     value={replyRestriction}

@@ -1,6 +1,6 @@
 import { Link, createFileRoute, useRouter } from "@tanstack/react-router"
-import { useEffect, useState } from "react"
-import { IconLock, IconPin, IconPinFilled, IconUsers } from "@tabler/icons-react"
+import { useCallback, useEffect, useMemo, useState } from "react"
+import { LockIcon, PushPinIcon, UsersIcon } from "@phosphor-icons/react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
@@ -9,12 +9,8 @@ import { Textarea } from "@workspace/ui/components/textarea"
 import { LIST_SLUG_RE, LIST_TITLE_MAX } from "@workspace/validators"
 import { ApiError, api } from "../lib/api"
 import { authClient } from "../lib/auth"
-import {
-  PageEmpty,
-  PageError,
-  PageHeader,
-  PageLoading,
-} from "../components/page-surface"
+import { usePageHeader } from "../components/app-page-header"
+import { PageEmpty, PageError, PageLoading } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
 import type { UserList } from "../lib/api"
 
@@ -44,19 +40,26 @@ function ListsIndex() {
     if (session) void refresh()
   }, [session])
 
+  const toggleCreating = useCallback(() => {
+    setCreating((v) => !v)
+  }, [])
+
+  const appHeader = useMemo(
+    () => ({
+      title: "Lists" as const,
+      action: (
+        <Button size="sm" onClick={toggleCreating}>
+          {creating ? "Cancel" : "New list"}
+        </Button>
+      ),
+    }),
+    [creating, toggleCreating]
+  )
+  usePageHeader(appHeader)
+
   return (
     <PageFrame>
       <main>
-        <PageHeader
-          title="Lists"
-          description="Curate people into private or public timelines."
-          action={
-            <Button size="sm" onClick={() => setCreating((v) => !v)}>
-              {creating ? "Cancel" : "New list"}
-            </Button>
-          }
-        />
-
         {creating && (
           <CreateListForm
             onCancel={() => setCreating(false)}
@@ -91,13 +94,13 @@ function ListsIndex() {
                   <div className="flex items-center justify-between">
                     <h2 className="flex items-center gap-1.5 text-sm font-semibold">
                       {list.pinnedAt && (
-                        <IconPinFilled size={12} className="text-primary" />
+                        <PushPinIcon size={12} weight="fill" className="text-primary" />
                       )}
                       {list.title}
                     </h2>
                     {list.isPrivate && (
                       <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <IconLock size={12} /> private
+                        <LockIcon size={12} /> private
                       </span>
                     )}
                   </div>
@@ -107,7 +110,7 @@ function ListsIndex() {
                     </p>
                   )}
                   <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                    <IconUsers size={12} />
+                    <UsersIcon size={12} />
                     {list.memberCount}{" "}
                     {list.memberCount === 1 ? "member" : "members"}
                   </p>
@@ -135,9 +138,9 @@ function ListsIndex() {
                   }}
                 >
                   {list.pinnedAt ? (
-                    <IconPinFilled size={14} className="text-primary" />
+                    <PushPinIcon size={14} weight="fill" className="text-primary" />
                   ) : (
-                    <IconPin size={14} />
+                    <PushPinIcon size={14} />
                   )}
                 </Button>
               </li>

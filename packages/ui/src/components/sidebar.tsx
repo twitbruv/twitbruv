@@ -1,14 +1,8 @@
-"use client"
-
 import * as React from "react"
 import { mergeProps } from "@base-ui/react/merge-props"
 import { useRender } from "@base-ui/react/use-render"
-import { cva } from "class-variance-authority"
+import { cva, type VariantProps } from "class-variance-authority"
 
-import {
-  IconLayoutSidebarLeftExpand,
-  IconLayoutSidebarRightExpand,
-} from "@tabler/icons-react"
 import { useIsMobile } from "@workspace/ui/hooks/use-mobile"
 import { cn } from "@workspace/ui/lib/utils"
 import { Button } from "@workspace/ui/components/button"
@@ -27,7 +21,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@workspace/ui/components/tooltip"
-import type { VariantProps } from "class-variance-authority"
+import { SidebarIcon } from "@phosphor-icons/react"
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
@@ -94,7 +88,7 @@ function SidebarProvider({
 
   // Helper to toggle the sidebar.
   const toggleSidebar = React.useCallback(() => {
-    return isMobile ? setOpenMobile((prev) => !prev) : setOpen((prev) => !prev)
+    return isMobile ? setOpenMobile((open) => !open) : setOpen((open) => !open)
   }, [isMobile, setOpen, setOpenMobile])
 
   // Adds a keyboard shortcut to toggle the sidebar.
@@ -260,16 +254,14 @@ function SidebarTrigger({
   onClick,
   ...props
 }: React.ComponentProps<typeof Button>) {
-  const { toggleSidebar, state } = useSidebar()
-
-  const isCollapsed = state === "collapsed"
+  const { toggleSidebar } = useSidebar()
 
   return (
     <Button
       data-sidebar="trigger"
       data-slot="sidebar-trigger"
       variant="ghost"
-      size="icon"
+      size="icon-sm"
       className={cn(className)}
       onClick={(event) => {
         onClick?.(event)
@@ -277,11 +269,7 @@ function SidebarTrigger({
       }}
       {...props}
     >
-      {isCollapsed ? (
-        <IconLayoutSidebarLeftExpand className="size-4" />
-      ) : (
-        <IconLayoutSidebarRightExpand className="size-4" />
-      )}
+      <SidebarIcon />
       <span className="sr-only">Toggle Sidebar</span>
     </Button>
   )
@@ -312,9 +300,9 @@ function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
   )
 }
 
-function SidebarInset({ className, ...props }: React.ComponentProps<"div">) {
+function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
   return (
-    <div
+    <main
       data-slot="sidebar-inset"
       className={cn(
         "relative flex w-full flex-1 flex-col bg-background md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ml-2",

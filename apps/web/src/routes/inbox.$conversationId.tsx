@@ -1,13 +1,13 @@
 import { Link, createFileRoute, useRouter } from "@tanstack/react-router"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
-  IconDots,
-  IconPaperclip,
-  IconPencil,
-  IconSettings,
-  IconTrash,
-  IconX,
-} from "@tabler/icons-react"
+  DotsThreeIcon,
+  PaperclipIcon,
+  PencilIcon,
+  GearIcon,
+  TrashIcon,
+  XIcon,
+} from "@phosphor-icons/react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
@@ -26,11 +26,13 @@ import {
 } from "@workspace/ui/components/dropdown-menu"
 import { api } from "../lib/api"
 import { authClient } from "../lib/auth"
+import { getPastedImageFiles } from "../lib/clipboard-images"
 import { Avatar } from "../components/avatar"
 import { ImageLightbox } from "../components/image-lightbox"
 import { PageEmpty, PageError } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
 import { RichText } from "../components/rich-text"
+import { MacfolioCardFromText } from "../components/macfolio-card"
 import { VerifiedBadge } from "../components/verified-badge"
 import { subscribeToDmStream } from "../lib/dm-stream"
 import {
@@ -41,10 +43,19 @@ import {
   uploadImage,
 } from "../lib/media"
 import { WEB_URL } from "../lib/env"
-import type { ChangeEvent, DragEvent, FormEvent, KeyboardEvent } from "react"
+import { usePageHeader } from "../components/app-page-header"
+import type { AppPageHeaderSpec } from "../components/app-page-header"
+import type {
+  ChangeEvent,
+  ClipboardEvent,
+  DragEvent,
+  FormEvent,
+  KeyboardEvent,
+} from "react"
 import type {
   DmConversationDetail,
   DmInvite,
+  DmMember,
   DmMessage,
   PostMedia,
   PublicUser,
@@ -306,6 +317,55 @@ function Thread() {
     return fromOther ?? null
   }, [messages, me])
 
+  const dmOther = useMemo(() => {
+    if (!conversation || conversation.kind !== "dm" || !me) return null
+    return conversation.members.find((m) => m.id !== me) ?? null
+  }, [conversation, me])
+
+  const whoForHeader = peer ?? dmOther
+
+  const appHeader = useMemo((): AppPageHeaderSpec => {
+    if (!conversation) {
+      return {
+        plainTitle: true,
+        title: (
+          <div className="flex w-full min-w-0 items-center gap-2">
+            <Link
+              to="/inbox"
+              className="shrink-0 text-xs text-muted-foreground hover:underline"
+            >
+              ← Inbox
+            </Link>
+            <span className="text-sm text-muted-foreground">…</span>
+          </div>
+        ),
+      }
+    }
+    return {
+      plainTitle: true,
+      title: (
+        <ThreadAppHeaderTitle
+          conversation={conversation}
+          me={me}
+          who={whoForHeader}
+        />
+      ),
+      action:
+        conversation.kind === "group" ? (
+          <Button
+            size="sm"
+            variant="ghost"
+            aria-label="conversation settings"
+            onClick={() => setSettingsOpen(true)}
+          >
+            <GearIcon size={16} />
+          </Button>
+        ) : undefined,
+    }
+  }, [conversation, me, whoForHeader])
+
+  usePageHeader(appHeader)
+
   // Group consecutive messages from the same sender, splitting whenever the day changes so we
   // can drop a sticky day-separator between them.
   const groups = useMemo(() => buildGroups(messages), [messages])
@@ -358,6 +418,22 @@ function Thread() {
     setDragOver(false)
     const file = e.dataTransfer.files.item(0)
     if (file) attachFile(file)
+  }
+
+  function onPasteMessage(e: ClipboardEvent<HTMLTextAreaElement>) {
+    if (sending || conversation?.myRequestState === "pending") return
+    const files = getPastedImageFiles(e)
+    if (files.length === 0) return
+    e.preventDefault()
+    attachFile(files[0])
+  }
+
+  function onPastePendingAlt(e: ClipboardEvent<HTMLInputElement>) {
+    if (sending) return
+    const files = getPastedImageFiles(e)
+    if (files.length === 0) return
+    e.preventDefault()
+    attachFile(files[0])
   }
 
   async function send(e?: FormEvent) {
@@ -435,25 +511,6 @@ function Thread() {
             </div>
           </div>
         )}
-        <header className="flex items-center gap-3 border-b border-border bg-background/80 px-4 py-3 backdrop-blur-sm">
-          <Link
-            to="/inbox"
-            className="text-xs text-muted-foreground hover:underline"
-          >
-            ← Inbox
-          </Link>
-          <ThreadHeader conversation={conversation} peer={peer} me={me} />
-          {conversation?.kind === "group" && (
-            <Button
-              size="sm"
-              variant="ghost"
-              aria-label="conversation settings"
-              onClick={() => setSettingsOpen(true)}
-            >
-              <IconSettings size={16} stroke={1.75} />
-            </Button>
-          )}
-        </header>
 
         {conversation && conversation.kind === "group" && (
           <GroupSettingsDialog
@@ -539,7 +596,7 @@ function Thread() {
                 aria-label="remove attachment"
                 className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full bg-background text-foreground shadow-sm ring-1 ring-border hover:bg-muted"
               >
-                <IconX size={12} stroke={2} />
+                <XIcon size={12} />
               </button>
             </div>
             <Input
@@ -549,6 +606,7 @@ function Thread() {
                   prev ? { ...prev, altText: e.target.value } : prev
                 )
               }
+              onPaste={onPastePendingAlt}
               placeholder="Image description (alt text)"
               maxLength={1000}
               className="mt-1 h-8 flex-1 text-xs"
@@ -575,7 +633,7 @@ function Thread() {
               disabled={sending}
               onClick={() => fileInputRef.current?.click()}
             >
-              <IconPaperclip size={18} stroke={1.75} />
+              <PaperclipIcon size={18} />
             </Button>
             <Textarea
               ref={textareaRef}
@@ -584,6 +642,7 @@ function Thread() {
                 setDraft(e.target.value)
                 if (e.target.value.length > 0) pingTyping()
               }}
+              onPaste={onPasteMessage}
               placeholder={pending ? "Add a caption" : "Message"}
               rows={1}
               disabled={sending}
@@ -919,14 +978,14 @@ function Bubble({
                 aria-label="message options"
                 className="flex size-6 items-center justify-center rounded-full bg-background ring-1 ring-border hover:bg-muted/40"
               >
-                <IconDots size={12} stroke={1.75} />
+                <DotsThreeIcon size={12} />
               </button>
             }
           />
           <DropdownMenuContent align={isMine ? "end" : "start"} sideOffset={4}>
             {canEdit && (
               <DropdownMenuItem onClick={() => setEditing(true)}>
-                <IconPencil size={14} stroke={1.75} />
+                <PencilIcon size={14} />
                 <span>Edit</span>
               </DropdownMenuItem>
             )}
@@ -936,7 +995,7 @@ function Bubble({
                 onClick={doDelete}
                 disabled={busy}
               >
-                <IconTrash size={14} stroke={1.75} />
+                <TrashIcon size={14} />
                 <span>Delete</span>
               </DropdownMenuItem>
             )}
@@ -1025,6 +1084,7 @@ function Bubble({
                   <RichText text={message.text} />
                 </p>
               )}
+              {message.text && <MacfolioCardFromText text={message.text} />}
               {!message.media && !message.text && (
                 <em className="opacity-70">[unsupported]</em>
               )}
@@ -1098,16 +1158,24 @@ function MessageImage({ media }: { media: PostMedia }) {
   )
 }
 
-function ThreadHeader({
+function ThreadAppHeaderTitle({
   conversation,
-  peer,
   me,
+  who,
 }: {
-  conversation: DmConversationDetail | null
-  peer: DmMessage["sender"] | null
+  conversation: DmConversationDetail
   me: string | null
+  who: DmMember | null
 }) {
-  if (conversation?.kind === "group") {
+  const back = (
+    <Link
+      to="/inbox"
+      className="shrink-0 text-xs text-muted-foreground hover:underline"
+    >
+      ← Inbox
+    </Link>
+  )
+  if (conversation.kind === "group") {
     const others = conversation.members.filter((m) => m.id !== me)
     const title =
       conversation.title ??
@@ -1115,8 +1183,10 @@ function ThreadHeader({
         .slice(0, 3)
         .map((m) => m.displayName ?? (m.handle ? `@${m.handle}` : "user"))
         .join(", ")
+    const n = conversation.members.length
     return (
-      <div className="ml-2 flex min-w-0 flex-1 items-center gap-2">
+      <div className="flex w-full min-w-0 items-center gap-2">
+        {back}
         <div className="relative size-8 shrink-0">
           {others.slice(0, 2).map((m, i) => (
             <Avatar
@@ -1131,43 +1201,49 @@ function ThreadHeader({
             />
           ))}
         </div>
-        <div className="min-w-0">
-          <div className="truncate text-sm font-semibold">{title}</div>
-          <div className="text-xs text-muted-foreground">
-            {conversation.members.length} member
-            {conversation.members.length === 1 ? "" : "s"}
-          </div>
+        <div className="flex min-w-0 flex-1 items-baseline gap-1.5 overflow-hidden text-sm">
+          <span className="min-w-0 truncate font-semibold text-foreground">
+            {title}
+          </span>
+          <span className="shrink-0 text-xs text-muted-foreground">
+            · {n} member{n === 1 ? "" : "s"}
+          </span>
         </div>
       </div>
     )
   }
-  // 1:1 — show the peer.
+  const p = who
   return (
-    <div className="ml-2 flex min-w-0 flex-1 items-center gap-2">
-      {peer && (
+    <div className="flex w-full min-w-0 items-center gap-2">
+      {back}
+      {p && (
         <Avatar
-          initial={(peer.displayName || peer.handle || "?")
+          initial={(p.displayName || p.handle || "?")
             .slice(0, 1)
             .toUpperCase()}
-          src={peer.avatarUrl}
+          src={p.avatarUrl}
+          className="size-8 shrink-0"
         />
       )}
-      <div className="min-w-0">
-        <div className="flex items-center gap-1 text-sm font-semibold">
-          <span className="truncate">
-            {peer?.displayName ||
-              (peer?.handle ? `@${peer.handle}` : "Conversation")}
-          </span>
-          {peer?.isVerified && <VerifiedBadge size={14} role={peer.role} />}
-        </div>
-        {peer?.handle && (
-          <Link
-            to="/$handle"
-            params={{ handle: peer.handle }}
-            className="truncate text-xs text-muted-foreground hover:underline"
-          >
-            @{peer.handle}
-          </Link>
+      <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden text-sm">
+        <span className="truncate font-semibold text-foreground">
+          {p?.displayName ||
+            (p?.handle ? `@${p.handle}` : "Conversation")}
+        </span>
+        {p?.isVerified && <VerifiedBadge size={14} role={p.role} />}
+        {p?.handle && (
+          <>
+            <span className="shrink-0 text-muted-foreground" aria-hidden>
+              ·
+            </span>
+            <Link
+              to="/$handle"
+              params={{ handle: p.handle }}
+              className="shrink-0 text-xs text-muted-foreground hover:underline"
+            >
+              @{p.handle}
+            </Link>
+          </>
         )}
       </div>
     </div>

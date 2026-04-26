@@ -1,4 +1,4 @@
-import { IconRosetteDiscountCheckFilled } from "@tabler/icons-react"
+import { SealCheckIcon } from "@phosphor-icons/react"
 import { cn } from "@workspace/ui/lib/utils"
 
 export type VerifiedBadgeRole = "user" | "admin" | "owner"
@@ -26,8 +26,9 @@ export function VerifiedBadge({
 }) {
   const resolvedRole: VerifiedBadgeRole = role ?? "user"
   return (
-    <IconRosetteDiscountCheckFilled
+    <SealCheckIcon
       size={size}
+      weight="fill"
       aria-label={roleAriaLabel[resolvedRole]}
       className={cn(
         "inline-block shrink-0",

@@ -7,6 +7,7 @@ import {
 import { SkeletonPostCard } from "@workspace/ui/components/skeleton"
 import { PageEmpty, PageError } from "./page-surface"
 import { PostCard } from "./post-card"
+import { extractMacfolioUrl } from "./macfolio-card"
 import type { InfiniteData } from "@tanstack/react-query"
 import type { FeedPage, Post } from "../lib/api"
 
@@ -43,6 +44,25 @@ const useIsoLayoutEffect =
   typeof window === "undefined" ? useEffect : useLayoutEffect
 
 const ESTIMATED_POST_HEIGHT = 280
+const ESTIMATED_MEDIA_BUMP = 320
+const ESTIMATED_MACFOLIO_BUMP = 460
+const ESTIMATED_QUOTE_BUMP = 110
+const ESTIMATED_ARTICLE_BUMP = 90
+const ESTIMATED_POLL_BUMP = 140
+
+function estimatePostHeight(post: Post | undefined): number {
+  if (!post) return ESTIMATED_POST_HEIGHT
+  const target = post.repostOf ?? post
+  let height = ESTIMATED_POST_HEIGHT
+  if (target.media && target.media.length > 0) height += ESTIMATED_MEDIA_BUMP
+  if (target.text && extractMacfolioUrl(target.text)) {
+    height += ESTIMATED_MACFOLIO_BUMP
+  }
+  if (target.articleCard) height += ESTIMATED_ARTICLE_BUMP
+  if (target.poll) height += ESTIMATED_POLL_BUMP
+  if (target.quoteOf) height += ESTIMATED_QUOTE_BUMP
+  return height
+}
 
 export function Feed({
   queryKey,
@@ -248,7 +268,7 @@ function WindowFeedList({
 
   const virtualizer = useWindowVirtualizer({
     count: posts.length,
-    estimateSize: () => ESTIMATED_POST_HEIGHT,
+    estimateSize: (i) => estimatePostHeight(posts[i]),
     overscan: 6,
     scrollMargin,
     getItemKey: (i) => posts[i].id,
@@ -313,7 +333,7 @@ function ContainerFeedList({
   const virtualizer = useVirtualizer({
     count: posts.length,
     getScrollElement: () => scrollEl,
-    estimateSize: () => ESTIMATED_POST_HEIGHT,
+    estimateSize: (i) => estimatePostHeight(posts[i]),
     overscan: 6,
     getItemKey: (i) => posts[i].id,
   })

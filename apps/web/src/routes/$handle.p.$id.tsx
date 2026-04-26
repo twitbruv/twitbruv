@@ -1,21 +1,20 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
 import { useEffect, useRef, useState } from "react"
 import {
-  IconAt,
-  IconBookmark,
-  IconBookmarkFilled,
-  IconChartBar,
-  IconHash,
-  IconHeart,
-  IconHeartFilled,
-  IconMessageCircle,
-  IconPhoto,
-  IconRepeat,
-} from "@tabler/icons-react"
+  AtIcon,
+  BookmarkIcon,
+  ChartBarIcon,
+  HashIcon,
+  HeartIcon,
+  ChatCircleIcon,
+  ImageIcon,
+  RepeatIcon,
+} from "@phosphor-icons/react"
 import { ApiError, api } from "../lib/api"
 import { useSubmitHotkey } from "../lib/hotkeys"
 import { Avatar } from "../components/avatar"
 import { RichText } from "../components/rich-text"
+import { MacfolioCardFromText } from "../components/macfolio-card"
 import { PollBlock } from "../components/poll-block"
 import { ArticleCardBlock, QuoteEmbed } from "../components/post-card"
 import { ImageLightbox } from "../components/image-lightbox"
@@ -48,7 +47,9 @@ export const Route = createFileRoute("/$handle/p/$id")({
       }
     }
     const author = post.author.displayName || `@${post.author.handle ?? "user"}`
-    const description = clipDescription(post.text || `A post by ${author} on ${APP_NAME}.`)
+    const description = clipDescription(
+      post.text || `A post by ${author} on ${APP_NAME}.`
+    )
     return {
       meta: buildSeoMeta({
         title: `${author}: "${clipDescription(post.text, 60)}"`,
@@ -413,6 +414,8 @@ function AncestorPost({
             <RichText text={post.text} />
           </p>
 
+          <MacfolioCardFromText text={post.text} />
+
           {post.media && post.media.length > 0 && (
             <PostMediaGrid
               media={post.media}
@@ -438,7 +441,7 @@ function AncestorPost({
                 params={{ handle: authorHandle, id: post.id }}
                 className="flex items-center gap-1.5 py-0.5 text-[13px] tabular-nums hover:text-foreground"
               >
-                <IconMessageCircle size={16} stroke={1.5} />
+                <ChatCircleIcon size={16} />
                 <span>{post.counts.replies}</span>
               </Link>
             )}
@@ -448,7 +451,7 @@ function AncestorPost({
               disabled={busy || !post.viewer}
               className={`flex items-center gap-1.5 py-0.5 text-[13px] tabular-nums transition-colors hover:text-foreground ${post.viewer?.reposted ? "text-foreground" : ""}`}
             >
-              <IconRepeat size={16} stroke={1.5} />
+              <RepeatIcon size={16} />
               <span>{post.counts.reposts}</span>
             </button>
             <button
@@ -458,9 +461,9 @@ function AncestorPost({
               className={`flex items-center gap-1.5 py-0.5 text-[13px] tabular-nums transition-colors hover:text-foreground ${post.viewer?.liked ? "text-foreground" : ""}`}
             >
               {post.viewer?.liked ? (
-                <IconHeartFilled size={16} />
+                <HeartIcon size={16} weight="fill" />
               ) : (
-                <IconHeart size={16} stroke={1.5} />
+                <HeartIcon size={16} />
               )}
               <span>{post.counts.likes}</span>
             </button>
@@ -471,9 +474,9 @@ function AncestorPost({
               className={`flex items-center gap-1.5 py-0.5 transition-colors hover:text-foreground ${post.viewer?.bookmarked ? "text-foreground" : ""}`}
             >
               {post.viewer?.bookmarked ? (
-                <IconBookmarkFilled size={16} />
+                <BookmarkIcon size={16} weight="fill" />
               ) : (
-                <IconBookmark size={16} stroke={1.5} />
+                <BookmarkIcon size={16} />
               )}
             </button>
           </div>
@@ -598,6 +601,8 @@ function ParentPost({
         <RichText text={post.text} />
       </p>
 
+      <MacfolioCardFromText text={post.text} />
+
       {post.media && post.media.length > 0 && (
         <PostMediaGrid
           media={post.media}
@@ -616,20 +621,20 @@ function ParentPost({
 
       {post.quoteOf && <QuoteEmbed post={post.quoteOf} />}
 
-      <div className="mt-2.5 flex items-center gap-3 text-[11px] tabular-nums text-muted-foreground">
+      {/* <div className="mt-2.5 flex items-center gap-3 text-[11px] tabular-nums text-muted-foreground">
         {post.counts.reposts > 0 && <span>{post.counts.reposts} reposts</span>}
         {post.counts.likes > 0 && <span>{post.counts.likes} likes</span>}
         {post.counts.bookmarks > 0 && (
           <span>{post.counts.bookmarks} bookmarks</span>
         )}
-      </div>
+      </div> */}
 
       <div className="mt-2.5 flex items-center gap-5 text-muted-foreground">
         <button
           type="button"
           className="flex items-center gap-1.5 py-0.5 text-[13px] tabular-nums hover:text-foreground"
         >
-          <IconMessageCircle size={16} stroke={1.5} />
+          <ChatCircleIcon size={16} />
           <span>{post.counts.replies}</span>
         </button>
         <button
@@ -638,7 +643,7 @@ function ParentPost({
           disabled={busy || !post.viewer}
           className={`flex items-center gap-1.5 py-0.5 text-[13px] tabular-nums transition-colors hover:text-foreground ${post.viewer?.reposted ? "text-foreground" : ""}`}
         >
-          <IconRepeat size={16} stroke={1.5} />
+          <RepeatIcon size={16} />
           <span>{post.counts.reposts}</span>
         </button>
         <button
@@ -648,9 +653,9 @@ function ParentPost({
           className={`flex items-center gap-1.5 py-0.5 text-[13px] tabular-nums transition-colors hover:text-foreground ${post.viewer?.liked ? "text-foreground" : ""}`}
         >
           {post.viewer?.liked ? (
-            <IconHeartFilled size={16} />
+            <HeartIcon size={16} weight="fill" />
           ) : (
-            <IconHeart size={16} stroke={1.5} />
+            <HeartIcon size={16} />
           )}
           <span>{post.counts.likes}</span>
         </button>
@@ -661,9 +666,9 @@ function ParentPost({
           className={`flex items-center gap-1.5 py-0.5 transition-colors hover:text-foreground ${post.viewer?.bookmarked ? "text-foreground" : ""}`}
         >
           {post.viewer?.bookmarked ? (
-            <IconBookmarkFilled size={16} />
+            <BookmarkIcon size={16} weight="fill" />
           ) : (
-            <IconBookmark size={16} stroke={1.5} />
+            <BookmarkIcon size={16} />
           )}
         </button>
       </div>
@@ -749,28 +754,28 @@ function ReplyComposer({
                 aria-label="add image"
                 className="flex size-[22px] items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
-                <IconPhoto size={13} stroke={1.5} />
+                <ImageIcon size={13} />
               </button>
               <button
                 type="button"
                 aria-label="add poll"
                 className="flex size-[22px] items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
-                <IconChartBar size={13} stroke={1.5} />
+                <ChartBarIcon size={13} />
               </button>
               <button
                 type="button"
                 aria-label="add hashtag"
                 className="flex size-[22px] items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
-                <IconHash size={13} stroke={1.5} />
+                <HashIcon size={13} />
               </button>
               <button
                 type="button"
                 aria-label="mention someone"
                 className="flex size-[22px] items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
-                <IconAt size={13} stroke={1.5} />
+                <AtIcon size={13} />
               </button>
             </div>
             <button
@@ -907,6 +912,8 @@ function ReplyCard({
         <RichText text={post.text} />
       </p>
 
+      <MacfolioCardFromText text={post.text} />
+
       {post.media && post.media.length > 0 && (
         // biome-ignore lint/a11y/useKeyWithClickEvents: stops parent Link from intercepting interactions
         <div onClick={(e) => e.stopPropagation()}>
@@ -938,7 +945,7 @@ function ReplyCard({
           type="button"
           className="flex items-center gap-1.5 py-0.5 text-[13px] tabular-nums hover:text-foreground"
         >
-          <IconMessageCircle size={16} stroke={1.5} />
+          <ChatCircleIcon size={16} />
           <span>{post.counts.replies}</span>
         </button>
         <button
@@ -947,7 +954,7 @@ function ReplyCard({
           disabled={busy || !post.viewer}
           className={`flex items-center gap-1.5 py-0.5 text-[13px] tabular-nums transition-colors hover:text-foreground ${post.viewer?.reposted ? "text-foreground" : ""}`}
         >
-          <IconRepeat size={16} stroke={1.5} />
+          <RepeatIcon size={16} />
           <span>{post.counts.reposts}</span>
         </button>
         <button
@@ -957,9 +964,9 @@ function ReplyCard({
           className={`flex items-center gap-1.5 py-0.5 text-[13px] tabular-nums transition-colors hover:text-foreground ${post.viewer?.liked ? "text-foreground" : ""}`}
         >
           {post.viewer?.liked ? (
-            <IconHeartFilled size={16} />
+            <HeartIcon size={16} weight="fill" />
           ) : (
-            <IconHeart size={16} stroke={1.5} />
+            <HeartIcon size={16} />
           )}
           <span>{post.counts.likes}</span>
         </button>
@@ -967,7 +974,7 @@ function ReplyCard({
           type="button"
           className="flex items-center gap-1.5 py-0.5 transition-colors hover:text-foreground"
         >
-          <IconBookmark size={16} stroke={1.5} />
+          <BookmarkIcon size={16} />
         </button>
       </div>
     </>

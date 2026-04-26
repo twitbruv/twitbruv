@@ -1,9 +1,9 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router"
-import { useCallback, useEffect } from "react"
+import { useCallback, useEffect, useMemo } from "react"
 import { api } from "../lib/api"
 import { authClient } from "../lib/auth"
+import { usePageHeader } from "../components/app-page-header"
 import { Feed } from "../components/feed"
-import { PageHeader } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
 
 export const Route = createFileRoute("/bookmarks")({ component: Bookmarks })
@@ -17,13 +17,17 @@ function Bookmarks() {
 
   const load = useCallback((cursor?: string) => api.bookmarks(cursor), [])
 
+  const appHeader = useMemo(
+    () => ({
+      title: "Bookmarks" as const,
+    }),
+    []
+  )
+  usePageHeader(appHeader)
+
   return (
     <PageFrame>
       <main className="">
-        <PageHeader
-          title="Bookmarks"
-          description="Only you can see this list."
-        />
         <Feed
           queryKey={["bookmarks"]}
           load={load}

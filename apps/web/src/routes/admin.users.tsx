@@ -34,7 +34,7 @@ import {
   TableHeader,
   TableRow,
 } from "@workspace/ui/components/table"
-import { IconChevronDown } from "@tabler/icons-react"
+import { CaretDownIcon } from "@phosphor-icons/react"
 import { api } from "../lib/api"
 import { useInfiniteScrollSentinel } from "../lib/use-infinite-scroll-sentinel"
 import { useMe } from "../lib/me"
@@ -207,7 +207,7 @@ function AdminUsers() {
                 }
               >
                 {u.role}
-                <IconChevronDown className="size-3" />
+                <CaretDownIcon className="size-3" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
                 <DropdownMenuGroup>

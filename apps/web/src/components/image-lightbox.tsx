@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react"
+import { CaretLeftIcon, CaretRightIcon } from "@phosphor-icons/react"
 import {
   Dialog,
   DialogContent,
@@ -107,7 +107,7 @@ export function ImageLightbox({
                 disabled={!canPrev}
                 className="absolute left-2"
               >
-                <IconChevronLeft size={20} stroke={1.75} />
+                <CaretLeftIcon size={20} />
               </Button>
               <Button
                 variant="ghost"
@@ -117,7 +117,7 @@ export function ImageLightbox({
                 disabled={!canNext}
                 className="absolute right-2"
               >
-                <IconChevronRight size={20} stroke={1.75} />
+                <CaretRightIcon size={20} />
               </Button>
               <div className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 text-xs text-muted-foreground">
                 {index + 1} / {images.length}

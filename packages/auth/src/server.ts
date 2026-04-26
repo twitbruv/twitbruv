@@ -1,9 +1,9 @@
-import { betterAuth } from 'better-auth'
-import { drizzleAdapter } from 'better-auth/adapters/drizzle'
-import { magicLink } from 'better-auth/plugins/magic-link'
-import { twoFactor } from 'better-auth/plugins/two-factor'
-import { admin as adminPlugin } from 'better-auth/plugins/admin'
-import type { Database } from '@workspace/db'
+import { betterAuth } from "better-auth"
+import { drizzleAdapter } from "better-auth/adapters/drizzle"
+import { magicLink } from "better-auth/plugins/magic-link"
+import { twoFactor } from "better-auth/plugins/two-factor"
+import { admin as adminPlugin } from "better-auth/plugins/admin"
+import type { Database } from "@workspace/db"
 
 // Passkey support is a follow-up: better-auth ships passkeys as a separate plugin package.
 // Wire it in at M2 once the signup flow lands.
@@ -18,7 +18,7 @@ export interface AuthConfig {
   sendEmail: (args: {
     to: string
     subject: string
-    template: 'verify' | 'reset' | 'magic-link' | 'welcome'
+    template: "verify" | "reset" | "magic-link" | "welcome"
     data: Record<string, unknown>
   }) => Promise<void>
   github?: { clientId: string; clientSecret: string }
@@ -32,7 +32,7 @@ export function createAuth(config: AuthConfig) {
     secret: config.secret,
     trustedOrigins: config.trustedOrigins,
     database: drizzleAdapter(config.db, {
-      provider: 'pg',
+      provider: "pg",
       // Our schema uses plural table names (users, sessions, accounts, verifications, …)
       // whereas better-auth defaults to singular.
       usePlural: true,
@@ -53,12 +53,12 @@ export function createAuth(config: AuthConfig) {
       database: {
         generateId: false,
       },
-      cookiePrefix: 'twotter',
+      cookiePrefix: "twotter",
       cookies: {
         session_token: {
           attributes: {
-            sameSite: 'lax',
-            secure: config.baseURL.startsWith('https'),
+            sameSite: "lax",
+            secure: config.baseURL.startsWith("https"),
             httpOnly: true,
             ...(config.cookieDomain ? { domain: config.cookieDomain } : {}),
           },
@@ -78,8 +78,8 @@ export function createAuth(config: AuthConfig) {
         await config.sendEmail({
           to: user.email,
           subject: `Reset your ${config.appName} password`,
-          template: 'reset',
-          data: { url, name: user.name ?? '' },
+          template: "reset",
+          data: { url, name: user.name ?? "" },
         })
       },
     },
@@ -90,8 +90,8 @@ export function createAuth(config: AuthConfig) {
         await config.sendEmail({
           to: user.email,
           subject: `Verify your ${config.appName} email`,
-          template: 'verify',
-          data: { url, name: user.name ?? '' },
+          template: "verify",
+          data: { url, name: user.name ?? "" },
         })
       },
     },
@@ -101,7 +101,7 @@ export function createAuth(config: AuthConfig) {
             github: {
               clientId: config.github.clientId,
               clientSecret: config.github.clientSecret,
-              scope: ['read:user', 'user:email'],
+              scope: ["read:user", "user:email"],
             },
           }
         : {}),
@@ -110,7 +110,7 @@ export function createAuth(config: AuthConfig) {
             gitlab: {
               clientId: config.gitlab.clientId,
               clientSecret: config.gitlab.clientSecret,
-              scope: ['read_user'],
+              scope: ["read_user"],
             },
           }
         : {}),
@@ -119,7 +119,7 @@ export function createAuth(config: AuthConfig) {
             google: {
               clientId: config.google.clientId,
               clientSecret: config.google.clientSecret,
-              scope: ['openid', 'email', 'profile'],
+              scope: ["openid", "email", "profile"],
             },
           }
         : {}),
@@ -130,7 +130,7 @@ export function createAuth(config: AuthConfig) {
           await config.sendEmail({
             to: email,
             subject: `Sign in to ${config.appName}`,
-            template: 'magic-link',
+            template: "magic-link",
             data: { url },
           })
         },

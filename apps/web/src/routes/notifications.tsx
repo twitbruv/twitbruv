@@ -1,5 +1,6 @@
 import { Link, createFileRoute, useRouter } from "@tanstack/react-router"
 import {
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -12,18 +13,19 @@ import {
   useWindowVirtualizer,
 } from "@tanstack/react-virtual"
 import {
-  IconAt,
-  IconHeart,
-  IconMessageCircle,
-  IconQuote,
-  IconRepeat,
-  IconUserPlus,
-} from "@tabler/icons-react"
+  AtIcon,
+  HeartIcon,
+  ChatCircleIcon,
+  QuotesIcon,
+  RepeatIcon,
+  UserPlusIcon,
+} from "@phosphor-icons/react"
 import { Button } from "@workspace/ui/components/button"
 import { Skeleton, SkeletonAvatar } from "@workspace/ui/components/skeleton"
 import { api } from "../lib/api"
 import { authClient } from "../lib/auth"
 import { Avatar } from "../components/avatar"
+import { usePageHeader } from "../components/app-page-header"
 import { PageFrame } from "../components/page-frame"
 import { VerifiedBadge } from "../components/verified-badge"
 import { useInfiniteScrollSentinel } from "../lib/use-infinite-scroll-sentinel"
@@ -107,7 +109,7 @@ function Notifications() {
     [data]
   )
 
-  async function markAllRead() {
+  const markAllRead = useCallback(async () => {
     await api.notificationsMarkRead({ all: true })
     const now = new Date().toISOString()
     queryClient.setQueryData<
@@ -124,24 +126,31 @@ function Notifications() {
         })),
       }
     })
-  }
+  }, [queryClient])
 
   const hasUnread = items.some((n) => !n.readAt)
+
+  const appHeader = useMemo(
+    () => ({
+      title: "Notifications" as const,
+      action: (
+        <Button
+          size="sm"
+          variant="ghost"
+          disabled={!hasUnread}
+          onClick={markAllRead}
+        >
+          Mark all read
+        </Button>
+      ),
+    }),
+    [hasUnread, markAllRead]
+  )
+  usePageHeader(appHeader)
 
   return (
     <PageFrame>
       <main>
-        <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background/80 px-4 py-3 backdrop-blur-sm">
-          <h1 className="text-base font-semibold">Notifications</h1>
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={!hasUnread}
-            onClick={markAllRead}
-          >
-            Mark all read
-          </Button>
-        </header>
         {isPending ? (
           <div>
             {Array.from({ length: 5 }).map((_, i) => (
@@ -382,7 +391,7 @@ function NotificationRow({ item }: { item: NotificationItem }) {
         <div
           className={`mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full ${iconClass}`}
         >
-          <Icon size={18} stroke={1.75} />
+          <Icon size={18} />
         </div>
         <div className="min-w-0 flex-1 text-sm">
           {actorHandle ? (
@@ -504,20 +513,20 @@ function TargetCard({ post }: { post: Post }) {
 function iconForKind(kind: NotificationItem["kind"]) {
   switch (kind) {
     case "like":
-      return IconHeart
+      return HeartIcon
     case "repost":
-      return IconRepeat
+      return RepeatIcon
     case "reply":
     case "article_reply":
-      return IconMessageCircle
+      return ChatCircleIcon
     case "quote":
-      return IconQuote
+      return QuotesIcon
     case "follow":
-      return IconUserPlus
+      return UserPlusIcon
     case "mention":
-      return IconAt
+      return AtIcon
     default:
-      return IconHeart
+      return HeartIcon
   }
 }
 

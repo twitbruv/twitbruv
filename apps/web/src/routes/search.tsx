@@ -1,12 +1,11 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
-  IconBookmark,
-  IconBookmarkFilled,
-  IconSearch,
-  IconX,
-  IconChessKnight,
-} from "@tabler/icons-react"
+  BookmarkIcon,
+  KnightIcon,
+  MagnifyingGlassIcon,
+  XIcon,
+} from "@phosphor-icons/react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Alert, AlertDescription } from "@workspace/ui/components/alert"
@@ -17,7 +16,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@workspace/ui/components/dialog"
-import { PageEmpty, PageHeader, PageLoading } from "../components/page-surface"
+import { usePageHeader } from "../components/app-page-header"
+import { PageEmpty, PageLoading } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
 import { PostCard } from "../components/post-card"
 import { VerifiedBadge } from "../components/verified-badge"
@@ -122,6 +122,12 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
     navigate({ to: "/search", search: { q: term } })
   }
 
+  const appHeader = useMemo(
+    () => ({ title: "Search" as const }),
+    []
+  )
+  usePageHeader(appHeader)
+
   async function toggleSaved() {
     if (!me) return
     if (query.length < 2) return
@@ -154,12 +160,10 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
     <PageFrame>
       <main>
         <div className="border-b border-border">
-          <PageHeader title="Search" className="border-0" />
-          <form onSubmit={onSubmit} className="px-4 pb-3">
+          <form onSubmit={onSubmit} className="px-4 py-3">
             <div className="relative">
-              <IconSearch
+              <MagnifyingGlassIcon
                 size={14}
-                stroke={1.75}
                 className="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-muted-foreground"
               />
               <Input
@@ -180,12 +184,12 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
                 >
                   {activeSavedId ? (
                     <span className="inline-flex items-center gap-1">
-                      <IconBookmarkFilled size={14} stroke={1.75} />
+                      <BookmarkIcon size={14} weight="fill" />
                       Saved
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1">
-                      <IconBookmark size={14} stroke={1.75} />
+                      <BookmarkIcon size={14} />
                       Save this search
                     </span>
                   )}
@@ -242,7 +246,7 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
                       }
                     }}
                   >
-                    <IconX size={10} />
+                    <XIcon size={10} />
                   </Button>
                 </span>
               ))}
