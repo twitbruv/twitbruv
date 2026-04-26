@@ -3,15 +3,9 @@ import { useEffect, useRef, useState } from "react"
 import {
   BookmarkIcon,
   ChatCircleIcon,
-  DotsThreeIcon,
-  EyeIcon,
-  EyeSlashIcon,
-  FlagIcon,
-  PencilIcon,
   PushPinIcon,
   QuotesIcon,
   RepeatIcon,
-  TrashIcon,
 } from "@phosphor-icons/react"
 import { Button } from "@workspace/ui/components/button"
 import { Textarea } from "@workspace/ui/components/textarea"
@@ -413,7 +407,6 @@ export function PostCard({
     const liked = !post.viewer.liked
     const props = () => ({ post_id: post.id, author_id: post.author.id })
     likeAnim.trigger()
-    const props = () => ({ post_id: post.id, author_id: post.author.id })
     optimistic(
       {
         counts: { ...post.counts, likes: post.counts.likes + (liked ? 1 : -1) },
