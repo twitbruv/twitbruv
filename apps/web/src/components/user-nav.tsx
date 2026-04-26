@@ -3,10 +3,8 @@ import {
   DesktopIcon,
   GearIcon,
   MoonIcon,
-  ShieldIcon,
   SignOutIcon,
   SunIcon,
-  UserIcon,
 } from "@phosphor-icons/react"
 import {
   DropdownMenu,
@@ -87,20 +85,6 @@ export function UserNav({ user }: { user: SelfUser }) {
           </div>
         </div>
         <DropdownMenuSeparator />
-        {user.handle && (
-          <DropdownMenuItem
-            render={<Link to="/$handle" params={{ handle: user.handle }} />}
-          >
-            <UserIcon size={16} />
-            <span>Profile</span>
-          </DropdownMenuItem>
-        )}
-        {(user.role === "admin" || user.role === "owner") && (
-          <DropdownMenuItem render={<Link to="/admin" />}>
-            <ShieldIcon size={16} />
-            <span>Admin</span>
-          </DropdownMenuItem>
-        )}
         <DropdownMenuItem render={<Link to="/settings" />}>
           <GearIcon size={16} />
           <span>Settings</span>
