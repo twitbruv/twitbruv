@@ -484,6 +484,28 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
+  adminPosts: (params: {
+    q?: string
+    cursor?: string
+    sort?: AdminPostSort
+    order?: "asc" | "desc"
+    type?: AdminPostType | "any"
+    visibility?: "public" | "followers" | "unlisted" | "any"
+    status?: "active" | "deleted" | "sensitive" | "any"
+  } = {}) => {
+    const sp = new URLSearchParams()
+    if (params.q) sp.set("q", params.q)
+    if (params.cursor) sp.set("cursor", params.cursor)
+    if (params.sort) sp.set("sort", params.sort)
+    if (params.order) sp.set("order", params.order)
+    if (params.type && params.type !== "any") sp.set("type", params.type)
+    if (params.visibility && params.visibility !== "any")
+      sp.set("visibility", params.visibility)
+    if (params.status && params.status !== "any") sp.set("status", params.status)
+    return request<{ posts: Array<AdminPost>; nextCursor: string | null }>(
+      `/api/admin/posts${sp.toString() ? `?${sp.toString()}` : ""}`
+    )
+  },
   adminDeletePost: (
     id: string,
     body: { reason?: string; reportId?: string } = {}
@@ -1060,6 +1082,43 @@ export interface AdminStats {
     actioned: number
     dismissed: number
   }
+}
+
+export type AdminPostSort =
+  | "created"
+  | "likes"
+  | "reposts"
+  | "replies"
+  | "quotes"
+  | "bookmarks"
+  | "impressions"
+
+export type AdminPostType = "original" | "reply" | "repost" | "quote"
+
+export interface AdminPost {
+  id: string
+  authorId: string
+  author: {
+    id: string
+    handle: string | null
+    displayName: string | null
+    avatarUrl: string | null
+    isVerified: boolean
+    role: "user" | "admin" | "owner"
+  } | null
+  text: string
+  postType: AdminPostType
+  visibility: "public" | "followers" | "unlisted"
+  sensitive: boolean
+  likeCount: number
+  repostCount: number
+  replyCount: number
+  quoteCount: number
+  bookmarkCount: number
+  impressionCount: number
+  editedAt: string | null
+  deletedAt: string | null
+  createdAt: string
 }
 
 export interface AdminUser {
