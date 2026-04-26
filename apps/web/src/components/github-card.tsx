@@ -1,6 +1,6 @@
 import { GitBranchIcon, GitCommitIcon, GitMergeIcon, GitPullRequestIcon } from "@phosphor-icons/react"
-import type { GithubCard } from "@workspace/github-unfurl/card"
 import { cn } from "@workspace/ui/lib/utils"
+import type { GithubCard } from "@workspace/github-unfurl/card"
 
 interface Props {
   card: GithubCard

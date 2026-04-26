@@ -1,5 +1,5 @@
-import type { GithubCard } from "@workspace/github-unfurl/card"
 import { API_URL } from "./env"
+import type { GithubCard } from "@workspace/github-unfurl/card"
 
 export type { GithubCard } from "@workspace/github-unfurl/card"
 
