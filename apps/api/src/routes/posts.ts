@@ -28,6 +28,18 @@ const EDIT_WINDOW_MS = 5 * 60 * 1000
 postsRoute.post('/', requireAuth(), async (c) => {
   const session = c.get('session')!
   const { db, cache, rateLimit } = c.get('ctx')
+
+  // Authoritative ban check against the DB. The session middleware already rejects banned
+  // users, but it reads `banned` from the (possibly cached) session payload, so a recent
+  // moderation action could otherwise slip a post through inside the cache window.
+  const [me] = await db
+    .select({ banned: schema.users.banned, handle: schema.users.handle })
+    .from(schema.users)
+    .where(eq(schema.users.id, session.user.id))
+    .limit(1)
+  if (!me || me.banned) return c.json({ error: 'banned' }, 403)
+  if (!me.handle) return c.json({ error: 'handle_required' }, 403)
+
   const body = createPostSchema.parse(await c.req.json())
   await rateLimit(c, body.replyToId ? 'posts.reply' : 'posts.create')
 
