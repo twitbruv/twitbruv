@@ -1,12 +1,14 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router"
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { ApiError, api } from "../lib/api"
 import { authClient } from "../lib/auth"
+import { usePageHeader } from "../components/app-page-header"
 import { Editor } from "../components/editor/editor"
 import { PageFrame } from "../components/page-frame"
 import { CoverPicker } from "../components/cover-picker"
+import type { AppPageHeaderSpec } from "../components/app-page-header"
 import type { ArticleDto } from "../lib/api"
 import type { EditorPayload } from "../components/editor/editor"
 
@@ -52,35 +54,78 @@ function EditArticle() {
     [article?.id]
   )
 
-  async function save(status: "draft" | "published") {
-    if (!article) return
-    setSaving(status === "draft" ? "draft" : "publish")
-    setError(null)
-    try {
-      const { article: updated } = await api.updateArticle(article.id, {
-        title: title.trim(),
-        subtitle: subtitle.trim() || undefined,
-        bodyJson: body?.stateJson ?? article.bodyJson,
-        bodyText: body?.text ?? article.bodyText,
-        // `undefined` = leave alone, `null`/value = explicit change.
-        ...(coverMediaId !== undefined
-          ? { coverMediaId: coverMediaId ?? undefined }
-          : {}),
-        status,
-      })
-      setArticle(updated)
-      if (status === "published" && updated.author.handle) {
-        router.navigate({
-          to: "/$handle/a/$slug",
-          params: { handle: updated.author.handle, slug: updated.slug },
+  const save = useCallback(
+    async (status: "draft" | "published") => {
+      if (!article) return
+      setSaving(status === "draft" ? "draft" : "publish")
+      setError(null)
+      try {
+        const { article: updated } = await api.updateArticle(article.id, {
+          title: title.trim(),
+          subtitle: subtitle.trim() || undefined,
+          bodyJson: body?.stateJson ?? article.bodyJson,
+          bodyText: body?.text ?? article.bodyText,
+          // `undefined` = leave alone, `null`/value = explicit change.
+          ...(coverMediaId !== undefined
+            ? { coverMediaId: coverMediaId ?? undefined }
+            : {}),
+          status,
         })
+        setArticle(updated)
+        if (status === "published" && updated.author.handle) {
+          router.navigate({
+            to: "/$handle/a/$slug",
+            params: { handle: updated.author.handle, slug: updated.slug },
+          })
+        }
+      } catch (e) {
+        setError(e instanceof ApiError ? e.message : "save failed")
+      } finally {
+        setSaving(null)
       }
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : "save failed")
-    } finally {
-      setSaving(null)
+    },
+    [article, title, subtitle, body, coverMediaId, router]
+  )
+
+  const appHeader = useMemo<AppPageHeaderSpec>(() => {
+    if (!article) return null
+    return {
+      plainTitle: true,
+      title: (
+        <span className="truncate text-sm font-semibold text-muted-foreground">
+          {article.status === "draft" ? "draft" : "editing"} ·{" "}
+          {article.readingMinutes} min read
+        </span>
+      ),
+      action: (
+        <div className="flex items-center gap-2">
+          {error && <span className="text-xs text-destructive">{error}</span>}
+          {article.status !== "published" && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={saving !== null}
+              onClick={() => save("draft")}
+            >
+              {saving === "draft" ? "saving…" : "save draft"}
+            </Button>
+          )}
+          <Button
+            size="sm"
+            disabled={saving !== null}
+            onClick={() => save("published")}
+          >
+            {saving === "publish"
+              ? "saving…"
+              : article.status === "published"
+                ? "save changes"
+                : "publish"}
+          </Button>
+        </div>
+      ),
     }
-  }
+  }, [article, error, saving, save])
+  usePageHeader(appHeader)
 
   if (loadError) {
     return (
@@ -103,37 +148,7 @@ function EditArticle() {
 
   return (
     <PageFrame>
-      <main className="">
-        <header className="flex items-center justify-between border-b border-border px-4 py-3">
-          <h1 className="text-sm font-semibold text-muted-foreground">
-            {article.status === "draft" ? "draft" : "editing"} ·{" "}
-            {article.readingMinutes} min read
-          </h1>
-          <div className="flex items-center gap-2">
-            {error && <span className="text-xs text-destructive">{error}</span>}
-            {article.status !== "published" && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={saving !== null}
-                onClick={() => save("draft")}
-              >
-                {saving === "draft" ? "saving…" : "save draft"}
-              </Button>
-            )}
-            <Button
-              size="sm"
-              disabled={saving !== null}
-              onClick={() => save("published")}
-            >
-              {saving === "publish"
-                ? "saving…"
-                : article.status === "published"
-                  ? "save changes"
-                  : "publish"}
-            </Button>
-          </div>
-        </header>
+      <main>
         <div className="px-4 pt-6">
           <CoverPicker
             initialUrl={article.coverUrl ?? null}
