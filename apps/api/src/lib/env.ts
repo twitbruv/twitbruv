@@ -111,6 +111,9 @@ const envSchema = z.object({
   // Databuddy server-side analytics API key (format: dbdy_xxx). Optional — if unset,
   // server-side event tracking is silently disabled.
   DATABUDDY_API_KEY: z.string().optional(),
+  // Databuddy website/client ID — must match the VITE_PUBLIC_DATABUDDY_CLIENT_ID used
+  // on the frontend so server-side events are scoped to the same website.
+  DATABUDDY_WEBSITE_ID: z.string().optional(),
 })
 
 export type Env = z.infer<typeof envSchema>

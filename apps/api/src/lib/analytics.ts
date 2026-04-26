@@ -69,13 +69,14 @@ export interface TrackFn {
  * Creates a fire-and-forget track function. If no API key is provided,
  * returns a no-op so the app runs fine without analytics configured.
  */
-export function createTracker(apiKey: string | undefined, log: Logger): TrackFn {
+export function createTracker(apiKey: string | undefined, websiteId: string | undefined, log: Logger): TrackFn {
   if (!apiKey) {
     return () => {}
   }
 
   const client = new Databuddy({
     apiKey,
+    websiteId,
     source: 'api',
     enableBatching: true,
     batchSize: 25,

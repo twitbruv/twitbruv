@@ -96,7 +96,7 @@ export async function buildContext(): Promise<AppContext> {
   const pubsub = createPubSub(env.REDIS_URL)
   const log = createLogger(env)
   const rateLimit = makeRateLimit(env.REDIS_URL, log)
-  const track = createTracker(env.DATABUDDY_API_KEY, log)
+  const track = createTracker(env.DATABUDDY_API_KEY, env.DATABUDDY_WEBSITE_ID, log)
 
   return { env, db, mailer, auth, s3, mediaEnv, boss, cache, pubsub, log, rateLimit, track }
 }
