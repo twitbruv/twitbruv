@@ -190,8 +190,9 @@ function Section({
 
 function OnlineNow({ online }: { online: AdminOnline | null }) {
   const isLoading = online === null
-  const count = online?.count ?? 0
+  const count = online?.count ?? null
   const sample = online?.sample ?? []
+  const shownSample = sample.slice(0, 8)
   const initials = (s: AdminOnline["sample"][number]) =>
     (s.displayName ?? s.handle ?? "?").trim().slice(0, 1).toUpperCase()
   return (
@@ -211,7 +212,7 @@ function OnlineNow({ online }: { online: AdminOnline | null }) {
               className={`text-2xl font-semibold tabular-nums tracking-tight ${
                 isLoading ? "text-muted-foreground" : ""
               }`}
-              title={isLoading ? undefined : fullFormatter.format(count)}
+              title={count === null ? undefined : fullFormatter.format(count)}
             >
               {formatStat(count, true)}
             </p>
@@ -220,10 +221,10 @@ function OnlineNow({ online }: { online: AdminOnline | null }) {
             </p>
           </div>
         </div>
-        {sample.length > 0 && (
+        {shownSample.length > 0 && (
           <div className="flex items-center gap-2">
             <div className="flex -space-x-2">
-              {sample.slice(0, 8).map((u) => (
+              {shownSample.map((u) => (
                 <span
                   key={u.id}
                   title={u.handle ? `@${u.handle}` : (u.displayName ?? u.id)}
@@ -237,9 +238,9 @@ function OnlineNow({ online }: { online: AdminOnline | null }) {
                 </span>
               ))}
             </div>
-            {count > sample.length && (
+            {count !== null && count > shownSample.length && (
               <span className="text-[11px] tabular-nums text-muted-foreground">
-                +{fullFormatter.format(count - sample.length)}
+                +{fullFormatter.format(count - shownSample.length)}
               </span>
             )}
           </div>
@@ -269,8 +270,9 @@ function AdminStatsPage() {
     }
   }, [])
 
-  // Live online users. Polled while the admin tab is visible; pauses on hidden so a
-  // backgrounded tab doesn't keep hammering Redis indefinitely.
+  // Live online users. Polled only while the admin tab is visible — a tab opened in the
+  // background never fires a visibilitychange until shown, so we have to gate the initial
+  // tick on visibility too, otherwise a backgrounded admin tab would poll indefinitely.
   useEffect(() => {
     let cancelled = false
     const tick = () => {
@@ -283,21 +285,26 @@ function AdminStatsPage() {
           // transient — leave the previous count in place rather than blanking the card
         })
     }
-    tick()
-    let timer: ReturnType<typeof setInterval> | null = setInterval(tick, ONLINE_POLL_MS)
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") {
-        if (!timer) timer = setInterval(tick, ONLINE_POLL_MS)
-        tick()
-      } else if (timer) {
-        clearInterval(timer)
-        timer = null
-      }
+    let timer: ReturnType<typeof setInterval> | null = null
+    const start = () => {
+      if (timer) return
+      tick()
+      timer = setInterval(tick, ONLINE_POLL_MS)
     }
+    const stop = () => {
+      if (!timer) return
+      clearInterval(timer)
+      timer = null
+    }
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") start()
+      else stop()
+    }
+    onVisibility()
     document.addEventListener("visibilitychange", onVisibility)
     return () => {
       cancelled = true
-      if (timer) clearInterval(timer)
+      stop()
       document.removeEventListener("visibilitychange", onVisibility)
     }
   }, [])

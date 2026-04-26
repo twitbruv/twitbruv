@@ -41,8 +41,9 @@ export async function getOnlineCount(cache: Cache): Promise<number> {
  * both should call getOnlineCount first.
  */
 export async function getOnlineUserIds(cache: Cache, limit: number): Promise<Array<string>> {
+  if (limit <= 0) return []
   try {
-    return await cache.redis.zrevrange(KEY, 0, Math.max(0, limit - 1))
+    return await cache.redis.zrevrange(KEY, 0, limit - 1)
   } catch {
     return []
   }
