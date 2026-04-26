@@ -64,6 +64,7 @@ pollsRoute.post('/:pollId/vote', requireAuth(), async (c) => {
       .where(inArray(schema.pollOptions.id, body.optionIds))
   })
 
+  c.get('ctx').track('poll_voted', session.user.id)
   return c.json({ ok: true })
 })
 

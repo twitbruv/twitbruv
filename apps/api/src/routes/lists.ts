@@ -114,6 +114,7 @@ listsRoute.post('/', requireAuth(), async (c) => {
       })
       .returning()
     if (!row) return c.json({ error: 'insert_failed' }, 500)
+    c.get('ctx').track('list_created', session.user.id)
     return c.json({ list: toListDto(row, me?.handle ?? null, me?.displayName ?? null) }, 201)
   } catch (err) {
     const message = err instanceof Error ? err.message : ''
@@ -249,6 +250,7 @@ listsRoute.delete('/:id', requireAuth(), async (c) => {
   await db
     .delete(schema.userLists)
     .where(and(eq(schema.userLists.id, id), eq(schema.userLists.ownerId, session.user.id)))
+  c.get('ctx').track('list_deleted', session.user.id)
   return c.json({ ok: true })
 })
 
@@ -319,6 +321,7 @@ listsRoute.post('/:id/members', requireAuth(), async (c) => {
         .set({ memberCount: sql`${schema.userLists.memberCount} + ${inserted.length}`, updatedAt: new Date() })
         .where(eq(schema.userLists.id, id))
     }
+    c.get('ctx').track('list_members_added', session.user.id, { count: userIds.length })
     return c.json({ ok: true, added: inserted.length })
   })
 })
@@ -354,6 +357,7 @@ listsRoute.delete('/:id/members/:memberId', requireAuth(), async (c) => {
         })
         .where(eq(schema.userLists.id, id))
     }
+    c.get('ctx').track('list_member_removed', session.user.id)
     return c.json({ ok: true })
   })
 })

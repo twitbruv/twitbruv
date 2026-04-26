@@ -146,6 +146,7 @@ chessRoute.post('/', async (c) => {
     })
     .returning()
 
+  c.get('ctx').track('chess_game_created', session.user.id)
   return c.json({ game })
 })
 

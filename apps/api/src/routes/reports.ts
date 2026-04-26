@@ -55,5 +55,6 @@ reportsRoute.post('/', async (c) => {
       details: body.details ?? null,
     })
     .returning({ id: schema.reports.id })
+  c.get('ctx').track('content_reported', session.user.id, { subject_type: body.subjectType })
   return c.json({ id: row?.id ?? null, deduped: false })
 })

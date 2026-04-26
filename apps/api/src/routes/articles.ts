@@ -131,6 +131,7 @@ articlesRoute.post('/', requireAuth(), async (c) => {
     return { article: { ...article, crosspostPostId }, author: author! }
   })
 
+  c.get('ctx').track('article_created', session.user.id)
   return c.json(
     {
       article: toArticleDto(
@@ -213,6 +214,7 @@ articlesRoute.patch('/:id', requireAuth(), async (c) => {
     return { article, author: author! }
   })
 
+  c.get('ctx').track('article_updated', session.user.id)
   return c.json({
     article: toArticleDto(
       result.article,
@@ -239,6 +241,7 @@ articlesRoute.delete('/:id', requireAuth(), async (c) => {
         .where(eq(schema.posts.id, existing.crosspostPostId))
     }
   })
+  c.get('ctx').track('article_deleted', session.user.id)
   return c.json({ ok: true })
 })
 

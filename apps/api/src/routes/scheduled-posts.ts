@@ -140,6 +140,7 @@ scheduledPostsRoute.post('/:id/publish', async (c) => {
   if (!result.ok) return c.json({ error: result.error }, result.status as never)
 
   await cache.del(homeFeedCacheKey(session.user.id))
+  c.get('ctx').track('scheduled_post_published', session.user.id)
   return c.json({ postId: result.postId })
 })
 

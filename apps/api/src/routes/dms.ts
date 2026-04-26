@@ -366,6 +366,7 @@ dmsRoute.post('/', async (c) => {
     return created.id
   })
 
+  c.get('ctx').track(peerIds.length > 1 ? 'dm_group_created' : 'dm_started', me)
   return c.json({ id, created: true })
 })
 
@@ -490,6 +491,7 @@ dmsRoute.post('/:id/members', async (c) => {
   for (const userId of body.userIds) {
     await pubsub.publish(dmChannel(userId), { type: 'membership', conversationId })
   }
+  c.get('ctx').track('dm_members_added', me, { count: body.userIds.length })
   return c.json({ ok: true, added: toInsert.length + toReactivate.length })
 })
 
@@ -522,6 +524,7 @@ dmsRoute.delete('/:id/members/:userId', async (c) => {
 
   await pubsub.publish(dmChannel(target), { type: 'membership', conversationId })
   await pubsub.publish(dmChannel(me), { type: 'membership', conversationId })
+  c.get('ctx').track('dm_member_removed', me)
   return c.json({ ok: true })
 })
 
@@ -923,6 +926,7 @@ dmsRoute.post('/:id/messages', async (c) => {
     ),
   )
 
+  c.get('ctx').track('dm_sent', me)
   return c.json({ message: payload })
 })
 
@@ -974,6 +978,7 @@ dmsRoute.patch('/:id/messages/:msgId', async (c) => {
       }),
     ),
   )
+  c.get('ctx').track('dm_message_edited', me)
   return c.json({ ok: true, editedAt: editedAt.toISOString() })
 })
 
@@ -1019,6 +1024,7 @@ dmsRoute.delete('/:id/messages/:msgId', async (c) => {
       }),
     ),
   )
+  c.get('ctx').track('dm_message_deleted', me)
   return c.json({ ok: true })
 })
 
@@ -1091,6 +1097,7 @@ dmsRoute.post('/:id/messages/:msgId/reactions', async (c) => {
       }),
     ),
   )
+  c.get('ctx').track('dm_reaction_toggled', me)
   return c.json({ ok: true, op })
 })
 

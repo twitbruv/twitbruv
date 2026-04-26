@@ -351,6 +351,7 @@ searchRoute.post('/saved', requireAuth(), async (c) => {
     .values({ userId: session.user.id, query: body.query })
     .returning()
   if (!created) return c.json({ error: 'insert_failed' }, 500)
+  c.get('ctx').track('search_saved', session.user.id)
   return c.json({
     item: {
       id: created.id,
@@ -374,5 +375,6 @@ searchRoute.delete('/saved/:id', requireAuth(), async (c) => {
     )
     .returning({ id: schema.savedSearches.id })
   if (result.length === 0) return c.json({ error: 'not_found' }, 404)
+  c.get('ctx').track('search_saved_deleted', session.user.id)
   return c.json({ ok: true })
 })
