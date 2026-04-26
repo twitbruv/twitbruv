@@ -71,7 +71,7 @@ app.use(
   cors({
     origin: ctx.env.AUTH_TRUSTED_ORIGINS,
     credentials: true,
-    allowHeaders: ['Content-Type', 'Authorization'],
+    allowHeaders: ['Content-Type', 'Authorization', 'X-Db-Anon-Id', 'X-Db-Session-Id'],
     allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     exposeHeaders: ['Set-Cookie'],
     maxAge: 86400,
