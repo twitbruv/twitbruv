@@ -107,6 +107,10 @@ const envSchema = z.object({
     .enum(["true", "false"])
     .default("false")
     .transform((v) => v === "true"),
+
+  // Databuddy server-side analytics API key (format: dbdy_xxx). Optional — if unset,
+  // server-side event tracking is silently disabled.
+  DATABUDDY_API_KEY: z.string().optional(),
 })
 
 export type Env = z.infer<typeof envSchema>
