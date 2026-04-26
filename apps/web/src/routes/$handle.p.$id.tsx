@@ -1,4 +1,4 @@
-import { Link, createFileRoute } from "@tanstack/react-router"
+import { Link, createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useEffect, useRef, useState } from "react"
 import {
   AtIcon,
@@ -18,6 +18,8 @@ import { RichText } from "../components/rich-text"
 import { MacfolioCardFromText } from "../components/macfolio-card"
 import { PollBlock } from "../components/poll-block"
 import { ArticleCardBlock, QuoteEmbed } from "../components/post-card"
+import { PostMenu } from "../components/post-menu"
+import { EditPostDialog } from "../components/edit-post-dialog"
 import { ImageLightbox } from "../components/image-lightbox"
 import { useMe } from "../lib/me"
 import { APP_NAME } from "../lib/env"
@@ -154,6 +156,7 @@ function PostMediaGrid({
 
 function ThreadView() {
   const { handle, id } = Route.useParams()
+  const navigate = useNavigate()
   const [thread, setThread] = useState<Thread | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -175,6 +178,18 @@ function ThreadView() {
             replies: t.replies.map((p) =>
               p.id === next.id ? { ...p, ...next } : p
             ),
+          }
+        : t
+    )
+  }
+
+  function removeFromThread(removeId: string) {
+    setThread((t) =>
+      t
+        ? {
+            ancestors: t.ancestors.filter((p) => p.id !== removeId),
+            post: t.post && t.post.id === removeId ? null : t.post,
+            replies: t.replies.filter((p) => p.id !== removeId),
           }
         : t
     )
@@ -238,6 +253,7 @@ function ThreadView() {
               key={p.id}
               post={p}
               onChange={replace}
+              onRemove={() => removeFromThread(p.id)}
               showLineBelow={true}
             />
           ))}
@@ -248,6 +264,7 @@ function ThreadView() {
         <ParentPost
           post={thread.post}
           onChange={replace}
+          onRemove={() => navigate({ to: "/$handle", params: { handle } })}
           hasAncestors={hasAncestors}
         />
       )}
@@ -263,7 +280,11 @@ function ThreadView() {
                 params={{ handle: p.author.handle ?? "", id: p.id }}
                 className="block border-b border-border py-3 pr-4 pl-8 transition-colors hover:bg-muted/30"
               >
-                <ReplyCard post={p} onChange={replace} />
+                <ReplyCard
+                  post={p}
+                  onChange={replace}
+                  onRemove={() => removeFromThread(p.id)}
+                />
               </Link>
               {p.descendantReplyCount > 0 && p.author.handle && (
                 <Link
@@ -286,13 +307,16 @@ function ThreadView() {
 function AncestorPost({
   post,
   onChange,
+  onRemove,
   showLineBelow,
 }: {
   post: Post
   onChange: (p: Post) => void
+  onRemove: () => void
   showLineBelow: boolean
 }) {
   const [busy, setBusy] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
   const authorHandle = post.author.handle
   const initial = (post.author.displayName ?? authorHandle ?? "·")
     .slice(0, 1)
@@ -409,6 +433,13 @@ function AncestorPost({
             <span className="text-muted-foreground tabular-nums">
               {relativeTime(post.createdAt)}
             </span>
+            <PostMenu
+              post={post}
+              onChange={onChange}
+              onRemove={onRemove}
+              onStartEdit={() => setEditOpen(true)}
+              className="ml-auto"
+            />
           </div>
 
           <p className="mt-1 text-[13.5px] leading-[1.55] break-words whitespace-pre-wrap">
@@ -483,6 +514,12 @@ function AncestorPost({
           </div>
         </div>
       </div>
+      <EditPostDialog
+        post={post}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        onSaved={onChange}
+      />
     </article>
   )
 }
@@ -490,13 +527,16 @@ function AncestorPost({
 function ParentPost({
   post,
   onChange,
+  onRemove,
   hasAncestors,
 }: {
   post: Post
   onChange: (p: Post) => void
+  onRemove: () => void
   hasAncestors?: boolean
 }) {
   const [busy, setBusy] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
   const authorHandle = post.author.handle
   const initial = (post.author.displayName ?? authorHandle ?? "·")
     .slice(0, 1)
@@ -596,6 +636,12 @@ function ParentPost({
             </span>
           )}
         </div>
+        <PostMenu
+          post={post}
+          onChange={onChange}
+          onRemove={onRemove}
+          onStartEdit={() => setEditOpen(true)}
+        />
       </div>
 
       <p className="mt-2.5 text-[15.5px] leading-[1.5] break-words whitespace-pre-wrap">
@@ -673,6 +719,12 @@ function ParentPost({
           )}
         </button>
       </div>
+      <EditPostDialog
+        post={post}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        onSaved={onChange}
+      />
     </article>
   )
 }
@@ -808,11 +860,14 @@ function ReplyComposer({
 function ReplyCard({
   post,
   onChange,
+  onRemove,
 }: {
   post: Post
   onChange: (p: Post) => void
+  onRemove: () => void
 }) {
   const [busy, setBusy] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
   const authorHandle = post.author.handle
   const initial = (post.author.displayName ?? authorHandle ?? "·")
     .slice(0, 1)
@@ -907,6 +962,13 @@ function ReplyCard({
         <span className="text-muted-foreground tabular-nums">
           {relativeTime(post.createdAt)}
         </span>
+        <PostMenu
+          post={post}
+          onChange={onChange}
+          onRemove={onRemove}
+          onStartEdit={() => setEditOpen(true)}
+          className="ml-auto"
+        />
       </div>
 
       <p className="mt-1.5 text-[13.5px] leading-[1.55] break-words whitespace-pre-wrap">
@@ -978,6 +1040,12 @@ function ReplyCard({
           <BookmarkIcon size={16} />
         </button>
       </div>
+      <EditPostDialog
+        post={post}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        onSaved={onChange}
+      />
     </>
   )
 }

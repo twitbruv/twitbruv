@@ -3,16 +3,10 @@ import { useEffect, useRef, useState } from "react"
 import {
   BookmarkIcon,
   ChatCircleIcon,
-  DotsThreeIcon,
-  EyeIcon,
-  EyeSlashIcon,
-  FlagIcon,
   HeartIcon,
-  PencilIcon,
   PushPinIcon,
   QuotesIcon,
   RepeatIcon,
-  TrashIcon,
 } from "@phosphor-icons/react"
 import { Button } from "@workspace/ui/components/button"
 import { Textarea } from "@workspace/ui/components/textarea"
@@ -31,16 +25,15 @@ import {
 } from "@workspace/ui/components/dialog"
 import { POST_MAX_LEN } from "@workspace/validators"
 import { recordImpression } from "../lib/analytics"
-import { authClient } from "../lib/auth"
 import { ApiError, api } from "../lib/api"
 import { RichText } from "./rich-text"
 import { MacfolioCardFromText } from "./macfolio-card"
 import { GithubCardBlock } from "./github-card"
-import { ReportDialog } from "./report-dialog"
 import { Avatar } from "./avatar"
 import { ImageLightbox } from "./image-lightbox"
 import { Compose } from "./compose"
 import { PollBlock } from "./poll-block"
+import { PostMenu } from "./post-menu"
 import { VerifiedBadge } from "./verified-badge"
 import type { Post, PostEdit } from "../lib/api"
 
@@ -57,8 +50,6 @@ function relativeTime(iso: string): string {
   if (dd < 7) return `${dd}d`
   return new Date(iso).toLocaleDateString()
 }
-
-const EDIT_WINDOW_MS = 5 * 60 * 1000
 
 function pickVariant(media: NonNullable<Post["media"]>[number]) {
   return (
@@ -83,7 +74,7 @@ function clickedInteractiveElement(target: EventTarget | null) {
     target instanceof Element &&
     Boolean(
       target.closest(
-        'a, button, input, textarea, select, summary, [role="button"], [role="menuitem"], [data-post-card-ignore-open]'
+        'a, button, input, textarea, select, summary, [role="button"], [role="menuitem"], [data-slot^="dropdown-menu"], [data-post-card-ignore-open]'
       )
     )
   )
@@ -253,11 +244,8 @@ export function PostCard({
   canHide?: boolean
 }) {
   const navigate = useNavigate()
-  const { data: session } = authClient.useSession()
   const isRepost = Boolean(outerPost.repostOf)
   const post = outerPost.repostOf ?? outerPost
-
-  const isOwner = Boolean(session?.user && session.user.id === post.author.id)
 
   const articleRef = useRef<HTMLElement>(null)
   useEffect(() => {
@@ -309,34 +297,17 @@ export function PostCard({
   }, [post.id])
   const [busy, setBusy] = useState(false)
   const [editing, setEditing] = useState(false)
-  const [reportOpen, setReportOpen] = useState(false)
   const [editText, setEditText] = useState(post.text)
   const [editError, setEditError] = useState<string | null>(null)
   const [historyOpen, setHistoryOpen] = useState(false)
   const authorHandle = post.author.handle
   const showProfileLink = Boolean(authorHandle)
   const showPostLink = Boolean(authorHandle)
-  const canEdit =
-    isOwner && Date.now() - new Date(post.createdAt).getTime() < EDIT_WINDOW_MS
 
   function emit(next: Post) {
     if (!onChange) return
     if (isRepost) onChange({ ...outerPost, repostOf: next })
     else onChange(next)
-  }
-
-  async function onDelete() {
-    if (busy) return
-    if (!confirm("Delete this post?")) return
-    setBusy(true)
-    try {
-      await api.deletePost(post.id)
-      onRemove?.(outerPost.id)
-    } catch (e) {
-      alert(e instanceof ApiError ? e.message : "delete failed")
-    } finally {
-      setBusy(false)
-    }
   }
 
   async function saveEdit() {
@@ -539,98 +510,17 @@ export function PostCard({
                 (edited)
               </button>
             )}
-            {(isOwner || session) && (
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="ml-auto size-5"
-                      render={<DotsThreeIcon size={8} />}
-                    />
-                  }
-                />
-                <DropdownMenuContent
-                  align="end"
-                  sideOffset={4}
-                  className="w-40"
-                >
-                  {isOwner && canEdit && (
-                    <DropdownMenuItem
-                      onClick={() => {
-                        setEditing(true)
-                        setEditText(post.text)
-                      }}
-                    >
-                      <PencilIcon size={14} />
-                      <span>Edit</span>
-                    </DropdownMenuItem>
-                  )}
-                  {isOwner &&
-                    !isRepost &&
-                    !post.replyToId &&
-                    !post.quoteOfId && (
-                      <DropdownMenuItem
-                        onClick={async () => {
-                          try {
-                            if (post.pinned) await api.unpinPost(post.id)
-                            else await api.pinPost(post.id)
-                            onChange?.({ ...post, pinned: !post.pinned })
-                          } catch {}
-                        }}
-                      >
-                        <PushPinIcon size={14} />
-                        <span>{post.pinned ? "Unpin" : "Pin to profile"}</span>
-                      </DropdownMenuItem>
-                    )}
-                  {isOwner && (
-                    <DropdownMenuItem
-                      variant="destructive"
-                      onClick={onDelete}
-                      disabled={busy}
-                    >
-                      <TrashIcon size={14} />
-                      <span>Delete</span>
-                    </DropdownMenuItem>
-                  )}
-                  {canHide && !isOwner && (
-                    <DropdownMenuItem
-                      onClick={async () => {
-                        try {
-                          if (post.hidden) await api.unhidePost(post.id)
-                          else await api.hidePost(post.id)
-                          onChange?.({ ...post, hidden: !post.hidden })
-                        } catch {
-                          /* surfaced via stale state on refresh */
-                        }
-                      }}
-                    >
-                      {post.hidden ? (
-                        <EyeIcon size={14} />
-                      ) : (
-                        <EyeSlashIcon size={14} />
-                      )}
-                      <span>{post.hidden ? "Unhide reply" : "Hide reply"}</span>
-                    </DropdownMenuItem>
-                  )}
-                  {!isOwner && (
-                    <DropdownMenuItem onClick={() => setReportOpen(true)}>
-                      <FlagIcon size={14} />
-                      <span>Report</span>
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-            <ReportDialog
-              open={reportOpen}
-              onOpenChange={setReportOpen}
-              subjectType="post"
-              subjectId={post.id}
-              subjectLabel={
-                authorHandle ? `@${authorHandle}'s post` : "this post"
-              }
+            <PostMenu
+              post={post}
+              onChange={emit}
+              onRemove={() => onRemove?.(outerPost.id)}
+              canHide={canHide}
+              isRepost={isRepost}
+              onStartEdit={() => {
+                setEditing(true)
+                setEditText(post.text)
+              }}
+              className="ml-auto"
             />
             <EditHistoryDialog
               open={historyOpen}
@@ -698,7 +588,10 @@ export function PostCard({
             />
           )}
           {post.quoteOf && <QuoteEmbed post={post.quoteOf} />}
-          <footer className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+          <footer
+            className="mt-3 flex items-center gap-2 text-sm text-muted-foreground"
+            onClick={(event) => event.stopPropagation()}
+          >
             {showPostLink && authorHandle && (
               <Button
                 variant="ghost"
