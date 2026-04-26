@@ -38,6 +38,7 @@ import { Route as ArticlesNewRouteImport } from './routes/articles.new'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminStatsRouteImport } from './routes/admin.stats'
 import { Route as AdminReportsRouteImport } from './routes/admin.reports'
+import { Route as AdminPostsRouteImport } from './routes/admin.posts'
 import { Route as HandleFollowingRouteImport } from './routes/$handle.following'
 import { Route as HandleFollowersRouteImport } from './routes/$handle.followers'
 import { Route as OgUserHandleRouteImport } from './routes/og.user.$handle'
@@ -192,6 +193,11 @@ const AdminReportsRoute = AdminReportsRouteImport.update({
   path: '/reports',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminPostsRoute = AdminPostsRouteImport.update({
+  id: '/posts',
+  path: '/posts',
+  getParentRoute: () => AdminRoute,
+} as any)
 const HandleFollowingRoute = HandleFollowingRouteImport.update({
   id: '/following',
   path: '/following',
@@ -251,6 +257,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/$handle/followers': typeof HandleFollowersRoute
   '/$handle/following': typeof HandleFollowingRoute
+  '/admin/posts': typeof AdminPostsRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/stats': typeof AdminStatsRoute
   '/admin/users': typeof AdminUsersRoute
@@ -287,6 +294,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/$handle/followers': typeof HandleFollowersRoute
   '/$handle/following': typeof HandleFollowingRoute
+  '/admin/posts': typeof AdminPostsRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/stats': typeof AdminStatsRoute
   '/admin/users': typeof AdminUsersRoute
@@ -327,6 +335,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/$handle/followers': typeof HandleFollowersRoute
   '/$handle/following': typeof HandleFollowingRoute
+  '/admin/posts': typeof AdminPostsRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/stats': typeof AdminStatsRoute
   '/admin/users': typeof AdminUsersRoute
@@ -368,6 +377,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/$handle/followers'
     | '/$handle/following'
+    | '/admin/posts'
     | '/admin/reports'
     | '/admin/stats'
     | '/admin/users'
@@ -404,6 +414,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/$handle/followers'
     | '/$handle/following'
+    | '/admin/posts'
     | '/admin/reports'
     | '/admin/stats'
     | '/admin/users'
@@ -443,6 +454,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/$handle/followers'
     | '/$handle/following'
+    | '/admin/posts'
     | '/admin/reports'
     | '/admin/stats'
     | '/admin/users'
@@ -695,6 +707,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminReportsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/posts': {
+      id: '/admin/posts'
+      path: '/posts'
+      fullPath: '/admin/posts'
+      preLoaderRoute: typeof AdminPostsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/$handle/following': {
       id: '/$handle/following'
       path: '/following'
@@ -774,6 +793,7 @@ const HandleRouteWithChildren =
   HandleRoute._addFileChildren(HandleRouteChildren)
 
 interface AdminRouteChildren {
+  AdminPostsRoute: typeof AdminPostsRoute
   AdminReportsRoute: typeof AdminReportsRoute
   AdminStatsRoute: typeof AdminStatsRoute
   AdminUsersRoute: typeof AdminUsersRoute
@@ -781,6 +801,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminPostsRoute: AdminPostsRoute,
   AdminReportsRoute: AdminReportsRoute,
   AdminStatsRoute: AdminStatsRoute,
   AdminUsersRoute: AdminUsersRoute,

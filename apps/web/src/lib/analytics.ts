@@ -55,6 +55,7 @@ type EventName =
   | "admin_user_role_set"
   | "admin_user_handle_set"
   | "admin_user_deleted"
+  | "admin_post_deleted"
   | "admin_report_resolved"
 
 export async function trackedAction<T>(

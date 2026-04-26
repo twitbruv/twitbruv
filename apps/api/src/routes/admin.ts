@@ -1,6 +1,6 @@
 import { Hono, type Context } from 'hono'
 import { z } from 'zod'
-import { and, desc, eq, gte, ilike, lt, or, sql } from '@workspace/db'
+import { and, asc, desc, eq, gt, gte, ilike, isNotNull, isNull, lt, or, sql } from '@workspace/db'
 import { schema } from '@workspace/db'
 import { assetUrl } from '@workspace/media/s3'
 import { handleSchema } from '@workspace/validators'
@@ -754,6 +754,205 @@ adminRoute.post('/users/:id/handle', requireOwner(), async (c) => {
     })
   })
   return c.json({ ok: true })
+})
+
+const POST_SORTS = [
+  'created',
+  'likes',
+  'reposts',
+  'replies',
+  'quotes',
+  'bookmarks',
+  'impressions',
+] as const
+type PostSort = (typeof POST_SORTS)[number]
+
+const postsListQuery = z.object({
+  q: z.string().trim().max(80).optional(),
+  cursor: z.string().max(80).optional(),
+  limit: z.coerce.number().min(1).max(100).default(40),
+  sort: z.enum(POST_SORTS).default('created'),
+  order: z.enum(['asc', 'desc']).default('desc'),
+  type: z.enum(['any', 'original', 'reply', 'repost', 'quote']).default('any'),
+  visibility: z.enum(['any', 'public', 'followers', 'unlisted']).default('any'),
+  status: z.enum(['any', 'active', 'deleted', 'sensitive']).default('any'),
+})
+
+// Stat columns are integers (impressionCount is a bigint stored as number) and tie often, so
+// the cursor encodes a `<value>~<uuid>` pair to give us a stable ordering. For the createdAt
+// sort the value is the ISO timestamp; for stat sorts it's the numeric value. The post UUID
+// is the deterministic tiebreaker.
+function parsePostCursor(raw: string | undefined, sort: PostSort) {
+  if (!raw) return undefined
+  const sep = raw.indexOf('~')
+  if (sep < 0) return undefined
+  const value = raw.slice(0, sep)
+  const id = raw.slice(sep + 1)
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return undefined
+  if (sort === 'created') {
+    const date = parseCursor(value)
+    if (!date) return undefined
+    return { kind: 'date' as const, date, id }
+  }
+  if (!/^\d{1,20}$/.test(value)) return undefined
+  const num = Number(value)
+  if (!Number.isFinite(num) || num < 0) return undefined
+  return { kind: 'number' as const, num, id }
+}
+
+function getCursorValue(
+  sort: PostSort,
+  last: {
+    createdAt: Date
+    likeCount: number
+    repostCount: number
+    replyCount: number
+    quoteCount: number
+    bookmarkCount: number
+    impressionCount: number
+  },
+): string {
+  switch (sort) {
+    case 'created':
+      return last.createdAt.toISOString()
+    case 'likes':
+      return String(last.likeCount)
+    case 'reposts':
+      return String(last.repostCount)
+    case 'replies':
+      return String(last.replyCount)
+    case 'quotes':
+      return String(last.quoteCount)
+    case 'bookmarks':
+      return String(last.bookmarkCount)
+    case 'impressions':
+      return String(last.impressionCount)
+  }
+}
+
+// List/search posts with sort + filter for the admin panel. Joins author for the table cell.
+// Pagination uses a `<value>~<uuid>` cursor for stable ordering when stat values tie.
+adminRoute.get('/posts', async (c) => {
+  const { db, mediaEnv } = c.get('ctx')
+  const { q, cursor, limit, sort, order, type, visibility, status } = postsListQuery.parse(
+    c.req.query(),
+  )
+
+  const sortColumns = {
+    created: schema.posts.createdAt,
+    likes: schema.posts.likeCount,
+    reposts: schema.posts.repostCount,
+    replies: schema.posts.replyCount,
+    quotes: schema.posts.quoteCount,
+    bookmarks: schema.posts.bookmarkCount,
+    impressions: schema.posts.impressionCount,
+  } as const
+  const sortCol = sortColumns[sort]
+  const dir = order === 'asc' ? asc : desc
+  const cmp = order === 'asc' ? gt : lt
+
+  const filters: Array<unknown> = []
+
+  if (q) {
+    const like = `%${q.replace(/[\\%_]/g, (ch) => `\\${ch}`)}%`
+    filters.push(or(ilike(schema.posts.text, like), ilike(schema.users.handle, like)))
+  }
+
+  if (type === 'original') {
+    filters.push(
+      and(
+        isNull(schema.posts.replyToId),
+        isNull(schema.posts.repostOfId),
+        isNull(schema.posts.quoteOfId),
+      ),
+    )
+  } else if (type === 'reply') {
+    filters.push(isNotNull(schema.posts.replyToId))
+  } else if (type === 'repost') {
+    filters.push(isNotNull(schema.posts.repostOfId))
+  } else if (type === 'quote') {
+    filters.push(isNotNull(schema.posts.quoteOfId))
+  }
+
+  if (visibility !== 'any') filters.push(eq(schema.posts.visibility, visibility))
+
+  if (status === 'active') filters.push(isNull(schema.posts.deletedAt))
+  else if (status === 'deleted') filters.push(isNotNull(schema.posts.deletedAt))
+  else if (status === 'sensitive') filters.push(eq(schema.posts.sensitive, true))
+
+  const parsed = parsePostCursor(cursor, sort)
+  if (parsed) {
+    if (parsed.kind === 'date') {
+      filters.push(
+        or(
+          cmp(schema.posts.createdAt, parsed.date),
+          and(eq(schema.posts.createdAt, parsed.date), cmp(schema.posts.id, parsed.id)),
+        ),
+      )
+    } else {
+      filters.push(
+        or(
+          cmp(sortCol, parsed.num),
+          and(eq(sortCol, parsed.num), cmp(schema.posts.id, parsed.id)),
+        ),
+      )
+    }
+  }
+
+  const rows = await db
+    .select({ post: schema.posts, author: schema.users })
+    .from(schema.posts)
+    .leftJoin(schema.users, eq(schema.users.id, schema.posts.authorId))
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .where(filters.length > 0 ? (and(...(filters as Array<any>)) as any) : undefined)
+    .orderBy(dir(sortCol), dir(schema.posts.id))
+    .limit(limit)
+
+  const items = rows.map((r) => {
+    const p = r.post
+    const postType: 'original' | 'reply' | 'repost' | 'quote' = p.repostOfId
+      ? 'repost'
+      : p.quoteOfId
+        ? 'quote'
+        : p.replyToId
+          ? 'reply'
+          : 'original'
+    return {
+      id: p.id,
+      authorId: p.authorId,
+      author: r.author
+        ? {
+            id: r.author.id,
+            handle: r.author.handle,
+            displayName: r.author.displayName,
+            avatarUrl: assetUrl(mediaEnv, r.author.avatarUrl),
+            isVerified: r.author.isVerified,
+            role: r.author.role as Role,
+          }
+        : null,
+      text: p.text,
+      postType,
+      visibility: p.visibility,
+      sensitive: p.sensitive,
+      likeCount: p.likeCount,
+      repostCount: p.repostCount,
+      replyCount: p.replyCount,
+      quoteCount: p.quoteCount,
+      bookmarkCount: p.bookmarkCount,
+      impressionCount: p.impressionCount,
+      editedAt: p.editedAt?.toISOString() ?? null,
+      deletedAt: p.deletedAt?.toISOString() ?? null,
+      createdAt: p.createdAt.toISOString(),
+    }
+  })
+
+  let nextCursor: string | null = null
+  if (rows.length === limit) {
+    const last = rows[rows.length - 1]!.post
+    nextCursor = `${getCursorValue(sort, last)}~${last.id}`
+  }
+
+  return c.json({ posts: items, nextCursor })
 })
 
 // Soft-delete a post via mod action. Distinct from author delete: records who/why for audit.

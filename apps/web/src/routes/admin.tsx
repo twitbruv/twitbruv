@@ -59,6 +59,12 @@ function AdminLayout() {
             Users
           </UnderlineTabLink>
           <UnderlineTabLink
+            to="/admin/posts"
+            active={path.startsWith("/admin/posts")}
+          >
+            Posts
+          </UnderlineTabLink>
+          <UnderlineTabLink
             to="/admin/reports"
             active={path.startsWith("/admin/reports")}
           >
