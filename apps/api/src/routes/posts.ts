@@ -10,6 +10,7 @@ import { loadPostMedia } from '../lib/post-media.ts'
 import { loadArticleCards } from '../lib/article-cards.ts'
 import { loadRepostTargets } from '../lib/repost-targets.ts'
 import { loadQuoteTargets } from '../lib/quote-targets.ts'
+import { attachReplyParents } from '../lib/reply-parents.ts'
 import { loadPolls } from '../lib/polls.ts'
 import { linkHashtags } from '../lib/hashtags.ts'
 import { linkMentions } from '../lib/mentions.ts'
@@ -257,23 +258,20 @@ postsRoute.post('/', requireAuth(), async (c) => {
     loadPolls(db, session.user.id, [result.post.id]),
     loadGithubCards(db, [result.post.id]),
   ])
-  return c.json(
-    {
-      post: toPostDto(
-        result.post,
-        result.author,
-        { liked: false, bookmarked: false, reposted: false },
-        mediaMap.get(result.post.id),
-        env,
-        articleMap.get(result.post.id),
-        repostMap.get(result.post.id),
-        quoteMap.get(result.post.id),
-        pollMap.get(result.post.id),
-        githubMap.get(result.post.id),
-      ),
-    },
-    201,
+  const dto = toPostDto(
+    result.post,
+    result.author,
+    { liked: false, bookmarked: false, reposted: false },
+    mediaMap.get(result.post.id),
+    env,
+    articleMap.get(result.post.id),
+    repostMap.get(result.post.id),
+    quoteMap.get(result.post.id),
+    pollMap.get(result.post.id),
+    githubMap.get(result.post.id),
   )
+  await attachReplyParents({ db, viewerId: session.user.id, env, posts: [dto] })
+  return c.json({ post: dto }, 201)
 })
 
 // Repost (creates a posts row with repostOfId set, empty text).
@@ -916,6 +914,7 @@ postsRoute.get('/', async (c) => {
       githubMap.get(r.post.id),
     ),
   )
+  await attachReplyParents({ db, viewerId, env: mediaEnv, posts })
   const nextCursor = posts.length === limit ? posts[posts.length - 1]!.createdAt : null
   return c.json({ posts, nextCursor })
 })

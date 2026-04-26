@@ -76,6 +76,10 @@ export interface PostDto {
   /** Populated on quotes (rows where quoteOfId is set) — the embedded post rendered under the
    *  quoter's commentary. Not recursive: the embed's own quoteOf/repostOf stay undefined. */
   quoteOf?: PostDto
+  /** Populated on replies (rows where replyToId is set) — the parent post the row is replying
+   *  to, rendered as a small embed above the reply so feed readers have conversation context.
+   *  Attached by attachReplyParents() after the main DTOs are built; not recursive. */
+  replyParent?: PostDto
   /** Set when this row should render with a "Pinned" banner (profile feed first item). */
   pinned?: boolean
   /** Attached poll, if any. Renders below the post text. */

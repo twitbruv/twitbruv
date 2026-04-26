@@ -134,6 +134,51 @@ export function ArticleCardBlock({
   )
 }
 
+// Renders the parent of a reply as a compact embed at the top of the reply's
+// PostCard so feed readers have conversation context. Visually distinct from
+// QuoteEmbed (which is for explicit quotes) by using a subdued background and
+// a "Replying to" label.
+export function ReplyParentEmbed({ post }: { post: Post }) {
+  const handle = post.author.handle
+  const content = (
+    <div className="mb-2 overflow-hidden rounded-md border border-border/60 bg-muted/30 transition hover:bg-muted/50">
+      <div className="px-3 py-2">
+        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+          <ChatCircleIcon size={12} />
+          <span>
+            Replying to{" "}
+            {handle ? (
+              <span className="font-medium text-foreground">@{handle}</span>
+            ) : (
+              <span className="font-medium text-foreground">unknown</span>
+            )}
+          </span>
+          <span>·</span>
+          <time dateTime={post.createdAt}>{relativeTime(post.createdAt)}</time>
+        </div>
+        {post.text && (
+          <p className="mt-1 line-clamp-3 text-sm leading-snug break-words whitespace-pre-wrap text-muted-foreground">
+            {post.text}
+          </p>
+        )}
+      </div>
+    </div>
+  )
+  if (handle) {
+    return (
+      <Link
+        to="/$handle/p/$id"
+        params={{ handle, id: post.id }}
+        className="block"
+        data-post-card-ignore-open
+      >
+        {content}
+      </Link>
+    )
+  }
+  return content
+}
+
 export function QuoteEmbed({ post }: { post: Post }) {
   const handle = post.author.handle
   const thumb = post.media?.find((m) => m.processingState === "ready")
@@ -679,9 +724,12 @@ export function PostCard({
               </div>
             </div>
           ) : post.articleCard ? null : (
-            <p className="wrap-break-words mt-1 text-[15px] leading-relaxed whitespace-pre-wrap">
-              <RichText text={post.text} />
-            </p>
+            <>
+              {post.replyParent && <ReplyParentEmbed post={post.replyParent} />}
+              <p className="wrap-break-words mt-1 text-[15px] leading-relaxed whitespace-pre-wrap">
+                <RichText text={post.text} />
+              </p>
+            </>
           )}
           {!editing && <MacfolioCardFromText text={post.text} />}
           {post.articleCard && <ArticleCardBlock card={post.articleCard} />}
