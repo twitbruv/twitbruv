@@ -90,8 +90,15 @@ export function AppSidebar({ enabled }: { enabled: boolean }) {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="p-2">
-        <Link to="/" className="flex items-center gap-2">
-          <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
+        <Link
+          to="/"
+          aria-label={APP_NAME}
+          className="flex items-center gap-2"
+        >
+          <div
+            aria-hidden="true"
+            className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground"
+          >
             {APP_NAME.slice(0, 1).toLowerCase()}
           </div>
           <span className="text-base font-semibold group-data-[collapsible=icon]:hidden">
@@ -194,10 +201,12 @@ function useUnreadNotifications(enabled: boolean) {
       return
     }
     let cancel = false
+    let latest = 0
     async function tick() {
+      const requestId = ++latest
       try {
         const { count: next } = await api.notificationsUnreadCount()
-        if (!cancel) setCount(next)
+        if (!cancel && requestId === latest) setCount(next)
       } catch {}
     }
     tick()
@@ -218,10 +227,12 @@ function useUnreadDms(enabled: boolean) {
       return
     }
     let cancel = false
+    let latest = 0
     async function refresh() {
+      const requestId = ++latest
       try {
         const { count: next } = await api.dmUnreadCount()
-        if (!cancel) setCount(next)
+        if (!cancel && requestId === latest) setCount(next)
       } catch {}
     }
     refresh()
