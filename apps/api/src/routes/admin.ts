@@ -759,6 +759,36 @@ function parsePostCursor(raw: string | undefined, sort: PostSort) {
   return { kind: 'number' as const, num, id }
 }
 
+function getCursorValue(
+  sort: PostSort,
+  last: {
+    createdAt: Date
+    likeCount: number
+    repostCount: number
+    replyCount: number
+    quoteCount: number
+    bookmarkCount: number
+    impressionCount: number
+  },
+): string {
+  switch (sort) {
+    case 'created':
+      return last.createdAt.toISOString()
+    case 'likes':
+      return String(last.likeCount)
+    case 'reposts':
+      return String(last.repostCount)
+    case 'replies':
+      return String(last.replyCount)
+    case 'quotes':
+      return String(last.quoteCount)
+    case 'bookmarks':
+      return String(last.bookmarkCount)
+    case 'impressions':
+      return String(last.impressionCount)
+  }
+}
+
 // List/search posts with sort + filter for the admin panel. Joins author for the table cell.
 // Pagination uses a `<value>~<uuid>` cursor for stable ordering when stat values tie.
 adminRoute.get('/posts', async (c) => {
@@ -878,21 +908,7 @@ adminRoute.get('/posts', async (c) => {
   let nextCursor: string | null = null
   if (rows.length === limit) {
     const last = rows[rows.length - 1]!.post
-    const value =
-      sort === 'created'
-        ? last.createdAt.toISOString()
-        : sort === 'likes'
-          ? String(last.likeCount)
-          : sort === 'reposts'
-            ? String(last.repostCount)
-            : sort === 'replies'
-              ? String(last.replyCount)
-              : sort === 'quotes'
-                ? String(last.quoteCount)
-                : sort === 'bookmarks'
-                  ? String(last.bookmarkCount)
-                  : String(last.impressionCount)
-    nextCursor = `${value}~${last.id}`
+    nextCursor = `${getCursorValue(sort, last)}~${last.id}`
   }
 
   return c.json({ posts: items, nextCursor })

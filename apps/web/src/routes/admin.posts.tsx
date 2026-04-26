@@ -101,6 +101,42 @@ function formatRelative(iso: string): string {
   return new Date(iso).toLocaleDateString()
 }
 
+function StatHeader({
+  label,
+  sortKey,
+  icon,
+  currentSort,
+  currentOrder,
+  onSort,
+}: {
+  label: string
+  sortKey: AdminPostSort
+  icon?: React.ReactNode
+  currentSort: AdminPostSort
+  currentOrder: "asc" | "desc"
+  onSort: (next: AdminPostSort) => void
+}) {
+  const active = currentSort === sortKey
+  return (
+    <button
+      type="button"
+      onClick={() => onSort(sortKey)}
+      className={`flex items-center gap-1 text-xs ${
+        active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+      }`}
+    >
+      {icon}
+      <span>{label}</span>
+      {active &&
+        (currentOrder === "desc" ? (
+          <CaretDownIcon className="size-3" />
+        ) : (
+          <CaretUpIcon className="size-3" />
+        ))}
+    </button>
+  )
+}
+
 function AdminPosts() {
   const [q, setQ] = useState("")
   const [sort, setSort] = useState<AdminPostSort>("created")
@@ -156,14 +192,30 @@ function AdminPosts() {
     [],
   )
 
-  // Debounce text-search; filters & sort fire immediately.
+  // The two effects below split the load triggers: q is debounced so we don't fire a request
+  // on every keystroke, while filter/sort changes call load synchronously. Each effect reads
+  // the values it doesn't want to react to via a ref, so changing one set doesn't cancel or
+  // re-run the other.
+  const latestRef = useRef({ q, sort, order, typeFilter, visibility, status })
+  latestRef.current = { q, sort, order, typeFilter, visibility, status }
+
   useEffect(() => {
-    const t = setTimeout(
-      () => load(q, sort, order, typeFilter, visibility, status),
-      250,
-    )
+    const t = setTimeout(() => {
+      const v = latestRef.current
+      load(v.q, v.sort, v.order, v.typeFilter, v.visibility, v.status)
+    }, 250)
     return () => clearTimeout(t)
-  }, [q, sort, order, typeFilter, visibility, status, load])
+  }, [q, load])
+
+  const isFirstFilterRunRef = useRef(true)
+  useEffect(() => {
+    if (isFirstFilterRunRef.current) {
+      isFirstFilterRunRef.current = false
+      return
+    }
+    const v = latestRef.current
+    load(v.q, v.sort, v.order, v.typeFilter, v.visibility, v.status)
+  }, [sort, order, typeFilter, visibility, status, load])
 
   const loadMore = useCallback(async () => {
     if (!cursor || loadingMore) return
@@ -198,36 +250,6 @@ function AdminPosts() {
     },
     [sort],
   )
-
-  function StatHeader({
-    label,
-    sortKey,
-    icon,
-  }: {
-    label: string
-    sortKey: AdminPostSort
-    icon?: React.ReactNode
-  }) {
-    const active = sort === sortKey
-    return (
-      <button
-        type="button"
-        onClick={() => onHeaderSort(sortKey)}
-        className={`flex items-center gap-1 text-xs ${
-          active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-        }`}
-      >
-        {icon}
-        <span>{label}</span>
-        {active &&
-          (order === "desc" ? (
-            <CaretDownIcon className="size-3" />
-          ) : (
-            <CaretUpIcon className="size-3" />
-          ))}
-      </button>
-    )
-  }
 
   const columns = useMemo<Array<ColumnDef<AdminPost>>>(
     () => [
@@ -332,6 +354,9 @@ function AdminPosts() {
             label="Likes"
             sortKey="likes"
             icon={<HeartIcon className="size-3" />}
+            currentSort={sort}
+            currentOrder={order}
+            onSort={onHeaderSort}
           />
         ),
         cell: ({ row }) => (
@@ -347,6 +372,9 @@ function AdminPosts() {
             label="Reposts"
             sortKey="reposts"
             icon={<RepeatIcon className="size-3" />}
+            currentSort={sort}
+            currentOrder={order}
+            onSort={onHeaderSort}
           />
         ),
         cell: ({ row }) => (
@@ -362,6 +390,9 @@ function AdminPosts() {
             label="Replies"
             sortKey="replies"
             icon={<ChatCircleIcon className="size-3" />}
+            currentSort={sort}
+            currentOrder={order}
+            onSort={onHeaderSort}
           />
         ),
         cell: ({ row }) => (
@@ -377,6 +408,9 @@ function AdminPosts() {
             label="Saves"
             sortKey="bookmarks"
             icon={<QuotesIcon className="size-3" />}
+            currentSort={sort}
+            currentOrder={order}
+            onSort={onHeaderSort}
           />
         ),
         cell: ({ row }) => (
@@ -392,6 +426,9 @@ function AdminPosts() {
             label="Views"
             sortKey="impressions"
             icon={<EyeIcon className="size-3" />}
+            currentSort={sort}
+            currentOrder={order}
+            onSort={onHeaderSort}
           />
         ),
         cell: ({ row }) => (
@@ -402,7 +439,15 @@ function AdminPosts() {
       },
       {
         id: "created",
-        header: () => <StatHeader label="Created" sortKey="created" />,
+        header: () => (
+          <StatHeader
+            label="Created"
+            sortKey="created"
+            currentSort={sort}
+            currentOrder={order}
+            onSort={onHeaderSort}
+          />
+        ),
         cell: ({ row }) => {
           const p = row.original
           return (
