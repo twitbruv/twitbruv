@@ -89,7 +89,7 @@ meRoute.post('/handle', async (c) => {
     .where(eq(schema.users.id, session.user.id))
     .returning()
   if (!user) return c.json({ error: 'not_found' }, 404)
-  c.get('ctx').track('handle_claimed', session.user.id, { handle })
+  c.get('ctx').track('handle_claimed', session.user.id)
   return c.json({ user: toSelfDto(user, c.get('ctx').mediaEnv) })
 })
 

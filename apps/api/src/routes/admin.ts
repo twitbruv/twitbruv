@@ -336,7 +336,7 @@ adminRoute.post('/users/:id/ban', async (c) => {
     })
   })
 
-  c.get('ctx').track('admin_user_banned', session.user.id, { target_user_id: id })
+  c.get('ctx').track('admin_user_banned', session.user.id)
   return c.json({ ok: true })
 })
 
@@ -357,7 +357,7 @@ adminRoute.post('/users/:id/unban', async (c) => {
       action: 'unban',
     })
   })
-  c.get('ctx').track('admin_user_unbanned', session.user.id, { target_user_id: id })
+  c.get('ctx').track('admin_user_unbanned', session.user.id)
   return c.json({ ok: true })
 })
 
@@ -388,7 +388,7 @@ adminRoute.post('/users/:id/shadowban', async (c) => {
       publicReason: body.reason ?? null,
     })
   })
-  c.get('ctx').track('admin_user_shadowbanned', session.user.id, { target_user_id: id })
+  c.get('ctx').track('admin_user_shadowbanned', session.user.id)
   return c.json({ ok: true })
 })
 
@@ -409,7 +409,7 @@ adminRoute.post('/users/:id/unshadowban', async (c) => {
       action: 'unban',
     })
   })
-  c.get('ctx').track('admin_user_unshadowbanned', session.user.id, { target_user_id: id })
+  c.get('ctx').track('admin_user_unshadowbanned', session.user.id)
   return c.json({ ok: true })
 })
 
@@ -431,7 +431,7 @@ adminRoute.post('/users/:id/role', requireOwner(), async (c) => {
     action: 'warn',
     privateNote: `role -> ${role}`,
   })
-  c.get('ctx').track('admin_user_role_set', session.user.id, { target_user_id: id, role })
+  c.get('ctx').track('admin_user_role_set', session.user.id, { role })
   return c.json({ ok: true })
 })
 
@@ -648,7 +648,7 @@ adminRoute.post('/users/:id/verify', async (c) => {
       privateNote: `verify_grant${body.reason ? `: ${body.reason}` : ''}`,
     })
   })
-  c.get('ctx').track('admin_user_verified', session.user.id, { target_user_id: id })
+  c.get('ctx').track('admin_user_verified', session.user.id)
   return c.json({ ok: true })
 })
 
@@ -668,7 +668,7 @@ adminRoute.post('/users/:id/unverify', async (c) => {
       privateNote: `verify_revoke${body.reason ? `: ${body.reason}` : ''}`,
     })
   })
-  c.get('ctx').track('admin_user_unverified', session.user.id, { target_user_id: id })
+  c.get('ctx').track('admin_user_unverified', session.user.id)
   return c.json({ ok: true })
 })
 
@@ -720,7 +720,7 @@ adminRoute.post('/users/:id/handle', requireOwner(), async (c) => {
       privateNote: `handle_change: ${target.handle ?? '∅'} -> ${handle}${reason ? ` (${reason})` : ''}`,
     })
   })
-  c.get('ctx').track('admin_user_handle_set', session.user.id, { target_user_id: id })
+  c.get('ctx').track('admin_user_handle_set', session.user.id)
   return c.json({ ok: true })
 })
 
@@ -986,7 +986,7 @@ adminRoute.delete('/users/:id', requireOwner(), async (c) => {
       publicReason: body.reason ?? null,
     })
   })
-  c.get('ctx').track('admin_user_deleted', session.user.id, { target_user_id: id })
+  c.get('ctx').track('admin_user_deleted', session.user.id)
   return c.json({ ok: true })
 })
 
