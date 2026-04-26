@@ -130,7 +130,8 @@ export type Env = z.infer<typeof envSchema>
 export function loadEnv(): Env {
   const parsed = envSchema.safeParse(process.env)
   if (!parsed.success) {
-    console.error("Invalid environment:", parsed.error.flatten().fieldErrors)
+    const flat = parsed.error.flatten()
+    console.error("Invalid environment:", { fieldErrors: flat.fieldErrors, formErrors: flat.formErrors })
     process.exit(1)
   }
   const data = parsed.data
