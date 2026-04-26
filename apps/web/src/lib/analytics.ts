@@ -64,7 +64,21 @@ export async function trackedAction<T>(
 ): Promise<T> {
   const result = await fn()
   try {
-    track(name, getProps?.(result) ?? {})
+    const props = getProps?.(result) ?? {}
+    if (
+      import.meta.env.DEV &&
+      typeof window !== "undefined" &&
+      !window.db?.track &&
+      !window.databuddy?.track
+    ) {
+      // SDK silently no-ops when the tracker hasn't loaded; surface it in dev
+      // so a missing client ID or blocked CDN doesn't look like working code.
+      console.warn(
+        `[analytics] track("${name}") dropped — window.databuddy not ready. Check VITE_PUBLIC_DATABUDDY_CLIENT_ID and that cdn.databuddy.cc/databuddy.js loaded.`,
+        props,
+      )
+    }
+    track(name, props)
   } catch {
     /* analytics never breaks UX */
   }
