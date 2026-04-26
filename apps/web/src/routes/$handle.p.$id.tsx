@@ -879,7 +879,7 @@ function ReplyRow({
     if (!authorHandle) return
     if (clickedInteractiveElement(e.target)) return
     if (typeof window !== "undefined") {
-      const sel = window.getSelection?.()
+      const sel = window.getSelection()
       if (sel && sel.toString().length > 0) return
     }
     navigate({
