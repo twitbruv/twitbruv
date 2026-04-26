@@ -2,7 +2,7 @@ import { Link, createFileRoute } from "@tanstack/react-router"
 import { useEffect, useMemo, useState } from "react"
 import {
   BookmarkIcon,
-  KnightIcon,
+  HorseIcon,
   MagnifyingGlassIcon,
   XIcon,
 } from "@phosphor-icons/react"
@@ -258,7 +258,7 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
           <section className="border-b border-border p-4 flex items-center justify-between hover:bg-muted/40">
             <div className="flex items-center gap-4">
               <div className="flex items-center justify-center size-12 rounded bg-muted">
-                <IconChessKnight size={24} className="text-foreground" />
+                <HorseIcon size={24} className="text-foreground" />
               </div>
               <div>
                 <h3 className="font-semibold">Play chess online</h3>
