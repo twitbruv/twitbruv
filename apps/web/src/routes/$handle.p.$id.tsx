@@ -10,6 +10,7 @@ import {
   RepeatIcon,
 } from "@phosphor-icons/react"
 import { Textarea } from "@workspace/ui/components/textarea"
+import { cn } from "@workspace/ui/lib/utils"
 import {
   LikeIconBurst,
   useLikeAnimation,
@@ -901,7 +902,10 @@ function ReplyRow({
     // biome-ignore lint/a11y/useKeyWithClickEvents: row navigates on click; interactive children use clickedInteractiveElement to opt out
     <div
       onClick={openPost}
-      className={`block border-b border-border py-3 pr-4 pl-8 transition-colors${authorHandle ? "cursor-pointer hover:bg-muted/30" : ""}`}
+      className={cn(
+        "block border-b border-border py-3 pr-4 pl-8 transition-colors",
+        authorHandle && "cursor-pointer hover:bg-muted/30"
+      )}
     >
       <ReplyCard post={post} onChange={onChange} onRemove={onRemove} />
     </div>

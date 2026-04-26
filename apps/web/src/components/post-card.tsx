@@ -9,6 +9,7 @@ import {
 } from "@phosphor-icons/react"
 import { Button } from "@workspace/ui/components/button"
 import { Textarea } from "@workspace/ui/components/textarea"
+import { cn } from "@workspace/ui/lib/utils"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -520,7 +521,7 @@ export function PostCard({
         </div>
 
         <div
-          className={`min-w-0 flex-1${authorHandle ? "cursor-pointer" : ""}`}
+          className={cn("min-w-0 flex-1", authorHandle && "cursor-pointer")}
           onClick={(event) => {
             if (!authorHandle) return
             if (clickedInteractiveElement(event.target)) return
