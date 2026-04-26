@@ -20,15 +20,22 @@ import {
   UnderlineTabRow,
 } from "../components/underline-tab-row"
 import { VerifiedBadge } from "../components/verified-badge"
-import type { BlockedUser, MutedUser } from "../lib/api"
+import type { BlockedUser, GithubConnectorMe, MutedUser } from "../lib/api"
 
-type SettingsTab = "profile" | "account" | "sessions" | "privacy" | "danger"
+type SettingsTab =
+  | "profile"
+  | "account"
+  | "sessions"
+  | "privacy"
+  | "connections"
+  | "danger"
 
 const SETTINGS_TABS: ReadonlyArray<SettingsTab> = [
   "profile",
   "account",
   "sessions",
   "privacy",
+  "connections",
   "danger",
 ]
 
@@ -119,6 +126,13 @@ function Settings() {
             Privacy
           </UnderlineTabButton>
           <UnderlineTabButton
+            active={tab === "connections"}
+            onClick={() => setTab("connections")}
+            className="shrink-0 px-3"
+          >
+            Connections
+          </UnderlineTabButton>
+          <UnderlineTabButton
             active={tab === "danger"}
             onClick={() => setTab("danger")}
             className="shrink-0 px-3"
@@ -134,6 +148,7 @@ function Settings() {
             <SessionsSection currentSessionId={session?.session.id ?? null} />
           )}
           {tab === "privacy" && <PrivacySection />}
+          {tab === "connections" && <ConnectionsSection />}
           {tab === "danger" && (
             <DangerZone onDeleted={() => router.navigate({ to: "/" })} />
           )}
@@ -763,6 +778,191 @@ function DangerZone({ onDeleted }: { onDeleted: () => void }) {
       >
         Delete my account
       </Button>
+    </section>
+  )
+}
+
+function ConnectionsSection() {
+  const [state, setState] = useState<GithubConnectorMe | null>(null)
+  const [busy, setBusy] = useState<"refresh" | "disconnect" | "toggle" | null>(
+    null
+  )
+  const [status, setStatus] = useState<string | null>(null)
+
+  // Surface OAuth-roundtrip outcomes the callback redirects with.
+  const search =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search)
+      : null
+  const connected = search?.get("connected")
+  const connectError = search?.get("connect_error")
+
+  async function load() {
+    try {
+      const res = await api.connectorsGithubMe()
+      setState(res)
+    } catch (e) {
+      setStatus(e instanceof ApiError ? e.message : "couldn't load connection")
+    }
+  }
+
+  useEffect(() => {
+    load()
+  }, [])
+
+  async function refresh() {
+    if (busy) return
+    setBusy("refresh")
+    setStatus(null)
+    try {
+      const r = await api.connectorsGithubRefresh()
+      if (r.stale) setStatus("Refresh hit GitHub's limit — showing last good data.")
+      else setStatus("Refreshed.")
+      await load()
+    } catch (e) {
+      setStatus(e instanceof ApiError ? e.message : "refresh failed")
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function disconnect() {
+    if (busy) return
+    if (!window.confirm("Disconnect GitHub? Your contributions will be removed from your profile.")) {
+      return
+    }
+    setBusy("disconnect")
+    try {
+      await api.connectorsGithubDisconnect()
+      setState({ connected: false, configured: state?.configured ?? true })
+      setStatus("Disconnected.")
+    } catch (e) {
+      setStatus(e instanceof ApiError ? e.message : "disconnect failed")
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function toggleVisibility(next: boolean) {
+    if (busy || state?.connected !== true) return
+    setBusy("toggle")
+    try {
+      await api.connectorsGithubSetVisibility(next)
+      setState({ ...state, showOnProfile: next })
+    } catch (e) {
+      setStatus(e instanceof ApiError ? e.message : "couldn't update")
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <section className="space-y-4">
+      <h2 className="text-sm font-semibold">Connections</h2>
+      <p className="text-xs text-muted-foreground">
+        Link external accounts to enrich your profile. We never post on your behalf.
+      </p>
+
+      {connected === "github" && (
+        <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-xs">
+          GitHub connected.
+        </div>
+      )}
+      {connectError && (
+        <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          GitHub connection failed: {connectError}
+        </div>
+      )}
+
+      <div className="rounded-md border border-border p-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-sm font-semibold">GitHub</div>
+            {!state && <p className="text-xs text-muted-foreground">loading…</p>}
+            {state && state.configured === false && (
+              <p className="text-xs text-muted-foreground">
+                The server isn't configured for GitHub connections yet.
+              </p>
+            )}
+            {state?.connected === false && state.configured && (
+              <p className="text-xs text-muted-foreground">
+                Show your contributions graph and pinned repos on your profile.
+              </p>
+            )}
+            {state?.connected === true && (
+              <div className="space-y-1 text-xs text-muted-foreground">
+                <div>
+                  Connected as{" "}
+                  <a
+                    href={`https://github.com/${state.login}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-medium text-foreground hover:underline"
+                  >
+                    @{state.login}
+                  </a>
+                </div>
+                {state.refreshedAt && (
+                  <div>
+                    Last synced {new Date(state.refreshedAt).toLocaleString()}
+                  </div>
+                )}
+                {state.needsReconnect && (
+                  <div className="text-destructive">
+                    Token revoked — reconnect to resume.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="flex shrink-0 gap-2">
+            {state?.connected === true ? (
+              <>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={busy !== null}
+                  onClick={refresh}
+                >
+                  Refresh
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={busy !== null}
+                  onClick={disconnect}
+                >
+                  Disconnect
+                </Button>
+              </>
+            ) : (
+              state?.configured && (
+                <Button
+                  size="sm"
+                  nativeButton={false}
+                  render={<a href={api.connectorsGithubStartUrl()} />}
+                >
+                  Connect
+                </Button>
+              )
+            )}
+          </div>
+        </div>
+        {state?.connected === true && (
+          <label className="mt-3 flex items-center gap-2 text-xs">
+            <input
+              type="checkbox"
+              checked={state.showOnProfile}
+              onChange={(e) => toggleVisibility(e.target.checked)}
+              disabled={busy !== null}
+            />
+            Show on my profile
+          </label>
+        )}
+        {status && (
+          <p className="mt-2 text-xs text-muted-foreground">{status}</p>
+        )}
+      </div>
     </section>
   )
 }

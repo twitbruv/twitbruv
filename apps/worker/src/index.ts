@@ -8,6 +8,7 @@ import { loadEnv } from './env.ts'
 import { handleEmailJob } from './jobs/email.ts'
 import { handleMediaJob } from './jobs/media-process.ts'
 import { publishDueScheduledPosts } from './jobs/publish-scheduled.ts'
+import { handleGithubUnfurlJob } from './jobs/github-unfurl.ts'
 
 const env = loadEnv()
 
@@ -54,6 +55,7 @@ await boss.start()
 // Serialize: creating two queues in parallel deadlocks on pgboss.queue row locks.
 await boss.createQueue('email.send')
 await boss.createQueue('media.process')
+await boss.createQueue('github.unfurl')
 
 await boss.work('email.send', { batchSize: 5 }, async (jobs) => {
   await Promise.all(jobs.map((job) => handleEmailJob(mailer, job.data)))
@@ -71,6 +73,27 @@ await boss.work('media.process', { batchSize: 2 }, async (jobs) => {
         'media_process_failed',
       )
       throw err
+    }
+  }
+})
+
+// GitHub URL unfurl. batchSize=4 caps concurrent GitHub RTTs at 4 per worker tick — at
+// ~500ms p50, that's ~8 RPS max, far under the 5000/hr authenticated limit. Most jobs are
+// cache hits anyway because url_unfurls.refKey dedupes across posters.
+await boss.work('github.unfurl', { batchSize: 4 }, async (jobs) => {
+  for (const job of jobs) {
+    try {
+      const result = await handleGithubUnfurlJob(db, job.data)
+      if (!result.ok) {
+        log.warn({ payload: job.data, reason: result.reason }, 'github_unfurl_failed')
+      }
+    } catch (err) {
+      // The handler persists most failures itself; only programmer errors reach here. Don't
+      // re-throw — pg-boss would retry, and a parse error isn't going to fix itself.
+      log.error(
+        { err: err instanceof Error ? err.stack ?? err.message : err, payload: job.data },
+        'github_unfurl_handler_error',
+      )
     }
   }
 })
@@ -93,7 +116,10 @@ const scheduledTimer = setInterval(async () => {
   }
 }, SCHEDULED_INTERVAL_MS)
 
-log.info({ queues: ['email.send', 'media.process'], scheduledIntervalMs: SCHEDULED_INTERVAL_MS }, 'worker_ready')
+log.info(
+  { queues: ['email.send', 'media.process', 'github.unfurl'], scheduledIntervalMs: SCHEDULED_INTERVAL_MS },
+  'worker_ready',
+)
 
 const shutdown = async () => {
   log.info('worker_shutdown')

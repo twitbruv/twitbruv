@@ -136,6 +136,15 @@ export const BUCKETS = {
   // Notification polling — frontend may poll unread-count every few seconds. Cache makes
   // this ~free, but keep a hard ceiling against runaway tabs / misbehaving SDKs.
   'reads.notifications': [{ windowMs: MIN, max: 480 }],
+
+  // GitHub connector — start, callback, manual refresh. Tight per-user caps because each
+  // call burns GitHub's 5k/hr token budget; misbehaving tabs shouldn't be able to drain it.
+  'connectors.github.start': [{ windowMs: MIN, max: 6 }],
+  'connectors.github.callback': [{ windowMs: MIN, max: 30 }],
+  'connectors.github.refresh': [
+    { windowMs: MIN, max: 4 },
+    { windowMs: HOUR, max: 30 },
+  ],
 } satisfies Record<string, Array<FixedWindowLimit>>
 
 export type BucketName = keyof typeof BUCKETS

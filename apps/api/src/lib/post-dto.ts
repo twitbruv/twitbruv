@@ -1,6 +1,7 @@
 import { schema } from '@workspace/db'
 import type { MediaEnv } from '@workspace/media/env'
 import { assetUrl, publicUrl } from '@workspace/media/s3'
+import type { GithubCard } from '@workspace/github-unfurl'
 import type { ArticleCard } from './article-cards.ts'
 import type { PollDto } from './polls.ts'
 
@@ -65,6 +66,9 @@ export interface PostDto {
   }
   media?: Array<MediaDto>
   articleCard?: ArticleCard
+  /** Typed GitHub cards for any GitHub URLs in the post text. Populated async by the worker;
+   *  absent on freshly-created posts until the next refresh. */
+  githubCards?: Array<GithubCard>
   viewer?: ViewerFlags
   /** Populated on reposts (rows where repostOfId is set). The UI renders this instead of the
    *  empty-text repost row, with a "reposted by" banner above. */
@@ -111,6 +115,7 @@ export function toPostDto(
   repostOf?: PostDto,
   quoteOf?: PostDto,
   poll?: PollDto,
+  githubCards?: Array<GithubCard>,
 ): PostDto {
   return {
     id: post.id,
@@ -147,5 +152,6 @@ export function toPostDto(
     ...(repostOf ? { repostOf } : {}),
     ...(quoteOf ? { quoteOf } : {}),
     ...(poll ? { poll } : {}),
+    ...(githubCards && githubCards.length > 0 ? { githubCards } : {}),
   }
 }

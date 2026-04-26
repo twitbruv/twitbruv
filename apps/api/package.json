@@ -10,9 +10,12 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@octokit/graphql": "^9.0.3",
+    "@octokit/request": "^10.0.8",
     "@workspace/auth": "workspace:*",
     "@workspace/db": "workspace:*",
     "@workspace/email": "workspace:*",
+    "@workspace/github-unfurl": "workspace:*",
     "@workspace/media": "workspace:*",
     "@workspace/rate-limit": "workspace:*",
     "@workspace/types": "workspace:*",

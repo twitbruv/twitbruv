@@ -8,6 +8,7 @@ import { parseCursor } from '../lib/cursor.ts'
 import { toPostDto, type PostDto } from '../lib/post-dto.ts'
 import { loadPostMedia } from '../lib/post-media.ts'
 import { loadArticleCards } from '../lib/article-cards.ts'
+import { loadGithubCards } from '../lib/github-cards.ts'
 import { loadViewerFlags } from '../lib/viewer-flags.ts'
 
 export const notificationsRoute = new Hono<HonoEnv>()
@@ -82,7 +83,7 @@ notificationsRoute.get('/', async (c) => {
     ),
   )
 
-  const [postRows, mediaMap, articleMap, viewerFlags] = await Promise.all([
+  const [postRows, mediaMap, articleMap, viewerFlags, githubMap] = await Promise.all([
     postIds.length > 0
       ? db
           .select({ post: schema.posts, author: schema.users })
@@ -93,6 +94,7 @@ notificationsRoute.get('/', async (c) => {
     loadPostMedia(db, postIds),
     loadArticleCards(db, postIds),
     loadViewerFlags(db, session.user.id, postIds),
+    loadGithubCards(db, postIds),
   ])
 
   const postById = new Map<string, PostDto>()
@@ -106,6 +108,10 @@ notificationsRoute.get('/', async (c) => {
         mediaMap.get(r.post.id),
         mediaEnv,
         articleMap.get(r.post.id),
+        undefined,
+        undefined,
+        undefined,
+        githubMap.get(r.post.id),
       ),
     )
   }

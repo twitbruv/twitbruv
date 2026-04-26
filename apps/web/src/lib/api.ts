@@ -1,4 +1,7 @@
+import type { GithubCard } from "@workspace/github-unfurl/card"
 import { API_URL } from "./env"
+
+export type { GithubCard } from "@workspace/github-unfurl/card"
 
 export class ApiError extends Error {
   constructor(
@@ -500,6 +503,25 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+
+  // Connectors — currently just GitHub for the contributions graph + pinned repos.
+  connectorsGithubMe: () =>
+    request<GithubConnectorMe>("/api/connectors/github/me"),
+  connectorsGithubStartUrl: () => `${API_URL}/api/connectors/github/start`,
+  connectorsGithubDisconnect: () =>
+    request<{ ok: true }>("/api/connectors/github", { method: "DELETE" }),
+  connectorsGithubRefresh: () =>
+    request<{ ok: true; refreshedAt: string; stale: boolean }>(
+      "/api/connectors/github/refresh",
+      { method: "POST" }
+    ),
+  connectorsGithubSetVisibility: (showOnProfile: boolean) =>
+    request<{ ok: true }>("/api/connectors/github/me", {
+      method: "PATCH",
+      body: JSON.stringify({ showOnProfile }),
+    }),
+  userGithub: (handle: string) =>
+    request<GithubProfilePayload>(`/api/users/${h(handle)}/github`),
 }
 
 export type ReportReason =
@@ -563,6 +585,9 @@ export interface Post {
   pinned?: boolean
   /** Optional poll attached to this post. */
   poll?: PollDto
+  /** Typed GitHub cards for any GitHub URLs in the post text. Populated async by the
+   *  worker; absent on freshly-created posts until the next refresh. */
+  githubCards?: Array<GithubCard>
 }
 
 export interface PollOption {
@@ -1112,3 +1137,60 @@ export interface AnalyticsOverview {
   impressionsByDay: Array<{ day: string; count: number }>
   topPosts: Array<Post>
 }
+
+export interface GithubContributionDay {
+  date: string
+  count: number
+  color: string
+}
+
+export interface GithubContributionWeek {
+  days: Array<GithubContributionDay>
+}
+
+export interface GithubContributions {
+  totalContributions: number
+  weeks: Array<GithubContributionWeek>
+}
+
+export interface GithubPinnedRepo {
+  id: string
+  name: string
+  nameWithOwner: string
+  description: string | null
+  url: string
+  stars: number
+  forks: number
+  primaryLanguage: { name: string; color: string | null } | null
+}
+
+export type GithubConnectorMe =
+  | { connected: false; configured: boolean }
+  | {
+      connected: true
+      configured: true
+      login: string
+      scopes: Array<string>
+      showOnProfile: boolean
+      needsReconnect: boolean
+      refreshedAt: string | null
+      lastFailureAt: string | null
+      lastFailureReason: string | null
+    }
+
+export type GithubProfilePayload =
+  | { connected: false }
+  | {
+      connected: true
+      login: string
+      name: string | null
+      htmlUrl: string
+      avatarUrl: string
+      followers: number
+      following: number
+      publicRepos: number
+      contributions: GithubContributions
+      pinned: Array<GithubPinnedRepo>
+      refreshedAt: string
+      stale: boolean
+    }

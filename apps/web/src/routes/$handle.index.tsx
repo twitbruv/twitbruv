@@ -7,6 +7,7 @@ import { ProfileActions } from "../components/profile-actions"
 import { ImageLightbox } from "../components/image-lightbox"
 import { RichText } from "../components/rich-text"
 import { MacfolioCardFromText } from "../components/macfolio-card"
+import { GithubBlock } from "../components/github-block"
 import { VerifiedBadge } from "../components/verified-badge"
 import { NotFoundPanel, PageLoading } from "../components/page-surface"
 import { useMe } from "../lib/me"
@@ -227,6 +228,7 @@ function Profile() {
           </span>
         </div>
       </div>
+      {user.handle && <GithubBlock handle={user.handle} />}
       {user.handle && <ProfileLists handle={user.handle} />}
       <div className="border-t border-border">
         <Feed

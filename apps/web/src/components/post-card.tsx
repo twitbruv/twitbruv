@@ -35,6 +35,7 @@ import { authClient } from "../lib/auth"
 import { ApiError, api } from "../lib/api"
 import { RichText } from "./rich-text"
 import { MacfolioCardFromText } from "./macfolio-card"
+import { GithubCardBlock } from "./github-card"
 import { ReportDialog } from "./report-dialog"
 import { Avatar } from "./avatar"
 import { ImageLightbox } from "./image-lightbox"
@@ -684,6 +685,9 @@ export function PostCard({
           )}
           {!editing && <MacfolioCardFromText text={post.text} />}
           {post.articleCard && <ArticleCardBlock card={post.articleCard} />}
+          {post.githubCards?.map((card, i) => (
+            <GithubCardBlock key={`${card.kind}-${card.url}-${i}`} card={card} />
+          ))}
           {post.media && post.media.length > 0 && (
             <MediaGrid media={post.media} />
           )}

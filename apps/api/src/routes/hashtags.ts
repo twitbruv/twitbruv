@@ -9,6 +9,7 @@ import { loadArticleCards } from '../lib/article-cards.ts'
 import { loadRepostTargets } from '../lib/repost-targets.ts'
 import { loadQuoteTargets } from '../lib/quote-targets.ts'
 import { loadPolls } from '../lib/polls.ts'
+import { loadGithubCards } from '../lib/github-cards.ts'
 import { parseCursor } from '../lib/cursor.ts'
 
 export const hashtagsRoute = new Hono<HonoEnv>()
@@ -85,7 +86,7 @@ hashtagsRoute.get('/:tag/posts', async (c) => {
     .limit(limit)
 
   const ids = rows.map((r) => r.post.id)
-  const [flags, mediaMap, articleMap, repostMap, quoteMap, pollMap] = await Promise.all([
+  const [flags, mediaMap, articleMap, repostMap, quoteMap, pollMap, githubMap] = await Promise.all([
     loadViewerFlags(db, viewerId, ids),
     loadPostMedia(db, ids),
     loadArticleCards(db, ids),
@@ -102,6 +103,7 @@ hashtagsRoute.get('/:tag/posts', async (c) => {
       quoteRows: rows.map((r) => ({ id: r.post.id, quoteOfId: r.post.quoteOfId })),
     }),
     loadPolls(db, viewerId, ids),
+    loadGithubCards(db, ids),
   ])
   const posts = rows.map((r) =>
     toPostDto(
@@ -114,6 +116,7 @@ hashtagsRoute.get('/:tag/posts', async (c) => {
       repostMap.get(r.post.id),
       quoteMap.get(r.post.id),
       pollMap.get(r.post.id),
+      githubMap.get(r.post.id),
     ),
   )
   const nextCursor = posts.length === limit ? posts[posts.length - 1]!.createdAt : null

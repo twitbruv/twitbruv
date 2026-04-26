@@ -14,6 +14,8 @@ import { notify, invalidateUnreadCounts } from '../lib/notify.ts'
 import { loadPolls } from '../lib/polls.ts'
 import { parseCursor } from '../lib/cursor.ts'
 import { homeFeedCacheKey, profileFeedCacheKey } from './feed.ts'
+import { getGithubSnapshot } from '../lib/github-snapshot.ts'
+import { loadGithubCards } from '../lib/github-cards.ts'
 
 export const usersRoute = new Hono<HonoEnv>()
 
@@ -96,6 +98,34 @@ usersRoute.get('/:handle', async (c) => {
   })
 })
 
+// Public GitHub snapshot for the profile page. Gated on showOnProfile so users can disconnect
+// the public view without revoking the OAuth grant. Only an explicit allow-list of fields is
+// returned — never the encrypted token, scopes, or failure reasons.
+usersRoute.get('/:handle/github', async (c) => {
+  const ctx = c.get('ctx')
+  await ctx.rateLimit(c, 'reads.profile')
+  const user = await resolveHandle(ctx.db, c.req.param('handle'))
+  if (!user) return c.json({ error: 'not_found' }, 404)
+  const { snapshot, showOnProfile } = await getGithubSnapshot(ctx, user.id)
+  if (!snapshot || !showOnProfile) {
+    return c.json({ connected: false })
+  }
+  return c.json({
+    connected: true,
+    login: snapshot.login,
+    name: snapshot.name,
+    htmlUrl: snapshot.htmlUrl,
+    avatarUrl: snapshot.avatarUrl,
+    followers: snapshot.followers,
+    following: snapshot.following,
+    publicRepos: snapshot.publicRepos,
+    contributions: snapshot.contributions,
+    pinned: snapshot.pinned,
+    refreshedAt: snapshot.refreshedAt,
+    stale: snapshot.stale ?? false,
+  })
+})
+
 // Profile feed.
 const PROFILE_FEED_TTL_SEC = 60
 
@@ -172,9 +202,10 @@ usersRoute.get('/:handle/posts', async (c) => {
     // Build viewer-independent DTOs (no viewer flags, no repost/quote embeds — those are
     // layered on after, since they vary per viewer).
     const ids = allRows.map((r) => r.post.id)
-    const [mediaMap, articleMap] = await Promise.all([
+    const [mediaMap, articleMap, githubMap] = await Promise.all([
       loadPostMedia(db, ids),
       loadArticleCards(db, ids),
+      loadGithubCards(db, ids),
     ])
     const cachedPosts: Array<PostDto> = allRows.map((r) => {
       const dto = toPostDto(
@@ -184,6 +215,10 @@ usersRoute.get('/:handle/posts', async (c) => {
         mediaMap.get(r.post.id),
         mediaEnv,
         articleMap.get(r.post.id),
+        undefined,
+        undefined,
+        undefined,
+        githubMap.get(r.post.id),
       )
       if (pinnedRow && r.post.id === pinnedRow.post.id) {
         ;(dto as { pinned?: boolean }).pinned = true

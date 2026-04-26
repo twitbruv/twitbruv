@@ -9,6 +9,7 @@ import { loadArticleCards } from '../lib/article-cards.ts'
 import { loadRepostTargets } from '../lib/repost-targets.ts'
 import { loadQuoteTargets } from '../lib/quote-targets.ts'
 import { loadPolls } from '../lib/polls.ts'
+import { loadGithubCards } from '../lib/github-cards.ts'
 import { parseCursor } from '../lib/cursor.ts'
 
 export const feedRoute = new Hono<HonoEnv>()
@@ -67,7 +68,7 @@ feedRoute.get('/', requireAuth(), async (c) => {
     .limit(limit)
 
   const ids = rows.map((r) => r.post.id)
-  const [flags, mediaMap, articleMap, repostMap, quoteMap, pollMap] = await Promise.all([
+  const [flags, mediaMap, articleMap, repostMap, quoteMap, pollMap, githubMap] = await Promise.all([
     loadViewerFlags(db, me, ids),
     loadPostMedia(db, ids),
     loadArticleCards(db, ids),
@@ -84,6 +85,7 @@ feedRoute.get('/', requireAuth(), async (c) => {
       quoteRows: rows.map((r) => ({ id: r.post.id, quoteOfId: r.post.quoteOfId })),
     }),
     loadPolls(db, me, ids),
+    loadGithubCards(db, ids),
   ])
   const posts = rows.map((r) =>
     toPostDto(
@@ -96,6 +98,7 @@ feedRoute.get('/', requireAuth(), async (c) => {
       repostMap.get(r.post.id),
       quoteMap.get(r.post.id),
       pollMap.get(r.post.id),
+      githubMap.get(r.post.id),
     ),
   )
   const nextCursor = posts.length === limit ? posts[posts.length - 1]!.createdAt : null
@@ -241,7 +244,7 @@ feedRoute.get('/network', requireAuth(), async (c) => {
     .slice(0, limit)
 
   const ids = merged.map((r) => r.post.id)
-  const [flags, mediaMap, articleMap, repostMapPost, quoteMapPost, pollMap] = await Promise.all([
+  const [flags, mediaMap, articleMap, repostMapPost, quoteMapPost, pollMap, githubMap] = await Promise.all([
     loadViewerFlags(db, me, ids),
     loadPostMedia(db, ids),
     loadArticleCards(db, ids),
@@ -258,6 +261,7 @@ feedRoute.get('/network', requireAuth(), async (c) => {
       quoteRows: merged.map((r) => ({ id: r.post.id, quoteOfId: r.post.quoteOfId })),
     }),
     loadPolls(db, me, ids),
+    loadGithubCards(db, ids),
   ])
   // Pull the triggering actors' handles for the "Lucas + 2 others liked this"
   // banner. We cap at 3 ids per post; the count beyond that is shown as
@@ -296,6 +300,7 @@ feedRoute.get('/network', requireAuth(), async (c) => {
       repostMapPost.get(r.post.id),
       quoteMapPost.get(r.post.id),
       pollMap.get(r.post.id),
+      githubMap.get(r.post.id),
     ),
     networkActors: r.actorIds
       .slice(0, 3)

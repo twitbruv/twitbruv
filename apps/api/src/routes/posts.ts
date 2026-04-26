@@ -16,6 +16,8 @@ import { linkMentions } from '../lib/mentions.ts'
 import { notify, invalidateUnreadCounts } from '../lib/notify.ts'
 import { parseCursor } from '../lib/cursor.ts'
 import { homeFeedCacheKey, profileFeedCacheKey } from './feed.ts'
+import { attachPostUnfurls, dispatchUnfurlJobs } from '../lib/post-unfurls.ts'
+import { loadGithubCards } from '../lib/github-cards.ts'
 
 export const postsRoute = new Hono<HonoEnv>()
 
@@ -178,6 +180,11 @@ postsRoute.post('/', requireAuth(), async (c) => {
 
     await linkHashtags(tx, post.id, post.text)
     const mentionedUserIds = await linkMentions(tx, post.id, session.user.id, post.text)
+    const { toEnqueue: githubUnfurlJobs } = await attachPostUnfurls({
+      tx: tx as never,
+      postId: post.id,
+      text: post.text,
+    })
 
     // Fan-out notifications. Self-notifications and duplicates (mention of the reply target,
     // for instance) are filtered inside notify() + de-duped here to avoid double rows.
@@ -218,19 +225,21 @@ postsRoute.post('/', requireAuth(), async (c) => {
     const [author] = await tx.select().from(schema.users).where(eq(schema.users.id, post.authorId)).limit(1)
     if (!author) throw new HttpError(500, 'author_missing')
 
-    return { post, author, notified }
+    return { post, author, notified, githubUnfurlJobs }
   })
 
   // Invalidate the author's cached home feed so their own new post shows up on refresh,
   // their profile-feed page-0 cache (this post needs to be at top), and any unread-count
-  // caches for users who got a notification.
+  // caches for users who got a notification. Enqueue any GitHub URL unfurl jobs after the
+  // tx commits — sending inside would orphan jobs on rollback.
   await Promise.all([
     cache.del(homeFeedCacheKey(session.user.id), profileFeedCacheKey(session.user.id)),
     invalidateUnreadCounts(cache, result.notified),
+    dispatchUnfurlJobs(c.get('ctx').boss, result.githubUnfurlJobs),
   ])
 
   const env = c.get('ctx').mediaEnv
-  const [mediaMap, articleMap, repostMap, quoteMap, pollMap] = await Promise.all([
+  const [mediaMap, articleMap, repostMap, quoteMap, pollMap, githubMap] = await Promise.all([
     loadPostMedia(db, [result.post.id]),
     loadArticleCards(db, [result.post.id]),
     loadRepostTargets({
@@ -246,6 +255,7 @@ postsRoute.post('/', requireAuth(), async (c) => {
       quoteRows: [{ id: result.post.id, quoteOfId: result.post.quoteOfId }],
     }),
     loadPolls(db, session.user.id, [result.post.id]),
+    loadGithubCards(db, [result.post.id]),
   ])
   return c.json(
     {
@@ -259,6 +269,7 @@ postsRoute.post('/', requireAuth(), async (c) => {
         repostMap.get(result.post.id),
         quoteMap.get(result.post.id),
         pollMap.get(result.post.id),
+        githubMap.get(result.post.id),
       ),
     },
     201,
@@ -554,13 +565,14 @@ postsRoute.get('/:id/thread', async (c) => {
     { id: target.id, quoteOfId: target.quoteOfId },
     ...replies.map((r) => ({ id: r.post.id, quoteOfId: r.post.quoteOfId })),
   ]
-  const [flags, mediaMap, articleMap, repostMap, quoteMap, pollMap] = await Promise.all([
+  const [flags, mediaMap, articleMap, repostMap, quoteMap, pollMap, githubMap] = await Promise.all([
     loadViewerFlags(db, viewerId, allIds),
     loadPostMedia(db, allIds),
     loadArticleCards(db, allIds),
     loadRepostTargets({ db, viewerId, env, repostRows: allRepostRows }),
     loadQuoteTargets({ db, viewerId, env, quoteRows: allQuoteRows }),
     loadPolls(db, viewerId, allIds),
+    loadGithubCards(db, allIds),
   ])
 
   const byId = new Map(ancestorPostRows.map((r) => [r.post.id, r]))
@@ -578,6 +590,7 @@ postsRoute.get('/:id/thread', async (c) => {
         repostMap.get(r.post.id),
         quoteMap.get(r.post.id),
         pollMap.get(r.post.id),
+        githubMap.get(r.post.id),
       ),
     ),
     post: targetWithAuthor
@@ -591,6 +604,7 @@ postsRoute.get('/:id/thread', async (c) => {
           repostMap.get(target.id),
           quoteMap.get(target.id),
           pollMap.get(target.id),
+          githubMap.get(target.id),
         )
       : null,
     replies: replies.map((r) => ({
@@ -604,6 +618,7 @@ postsRoute.get('/:id/thread', async (c) => {
         repostMap.get(r.post.id),
         quoteMap.get(r.post.id),
         pollMap.get(r.post.id),
+        githubMap.get(r.post.id),
       ),
       descendantReplyCount: descendantCounts.get(r.post.id) ?? 0,
     })),
@@ -624,7 +639,7 @@ postsRoute.get('/:id', async (c) => {
     .limit(1)
   const row = rows[0]
   if (!row) return c.json({ error: 'not_found' }, 404)
-  const [flags, mediaMap, articleMap, repostMap, quoteMap, pollMap] = await Promise.all([
+  const [flags, mediaMap, articleMap, repostMap, quoteMap, pollMap, githubMap] = await Promise.all([
     loadViewerFlags(db, viewerId, [row.post.id]),
     loadPostMedia(db, [row.post.id]),
     loadArticleCards(db, [row.post.id]),
@@ -641,6 +656,7 @@ postsRoute.get('/:id', async (c) => {
       quoteRows: [{ id: row.post.id, quoteOfId: row.post.quoteOfId }],
     }),
     loadPolls(db, viewerId, [row.post.id]),
+    loadGithubCards(db, [row.post.id]),
   ])
   return c.json({
     post: toPostDto(
@@ -653,6 +669,7 @@ postsRoute.get('/:id', async (c) => {
       repostMap.get(row.post.id),
       quoteMap.get(row.post.id),
       pollMap.get(row.post.id),
+      githubMap.get(row.post.id),
     ),
   })
 })
@@ -684,12 +701,22 @@ postsRoute.patch('/:id', requireAuth(), async (c) => {
       .set({ text: body.text, editedAt: new Date() })
       .where(eq(schema.posts.id, post.id))
       .returning()
-    return { post: updated!, unchanged: false as const }
+    const { toEnqueue: githubUnfurlJobs } = await attachPostUnfurls({
+      tx: tx as never,
+      postId: post.id,
+      text: body.text,
+      resetExistingLinks: true,
+    })
+    return { post: updated!, unchanged: false as const, githubUnfurlJobs }
   })
+
+  if (!result.unchanged) {
+    await dispatchUnfurlJobs(c.get('ctx').boss, result.githubUnfurlJobs)
+  }
 
   const [author] = await db.select().from(schema.users).where(eq(schema.users.id, result.post.authorId)).limit(1)
   const env = c.get('ctx').mediaEnv
-  const [flags, mediaMap, articleMap, repostMap, quoteMap, pollMap] = await Promise.all([
+  const [flags, mediaMap, articleMap, repostMap, quoteMap, pollMap, githubMap] = await Promise.all([
     loadViewerFlags(db, session.user.id, [result.post.id]),
     loadPostMedia(db, [result.post.id]),
     loadArticleCards(db, [result.post.id]),
@@ -706,6 +733,7 @@ postsRoute.patch('/:id', requireAuth(), async (c) => {
       quoteRows: [{ id: result.post.id, quoteOfId: result.post.quoteOfId }],
     }),
     loadPolls(db, session.user.id, [result.post.id]),
+    loadGithubCards(db, [result.post.id]),
   ])
   return c.json({
     post: toPostDto(
@@ -718,6 +746,7 @@ postsRoute.patch('/:id', requireAuth(), async (c) => {
       repostMap.get(result.post.id),
       quoteMap.get(result.post.id),
       pollMap.get(result.post.id),
+      githubMap.get(result.post.id),
     ),
   })
 })
@@ -854,7 +883,7 @@ postsRoute.get('/', async (c) => {
     .limit(limit)
 
   const ids = rows.map((r) => r.post.id)
-  const [flags, mediaMap, articleMap, repostMap, quoteMap, pollMap] = await Promise.all([
+  const [flags, mediaMap, articleMap, repostMap, quoteMap, pollMap, githubMap] = await Promise.all([
     loadViewerFlags(db, viewerId, ids),
     loadPostMedia(db, ids),
     loadArticleCards(db, ids),
@@ -871,6 +900,7 @@ postsRoute.get('/', async (c) => {
       quoteRows: rows.map((r) => ({ id: r.post.id, quoteOfId: r.post.quoteOfId })),
     }),
     loadPolls(db, viewerId, ids),
+    loadGithubCards(db, ids),
   ])
   const posts = rows.map((r) =>
     toPostDto(
@@ -883,6 +913,7 @@ postsRoute.get('/', async (c) => {
       repostMap.get(r.post.id),
       quoteMap.get(r.post.id),
       pollMap.get(r.post.id),
+      githubMap.get(r.post.id),
     ),
   )
   const nextCursor = posts.length === limit ? posts[posts.length - 1]!.createdAt : null

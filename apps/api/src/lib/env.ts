@@ -57,6 +57,34 @@ const envSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
 
+  // "Connect GitHub" OAuth App — separate from the login provider above so that linking your
+  // GitHub for profile display can never overwrite the token better-auth uses to log you in.
+  GITHUB_CONNECT_CLIENT_ID: z.string().optional(),
+  GITHUB_CONNECT_CLIENT_SECRET: z.string().optional(),
+
+  // Shared GitHub PAT (or App installation token) used to enrich post cards for GitHub URLs.
+  // 5000 req/hr authenticated vs 60/hr unauthenticated — required to make the unfurl pipeline
+  // actually work. If unset, posts containing GitHub URLs render fine but without the card.
+  GITHUB_UNFURL_TOKEN: z.string().optional(),
+
+  // Symmetric key for at-rest encryption of connector OAuth tokens (oauth_connections table).
+  // Must be 32 raw bytes encoded as base64 — anything shorter is rejected at boot. Rotation
+  // story is versioned by the ciphertext prefix `v1:` (see lib/connector-crypto.ts).
+  CONNECTORS_ENCRYPTION_KEY: z
+    .string()
+    .optional()
+    .refine(
+      (v) => {
+        if (!v) return true
+        try {
+          return Buffer.from(v, 'base64').length === 32
+        } catch {
+          return false
+        }
+      },
+      { message: 'CONNECTORS_ENCRYPTION_KEY must decode to 32 bytes (base64)' },
+    ),
+
   REDIS_URL: z.string().default("redis://localhost:6379"),
 
   S3_ENDPOINT: z.string().url(),

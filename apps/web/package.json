@@ -31,6 +31,7 @@
     "@tanstack/router-plugin": "^1.132.0",
     "@vercel/og": "^0.6.8",
     "@workspace/auth": "workspace:*",
+    "@workspace/github-unfurl": "workspace:*",
     "@workspace/ui": "workspace:*",
     "@workspace/validators": "workspace:*",
     "better-auth": "^1.4.6",

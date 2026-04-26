@@ -1,0 +1,23 @@
+{
+  "name": "@workspace/github-unfurl",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts",
+    "./card": "./src/card.ts",
+    "./urls": "./src/urls.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@octokit/request": "^10.0.8",
+    "@workspace/db": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^25.1.0",
+    "@workspace/config-tsconfig": "workspace:*",
+    "typescript": "^5.9.3"
+  }
+}

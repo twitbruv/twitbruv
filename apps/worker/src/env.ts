@@ -20,6 +20,9 @@ const envSchema = z.object({
   S3_SECRET_ACCESS_KEY: z.string(),
   S3_BUCKET: z.string(),
   S3_PUBLIC_URL: z.string().url(),
+
+  REDIS_URL: z.string().default("redis://localhost:6379"),
+  GITHUB_UNFURL_TOKEN: z.string().optional(),
 })
 
 export type Env = z.infer<typeof envSchema>
