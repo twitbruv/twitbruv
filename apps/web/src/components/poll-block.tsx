@@ -1,4 +1,9 @@
 import { useEffect, useState } from "react"
+import { Checkbox } from "@workspace/ui/components/checkbox"
+import {
+  RadioGroup,
+  RadioGroupItem,
+} from "@workspace/ui/components/radio-group"
 import { ApiError, api } from "../lib/api"
 import { authClient } from "../lib/auth"
 import type { PollDto } from "../lib/api"
@@ -75,59 +80,72 @@ export function PollBlock({
     }
   }
 
-  return (
-    <div className="mt-2 rounded-md border border-border p-3">
-      <ul className="space-y-1.5">
-        {poll.options.map((opt) => {
-          const pct =
-            poll.totalVotes > 0 ? (opt.voteCount / poll.totalVotes) * 100 : 0
-          const isViewerChoice =
-            poll.viewerVoteOptionIds?.includes(opt.id) ?? false
-          const isSelected = selected.has(opt.id)
-          if (showResults) {
-            return (
-              <li key={opt.id}>
-                <div className="relative overflow-hidden rounded-md border border-border">
-                  <div
-                    className={`absolute inset-y-0 left-0 ${isViewerChoice ? "bg-primary/30" : "bg-muted"}`}
-                    style={{ width: `${pct}%` }}
-                    aria-hidden
-                  />
-                  <div className="relative flex items-center justify-between gap-3 px-3 py-2 text-sm">
-                    <span className="flex items-center gap-2 font-medium">
-                      {isViewerChoice && (
-                        <span className="text-primary">✓</span>
-                      )}
-                      {opt.text}
-                    </span>
-                    <span className="text-xs text-muted-foreground tabular-nums">
-                      {pct.toFixed(0)}%
-                    </span>
-                  </div>
-                </div>
-              </li>
-            )
-          }
+  const optionsList = (
+    <ul className="space-y-1.5">
+      {poll.options.map((opt) => {
+        const pct =
+          poll.totalVotes > 0 ? (opt.voteCount / poll.totalVotes) * 100 : 0
+        const isViewerChoice =
+          poll.viewerVoteOptionIds?.includes(opt.id) ?? false
+        const isSelected = selected.has(opt.id)
+        if (showResults) {
           return (
             <li key={opt.id}>
-              <label
-                className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition hover:bg-muted/40 ${
-                  isSelected ? "border-primary" : "border-border"
-                }`}
-              >
-                <input
-                  type={poll.allowMultiple ? "checkbox" : "radio"}
-                  name={`poll-${poll.id}`}
-                  checked={isSelected}
-                  onChange={() => toggle(opt.id)}
-                  className="size-4 accent-primary"
+              <div className="relative overflow-hidden rounded-md border border-border">
+                <div
+                  className={`absolute inset-y-0 left-0 ${isViewerChoice ? "bg-primary/30" : "bg-muted"}`}
+                  style={{ width: `${pct}%` }}
+                  aria-hidden
                 />
-                <span>{opt.text}</span>
-              </label>
+                <div className="relative flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                  <span className="flex items-center gap-2 font-medium">
+                    {isViewerChoice && <span className="text-primary">✓</span>}
+                    {opt.text}
+                  </span>
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {pct.toFixed(0)}%
+                  </span>
+                </div>
+              </div>
             </li>
           )
-        })}
-      </ul>
+        }
+        return (
+          <li key={opt.id}>
+            <label
+              className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition hover:bg-muted/40 ${
+                isSelected ? "border-primary" : "border-border"
+              }`}
+            >
+              {poll.allowMultiple ? (
+                <Checkbox
+                  checked={isSelected}
+                  onCheckedChange={() => toggle(opt.id)}
+                />
+              ) : (
+                <RadioGroupItem value={opt.id} />
+              )}
+              <span>{opt.text}</span>
+            </label>
+          </li>
+        )
+      })}
+    </ul>
+  )
+
+  return (
+    <div className="mt-2 rounded-md border border-border p-3">
+      {!showResults && !poll.allowMultiple ? (
+        <RadioGroup
+          value={[...selected][0] ?? ""}
+          onValueChange={(value: string) => setSelected(new Set([value]))}
+          className="contents"
+        >
+          {optionsList}
+        </RadioGroup>
+      ) : (
+        optionsList
+      )}
       <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
         <span>
           {poll.totalVotes} {poll.totalVotes === 1 ? "vote" : "votes"} ·{" "}

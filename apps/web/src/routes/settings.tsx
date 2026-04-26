@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
+import { Switch } from "@workspace/ui/components/switch"
 import { updateProfileSchema } from "@workspace/validators"
 import { Textarea } from "@workspace/ui/components/textarea"
 import { ApiError, api } from "../lib/api"
@@ -950,10 +951,9 @@ function ConnectionsSection() {
         </div>
         {state?.connected === true && (
           <label className="mt-3 flex items-center gap-2 text-xs">
-            <input
-              type="checkbox"
+            <Switch
               checked={state.showOnProfile}
-              onChange={(e) => toggleVisibility(e.target.checked)}
+              onCheckedChange={(checked) => toggleVisibility(checked)}
               disabled={busy !== null}
             />
             Show on my profile

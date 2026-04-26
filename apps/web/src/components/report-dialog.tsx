@@ -6,6 +6,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@workspace/ui/components/dialog"
+import {
+  RadioGroup,
+  RadioGroupItem,
+} from "@workspace/ui/components/radio-group"
 import { Textarea } from "@workspace/ui/components/textarea"
 import { ApiError, api } from "../lib/api"
 import type { ReportReason } from "../lib/api"
@@ -113,28 +117,27 @@ export function ReportDialog({
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <ul className="divide-y divide-border rounded-md border border-border">
-            {REASONS.map((r) => (
-              <li key={r.value}>
-                <label className="flex cursor-pointer items-start gap-3 px-3 py-2 text-sm transition hover:bg-muted/30">
-                  <input
-                    type="radio"
-                    name="reason"
-                    value={r.value}
-                    checked={reason === r.value}
-                    onChange={() => setReason(r.value)}
-                    className="mt-0.5"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <div className="font-medium">{r.label}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {r.help}
+          <RadioGroup<ReportReason | null>
+            value={reason}
+            onValueChange={(value) => setReason(value)}
+            className="contents"
+          >
+            <ul className="divide-y divide-border rounded-md border border-border">
+              {REASONS.map((r) => (
+                <li key={r.value}>
+                  <label className="flex cursor-pointer items-start gap-3 px-3 py-2 text-sm transition hover:bg-muted/30">
+                    <RadioGroupItem value={r.value} className="mt-0.5" />
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium">{r.label}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {r.help}
+                      </div>
                     </div>
-                  </div>
-                </label>
-              </li>
-            ))}
-          </ul>
+                  </label>
+                </li>
+              ))}
+            </ul>
+          </RadioGroup>
           <Textarea
             value={details}
             onChange={(e) => setDetails(e.target.value)}
