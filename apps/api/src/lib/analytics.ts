@@ -56,8 +56,13 @@ export type EventName =
   | 'admin_report_resolved'
   | 'admin_post_deleted'
 
+export interface TrackingIds {
+  anonymousId?: string | null
+  sessionId?: string | null
+}
+
 export interface TrackFn {
-  (name: EventName, userId: string, properties?: Record<string, unknown>): void
+  (name: EventName, userId: string, properties?: Record<string, unknown>, ids?: TrackingIds): void
 }
 
 /**
@@ -77,8 +82,13 @@ export function createTracker(apiKey: string | undefined, log: Logger): TrackFn 
     batchTimeout: 5000,
   })
 
-  return (name, userId, properties) => {
-    client.track({ name, properties: { ...properties, user_id: userId } }).catch((err) => {
+  return (name, userId, properties, ids) => {
+    client.track({
+      name,
+      properties: { ...properties, user_id: userId },
+      anonymousId: ids?.anonymousId,
+      sessionId: ids?.sessionId,
+    }).catch((err) => {
       log.warn({ err: err instanceof Error ? err.message : err, event: name }, 'analytics_track_failed')
     })
   }

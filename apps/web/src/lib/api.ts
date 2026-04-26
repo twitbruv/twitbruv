@@ -1,3 +1,4 @@
+import { getAnonymousId, getSessionId } from "@databuddy/sdk"
 import { API_URL } from "./env"
 import type { GithubCard } from "@workspace/github-unfurl/card"
 
@@ -14,10 +15,17 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const trackingHeaders: Record<string, string> = {}
+  const anonId = getAnonymousId()
+  const sessionId = getSessionId()
+  if (anonId) trackingHeaders["X-Db-Anon-Id"] = anonId
+  if (sessionId) trackingHeaders["X-Db-Session-Id"] = sessionId
+
   const res = await fetch(`${API_URL}${path}`, {
     credentials: "include",
     headers: {
       "Content-Type": "application/json",
+      ...trackingHeaders,
       ...(init?.headers ?? {}),
     },
     ...init,
