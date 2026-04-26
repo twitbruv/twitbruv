@@ -33,11 +33,15 @@ postsRoute.post('/', requireAuth(), async (c) => {
   // users, but it reads `banned` from the (possibly cached) session payload, so a recent
   // moderation action could otherwise slip a post through inside the cache window.
   const [me] = await db
-    .select({ banned: schema.users.banned, handle: schema.users.handle })
+    .select({
+      banned: schema.users.banned,
+      deletedAt: schema.users.deletedAt,
+      handle: schema.users.handle,
+    })
     .from(schema.users)
     .where(eq(schema.users.id, session.user.id))
     .limit(1)
-  if (!me || me.banned) return c.json({ error: 'banned' }, 403)
+  if (!me || me.banned || me.deletedAt) return c.json({ error: 'banned' }, 403)
   if (!me.handle) return c.json({ error: 'handle_required' }, 403)
 
   const body = createPostSchema.parse(await c.req.json())
