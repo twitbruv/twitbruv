@@ -27,6 +27,13 @@ import {
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@workspace/ui/components/sheet"
+import {
   Table,
   TableBody,
   TableCell,
@@ -42,7 +49,7 @@ import { Avatar } from "../components/avatar"
 import { PageError, PageLoading } from "../components/page-surface"
 import { VerifiedBadge } from "../components/verified-badge"
 import type { ColumnDef } from "@tanstack/react-table"
-import type { AdminUser } from "../lib/api"
+import type { AdminUser, AdminUserDetail } from "../lib/api"
 
 export const Route = createFileRoute("/admin/users")({ component: AdminUsers })
 
@@ -75,6 +82,8 @@ function AdminUsers() {
   const [error, setError] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [dialog, setDialog] = useState<ActionDialogState>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [detailVersion, setDetailVersion] = useState(0)
   // Bumped on every fresh load so in-flight loadMore results from a prior
   // search/refresh are discarded instead of getting appended to the new list.
   const generationRef = useRef(0)
@@ -123,6 +132,7 @@ function AdminUsers() {
       try {
         await op()
         await load(q)
+        setDetailVersion((v) => v + 1)
       } finally {
         setBusyId(null)
       }
@@ -152,6 +162,7 @@ function AdminUsers() {
                     to="/$handle"
                     params={{ handle: u.handle }}
                     className="flex items-center gap-1 text-sm font-semibold hover:underline"
+                    onClick={(e) => e.stopPropagation()}
                   >
                     {u.displayName ?? u.handle}
                     {u.isVerified && <VerifiedBadge size={14} role={u.role} />}
@@ -195,44 +206,46 @@ function AdminUsers() {
             )
           }
           return (
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                render={
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    disabled={busyId === u.id}
-                    className="-ml-2 h-7 gap-1 text-xs tracking-wider uppercase"
-                  />
-                }
-              >
-                {u.role}
-                <CaretDownIcon className="size-3" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuGroup>
-                  <DropdownMenuLabel>Set role</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {ROLES.map((r) => (
-                    <DropdownMenuItem
-                      key={r}
-                      disabled={r === u.role}
-                      onClick={() =>
-                        r !== u.role &&
-                        act(u.id, () => api.adminSetRole(u.id, r))
-                      }
-                    >
-                      <span className="tracking-wider uppercase">{r}</span>
-                      {r === u.role && (
-                        <span className="ml-auto text-[10px] text-muted-foreground">
-                          current
-                        </span>
-                      )}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuGroup>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div onClick={(e) => e.stopPropagation()}>
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={busyId === u.id}
+                      className="-ml-2 h-7 gap-1 text-xs tracking-wider uppercase"
+                    />
+                  }
+                >
+                  {u.role}
+                  <CaretDownIcon className="size-3" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuGroup>
+                    <DropdownMenuLabel>Set role</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {ROLES.map((r) => (
+                      <DropdownMenuItem
+                        key={r}
+                        disabled={r === u.role}
+                        onClick={() =>
+                          r !== u.role &&
+                          act(u.id, () => api.adminSetRole(u.id, r))
+                        }
+                      >
+                        <span className="tracking-wider uppercase">{r}</span>
+                        {r === u.role && (
+                          <span className="ml-auto text-[10px] text-muted-foreground">
+                            current
+                          </span>
+                        )}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           )
         },
       },
@@ -274,7 +287,10 @@ function AdminUsers() {
         cell: ({ row }) => {
           const u = row.original
           return (
-            <div className="flex flex-wrap justify-end gap-1">
+            <div
+              className="flex flex-wrap justify-end gap-1"
+              onClick={(e) => e.stopPropagation()}
+            >
               {u.banned ? (
                 <Button
                   size="sm"
@@ -427,9 +443,14 @@ function AdminUsers() {
                   <TableRow
                     key={row.id}
                     data-index={virtualRow.index}
+                    data-state={
+                      row.original.id === selectedId ? "selected" : undefined
+                    }
                     ref={(node: HTMLTableRowElement | null) =>
                       rowVirtualizer.measureElement(node)
                     }
+                    onClick={() => setSelectedId(row.original.id)}
+                    className="cursor-pointer"
                   >
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id}>
@@ -471,10 +492,16 @@ function AdminUsers() {
             await run()
             setDialog(null)
             await load(q)
+            setDetailVersion((v) => v + 1)
           } finally {
             setBusyId(null)
           }
         }}
+      />
+      <UserDetailSheet
+        userId={selectedId}
+        version={detailVersion}
+        onClose={() => setSelectedId(null)}
       />
     </main>
   )
@@ -687,3 +714,300 @@ function ActionDialog({
   )
 }
 
+const ACTION_LABELS: Record<string, string> = {
+  warn: "Warning",
+  hide: "Hidden",
+  delete: "Deleted",
+  shadowban: "Shadowban",
+  suspend: "Ban",
+  unban: "Unban",
+  nsfw_flag: "NSFW flag",
+}
+
+function actionLabel(action: string) {
+  return ACTION_LABELS[action] ?? action
+}
+
+function UserDetailSheet({
+  userId,
+  version,
+  onClose,
+}: {
+  userId: string | null
+  version: number
+  onClose: () => void
+}) {
+  const [detail, setDetail] = useState<AdminUserDetail | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!userId) {
+      setDetail(null)
+      setError(null)
+      return
+    }
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+    api
+      .adminUser(userId)
+      .then((d) => {
+        if (cancelled) return
+        setDetail(d)
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return
+        setError(e instanceof Error ? e.message : "failed")
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [userId, version])
+
+  const open = !!userId
+  const u = detail?.user
+  const subject = u
+    ? u.handle
+      ? `@${u.handle}`
+      : (u.displayName ?? u.email)
+    : "User"
+
+  return (
+    <Sheet open={open} onOpenChange={(next) => !next && onClose()}>
+      <SheetContent
+        side="right"
+        className="flex w-full flex-col gap-0 sm:max-w-md"
+      >
+        <SheetHeader className="border-b border-border">
+          <SheetTitle>{subject}</SheetTitle>
+          <SheetDescription>
+            {u
+              ? `${u.role} · joined ${new Date(u.createdAt).toLocaleDateString()}`
+              : loading
+                ? "Loading…"
+                : (error ?? "")}
+          </SheetDescription>
+        </SheetHeader>
+        <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-6 py-4 text-sm">
+          {loading && !detail && (
+            <p className="text-muted-foreground">loading…</p>
+          )}
+          {error && !loading && (
+            <p className="text-xs text-destructive">{error}</p>
+          )}
+          {detail && u && (
+            <>
+              <div className="flex items-start gap-3">
+                <Avatar
+                  initial={(u.displayName || u.handle || u.email)
+                    .slice(0, 1)
+                    .toUpperCase()}
+                  src={u.avatarUrl}
+                  className="size-12 shrink-0"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1 text-sm font-semibold">
+                    {u.displayName ?? u.handle ?? u.email}
+                    {u.isVerified && (
+                      <VerifiedBadge size={14} role={u.role} />
+                    )}
+                  </div>
+                  {u.handle && (
+                    <Link
+                      to="/$handle"
+                      params={{ handle: u.handle }}
+                      className="text-xs text-muted-foreground hover:underline"
+                    >
+                      @{u.handle}
+                    </Link>
+                  )}
+                  <p className="truncate text-xs text-muted-foreground">
+                    {u.email}
+                  </p>
+                </div>
+              </div>
+
+              {u.bio && (
+                <DetailSection label="Bio">
+                  <p className="whitespace-pre-wrap text-xs">{u.bio}</p>
+                </DetailSection>
+              )}
+
+              <DetailSection label="Status">
+                <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+                  <dt className="text-muted-foreground">User ID</dt>
+                  <dd className="truncate font-mono">{u.id}</dd>
+                  <dt className="text-muted-foreground">Role</dt>
+                  <dd className="tracking-wider uppercase">{u.role}</dd>
+                  <dt className="text-muted-foreground">Verified</dt>
+                  <dd>{u.isVerified ? "yes" : "no"}</dd>
+                  <dt className="text-muted-foreground">Banned</dt>
+                  <dd className={u.banned ? "text-destructive" : ""}>
+                    {u.banned
+                      ? u.banExpires
+                        ? `until ${new Date(u.banExpires).toLocaleString()}`
+                        : "permanent"
+                      : "no"}
+                  </dd>
+                  {u.banReason && (
+                    <>
+                      <dt className="text-muted-foreground">Ban reason</dt>
+                      <dd className="text-destructive">{u.banReason}</dd>
+                    </>
+                  )}
+                  <dt className="text-muted-foreground">Shadowbanned</dt>
+                  <dd className={u.shadowBannedAt ? "text-destructive" : ""}>
+                    {u.shadowBannedAt
+                      ? `since ${new Date(u.shadowBannedAt).toLocaleString()}`
+                      : "no"}
+                  </dd>
+                  <dt className="text-muted-foreground">Deleted</dt>
+                  <dd className={u.deletedAt ? "text-destructive" : ""}>
+                    {u.deletedAt
+                      ? new Date(u.deletedAt).toLocaleString()
+                      : "no"}
+                  </dd>
+                </dl>
+              </DetailSection>
+
+              <DetailSection
+                label={`Moderation history (${detail.actions.length})`}
+              >
+                {detail.actions.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    No moderation actions on record.
+                  </p>
+                ) : (
+                  <ul className="flex flex-col gap-2">
+                    {detail.actions.map((a) => (
+                      <li
+                        key={a.id}
+                        className="rounded-md border border-border p-2 text-xs"
+                      >
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="font-semibold">
+                            {actionLabel(a.action)}
+                          </span>
+                          <time className="text-[10px] text-muted-foreground">
+                            {new Date(a.createdAt).toLocaleString()}
+                          </time>
+                        </div>
+                        {a.durationHours != null && (
+                          <p className="text-[10px] text-muted-foreground">
+                            duration: {a.durationHours}h
+                          </p>
+                        )}
+                        {a.publicReason && (
+                          <p className="mt-1 whitespace-pre-wrap">
+                            {a.publicReason}
+                          </p>
+                        )}
+                        {a.privateNote && (
+                          <p className="mt-1 whitespace-pre-wrap text-muted-foreground">
+                            note: {a.privateNote}
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </DetailSection>
+
+              <DetailSection
+                label={`Reports against (${detail.reports.length})`}
+              >
+                {detail.reports.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    No reports filed against this user.
+                  </p>
+                ) : (
+                  <ul className="flex flex-col gap-2">
+                    {detail.reports.map((r) => (
+                      <li
+                        key={r.id}
+                        className="rounded-md border border-border p-2 text-xs"
+                      >
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="font-semibold">{r.reason}</span>
+                          <time className="text-[10px] text-muted-foreground">
+                            {new Date(r.createdAt).toLocaleString()}
+                          </time>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">
+                          status: {r.status}
+                        </p>
+                        {r.details && (
+                          <p className="mt-1 whitespace-pre-wrap">
+                            {r.details}
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </DetailSection>
+
+              <DetailSection
+                label={`Recent posts (${detail.recentPosts.length})`}
+              >
+                {detail.recentPosts.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    No posts yet.
+                  </p>
+                ) : (
+                  <ul className="flex flex-col gap-2">
+                    {detail.recentPosts.map((p) => (
+                      <li
+                        key={p.id}
+                        className="rounded-md border border-border p-2 text-xs"
+                      >
+                        <div className="mb-1 flex items-baseline justify-between gap-2">
+                          <span className="text-[10px] text-muted-foreground">
+                            {p.replyToId ? "reply" : "post"}
+                            {p.sensitive ? " · sensitive" : ""}
+                            {p.deletedAt ? " · deleted" : ""}
+                          </span>
+                          <time className="text-[10px] text-muted-foreground">
+                            {new Date(p.createdAt).toLocaleString()}
+                          </time>
+                        </div>
+                        <p className="line-clamp-3 whitespace-pre-wrap">
+                          {p.text || (
+                            <span className="text-muted-foreground">
+                              (no text)
+                            </span>
+                          )}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </DetailSection>
+            </>
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
+  )
+}
+
+function DetailSection({
+  label,
+  children,
+}: {
+  label: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+        {label}
+      </span>
+      {children}
+    </div>
+  )
+}
