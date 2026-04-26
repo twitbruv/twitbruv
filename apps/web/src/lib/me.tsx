@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from "react"
+import { clear, getTracker } from "@databuddy/sdk"
 import { ApiError, api } from "./api"
 import { authClient } from "./auth"
 import type { ReactNode } from "react"
@@ -78,6 +79,21 @@ export function MeProvider({ children }: { children: ReactNode }) {
     }
     refresh()
   }, [isPending, session, refresh])
+
+  // Sync Databuddy global properties with the current user so every auto-tracked
+  // event (page views, interactions, web vitals) carries user context for segmentation.
+  // On sign-out, clear() resets the anonymous + session IDs so the next user on the
+  // same browser gets a fresh identity.
+  useEffect(() => {
+    const tracker = getTracker()
+    if (!tracker) return
+    if (me) {
+      tracker.setGlobalProperties({ role: me.role })
+    } else {
+      tracker.setGlobalProperties({})
+      clear()
+    }
+  }, [me])
 
   // Poll while authenticated + visible so users on idle tabs are kicked promptly
   // after a moderation action. We also re-check on tab focus in case the OS
