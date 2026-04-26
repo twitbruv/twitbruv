@@ -19,6 +19,7 @@ import {
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu"
 import { SidebarMenuButton } from "@workspace/ui/components/sidebar"
+import { clear } from "@databuddy/sdk"
 import { authClient } from "../lib/auth"
 import { useTheme } from "../lib/theme"
 import { Avatar } from "./avatar"
@@ -31,6 +32,7 @@ export function UserNav({ user }: { user: SelfUser }) {
   const { theme, setTheme } = useTheme()
 
   async function onSignOut() {
+    clear()
     await authClient.signOut()
     router.invalidate()
   }

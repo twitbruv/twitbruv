@@ -37,6 +37,10 @@ export function MeProvider({ children }: { children: ReactNode }) {
     if (forcingOut.current) return
     forcingOut.current = true
     setMe(null)
+    // Reset Databuddy anonymous + session IDs so the next user on this browser
+    // gets a fresh analytics identity. Only called on intentional sign-out or
+    // server-side session revocation (401), never on transient network errors.
+    clear()
     try {
       await authClient.signOut()
     } catch {
@@ -82,20 +86,13 @@ export function MeProvider({ children }: { children: ReactNode }) {
 
   // Sync Databuddy global properties with the current user so every auto-tracked
   // event (page views, interactions, web vitals) carries user context for segmentation.
-  // On sign-out, clear() resets the anonymous + session IDs so the next user on the
-  // same browser gets a fresh identity. The ref tracks whether we've ever been
-  // authenticated so we don't call clear() on initial page load (me starts as null).
-  const wasAuthed = useRef(false)
   useEffect(() => {
     const tracker = getTracker()
     if (!tracker) return
     if (me) {
-      wasAuthed.current = true
       tracker.setGlobalProperties({ role: me.role })
-    } else if (wasAuthed.current) {
-      wasAuthed.current = false
+    } else {
       tracker.setGlobalProperties({})
-      clear()
     }
   }, [me])
 

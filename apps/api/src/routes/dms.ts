@@ -491,8 +491,9 @@ dmsRoute.post('/:id/members', async (c) => {
   for (const userId of body.userIds) {
     await pubsub.publish(dmChannel(userId), { type: 'membership', conversationId })
   }
-  c.get('ctx').track('dm_members_added', me, { count: body.userIds.length })
-  return c.json({ ok: true, added: toInsert.length + toReactivate.length })
+  const added = toInsert.length + toReactivate.length
+  if (added > 0) c.get('ctx').track('dm_members_added', me, { count: added })
+  return c.json({ ok: true, added })
 })
 
 dmsRoute.delete('/:id/members/:userId', async (c) => {

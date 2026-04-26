@@ -273,10 +273,7 @@ postsRoute.post('/', requireAuth(), async (c) => {
   )
   await attachReplyParents({ db, viewerId: session.user.id, env, posts: [dto] })
   c.get('ctx').track('post_created', session.user.id, {
-    has_media: !!body.mediaIds?.length,
-    has_poll: !!body.poll,
-    is_reply: !!body.replyToId,
-    is_quote: !!body.quoteOfId,
+    type: body.replyToId ? 'reply' : body.quoteOfId ? 'quote' : 'original',
   })
   return c.json({ post: dto }, 201)
 })
@@ -307,7 +304,7 @@ postsRoute.post('/:id/repost', requireAuth(), async (c) => {
         ),
       )
       .limit(1)
-    if (existing) return { notified: new Set<string>() }
+    if (existing) return { notified: new Set<string>(), created: false }
 
     await tx.insert(schema.posts).values({
       authorId: session.user.id,
@@ -329,14 +326,14 @@ postsRoute.post('/:id/repost', requireAuth(), async (c) => {
         entityId: target.id,
       },
     ])
-    return { notified }
+    return { notified, created: true }
   })
 
   await Promise.all([
     cache.del(homeFeedCacheKey(session.user.id), profileFeedCacheKey(session.user.id)),
     invalidateUnreadCounts(cache, result.notified),
   ])
-  c.get('ctx').track('post_reposted', session.user.id)
+  if (result.created) c.get('ctx').track('post_reposted', session.user.id)
   return c.json({ ok: true })
 })
 
@@ -345,7 +342,7 @@ postsRoute.delete('/:id/repost', requireAuth(), async (c) => {
   const { db } = c.get('ctx')
   const id = c.req.param('id')
 
-  await db.transaction(async (tx) => {
+  const unreposted = await db.transaction(async (tx) => {
     const [existing] = await tx
       .select()
       .from(schema.posts)
@@ -357,15 +354,16 @@ postsRoute.delete('/:id/repost', requireAuth(), async (c) => {
         ),
       )
       .limit(1)
-    if (!existing) return
+    if (!existing) return false
     await tx.update(schema.posts).set({ deletedAt: new Date() }).where(eq(schema.posts.id, existing.id))
     await tx
       .update(schema.posts)
       .set({ repostCount: sql`GREATEST(${schema.posts.repostCount} - 1, 0)` })
       .where(eq(schema.posts.id, id))
+    return true
   })
 
-  c.get('ctx').track('post_unreposted', session.user.id)
+  if (unreposted) c.get('ctx').track('post_unreposted', session.user.id)
   return c.json({ ok: true })
 })
 
@@ -376,13 +374,13 @@ postsRoute.post('/:id/like', requireAuth(), async (c) => {
   const id = c.req.param('id')
   await rateLimit(c, 'posts.like')
 
-  const notified = await db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const inserted = await tx
       .insert(schema.likes)
       .values({ userId: session.user.id, postId: id })
       .onConflictDoNothing()
       .returning({ postId: schema.likes.postId })
-    if (inserted.length === 0) return new Set<string>()
+    if (inserted.length === 0) return { notified: new Set<string>(), created: false }
 
     await tx
       .update(schema.posts)
@@ -394,8 +392,8 @@ postsRoute.post('/:id/like', requireAuth(), async (c) => {
       .from(schema.posts)
       .where(eq(schema.posts.id, id))
       .limit(1)
-    if (!target) return new Set<string>()
-    return notify(tx, [
+    if (!target) return { notified: new Set<string>(), created: true }
+    return { notified: await notify(tx, [
       {
         userId: target.authorId,
         actorId: session.user.id,
@@ -403,11 +401,11 @@ postsRoute.post('/:id/like', requireAuth(), async (c) => {
         entityType: 'post',
         entityId: id,
       },
-    ])
+    ]), created: true }
   })
 
-  await invalidateUnreadCounts(c.get('ctx').cache, notified)
-  c.get('ctx').track('post_liked', session.user.id)
+  await invalidateUnreadCounts(c.get('ctx').cache, result.notified)
+  if (result.created) c.get('ctx').track('post_liked', session.user.id)
   return c.json({ ok: true })
 })
 
@@ -416,7 +414,7 @@ postsRoute.delete('/:id/like', requireAuth(), async (c) => {
   const { db } = c.get('ctx')
   const id = c.req.param('id')
 
-  await db.transaction(async (tx) => {
+  const removed = await db.transaction(async (tx) => {
     const deleted = await tx
       .delete(schema.likes)
       .where(and(eq(schema.likes.userId, session.user.id), eq(schema.likes.postId, id)))
@@ -427,9 +425,10 @@ postsRoute.delete('/:id/like', requireAuth(), async (c) => {
         .set({ likeCount: sql`GREATEST(${schema.posts.likeCount} - 1, 0)` })
         .where(eq(schema.posts.id, id))
     }
+    return deleted.length > 0
   })
 
-  c.get('ctx').track('post_unliked', session.user.id)
+  if (removed) c.get('ctx').track('post_unliked', session.user.id)
   return c.json({ ok: true })
 })
 
@@ -440,7 +439,7 @@ postsRoute.post('/:id/bookmark', requireAuth(), async (c) => {
   const id = c.req.param('id')
   await rateLimit(c, 'posts.bookmark')
 
-  await db.transaction(async (tx) => {
+  const bookmarked = await db.transaction(async (tx) => {
     const inserted = await tx
       .insert(schema.bookmarks)
       .values({ userId: session.user.id, postId: id })
@@ -452,9 +451,10 @@ postsRoute.post('/:id/bookmark', requireAuth(), async (c) => {
         .set({ bookmarkCount: sql`${schema.posts.bookmarkCount} + 1` })
         .where(eq(schema.posts.id, id))
     }
+    return inserted.length > 0
   })
 
-  c.get('ctx').track('post_bookmarked', session.user.id)
+  if (bookmarked) c.get('ctx').track('post_bookmarked', session.user.id)
   return c.json({ ok: true })
 })
 
@@ -463,7 +463,7 @@ postsRoute.delete('/:id/bookmark', requireAuth(), async (c) => {
   const { db } = c.get('ctx')
   const id = c.req.param('id')
 
-  await db.transaction(async (tx) => {
+  const unbookmarked = await db.transaction(async (tx) => {
     const deleted = await tx
       .delete(schema.bookmarks)
       .where(and(eq(schema.bookmarks.userId, session.user.id), eq(schema.bookmarks.postId, id)))
@@ -474,9 +474,10 @@ postsRoute.delete('/:id/bookmark', requireAuth(), async (c) => {
         .set({ bookmarkCount: sql`GREATEST(${schema.posts.bookmarkCount} - 1, 0)` })
         .where(eq(schema.posts.id, id))
     }
+    return deleted.length > 0
   })
 
-  c.get('ctx').track('post_unbookmarked', session.user.id)
+  if (unbookmarked) c.get('ctx').track('post_unbookmarked', session.user.id)
   return c.json({ ok: true })
 })
 
@@ -746,7 +747,7 @@ postsRoute.patch('/:id', requireAuth(), async (c) => {
     loadPolls(db, session.user.id, [result.post.id]),
     loadGithubCards(db, [result.post.id]),
   ])
-  c.get('ctx').track('post_edited', session.user.id)
+  if (!result.unchanged) c.get('ctx').track('post_edited', session.user.id)
   return c.json({
     post: toPostDto(
       result.post,
