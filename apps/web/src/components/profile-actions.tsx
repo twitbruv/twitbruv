@@ -43,7 +43,7 @@ export function ProfileActions({
       const { id } = await trackedAction(
         "dm_started",
         () => api.dmStart(profile.id),
-        ({ id }) => ({ target_user_id: profile.id, conversation_id: id }),
+        (res) => ({ target_user_id: profile.id, conversation_id: res.id }),
       )
       router.navigate({
         to: "/inbox/$conversationId",

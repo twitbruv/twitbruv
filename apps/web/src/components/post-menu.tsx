@@ -61,7 +61,7 @@ export function PostMenu({
         () => api.deletePost(post.id),
         () => ({
           post_id: post.id,
-          author_is_self: post.author.id === session?.user?.id,
+          author_is_self: post.author.id === session.user.id,
         }),
       )
       onRemove?.()

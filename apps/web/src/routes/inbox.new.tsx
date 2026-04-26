@@ -70,13 +70,13 @@ function NewConversation() {
           ? await trackedAction(
               "dm_started",
               () => api.dmStart(first),
-              ({ id }) => ({ target_user_id: first, conversation_id: id }),
+              (res) => ({ target_user_id: first, conversation_id: res.id }),
             )
           : await trackedAction(
               "dm_group_created",
               () => api.dmCreateGroup(ids, title.trim() || undefined),
-              ({ id }) => ({
-                conversation_id: id,
+              (res) => ({
+                conversation_id: res.id,
                 member_count: ids.length,
                 has_title: title.trim().length > 0,
               }),

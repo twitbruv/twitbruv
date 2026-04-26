@@ -28,7 +28,7 @@ export function ClaimHandle({
       const { user } = await trackedAction(
         "handle_claimed",
         () => api.claimHandle(handle),
-        ({ user }) => ({ handle: user.handle ?? handle }),
+        (res) => ({ handle: res.user.handle ?? handle }),
       )
       if (user.handle) onClaimed(user.handle)
     } catch (err) {

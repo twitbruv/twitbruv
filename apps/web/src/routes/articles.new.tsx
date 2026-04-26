@@ -47,8 +47,8 @@ function NewArticle() {
               coverMediaId: coverMediaId ?? undefined,
               status,
             }),
-          ({ article }) => ({
-            article_id: article.id,
+          (res) => ({
+            article_id: res.article.id,
             status,
             has_subtitle: subtitle.trim().length > 0,
             has_cover: coverMediaId !== null,

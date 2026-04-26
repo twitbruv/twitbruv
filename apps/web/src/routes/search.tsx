@@ -66,7 +66,7 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
       const { game } = await trackedAction(
         "chess_game_created",
         () => api.chessCreateGame(user.id),
-        ({ game }) => ({ game_id: game.id, opponent_id: user.id }),
+        (res) => ({ game_id: res.game.id, opponent_id: user.id }),
       )
       navigate({ to: "/chess/$id", params: { id: game.id } })
     } catch (err) {
@@ -156,7 +156,7 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
         const { item } = await trackedAction(
           "search_saved",
           () => api.saveSearch(query),
-          ({ item }) => ({ search_id: item.id, query_length: query.length }),
+          (res) => ({ search_id: res.item.id, query_length: query.length }),
         )
         setSaved((prev) =>
           prev.some((s) => s.id === item.id) ? prev : [...prev, item],
