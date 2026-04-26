@@ -342,7 +342,7 @@ postsRoute.delete('/:id/repost', requireAuth(), async (c) => {
   const { db } = c.get('ctx')
   const id = c.req.param('id')
 
-  await db.transaction(async (tx) => {
+  const unreposted = await db.transaction(async (tx) => {
     const [existing] = await tx
       .select()
       .from(schema.posts)
@@ -354,15 +354,16 @@ postsRoute.delete('/:id/repost', requireAuth(), async (c) => {
         ),
       )
       .limit(1)
-    if (!existing) return
+    if (!existing) return false
     await tx.update(schema.posts).set({ deletedAt: new Date() }).where(eq(schema.posts.id, existing.id))
     await tx
       .update(schema.posts)
       .set({ repostCount: sql`GREATEST(${schema.posts.repostCount} - 1, 0)` })
       .where(eq(schema.posts.id, id))
+    return true
   })
 
-  c.get('ctx').track('post_unreposted', session.user.id)
+  if (unreposted) c.get('ctx').track('post_unreposted', session.user.id)
   return c.json({ ok: true })
 })
 
