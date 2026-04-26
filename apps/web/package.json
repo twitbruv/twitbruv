@@ -49,6 +49,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@databuddy/devtools": "^0.0.1-beta.0",
     "@rsbuild/core": "^1.6.17",
     "@tanstack/eslint-config": "^0.3.0",
     "@tanstack/router-generator": "^1.166.34",

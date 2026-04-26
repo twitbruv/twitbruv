@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-router"
 import { IconContext } from "@phosphor-icons/react"
 import { Databuddy } from "@databuddy/sdk/react"
+import { DatabuddyDevtools } from "@databuddy/devtools/react"
 
 import appCss from "@workspace/ui/globals.css?url"
 import { Button } from "@workspace/ui/components/button"
@@ -102,15 +103,22 @@ function ClientOnlyDatabuddy() {
   // instances, so the dispatcher is null when the SDK calls useEffect).
   // Skipping the server pass is safe — Databuddy returns null and only
   // injects its script tag from useEffect, which runs client-only anyway.
+  // The devtools overlay (Cmd/Ctrl+Shift+D) shares the same constraint and
+  // is gated on import.meta.env.DEV so it tree-shakes out of prod builds.
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
-  if (!mounted || !DATABUDDY_CLIENT_ID) return null
+  if (!mounted) return null
   return (
-    <Databuddy
-      clientId={DATABUDDY_CLIENT_ID}
-      trackWebVitals
-      trackErrors
-    />
+    <>
+      {DATABUDDY_CLIENT_ID ? (
+        <Databuddy
+          clientId={DATABUDDY_CLIENT_ID}
+          trackWebVitals
+          trackErrors
+        />
+      ) : null}
+      {import.meta.env.DEV ? <DatabuddyDevtools /> : null}
+    </>
   )
 }
 
