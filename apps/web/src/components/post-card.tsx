@@ -13,7 +13,6 @@ import {
   RepeatIcon,
   TrashIcon,
 } from "@phosphor-icons/react"
-import { LikeIconBurst, useLikeAnimation } from "./like-button-heart"
 import { Button } from "@workspace/ui/components/button"
 import { Textarea } from "@workspace/ui/components/textarea"
 import {
@@ -32,6 +31,7 @@ import {
 import { POST_MAX_LEN } from "@workspace/validators"
 import { recordImpression, trackedAction } from "../lib/analytics"
 import { ApiError, api } from "../lib/api"
+import { LikeIconBurst, useLikeAnimation } from "./like-button-heart"
 import { RichText } from "./rich-text"
 import { MacfolioCardFromText } from "./macfolio-card"
 import { GithubCardBlock } from "./github-card"
