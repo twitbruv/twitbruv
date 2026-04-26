@@ -66,13 +66,15 @@ export interface TrackFn {
 }
 
 /**
- * Creates a fire-and-forget track function. If no API key is provided,
+ * Creates a fire-and-forget track function. If apiKey or websiteId is missing,
  * returns a no-op so the app runs fine without analytics configured.
  */
 export function createTracker(apiKey: string | undefined, websiteId: string | undefined, log: Logger): TrackFn {
-  if (!apiKey) {
+  if (!apiKey || !websiteId) {
+    log.info('analytics_disabled (set DATABUDDY_API_KEY + DATABUDDY_WEBSITE_ID to enable)')
     return () => {}
   }
+  log.info('analytics_enabled')
 
   const client = new Databuddy({
     apiKey,

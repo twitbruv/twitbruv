@@ -420,7 +420,6 @@ export const api = {
     request<{ ok: true }>(`/api/posts/${id}/pin`, { method: "DELETE" }),
 
   adminStats: () => request<AdminStats>(`/api/admin/stats`),
-  adminOnline: () => request<AdminOnline>(`/api/admin/online`),
   adminUsers: (q?: string, cursor?: string) => {
     const params = new URLSearchParams()
     if (q) params.set("q", q)
@@ -1090,16 +1089,6 @@ export interface AdminStats {
     actioned: number
     dismissed: number
   }
-}
-
-export interface AdminOnline {
-  count: number
-  sample: Array<{
-    id: string
-    handle: string | null
-    displayName: string | null
-    avatarUrl: string | null
-  }>
 }
 
 export type AdminPostSort =
