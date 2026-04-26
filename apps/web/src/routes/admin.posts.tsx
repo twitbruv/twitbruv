@@ -41,7 +41,6 @@ import {
   QuotesIcon,
   RepeatIcon,
 } from "@phosphor-icons/react"
-import { trackedAction } from "../lib/analytics"
 import { api } from "../lib/api"
 import { useInfiniteScrollSentinel } from "../lib/use-infinite-scroll-sentinel"
 import { Avatar } from "../components/avatar"
@@ -688,11 +687,7 @@ function AdminPosts() {
           const id = deleteTarget.id
           setBusyId(id)
           try {
-            await trackedAction(
-              "admin_post_deleted",
-              () => api.adminDeletePost(id, { reason: reason || undefined }),
-              () => ({ target_post_id: id }),
-            )
+            await api.adminDeletePost(id, { reason: reason || undefined })
             setDeleteTarget(null)
             await load(q, sort, order, typeFilter, visibility, status)
           } finally {
