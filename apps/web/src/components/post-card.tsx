@@ -69,7 +69,7 @@ function pickLargest(media: NonNullable<Post["media"]>[number]) {
   )
 }
 
-function clickedInteractiveElement(target: EventTarget | null) {
+export function clickedInteractiveElement(target: EventTarget | null) {
   return (
     target instanceof Element &&
     Boolean(

@@ -17,7 +17,12 @@ import { Avatar } from "../components/avatar"
 import { RichText } from "../components/rich-text"
 import { MacfolioCardFromText } from "../components/macfolio-card"
 import { PollBlock } from "../components/poll-block"
-import { ArticleCardBlock, QuoteEmbed } from "../components/post-card"
+import {
+  ArticleCardBlock,
+  QuoteEmbed,
+  clickedInteractiveElement,
+} from "../components/post-card"
+import { GithubCardBlock } from "../components/github-card"
 import { PostMenu } from "../components/post-menu"
 import { EditPostDialog } from "../components/edit-post-dialog"
 import { ImageLightbox } from "../components/image-lightbox"
@@ -275,17 +280,11 @@ function ThreadView() {
         <div>
           {thread.replies.map((p) => (
             <div key={p.id}>
-              <Link
-                to="/$handle/p/$id"
-                params={{ handle: p.author.handle ?? "", id: p.id }}
-                className="block border-b border-border py-3 pr-4 pl-8 transition-colors hover:bg-muted/30"
-              >
-                <ReplyCard
-                  post={p}
-                  onChange={replace}
-                  onRemove={() => removeFromThread(p.id)}
-                />
-              </Link>
+              <ReplyRow
+                post={p}
+                onChange={replace}
+                onRemove={() => removeFromThread(p.id)}
+              />
               {p.descendantReplyCount > 0 && p.author.handle && (
                 <Link
                   to="/$handle/p/$id"
@@ -456,6 +455,10 @@ function AncestorPost({
           )}
 
           {post.articleCard && <ArticleCardBlock card={post.articleCard} />}
+
+          {post.githubCards?.map((card, i) => (
+            <GithubCardBlock key={`${card.kind}-${card.url}-${i}`} card={card} />
+          ))}
 
           {post.poll && (
             <PollBlock
@@ -659,6 +662,10 @@ function ParentPost({
 
       {post.articleCard && <ArticleCardBlock card={post.articleCard} />}
 
+      {post.githubCards?.map((card, i) => (
+        <GithubCardBlock key={`${card.kind}-${card.url}-${i}`} card={card} />
+      ))}
+
       {post.poll && (
         <PollBlock
           poll={post.poll}
@@ -857,6 +864,40 @@ function ReplyComposer({
   )
 }
 
+function ReplyRow({
+  post,
+  onChange,
+  onRemove,
+}: {
+  post: Post
+  onChange: (p: Post) => void
+  onRemove: () => void
+}) {
+  const navigate = useNavigate()
+  const authorHandle = post.author.handle
+  function openPost(e: React.MouseEvent) {
+    if (!authorHandle) return
+    if (clickedInteractiveElement(e.target)) return
+    if (typeof window !== "undefined") {
+      const sel = window.getSelection?.()
+      if (sel && sel.toString().length > 0) return
+    }
+    navigate({
+      to: "/$handle/p/$id",
+      params: { handle: authorHandle, id: post.id },
+    })
+  }
+  return (
+    // biome-ignore lint/a11y/useKeyWithClickEvents: row navigates on click; interactive children use clickedInteractiveElement to opt out
+    <div
+      onClick={openPost}
+      className={`block border-b border-border py-3 pr-4 pl-8 transition-colors${authorHandle ? " cursor-pointer hover:bg-muted/30" : ""}`}
+    >
+      <ReplyCard post={post} onChange={onChange} onRemove={onRemove} />
+    </div>
+  )
+}
+
 function ReplyCard({
   post,
   onChange,
@@ -987,17 +1028,20 @@ function ReplyCard({
         </div>
       )}
 
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: stops parent Link from intercepting interactions */}
-      <div onClick={(e) => e.stopPropagation()}>
-        {post.articleCard && <ArticleCardBlock card={post.articleCard} />}
-        {post.poll && (
-          <PollBlock
-            poll={post.poll}
-            onChange={(nextPoll) => onChange({ ...post, poll: nextPoll })}
-          />
-        )}
-        {post.quoteOf && <QuoteEmbed post={post.quoteOf} />}
-      </div>
+      {post.articleCard && <ArticleCardBlock card={post.articleCard} />}
+
+      {post.githubCards?.map((card, i) => (
+        <GithubCardBlock key={`${card.kind}-${card.url}-${i}`} card={card} />
+      ))}
+
+      {post.poll && (
+        <PollBlock
+          poll={post.poll}
+          onChange={(nextPoll) => onChange({ ...post, poll: nextPoll })}
+        />
+      )}
+
+      {post.quoteOf && <QuoteEmbed post={post.quoteOf} />}
 
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: action bar wrapper */}
       <div
