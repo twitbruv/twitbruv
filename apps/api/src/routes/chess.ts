@@ -2,12 +2,12 @@ import { Hono } from 'hono'
 import { and, desc, eq, or } from '@workspace/db'
 import { schema } from '@workspace/db'
 import { createChessGameSchema, moveChessSchema } from '@workspace/validators'
-import { requireAuth, type HonoEnv } from '../middleware/session.ts'
+import { requireHandle, type HonoEnv } from '../middleware/session.ts'
 import { Chess } from 'chess.js'
 
 export const chessRoute = new Hono<HonoEnv>()
 
-chessRoute.use('*', requireAuth())
+chessRoute.use('*', requireHandle())
 
 async function getOrCreateStats(db: any, userId: string) {
   const [stats] = await db.select().from(schema.chessStats).where(eq(schema.chessStats.userId, userId)).limit(1)

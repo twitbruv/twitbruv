@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { and, desc, eq, inArray, isNull, lt, ne, sql } from '@workspace/db'
 import { schema } from '@workspace/db'
 import { assetUrl } from '@workspace/media/s3'
-import { requireAuth, type HonoEnv } from '../middleware/session.ts'
+import { requireHandle, type HonoEnv } from '../middleware/session.ts'
 import { notificationsUnreadCacheKey } from '../lib/notify.ts'
 import { parseCursor } from '../lib/cursor.ts'
 import { toPostDto, type PostDto } from '../lib/post-dto.ts'
@@ -13,7 +13,7 @@ import { loadViewerFlags } from '../lib/viewer-flags.ts'
 
 export const notificationsRoute = new Hono<HonoEnv>()
 
-notificationsRoute.use('*', requireAuth())
+notificationsRoute.use('*', requireHandle())
 
 const UNREAD_COUNT_TTL_SEC = 30
 

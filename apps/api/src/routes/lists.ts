@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { and, asc, desc, eq, inArray, isNull, lt, sql, schema } from '@workspace/db'
 import { assetUrl } from '@workspace/media/s3'
 import { createListSchema, updateListSchema } from '@workspace/validators'
-import { requireAuth, type HonoEnv } from '../middleware/session.ts'
+import { requireHandle, type HonoEnv } from '../middleware/session.ts'
 import { toPostDto } from '../lib/post-dto.ts'
 import { loadViewerFlags } from '../lib/viewer-flags.ts'
 import { loadPostMedia } from '../lib/post-media.ts'
@@ -68,7 +68,7 @@ listsRoute.get('/by/:handle', async (c) => {
 })
 
 // Owner-only: viewer's own lists.
-listsRoute.get('/me', requireAuth(), async (c) => {
+listsRoute.get('/me', requireHandle(), async (c) => {
   const session = c.get('session')!
   const { db } = c.get('ctx')
   const [me] = await db
@@ -90,7 +90,7 @@ listsRoute.get('/me', requireAuth(), async (c) => {
   })
 })
 
-listsRoute.post('/', requireAuth(), async (c) => {
+listsRoute.post('/', requireHandle(), async (c) => {
   const session = c.get('session')!
   const { db, rateLimit } = c.get('ctx')
   await rateLimit(c, 'lists.write')
@@ -146,7 +146,7 @@ listsRoute.get('/:id', async (c) => {
   return c.json({ list: toListDto(list.list, list.handle, list.displayName) })
 })
 
-listsRoute.patch('/:id', requireAuth(), async (c) => {
+listsRoute.patch('/:id', requireHandle(), async (c) => {
   const session = c.get('session')!
   const { db, rateLimit } = c.get('ctx')
   await rateLimit(c, 'lists.write')
@@ -175,7 +175,7 @@ listsRoute.patch('/:id', requireAuth(), async (c) => {
 
 // Pin / unpin a list to the owner's profile. The /by/:handle endpoint sorts
 // pinned lists to the top, so this single boolean controls profile ordering.
-listsRoute.post('/:id/pin', requireAuth(), async (c) => {
+listsRoute.post('/:id/pin', requireHandle(), async (c) => {
   const session = c.get('session')!
   const { db } = c.get('ctx')
   const id = c.req.param('id')
@@ -190,7 +190,7 @@ listsRoute.post('/:id/pin', requireAuth(), async (c) => {
   return c.json({ ok: true })
 })
 
-listsRoute.delete('/:id/pin', requireAuth(), async (c) => {
+listsRoute.delete('/:id/pin', requireHandle(), async (c) => {
   const session = c.get('session')!
   const { db } = c.get('ctx')
   const id = c.req.param('id')
@@ -242,7 +242,7 @@ listsRoute.get('/listed-on/:handle', async (c) => {
   })
 })
 
-listsRoute.delete('/:id', requireAuth(), async (c) => {
+listsRoute.delete('/:id', requireHandle(), async (c) => {
   const session = c.get('session')!
   const { db, rateLimit } = c.get('ctx')
   await rateLimit(c, 'lists.write')
@@ -283,7 +283,7 @@ listsRoute.get('/:id/members', async (c) => {
   })
 })
 
-listsRoute.post('/:id/members', requireAuth(), async (c) => {
+listsRoute.post('/:id/members', requireHandle(), async (c) => {
   const session = c.get('session')!
   const { db, rateLimit } = c.get('ctx')
   await rateLimit(c, 'lists.members')
@@ -326,7 +326,7 @@ listsRoute.post('/:id/members', requireAuth(), async (c) => {
   })
 })
 
-listsRoute.delete('/:id/members/:memberId', requireAuth(), async (c) => {
+listsRoute.delete('/:id/members/:memberId', requireHandle(), async (c) => {
   const session = c.get('session')!
   const { db, rateLimit } = c.get('ctx')
   await rateLimit(c, 'lists.members')

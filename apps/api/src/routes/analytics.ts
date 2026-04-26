@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import { and, desc, eq, gte, inArray, isNotNull, isNull, sql } from '@workspace/db'
 import { schema } from '@workspace/db'
-import { requireAuth, type HonoEnv } from '../middleware/session.ts'
+import { requireHandle, type HonoEnv } from '../middleware/session.ts'
 import { toPostDto } from '../lib/post-dto.ts'
 import { loadViewerFlags } from '../lib/viewer-flags.ts'
 import { loadPostMedia } from '../lib/post-media.ts'
@@ -59,7 +59,7 @@ analyticsRoute.post('/ingest', async (c) => {
 })
 
 // 28-day creator overview.
-analyticsRoute.get('/overview', requireAuth(), async (c) => {
+analyticsRoute.get('/overview', requireHandle(), async (c) => {
   const session = c.get('session')!
   const { db } = c.get('ctx')
   const periodDays = Math.min(Math.max(Number(c.req.query('days') ?? 28), 1), 90)

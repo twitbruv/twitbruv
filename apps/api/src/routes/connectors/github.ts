@@ -4,7 +4,7 @@ import { createHash, randomBytes } from 'node:crypto'
 import { and, eq } from '@workspace/db'
 import { schema } from '@workspace/db'
 import type { HonoEnv } from '../../middleware/session.ts'
-import { requireAuth } from '../../middleware/session.ts'
+import { requireHandle } from '../../middleware/session.ts'
 import { connectorsEnabled, decryptToken, encryptToken } from '../../lib/connector-crypto.ts'
 import { exchangeCode, revokeGrant } from '../../lib/github-client.ts'
 import { bustCache, getGithubSnapshot } from '../../lib/github-snapshot.ts'
@@ -28,7 +28,7 @@ function notConfigured(c: Context<HonoEnv>) {
 
 // Kick off the OAuth dance. Top-level navigation from the settings page; we set a signed
 // state cookie and 302 to GitHub.
-githubConnectorRoute.get('/start', requireAuth(), async (c) => {
+githubConnectorRoute.get('/start', requireHandle(), async (c) => {
   const ctx = c.get('ctx')
   if (!connectorsEnabled() || !ctx.env.GITHUB_CONNECT_CLIENT_ID) return notConfigured(c)
   await ctx.rateLimit(c, 'connectors.github.start')
@@ -180,7 +180,7 @@ githubConnectorRoute.get('/callback', async (c) => {
 })
 
 // What the settings page reads to render the current connection state.
-githubConnectorRoute.get('/me', requireAuth(), async (c) => {
+githubConnectorRoute.get('/me', requireHandle(), async (c) => {
   const ctx = c.get('ctx')
   if (!connectorsEnabled() || !ctx.env.GITHUB_CONNECT_CLIENT_ID) {
     return c.json({ connected: false, configured: false })
@@ -224,7 +224,7 @@ githubConnectorRoute.get('/me', requireAuth(), async (c) => {
 })
 
 // Toggle "Show on my profile".
-githubConnectorRoute.patch('/me', requireAuth(), async (c) => {
+githubConnectorRoute.patch('/me', requireHandle(), async (c) => {
   const session = c.get('session')!
   const { db } = c.get('ctx')
   const body = (await c.req.json().catch(() => ({}))) as { showOnProfile?: boolean }
@@ -243,7 +243,7 @@ githubConnectorRoute.patch('/me', requireAuth(), async (c) => {
   return c.json({ ok: true })
 })
 
-githubConnectorRoute.post('/refresh', requireAuth(), async (c) => {
+githubConnectorRoute.post('/refresh', requireHandle(), async (c) => {
   const ctx = c.get('ctx')
   await ctx.rateLimit(c, 'connectors.github.refresh')
   const session = c.get('session')!
@@ -253,7 +253,7 @@ githubConnectorRoute.post('/refresh', requireAuth(), async (c) => {
   return c.json({ ok: true, refreshedAt: snapshot.refreshedAt, stale: snapshot.stale ?? false })
 })
 
-githubConnectorRoute.delete('/', requireAuth(), async (c) => {
+githubConnectorRoute.delete('/', requireHandle(), async (c) => {
   const ctx = c.get('ctx')
   const session = c.get('session')!
   const [row] = await ctx.db

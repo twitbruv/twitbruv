@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { and, eq, isNull, sql } from '@workspace/db'
 import { schema } from '@workspace/db'
 import { assetUrl } from '@workspace/media/s3'
-import { requireAuth, type HonoEnv } from '../middleware/session.ts'
+import { requireHandle, type HonoEnv } from '../middleware/session.ts'
 import { dmChannel } from '../lib/pubsub.ts'
 
 export const invitesRoute = new Hono<HonoEnv>()
@@ -57,7 +57,7 @@ invitesRoute.get('/:token', async (c) => {
   })
 })
 
-invitesRoute.post('/:token/accept', requireAuth(), async (c) => {
+invitesRoute.post('/:token/accept', requireHandle(), async (c) => {
   const session = c.get('session')!
   const me = session.user.id
   const { db, pubsub, rateLimit } = c.get('ctx')

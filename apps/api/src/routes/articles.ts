@@ -5,7 +5,7 @@ import { createArticleSchema, updateArticleSchema } from '@workspace/validators'
 import { handleRateLimitError } from '@workspace/rate-limit'
 import { assetUrl } from '@workspace/media/s3'
 import type { MediaEnv } from '@workspace/media/env'
-import { requireAuth, type HonoEnv } from '../middleware/session.ts'
+import { requireHandle, type HonoEnv } from '../middleware/session.ts'
 import { slugify, uniqueSlugForAuthor } from '../lib/slug.ts'
 
 export const articlesRoute = new Hono<HonoEnv>()
@@ -74,7 +74,7 @@ async function loadCover(
   return row ?? null
 }
 
-articlesRoute.post('/', requireAuth(), async (c) => {
+articlesRoute.post('/', requireHandle(), async (c) => {
   const session = c.get('session')!
   const { db, rateLimit } = c.get('ctx')
   await rateLimit(c, 'articles.write')
@@ -145,7 +145,7 @@ articlesRoute.post('/', requireAuth(), async (c) => {
   )
 })
 
-articlesRoute.patch('/:id', requireAuth(), async (c) => {
+articlesRoute.patch('/:id', requireHandle(), async (c) => {
   const session = c.get('session')!
   const { db, rateLimit } = c.get('ctx')
   await rateLimit(c, 'articles.write')
@@ -225,7 +225,7 @@ articlesRoute.patch('/:id', requireAuth(), async (c) => {
   })
 })
 
-articlesRoute.delete('/:id', requireAuth(), async (c) => {
+articlesRoute.delete('/:id', requireHandle(), async (c) => {
   const session = c.get('session')!
   const { db } = c.get('ctx')
   const id = c.req.param('id')
@@ -246,7 +246,7 @@ articlesRoute.delete('/:id', requireAuth(), async (c) => {
 })
 
 // Author-only: full article by id (includes drafts).
-articlesRoute.get('/:id', requireAuth(), async (c) => {
+articlesRoute.get('/:id', requireHandle(), async (c) => {
   const session = c.get('session')!
   const { db } = c.get('ctx')
   const id = c.req.param('id')
@@ -286,7 +286,7 @@ articlesRoute.onError((err, c) => {
 })
 
 // Also surface a viewer-focused "my articles" list for the editor dashboard.
-articlesRoute.get('/', requireAuth(), async (c) => {
+articlesRoute.get('/', requireHandle(), async (c) => {
   const session = c.get('session')!
   const { db } = c.get('ctx')
   const limit = Math.min(Number(c.req.query('limit') ?? 40), 100)

@@ -2,11 +2,11 @@ import { Hono } from 'hono'
 import { z } from 'zod'
 import { and, eq } from '@workspace/db'
 import { schema } from '@workspace/db'
-import { requireAuth, type HonoEnv } from '../middleware/session.ts'
+import { requireHandle, type HonoEnv } from '../middleware/session.ts'
 
 export const reportsRoute = new Hono<HonoEnv>()
 
-reportsRoute.use('*', requireAuth())
+reportsRoute.use('*', requireHandle())
 
 const reportSchema = z.object({
   subjectType: z.enum(['post', 'user', 'article', 'message']),

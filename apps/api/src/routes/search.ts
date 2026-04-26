@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { and, asc, desc, eq, exists, gte, ilike, inArray, isNull, lte, or, sql } from '@workspace/db'
 import { schema } from '@workspace/db'
 import { assetUrl } from '@workspace/media/s3'
-import { requireAuth, type HonoEnv } from '../middleware/session.ts'
+import { requireHandle, type HonoEnv } from '../middleware/session.ts'
 import { toPostDto } from '../lib/post-dto.ts'
 import { loadViewerFlags } from '../lib/viewer-flags.ts'
 import { loadPostMedia } from '../lib/post-media.ts'
@@ -306,7 +306,7 @@ searchRoute.get('/', async (c) => {
 // shortcuts in the search UI. Same query string format as /api/search.
 const savedQuerySchema = z.string().trim().min(1).max(MAX_SEARCH_QUERY_LEN)
 
-searchRoute.get('/saved', requireAuth(), async (c) => {
+searchRoute.get('/saved', requireHandle(), async (c) => {
   const session = c.get('session')!
   const { db } = c.get('ctx')
   const rows = await db
@@ -327,7 +327,7 @@ searchRoute.get('/saved', requireAuth(), async (c) => {
   })
 })
 
-searchRoute.post('/saved', requireAuth(), async (c) => {
+searchRoute.post('/saved', requireHandle(), async (c) => {
   const session = c.get('session')!
   const { db } = c.get('ctx')
   const body = z.object({ query: savedQuerySchema }).parse(await c.req.json())
@@ -361,7 +361,7 @@ searchRoute.post('/saved', requireAuth(), async (c) => {
   })
 })
 
-searchRoute.delete('/saved/:id', requireAuth(), async (c) => {
+searchRoute.delete('/saved/:id', requireHandle(), async (c) => {
   const session = c.get('session')!
   const { db } = c.get('ctx')
   const id = c.req.param('id')

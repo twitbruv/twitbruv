@@ -2,14 +2,14 @@ import { Hono } from 'hono'
 import { and, eq, inArray, schema, sql } from '@workspace/db'
 import { pollVoteSchema } from '@workspace/validators'
 import { handleRateLimitError } from '@workspace/rate-limit'
-import { requireAuth, type HonoEnv } from '../middleware/session.ts'
+import { requireHandle, type HonoEnv } from '../middleware/session.ts'
 
 export const pollsRoute = new Hono<HonoEnv>()
 
 // Vote on a poll. Single-choice polls accept exactly one optionId; multi-choice polls accept up
 // to one vote per option but only one POST per user (subsequent POSTs are rejected — no
 // vote-changing in v1, matching Twitter behavior).
-pollsRoute.post('/:pollId/vote', requireAuth(), async (c) => {
+pollsRoute.post('/:pollId/vote', requireHandle(), async (c) => {
   const session = c.get('session')!
   const { db, rateLimit } = c.get('ctx')
   const pollId = c.req.param('pollId')

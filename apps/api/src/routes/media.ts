@@ -5,7 +5,7 @@ import { schema } from '@workspace/db'
 import { headObject, presignPut, publicUrl, type S3 } from '@workspace/media/s3'
 import type { MediaEnv } from '@workspace/media/env'
 import type PgBoss from 'pg-boss'
-import { requireAuth, type HonoEnv } from '../middleware/session.ts'
+import { requireHandle, type HonoEnv } from '../middleware/session.ts'
 
 export interface MediaDeps {
   s3: S3
@@ -32,7 +32,7 @@ const intentSchema = z.object({
 export function createMediaRoute(deps: MediaDeps) {
   const route = new Hono<HonoEnv>()
 
-  route.post('/intent', requireAuth(), async (c) => {
+  route.post('/intent', requireHandle(), async (c) => {
     const session = c.get('session')!
     const { db, rateLimit } = c.get('ctx')
     await rateLimit(c, 'media.upload')
@@ -74,7 +74,7 @@ export function createMediaRoute(deps: MediaDeps) {
     })
   })
 
-  route.post('/:id/finalize', requireAuth(), async (c) => {
+  route.post('/:id/finalize', requireHandle(), async (c) => {
     const session = c.get('session')!
     const { db } = c.get('ctx')
     const id = c.req.param('id')
@@ -110,7 +110,7 @@ export function createMediaRoute(deps: MediaDeps) {
   // Alt-text edits go via PATCH so the same endpoint can grow other small mutations later
   // (sensitive flagging, etc.) without churning the API surface.
   const altSchema = z.object({ altText: z.string().trim().max(1000).nullable() })
-  route.patch('/:id/alt', requireAuth(), async (c) => {
+  route.patch('/:id/alt', requireHandle(), async (c) => {
     const session = c.get('session')!
     const { db } = c.get('ctx')
     const id = c.req.param('id')

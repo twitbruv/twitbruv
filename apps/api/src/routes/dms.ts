@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { and, desc, eq, inArray, isNull, lt, ne, or, sql } from '@workspace/db'
 import { schema, type Database } from '@workspace/db'
 import { assetUrl } from '@workspace/media/s3'
-import { requireAuth, type HonoEnv } from '../middleware/session.ts'
+import { requireHandle, type HonoEnv } from '../middleware/session.ts'
 import { invalidateUnreadCounts } from '../lib/notify.ts'
 import { parseCursor } from '../lib/cursor.ts'
 import { dmChannel } from '../lib/pubsub.ts'
@@ -12,7 +12,7 @@ import { toMediaDto, type MediaDto } from '../lib/post-dto.ts'
 
 export const dmsRoute = new Hono<HonoEnv>()
 
-dmsRoute.use('*', requireAuth())
+dmsRoute.use('*', requireHandle())
 
 const sendSchema = z
   .object({

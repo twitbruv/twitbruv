@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { and, desc, eq, inArray, isNull, lt, sql } from '@workspace/db'
 import { schema } from '@workspace/db'
-import { requireAuth, type HonoEnv } from '../middleware/session.ts'
+import { requireHandle, type HonoEnv } from '../middleware/session.ts'
 import { toPostDto } from '../lib/post-dto.ts'
 import { loadViewerFlags } from '../lib/viewer-flags.ts'
 import { loadPostMedia } from '../lib/post-media.ts'
@@ -32,7 +32,7 @@ export function profileFeedCacheKey(authorId: string) {
 }
 
 // Home feed: reverse-chrono from follows, excluding blocks and muted-feed users.
-feedRoute.get('/', requireAuth(), async (c) => {
+feedRoute.get('/', requireHandle(), async (c) => {
   const session = c.get('session')!
   const { db, mediaEnv, cache, rateLimit } = c.get('ctx')
   await rateLimit(c, 'reads.feed')
@@ -119,7 +119,7 @@ feedRoute.get('/', requireAuth(), async (c) => {
 // viewer's blocks/mutes and any post by a blocked author.
 const NETWORK_FEED_TTL_SEC = 60
 
-feedRoute.get('/network', requireAuth(), async (c) => {
+feedRoute.get('/network', requireHandle(), async (c) => {
   const session = c.get('session')!
   const { db, mediaEnv, rateLimit } = c.get('ctx')
   await rateLimit(c, 'reads.feed')
