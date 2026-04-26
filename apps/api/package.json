@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@databuddy/sdk": "^2.4.11",
     "@octokit/graphql": "^9.0.3",
     "@octokit/request": "^10.0.8",
     "@workspace/auth": "workspace:*",

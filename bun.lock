@@ -15,6 +15,7 @@
       "name": "api",
       "version": "0.0.1",
       "dependencies": {
+        "@databuddy/sdk": "^2.4.11",
         "@octokit/graphql": "^9.0.3",
         "@octokit/request": "^10.0.8",
         "@workspace/auth": "workspace:*",
@@ -80,6 +81,7 @@
         "zod": "^3.25.76",
       },
       "devDependencies": {
+        "@databuddy/devtools": "^0.0.1-beta.0",
         "@rsbuild/core": "^1.6.17",
         "@tanstack/eslint-config": "^0.3.0",
         "@tanstack/router-generator": "^1.166.34",
@@ -436,6 +438,8 @@
     "@better-fetch/fetch": ["@better-fetch/fetch@1.1.21", "", {}, "sha512-/ImESw0sskqlVR94jB+5+Pxjf+xBwDZF/N5+y2/q4EqD7IARUTSpPfIo8uf39SYpCxyOCtbyYpUrZ3F/k0zT4A=="],
 
     "@borewit/text-codec": ["@borewit/text-codec@0.2.2", "", {}, "sha512-DDaRehssg1aNrH4+2hnj1B7vnUGEjU6OIlyRdkMd0aUdIUvKXrJfXsy8LVtXAy7DRvYVluWbMspsRhz2lcW0mQ=="],
+
+    "@databuddy/devtools": ["@databuddy/devtools@0.0.1-beta.0", "", { "dependencies": { "preact": "^10.29.1" }, "peerDependencies": { "react": ">=18", "vue": "^3" }, "optionalPeers": ["react", "vue"] }, "sha512-m9cvlTsOosb3Uby8toorfc+gOis/fUAW6ff98U6j5+J+xSDWfhkcozKHmXqT3ZENx1ON5OqTw2kwbJNLZ0WDaQ=="],
 
     "@databuddy/sdk": ["@databuddy/sdk@2.4.11", "", { "peerDependencies": { "react": ">=18", "vue": ">=3" }, "optionalPeers": ["react", "vue"] }, "sha512-pDT0tfsLOhuFnX0MHSOOt+qq9IPAB7rktuWclVgaRU3D6A6Mw7pN0oRttvPPKc3Ue7gUvq3kOtFkhmquLtmVQA=="],
 
@@ -1984,6 +1988,8 @@
     "postgres-interval": ["postgres-interval@1.2.0", "", { "dependencies": { "xtend": "^4.0.0" } }, "sha512-9ZhXKM/rw350N1ovuWHbGxnGh/SNJ4cnxHiM0rxE4VN41wsg8P8zWn9hv/buK00RP4WvlOyr/RBDiptyxVbkZQ=="],
 
     "powershell-utils": ["powershell-utils@0.1.0", "", {}, "sha512-dM0jVuXJPsDN6DvRpea484tCUaMiXWjuCn++HGTqUWzGDjv5tZkEZldAJ/UMlqRYGFrD/etByo4/xOuC/snX2A=="],
+
+    "preact": ["preact@10.29.1", "", {}, "sha512-gQCLc/vWroE8lIpleXtdJhTFDogTdZG9AjMUpVkDf2iTCNwYNWA+u16dL41TqUDJO4gm2IgrcMv3uTpjd4Pwmg=="],
 
     "prelude-ls": ["prelude-ls@1.2.1", "", {}, "sha512-vkcDPrRZo1QZLbn5RLGPpg/WmIQ65qoWWhcGKf/b5eplkkarX0m9z8ppCat4mlOqUsWpyNuYgO3VRyrYHSzX5g=="],
 
