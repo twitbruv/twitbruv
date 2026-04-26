@@ -19,7 +19,6 @@ import { Route as ManifestDotjsonRouteImport } from './routes/manifest[.]json'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as InboxRouteImport } from './routes/inbox'
 import { Route as DraftsRouteImport } from './routes/drafts'
-import { Route as ChessRouteImport } from './routes/chess'
 import { Route as BookmarksRouteImport } from './routes/bookmarks'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -97,11 +96,6 @@ const DraftsRoute = DraftsRouteImport.update({
   path: '/drafts',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ChessRoute = ChessRouteImport.update({
-  id: '/chess',
-  path: '/chess',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const BookmarksRoute = BookmarksRouteImport.update({
   id: '/bookmarks',
   path: '/bookmarks',
@@ -173,9 +167,9 @@ const HashtagTagRoute = HashtagTagRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChessIdRoute = ChessIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => ChessRoute,
+  id: '/chess/$id',
+  path: '/chess/$id',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ArticlesNewRoute = ArticlesNewRouteImport.update({
   id: '/articles/new',
@@ -239,7 +233,6 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/analytics': typeof AnalyticsRoute
   '/bookmarks': typeof BookmarksRoute
-  '/chess': typeof ChessRouteWithChildren
   '/drafts': typeof DraftsRoute
   '/inbox': typeof InboxRouteWithChildren
   '/login': typeof LoginRoute
@@ -276,7 +269,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
   '/bookmarks': typeof BookmarksRoute
-  '/chess': typeof ChessRouteWithChildren
   '/drafts': typeof DraftsRoute
   '/login': typeof LoginRoute
   '/manifest.json': typeof ManifestDotjsonRoute
@@ -315,7 +307,6 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/analytics': typeof AnalyticsRoute
   '/bookmarks': typeof BookmarksRoute
-  '/chess': typeof ChessRouteWithChildren
   '/drafts': typeof DraftsRoute
   '/inbox': typeof InboxRouteWithChildren
   '/login': typeof LoginRoute
@@ -356,7 +347,6 @@ export interface FileRouteTypes {
     | '/admin'
     | '/analytics'
     | '/bookmarks'
-    | '/chess'
     | '/drafts'
     | '/inbox'
     | '/login'
@@ -393,7 +383,6 @@ export interface FileRouteTypes {
     | '/'
     | '/analytics'
     | '/bookmarks'
-    | '/chess'
     | '/drafts'
     | '/login'
     | '/manifest.json'
@@ -431,7 +420,6 @@ export interface FileRouteTypes {
     | '/admin'
     | '/analytics'
     | '/bookmarks'
-    | '/chess'
     | '/drafts'
     | '/inbox'
     | '/login'
@@ -471,7 +459,6 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   AnalyticsRoute: typeof AnalyticsRoute
   BookmarksRoute: typeof BookmarksRoute
-  ChessRoute: typeof ChessRouteWithChildren
   DraftsRoute: typeof DraftsRoute
   InboxRoute: typeof InboxRouteWithChildren
   LoginRoute: typeof LoginRoute
@@ -483,6 +470,7 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ArticlesNewRoute: typeof ArticlesNewRoute
+  ChessIdRoute: typeof ChessIdRoute
   HashtagTagRoute: typeof HashtagTagRoute
   InviteTokenRoute: typeof InviteTokenRoute
   ListsIdRoute: typeof ListsIdRoute
@@ -560,13 +548,6 @@ declare module '@tanstack/react-router' {
       path: '/drafts'
       fullPath: '/drafts'
       preLoaderRoute: typeof DraftsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/chess': {
-      id: '/chess'
-      path: '/chess'
-      fullPath: '/chess'
-      preLoaderRoute: typeof ChessRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/bookmarks': {
@@ -669,10 +650,10 @@ declare module '@tanstack/react-router' {
     }
     '/chess/$id': {
       id: '/chess/$id'
-      path: '/$id'
+      path: '/chess/$id'
       fullPath: '/chess/$id'
       preLoaderRoute: typeof ChessIdRouteImport
-      parentRoute: typeof ChessRoute
+      parentRoute: typeof rootRouteImport
     }
     '/articles/new': {
       id: '/articles/new'
@@ -787,16 +768,6 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
-interface ChessRouteChildren {
-  ChessIdRoute: typeof ChessIdRoute
-}
-
-const ChessRouteChildren: ChessRouteChildren = {
-  ChessIdRoute: ChessIdRoute,
-}
-
-const ChessRouteWithChildren = ChessRoute._addFileChildren(ChessRouteChildren)
-
 interface InboxRouteChildren {
   InboxConversationIdRoute: typeof InboxConversationIdRoute
   InboxNewRoute: typeof InboxNewRoute
@@ -831,7 +802,6 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   AnalyticsRoute: AnalyticsRoute,
   BookmarksRoute: BookmarksRoute,
-  ChessRoute: ChessRouteWithChildren,
   DraftsRoute: DraftsRoute,
   InboxRoute: InboxRouteWithChildren,
   LoginRoute: LoginRoute,
@@ -843,6 +813,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ArticlesNewRoute: ArticlesNewRoute,
+  ChessIdRoute: ChessIdRoute,
   HashtagTagRoute: HashtagTagRoute,
   InviteTokenRoute: InviteTokenRoute,
   ListsIdRoute: ListsIdRoute,
