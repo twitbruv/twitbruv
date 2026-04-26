@@ -871,7 +871,7 @@ export interface ArticleInput {
   title: string
   subtitle?: string
   slug?: string
-  coverMediaId?: string
+  coverMediaId?: string | null
   bodyFormat?: "lexical" | "prosemirror" | "markdown"
   bodyJson?: unknown
   bodyText: string

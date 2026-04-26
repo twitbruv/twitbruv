@@ -14,7 +14,7 @@ export const createArticleSchema = z.object({
     .max(120)
     .regex(/^[a-z0-9-]+$/, 'lowercase letters, numbers, dashes')
     .optional(),
-  coverMediaId: uuidSchema.optional(),
+  coverMediaId: uuidSchema.nullable().optional(),
   bodyFormat: articleFormatSchema.default('lexical'),
   bodyJson: z.unknown().optional(),
   bodyText: z.string().default(''),

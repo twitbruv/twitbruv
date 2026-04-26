@@ -173,7 +173,8 @@ articlesRoute.patch('/:id', requireAuth(), async (c) => {
         title: body.title ?? existing.title,
         subtitle: body.subtitle ?? existing.subtitle,
         slug: nextSlug,
-        coverMediaId: body.coverMediaId ?? existing.coverMediaId,
+        coverMediaId:
+          body.coverMediaId !== undefined ? body.coverMediaId : existing.coverMediaId,
         bodyFormat: body.bodyFormat ?? existing.bodyFormat,
         bodyJson: body.bodyJson ?? existing.bodyJson,
         bodyText: nextBodyText,
