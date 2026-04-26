@@ -10,6 +10,7 @@ import {
 } from "@phosphor-icons/react"
 import { Link } from "@tanstack/react-router"
 import { Button } from "@workspace/ui/components/button"
+import { Input } from "@workspace/ui/components/input"
 import { api } from "../lib/api"
 import { getPastedImageFiles } from "../lib/clipboard-images"
 import { subscribeToDmStream } from "../lib/dm-stream"
@@ -451,7 +452,7 @@ function ChatView({
         >
           <ImageIcon size={18} />
         </Button>
-        <input
+        <Input
           ref={inputRef}
           type="text"
           value={text}
@@ -459,7 +460,7 @@ function ChatView({
           onPaste={onPaste}
           placeholder={pending ? "Add a caption…" : "Message..."}
           disabled={sending}
-          className="flex-1 bg-transparent px-2 py-1 text-sm placeholder:text-muted-foreground focus:outline-none"
+          className="flex-1 border-0 bg-transparent"
         />
         <Button
           type="submit"
