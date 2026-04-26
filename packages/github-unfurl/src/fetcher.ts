@@ -246,6 +246,9 @@ export async function persistCardOutcome(
       .update(schema.urlUnfurls)
       .set({
         state: 'ready',
+        // Sync kind from the actual card payload — covers issue→PR redirect where the row
+        // was opened as 'github_issue' but the fetcher resolved it to a pull request.
+        kind: outcome.result.card.kind,
         card: outcome.result.card,
         title: outcome.result.title,
         description: outcome.result.description,
@@ -258,7 +261,21 @@ export async function persistCardOutcome(
       .where(eq(schema.urlUnfurls.id, rowId))
     return
   }
-  const ttlSec = FAILURE_TTL_BY_REASON[outcome.reason]
+  await persistFailureOnly(db, rowId, outcome.reason, outcome.message)
+}
+
+/**
+ * Mark a url_unfurls row as failed without needing a `GithubRef`. Used by the worker when
+ * the URL can't even be reparsed (so we have no kind/owner/repo to construct a ref).
+ */
+export async function persistFailureOnly(
+  db: Database,
+  rowId: string,
+  reason: keyof typeof FAILURE_TTL_BY_REASON,
+  message: string,
+): Promise<void> {
+  const now = new Date()
+  const ttlSec = FAILURE_TTL_BY_REASON[reason]
   await db
     .update(schema.urlUnfurls)
     .set({
@@ -267,7 +284,7 @@ export async function persistCardOutcome(
       expiresAt: new Date(now.getTime() + ttlSec * 1000),
       // Stash the failure reason in `description` so we can debug from a SQL prompt without
       // a dedicated column. Cleared on next successful fetch.
-      description: `unfurl_failed:${outcome.reason}:${outcome.message}`.slice(0, 500),
+      description: `unfurl_failed:${reason}:${message}`.slice(0, 500),
     })
     .where(eq(schema.urlUnfurls.id, rowId))
 }

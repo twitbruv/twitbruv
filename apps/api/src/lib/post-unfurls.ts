@@ -5,6 +5,10 @@ import type { Database } from '@workspace/db'
 import {
   canonicalizeGithubUrl,
   extractGithubRefs,
+  fetchGithubCard,
+  parseGithubUrl,
+  persistCardOutcome,
+  persistFailureOnly,
   type GithubRefWithUrl,
 } from '@workspace/github-unfurl'
 import type PgBoss from 'pg-boss'
@@ -86,9 +90,28 @@ export async function attachPostUnfurls(opts: {
       id: schema.urlUnfurls.id,
       refKey: schema.urlUnfurls.refKey,
       state: schema.urlUnfurls.state,
+      expiresAt: schema.urlUnfurls.expiresAt,
     })
     .from(schema.urlUnfurls)
     .where(inArray(schema.urlUnfurls.refKey, refs.map((r) => r.refKey)))
+
+  // Recover URLs that previously failed and whose cooldown has elapsed. Without this, the
+  // first poster who hit a transient 5xx / rate limit poisons the URL for everyone else
+  // until the failure TTL expires — and even then no one re-enqueues it. Flip those rows
+  // back to 'pending' so the enqueue loop below picks them up.
+  const staleFailureIds = allRows
+    .filter((r) => r.state === 'failed' && r.expiresAt.getTime() <= now.getTime())
+    .map((r) => r.id)
+  if (staleFailureIds.length > 0) {
+    await opts.tx
+      .update(schema.urlUnfurls)
+      .set({ state: 'pending', fetchedAt: now, expiresAt: placeholderExpiry })
+      .where(inArray(schema.urlUnfurls.id, staleFailureIds))
+    const reset = new Set(staleFailureIds)
+    for (const r of allRows) {
+      if (reset.has(r.id)) r.state = 'pending'
+    }
+  }
 
   const byRefKey = new Map(allRows.map((r) => [r.refKey!, r]))
 
@@ -136,5 +159,57 @@ export async function dispatchUnfurlJobs(
         console.warn('[github-unfurl] enqueue failed', { err: (err as Error).message, refKey: j.refKey })
       }),
     ),
+  )
+}
+
+const INLINE_FETCH_TIMEOUT_MS = 3000
+
+/**
+ * Fetch GitHub cards inline so a freshly-created post can include them in the create
+ * response — no second roundtrip needed for the user to see the card. Each ref races
+ * against a short timeout; on timeout (slow GitHub, big PR with thousands of files) we
+ * fall back to enqueueing the worker so the card still arrives on next refresh.
+ *
+ * Call AFTER the surrounding transaction commits.
+ */
+export async function runInlineUnfurls(
+  db: Database,
+  boss: PgBoss,
+  jobs: Array<{ unfurlId: string; url: string; refKey: string }>,
+): Promise<void> {
+  if (jobs.length === 0) return
+  await Promise.all(
+    jobs.map(async (j) => {
+      const ref = parseGithubUrl(j.url)
+      if (!ref) {
+        await persistFailureOnly(db, j.unfurlId, 'unknown', 'parse_failed').catch(() => {})
+        return
+      }
+      let timeoutId: ReturnType<typeof setTimeout> | undefined
+      const timeout = new Promise<'timeout'>((resolve) => {
+        timeoutId = setTimeout(() => resolve('timeout'), INLINE_FETCH_TIMEOUT_MS)
+      })
+      try {
+        const result = await Promise.race([fetchGithubCard(ref), timeout])
+        if (result === 'timeout') {
+          // Hand off to the worker so the card still appears on next refresh.
+          await boss.send('github.unfurl', j).catch((err) => {
+            console.warn('[github-unfurl] fallback enqueue failed', {
+              err: (err as Error).message,
+              refKey: j.refKey,
+            })
+          })
+          return
+        }
+        await persistCardOutcome(db, j.unfurlId, ref, result)
+      } catch (err) {
+        // Defensive: fetchGithubCard already wraps errors into a FetchOutcome, so a throw
+        // here is a programmer bug, not a network failure. Persist as unknown so the row
+        // doesn't loop in pending.
+        await persistFailureOnly(db, j.unfurlId, 'unknown', (err as Error).message).catch(() => {})
+      } finally {
+        if (timeoutId) clearTimeout(timeoutId)
+      }
+    }),
   )
 }

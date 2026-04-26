@@ -16,7 +16,7 @@ import { linkMentions } from '../lib/mentions.ts'
 import { notify, invalidateUnreadCounts } from '../lib/notify.ts'
 import { parseCursor } from '../lib/cursor.ts'
 import { homeFeedCacheKey, profileFeedCacheKey } from './feed.ts'
-import { attachPostUnfurls, dispatchUnfurlJobs } from '../lib/post-unfurls.ts'
+import { attachPostUnfurls, dispatchUnfurlJobs, runInlineUnfurls } from '../lib/post-unfurls.ts'
 import { loadGithubCards } from '../lib/github-cards.ts'
 
 export const postsRoute = new Hono<HonoEnv>()
@@ -230,12 +230,13 @@ postsRoute.post('/', requireAuth(), async (c) => {
 
   // Invalidate the author's cached home feed so their own new post shows up on refresh,
   // their profile-feed page-0 cache (this post needs to be at top), and any unread-count
-  // caches for users who got a notification. Enqueue any GitHub URL unfurl jobs after the
-  // tx commits — sending inside would orphan jobs on rollback.
+  // caches for users who got a notification. Fetch GitHub cards inline so they're in the
+  // create response — runInlineUnfurls falls back to the worker on per-ref timeout. Done
+  // after the tx commits so a rollback can't leave behind half-fetched rows.
   await Promise.all([
     cache.del(homeFeedCacheKey(session.user.id), profileFeedCacheKey(session.user.id)),
     invalidateUnreadCounts(cache, result.notified),
-    dispatchUnfurlJobs(c.get('ctx').boss, result.githubUnfurlJobs),
+    runInlineUnfurls(db, c.get('ctx').boss, result.githubUnfurlJobs),
   ])
 
   const env = c.get('ctx').mediaEnv
