@@ -3,8 +3,8 @@ import { MotionConfig, motion } from "motion/react"
 import {
   ArrowLeftIcon,
   ChatIcon,
-  NotePencilIcon,
   ImageIcon,
+  NotePencilIcon,
   PaperPlaneTiltIcon,
   XIcon,
 } from "@phosphor-icons/react"

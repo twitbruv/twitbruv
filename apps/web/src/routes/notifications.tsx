@@ -14,8 +14,8 @@ import {
 } from "@tanstack/react-virtual"
 import {
   AtIcon,
-  HeartIcon,
   ChatCircleIcon,
+  HeartIcon,
   QuotesIcon,
   RepeatIcon,
   UserPlusIcon,

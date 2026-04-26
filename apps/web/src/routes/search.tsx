@@ -2,12 +2,20 @@ import { Link, createFileRoute } from "@tanstack/react-router"
 import { useEffect, useMemo, useState } from "react"
 import {
   BookmarkIcon,
+  HorseIcon,
   MagnifyingGlassIcon,
   XIcon,
 } from "@phosphor-icons/react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Alert, AlertDescription } from "@workspace/ui/components/alert"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@workspace/ui/components/dialog"
 import { usePageHeader } from "../components/app-page-header"
 import { PageEmpty, PageLoading } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
@@ -43,6 +51,23 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
 
   const query = draft.trim()
   const activeSavedId = saved.find((s) => s.query === query)?.id ?? null
+
+  const isChessSearch = query.toLowerCase() === "chess"
+  const [challengeTarget, setChallengeTarget] = useState("")
+  const [challengeError, setChallengeError] = useState<string | null>(null)
+  
+  async function submitChallenge(e: React.FormEvent) {
+    e.preventDefault()
+    setChallengeError(null)
+    const targetHandle = challengeTarget.replace(/^@/, "").trim()
+    try {
+      const { user } = await api.user(targetHandle)
+      const { game } = await api.chessCreateGame(user.id)
+      navigate({ to: "/chess/$id", params: { id: game.id } })
+    } catch (err) {
+      setChallengeError("Could not find user or challenge failed.")
+    }
+  }
 
   // Load saved searches once on mount when signed in.
   useEffect(() => {
@@ -226,6 +251,42 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
                 </span>
               ))}
             </div>
+          </section>
+        )}
+
+        {isChessSearch && (
+          <section className="border-b border-border p-4 flex items-center justify-between hover:bg-muted/40">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center justify-center size-12 rounded bg-muted">
+                <HorseIcon size={24} className="text-foreground" />
+              </div>
+              <div>
+                <h3 className="font-semibold">Play chess online</h3>
+                <p className="text-sm text-muted-foreground">Challenge friends or find a match.</p>
+              </div>
+            </div>
+            
+            <Dialog>
+              <Button render={<DialogTrigger />}>Play now</Button>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Challenge to Chess</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={submitChallenge} className="flex flex-col gap-4 mt-4">
+                  <div className="flex flex-col gap-2">
+                    <label htmlFor="targetUser" className="text-sm font-medium">Opponent's Handle</label>
+                    <Input 
+                      id="targetUser"
+                      placeholder="@handle" 
+                      value={challengeTarget}
+                      onChange={(e) => setChallengeTarget(e.target.value)}
+                    />
+                    {challengeError && <p className="text-xs text-destructive">{challengeError}</p>}
+                  </div>
+                  <Button type="submit" disabled={!challengeTarget}>Send Challenge</Button>
+                </form>
+              </DialogContent>
+            </Dialog>
           </section>
         )}
 

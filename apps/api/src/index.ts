@@ -27,6 +27,7 @@ import { pollsRoute } from './routes/polls.ts'
 import { scheduledPostsRoute } from './routes/scheduled-posts.ts'
 import { listsRoute } from './routes/lists.ts'
 import { githubConnectorRoute } from './routes/connectors/github.ts'
+import { chessRoute } from './routes/chess.ts'
 
 const ctx = await buildContext()
 const app = new Hono<HonoEnv>()
@@ -206,6 +207,7 @@ app.route('/api/polls', pollsRoute)
 app.route('/api/scheduled-posts', scheduledPostsRoute)
 app.route('/api/lists', listsRoute)
 app.route('/api/connectors/github', githubConnectorRoute)
+app.route('/api/chess', chessRoute)
 
 app.notFound((c) => c.json({ error: 'not_found' }, 404))
 app.onError((err, c) => {

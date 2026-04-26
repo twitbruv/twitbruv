@@ -1,14 +1,15 @@
 import { Link, useLocation, useRouter } from "@tanstack/react-router"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   BellIcon,
   BookmarkIcon,
   ChartBarIcon,
   ClockIcon,
+  EnvelopeIcon,
   HouseIcon,
   ListIcon,
-  EnvelopeIcon,
-  PencilIcon,
   MagnifyingGlassIcon,
+  PencilIcon,
 } from "@phosphor-icons/react"
 import {
   Sidebar,
@@ -26,6 +27,15 @@ import {
 } from "@workspace/ui/components/sidebar"
 import { Badge } from "@workspace/ui/components/badge"
 import { TooltipProvider } from "@workspace/ui/components/tooltip"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@workspace/ui/components/dialog"
+import { Button } from "@workspace/ui/components/button"
 import { useEffect, useState } from "react"
 import { authClient } from "../lib/auth"
 import { api } from "../lib/api"
@@ -51,174 +61,173 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <TooltipProvider>
+      <ChessChallengePoller enabled={Boolean(session)} />
       <AppPageHeaderProvider>
         <SidebarProvider>
-        <Sidebar collapsible="icon">
-          <SidebarHeader className="p-2">
-            <Link to="/" className="flex items-center gap-2">
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
-                {APP_NAME.slice(0, 1).toLowerCase()}
-              </div>
-              <span className="text-base font-semibold group-data-[collapsible=icon]:hidden">
-                {APP_NAME}
-              </span>
-            </Link>
-          </SidebarHeader>
+          <Sidebar collapsible="icon">
+            <SidebarHeader className="p-2">
+              <Link to="/" className="flex items-center gap-2">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
+                  {APP_NAME.slice(0, 1).toLowerCase()}
+                </div>
+                <span className="text-base font-semibold group-data-[collapsible=icon]:hidden">
+                  {APP_NAME}
+                </span>
+              </Link>
+            </SidebarHeader>
 
-          <SidebarContent>
-            <SidebarGroup>
-              <SidebarGroupContent>
+            <SidebarContent>
+              <SidebarGroup>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        size="default"
+                        tooltip="home"
+                        render={
+                          <Link to="/">
+                            <HouseIcon />
+                            <span>Home</span>
+                          </Link>
+                        }
+                      />
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        size="default"
+                        tooltip="search"
+                        render={
+                          <Link to="/search">
+                            <MagnifyingGlassIcon />
+                            <span>Search</span>
+                          </Link>
+                        }
+                      />
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        size="default"
+                        tooltip="notifications"
+                        render={
+                          <Link to="/notifications">
+                            <BellIcon />
+                            <span>Notifications</span>
+                            {unread > 0 && (
+                              <Badge
+                                className="ml-auto min-w-5 tabular-nums group-data-[collapsible=icon]:hidden"
+                                variant="default"
+                              >
+                                {unread > 99 ? "99+" : unread}
+                              </Badge>
+                            )}
+                          </Link>
+                        }
+                      />
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        size="default"
+                        tooltip="messages"
+                        render={
+                          <Link to="/inbox">
+                            <EnvelopeIcon />
+                            <span>Messages</span>
+                            {dmUnread > 0 && (
+                              <Badge
+                                className="ml-auto min-w-5 tabular-nums group-data-[collapsible=icon]:hidden"
+                                variant="default"
+                              >
+                                {dmUnread > 99 ? "99+" : dmUnread}
+                              </Badge>
+                            )}
+                          </Link>
+                        }
+                      />
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        size="default"
+                        tooltip="analytics"
+                        render={
+                          <Link to="/analytics">
+                            <ChartBarIcon />
+                            <span>Analytics</span>
+                          </Link>
+                        }
+                      />
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        size="default"
+                        tooltip="bookmarks"
+                        render={
+                          <Link to="/bookmarks">
+                            <BookmarkIcon />
+                            <span>Bookmarks</span>
+                          </Link>
+                        }
+                      />
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        size="default"
+                        tooltip="lists"
+                        render={
+                          <Link to="/lists">
+                            <ListIcon />
+                            <span>Lists</span>
+                          </Link>
+                        }
+                      />
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        size="default"
+                        tooltip="drafts"
+                        render={
+                          <Link to="/drafts">
+                            <ClockIcon />
+                            <span>Drafts</span>
+                          </Link>
+                        }
+                      />
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                      <SidebarMenuButton
+                        size="default"
+                        tooltip="write article"
+                        render={
+                          <Link to="/articles/new">
+                            <PencilIcon />
+                            <span>Write Article</span>
+                          </Link>
+                        }
+                      />
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            </SidebarContent>
+
+            <SidebarFooter>
+              {me && (
                 <SidebarMenu>
                   <SidebarMenuItem>
-                    <SidebarMenuButton
-                      size="default"
-                      tooltip="home"
-                      render={
-                        <Link to="/">
-                          <HouseIcon />
-                          <span>Home</span>
-                        </Link>
-                      }
-                    />
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      size="default"
-                      tooltip="search"
-                      render={
-                        <Link to="/search">
-                          <MagnifyingGlassIcon />
-                          <span>Search</span>
-                        </Link>
-                      }
-                    />
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      size="default"
-                      tooltip="notifications"
-                      render={
-                        <Link to="/notifications">
-                          <BellIcon />
-                          <span>Notifications</span>
-                          {unread > 0 && (
-                            <Badge
-                              className="ml-auto min-w-5 tabular-nums group-data-[collapsible=icon]:hidden"
-                              variant="default"
-                            >
-                              {unread > 99 ? "99+" : unread}
-                            </Badge>
-                          )}
-                        </Link>
-                      }
-                    />
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      size="default"
-                      tooltip="messages"
-                      render={
-                        <Link to="/inbox">
-                          <EnvelopeIcon />
-                          <span>Messages</span>
-                          {dmUnread > 0 && (
-                            <Badge
-                              className="ml-auto min-w-5 tabular-nums group-data-[collapsible=icon]:hidden"
-                              variant="default"
-                            >
-                              {dmUnread > 99 ? "99+" : dmUnread}
-                            </Badge>
-                          )}
-                        </Link>
-                      }
-                    />
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      size="default"
-                      tooltip="analytics"
-                      render={
-                        <Link to="/analytics">
-                          <ChartBarIcon />
-                          <span>Analytics</span>
-                        </Link>
-                      }
-                    />
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      size="default"
-                      tooltip="bookmarks"
-                      render={
-                        <Link to="/bookmarks">
-                          <BookmarkIcon />
-                          <span>Bookmarks</span>
-                        </Link>
-                      }
-                    />
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      size="default"
-                      tooltip="lists"
-                      render={
-                        <Link to="/lists">
-                          <ListIcon />
-                          <span>Lists</span>
-                        </Link>
-                      }
-                    />
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      size="default"
-                      tooltip="drafts"
-                      render={
-                        <Link to="/drafts">
-                          <ClockIcon />
-                          <span>Drafts</span>
-                        </Link>
-                      }
-                    />
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      size="default"
-                      tooltip="write article"
-                      render={
-                        <Link to="/articles/new">
-                          <PencilIcon />
-                          <span>Write Article</span>
-                        </Link>
-                      }
-                    />
+                    <UserNav user={me} />
                   </SidebarMenuItem>
                 </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </SidebarContent>
+              )}
+            </SidebarFooter>
+          </Sidebar>
 
-          <SidebarFooter>
-            {me && (
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <UserNav user={me} />
-                </SidebarMenuItem>
-              </SidebarMenu>
-            )}
-          </SidebarFooter>
-        </Sidebar>
-
-        <SidebarInset>
-          <AppHeader />
-          <div className="@container/inset w-full min-w-0">
-            <main className="w-full min-w-0 border-border">
-              {children}
-            </main>
-          </div>
-          {!isInbox && <ComposeFab />}
-        </SidebarInset>
-        <SidebarCloseOnNavigate />
+          <SidebarInset>
+            <AppHeader />
+            <div className="@container/inset w-full min-w-0">
+              <main className="w-full min-w-0 border-border">{children}</main>
+            </div>
+            {!isInbox && <ComposeFab />}
+          </SidebarInset>
+          <SidebarCloseOnNavigate />
         </SidebarProvider>
       </AppPageHeaderProvider>
     </TooltipProvider>
@@ -288,4 +297,64 @@ function SidebarCloseOnNavigate() {
   }, [router, setOpenMobile])
 
   return null
+}
+
+function ChessChallengePoller({ enabled }: { enabled: boolean }) {
+  const router = useRouter()
+  const queryClient = useQueryClient()
+
+  const { data } = useQuery({
+    queryKey: ["chess", "pending"],
+    queryFn: () => api.chessPendingGames(),
+    enabled,
+    refetchInterval: 5000,
+  })
+
+  const acceptMutation = useMutation({
+    mutationFn: (id: string) => api.chessAcceptGame(id),
+    onSuccess: ({ game }) => {
+      queryClient.invalidateQueries({ queryKey: ["chess", "pending"] })
+      router.navigate({ to: "/chess/$id", params: { id: game.id } })
+    },
+  })
+
+  const declineMutation = useMutation({
+    mutationFn: (id: string) => api.chessDeclineGame(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["chess", "pending"] })
+    },
+  })
+
+  const pendingGame = data?.games[0]
+
+  return (
+    <Dialog open={!!pendingGame}>
+      <DialogContent showCloseButton={false}>
+        <DialogHeader>
+          <DialogTitle>Chess Challenge!</DialogTitle>
+          <DialogDescription>
+            {pendingGame?.challenger.displayName ||
+              pendingGame?.challenger.handle ||
+              "Someone"}{" "}
+            has challenged you to a game of Chess.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="mt-4 flex justify-end gap-2">
+          <Button
+            variant="outline"
+            onClick={() =>
+              pendingGame && declineMutation.mutate(pendingGame.id)
+            }
+          >
+            Decline
+          </Button>
+          <Button
+            onClick={() => pendingGame && acceptMutation.mutate(pendingGame.id)}
+          >
+            Accept
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
 }

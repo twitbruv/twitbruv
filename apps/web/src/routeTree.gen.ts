@@ -33,6 +33,7 @@ import { Route as InviteTokenRouteImport } from './routes/invite.$token'
 import { Route as InboxNewRouteImport } from './routes/inbox.new'
 import { Route as InboxConversationIdRouteImport } from './routes/inbox.$conversationId'
 import { Route as HashtagTagRouteImport } from './routes/hashtag.$tag'
+import { Route as ChessIdRouteImport } from './routes/chess.$id'
 import { Route as ArticlesNewRouteImport } from './routes/articles.new'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminReportsRouteImport } from './routes/admin.reports'
@@ -165,6 +166,11 @@ const HashtagTagRoute = HashtagTagRouteImport.update({
   path: '/hashtag/$tag',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ChessIdRoute = ChessIdRouteImport.update({
+  id: '/chess/$id',
+  path: '/chess/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ArticlesNewRoute = ArticlesNewRouteImport.update({
   id: '/articles/new',
   path: '/articles/new',
@@ -242,6 +248,7 @@ export interface FileRoutesByFullPath {
   '/admin/reports': typeof AdminReportsRoute
   '/admin/users': typeof AdminUsersRoute
   '/articles/new': typeof ArticlesNewRoute
+  '/chess/$id': typeof ChessIdRoute
   '/hashtag/$tag': typeof HashtagTagRoute
   '/inbox/$conversationId': typeof InboxConversationIdRoute
   '/inbox/new': typeof InboxNewRoute
@@ -276,6 +283,7 @@ export interface FileRoutesByTo {
   '/admin/reports': typeof AdminReportsRoute
   '/admin/users': typeof AdminUsersRoute
   '/articles/new': typeof ArticlesNewRoute
+  '/chess/$id': typeof ChessIdRoute
   '/hashtag/$tag': typeof HashtagTagRoute
   '/inbox/$conversationId': typeof InboxConversationIdRoute
   '/inbox/new': typeof InboxNewRoute
@@ -314,6 +322,7 @@ export interface FileRoutesById {
   '/admin/reports': typeof AdminReportsRoute
   '/admin/users': typeof AdminUsersRoute
   '/articles/new': typeof ArticlesNewRoute
+  '/chess/$id': typeof ChessIdRoute
   '/hashtag/$tag': typeof HashtagTagRoute
   '/inbox/$conversationId': typeof InboxConversationIdRoute
   '/inbox/new': typeof InboxNewRoute
@@ -353,6 +362,7 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/admin/users'
     | '/articles/new'
+    | '/chess/$id'
     | '/hashtag/$tag'
     | '/inbox/$conversationId'
     | '/inbox/new'
@@ -387,6 +397,7 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/admin/users'
     | '/articles/new'
+    | '/chess/$id'
     | '/hashtag/$tag'
     | '/inbox/$conversationId'
     | '/inbox/new'
@@ -424,6 +435,7 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/admin/users'
     | '/articles/new'
+    | '/chess/$id'
     | '/hashtag/$tag'
     | '/inbox/$conversationId'
     | '/inbox/new'
@@ -458,6 +470,7 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ArticlesNewRoute: typeof ArticlesNewRoute
+  ChessIdRoute: typeof ChessIdRoute
   HashtagTagRoute: typeof HashtagTagRoute
   InviteTokenRoute: typeof InviteTokenRoute
   ListsIdRoute: typeof ListsIdRoute
@@ -635,6 +648,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HashtagTagRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/chess/$id': {
+      id: '/chess/$id'
+      path: '/chess/$id'
+      fullPath: '/chess/$id'
+      preLoaderRoute: typeof ChessIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/articles/new': {
       id: '/articles/new'
       path: '/articles/new'
@@ -793,6 +813,7 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ArticlesNewRoute: ArticlesNewRoute,
+  ChessIdRoute: ChessIdRoute,
   HashtagTagRoute: HashtagTagRoute,
   InviteTokenRoute: InviteTokenRoute,
   ListsIdRoute: ListsIdRoute,

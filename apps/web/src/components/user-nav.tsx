@@ -1,10 +1,10 @@
 import { Link, useRouter } from "@tanstack/react-router"
 import {
   DesktopIcon,
-  SignOutIcon,
-  MoonIcon,
   GearIcon,
+  MoonIcon,
   ShieldIcon,
+  SignOutIcon,
   SunIcon,
   UserIcon,
 } from "@phosphor-icons/react"

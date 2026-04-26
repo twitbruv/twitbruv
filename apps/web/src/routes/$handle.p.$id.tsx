@@ -4,9 +4,9 @@ import {
   AtIcon,
   BookmarkIcon,
   ChartBarIcon,
+  ChatCircleIcon,
   HashIcon,
   HeartIcon,
-  ChatCircleIcon,
   ImageIcon,
   RepeatIcon,
 } from "@phosphor-icons/react"
