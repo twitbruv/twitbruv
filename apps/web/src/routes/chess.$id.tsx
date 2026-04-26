@@ -89,14 +89,11 @@ function ChessGamePage() {
         to: targetSquare,
         promotion: "q",
       })
-      if (move) {
-        moveMutation.mutate(move.lan)
-        return true
-      }
-    } catch (e) {
+      moveMutation.mutate(move.lan)
+      return true
+    } catch {
       return false
     }
-    return false
   }
 
   const handleSendChat = (e: React.FormEvent) => {
