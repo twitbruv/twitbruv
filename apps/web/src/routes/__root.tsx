@@ -6,6 +6,7 @@ import {
   createRootRoute,
 } from "@tanstack/react-router"
 import { IconContext } from "@phosphor-icons/react"
+import { Databuddy } from "@databuddy/sdk/react"
 
 import appCss from "@workspace/ui/globals.css?url"
 import { Button } from "@workspace/ui/components/button"
@@ -13,7 +14,7 @@ import { AppShell } from "../components/app-shell"
 import { NotFoundPanel } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
 import { ThemeProvider, themeBootstrapScript } from "../lib/theme"
-import { APP_NAME } from "../lib/env"
+import { APP_NAME, DATABUDDY_CLIENT_ID } from "../lib/env"
 import { MeProvider } from "../lib/me"
 import { QueryProvider } from "../lib/query"
 import { buildSeoMeta } from "../lib/seo"
@@ -82,6 +83,13 @@ export const Route = createRootRoute({
             <AppShell>
               <Outlet />
             </AppShell>
+            {DATABUDDY_CLIENT_ID ? (
+              <Databuddy
+                clientId={DATABUDDY_CLIENT_ID}
+                trackWebVitals
+                trackErrors
+              />
+            ) : null}
           </MeProvider>
         </ThemeProvider>
       </QueryProvider>
