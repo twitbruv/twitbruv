@@ -33,12 +33,12 @@ function HashtagPage() {
       plainTitle: true,
       title: (
         <div className="flex w-full min-w-0 flex-col">
-          <span className="truncate text-base font-semibold leading-tight text-foreground">
+          <h1 className="truncate text-base font-semibold leading-tight text-foreground">
             #{tag}
-          </span>
-          <span className="text-xs text-muted-foreground">
+          </h1>
+          <p className="text-xs text-muted-foreground">
             public posts with this hashtag
-          </span>
+          </p>
         </div>
       ),
     }),

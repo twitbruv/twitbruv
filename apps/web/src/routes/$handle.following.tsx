@@ -29,9 +29,9 @@ function Following() {
           >
             ← @{handle}
           </Link>
-          <span className="truncate text-base font-semibold leading-tight text-foreground">
+          <h1 className="truncate text-base font-semibold leading-tight text-foreground">
             Following
-          </span>
+          </h1>
         </div>
       ),
     }),
