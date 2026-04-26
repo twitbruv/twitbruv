@@ -1,4 +1,5 @@
 import { Link, useLocation, useRouter } from "@tanstack/react-router"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   IconBell,
   IconBookmark,
@@ -9,7 +10,6 @@ import {
   IconMail,
   IconPencil,
   IconSearch,
-  IconTrophy,
 } from "@tabler/icons-react"
 import {
   Sidebar,
@@ -27,6 +27,15 @@ import {
 } from "@workspace/ui/components/sidebar"
 import { Badge } from "@workspace/ui/components/badge"
 import { TooltipProvider } from "@workspace/ui/components/tooltip"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@workspace/ui/components/dialog"
+import { Button } from "@workspace/ui/components/button"
 import { useEffect, useState } from "react"
 import { authClient } from "../lib/auth"
 import { api } from "../lib/api"
@@ -51,6 +60,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <TooltipProvider>
+      <ChessChallengePoller enabled={Boolean(session)} />
       <SidebarProvider>
         <Sidebar collapsible="icon">
           <SidebarHeader className="p-2">
@@ -128,18 +138,6 @@ export function AppShell({ children }: { children: ReactNode }) {
                               {dmUnread > 99 ? "99+" : dmUnread}
                             </Badge>
                           )}
-                        </Link>
-                      }
-                    />
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      size="default"
-                      tooltip="chess"
-                      render={
-                        <Link to="/chess">
-                          <IconTrophy />
-                          <span>Chess</span>
                         </Link>
                       }
                     />
@@ -298,4 +296,54 @@ function SidebarCloseOnNavigate() {
   }, [router, setOpenMobile])
 
   return null
+}
+
+function ChessChallengePoller({ enabled }: { enabled: boolean }) {
+  const router = useRouter()
+  const queryClient = useQueryClient()
+  
+  const { data } = useQuery({
+    queryKey: ["chess", "pending"],
+    queryFn: () => api.chessPendingGames(),
+    enabled,
+    refetchInterval: 5000,
+  })
+
+  const acceptMutation = useMutation({
+    mutationFn: (id: string) => api.chessAcceptGame(id),
+    onSuccess: ({ game }) => {
+      queryClient.invalidateQueries({ queryKey: ["chess", "pending"] })
+      router.navigate({ to: "/chess/$id", params: { id: game.id } })
+    }
+  })
+
+  const declineMutation = useMutation({
+    mutationFn: (id: string) => api.chessDeclineGame(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["chess", "pending"] })
+    }
+  })
+
+  const pendingGame = data?.games?.[0]
+
+  return (
+    <Dialog open={!!pendingGame}>
+      <DialogContent showCloseButton={false}>
+        <DialogHeader>
+          <DialogTitle>Chess Challenge!</DialogTitle>
+          <DialogDescription>
+            {pendingGame?.challenger?.displayName || pendingGame?.challenger?.handle || "Someone"} has challenged you to a game of Chess.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter className="flex gap-2 justify-end mt-4">
+          <Button variant="outline" onClick={() => pendingGame && declineMutation.mutate(pendingGame.id)}>
+            Decline
+          </Button>
+          <Button onClick={() => pendingGame && acceptMutation.mutate(pendingGame.id)}>
+            Accept
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
 }

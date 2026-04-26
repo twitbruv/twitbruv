@@ -13,7 +13,7 @@ async function getOrCreateStats(db: any, userId: string) {
   const [stats] = await db.select().from(schema.chessStats).where(eq(schema.chessStats.userId, userId)).limit(1)
   if (stats) return stats
 
-  const [newStats] = await db.insert(schema.chessStats).values({ userId }).returning()
+  const [newStats] = await db.insert(schema.chessStats).values({ userId, elo: 800 }).returning()
   return newStats
 }
 
@@ -22,6 +22,60 @@ function calculateElo(rating1: number, rating2: number, result: number) {
   const expected = 1 / (1 + Math.pow(10, (rating2 - rating1) / 400))
   return Math.round(rating1 + K * (result - expected))
 }
+
+chessRoute.get('/pending', async (c) => {
+  const session = c.get('session')!
+  const { db } = c.get('ctx')
+
+  const games = await db
+    .select({
+      id: schema.chessGames.id,
+      whitePlayerId: schema.chessGames.whitePlayerId,
+      blackPlayerId: schema.chessGames.blackPlayerId,
+      createdAt: schema.chessGames.createdAt,
+      challenger: schema.users,
+    })
+    .from(schema.chessGames)
+    .innerJoin(schema.users, eq(schema.users.id, schema.chessGames.whitePlayerId))
+    .where(
+      and(
+        eq(schema.chessGames.status, 'pending'),
+        eq(schema.chessGames.blackPlayerId, session.user.id),
+      ),
+    )
+
+  return c.json({ games })
+})
+
+chessRoute.post('/:id/accept', async (c) => {
+  const session = c.get('session')!
+  const id = c.req.param('id')
+  const { db } = c.get('ctx')
+
+  const [game] = await db
+    .update(schema.chessGames)
+    .set({ status: 'ongoing', updatedAt: new Date() })
+    .where(and(eq(schema.chessGames.id, id), eq(schema.chessGames.blackPlayerId, session.user.id)))
+    .returning()
+
+  if (!game) return c.json({ error: 'not_found' }, 404)
+  return c.json({ game })
+})
+
+chessRoute.post('/:id/decline', async (c) => {
+  const session = c.get('session')!
+  const id = c.req.param('id')
+  const { db } = c.get('ctx')
+
+  const [game] = await db
+    .update(schema.chessGames)
+    .set({ status: 'declined', updatedAt: new Date() })
+    .where(and(eq(schema.chessGames.id, id), eq(schema.chessGames.blackPlayerId, session.user.id)))
+    .returning()
+
+  if (!game) return c.json({ error: 'not_found' }, 404)
+  return c.json({ game })
+})
 
 chessRoute.get('/active', async (c) => {
   const session = c.get('session')!

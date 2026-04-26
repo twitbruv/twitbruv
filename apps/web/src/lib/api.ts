@@ -502,6 +502,12 @@ export const api = {
     }),
   chessActiveGames: () =>
     request<{ games: Array<ChessGame> }>("/api/chess/active"),
+  chessPendingGames: () =>
+    request<{ games: Array<{ id: string; whitePlayerId: string; blackPlayerId: string; createdAt: string; challenger: PublicUser }> }>("/api/chess/pending"),
+  chessAcceptGame: (id: string) =>
+    request<{ game: ChessGame }>(`/api/chess/${id}/accept`, { method: "POST" }),
+  chessDeclineGame: (id: string) =>
+    request<{ game: ChessGame }>(`/api/chess/${id}/decline`, { method: "POST" }),
   chessLeaderboard: () =>
     request<{ leaderboard: Array<ChessStats> }>("/api/chess/leaderboard"),
   chessGame: (id: string) => request<{ game: ChessGame }>(`/api/chess/${id}`),

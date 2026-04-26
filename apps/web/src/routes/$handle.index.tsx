@@ -1,7 +1,5 @@
-import { Link, createFileRoute, useRouter } from "@tanstack/react-router"
+import { Link, createFileRoute } from "@tanstack/react-router"
 import { useCallback, useEffect, useState } from "react"
-import { useMutation } from "@tanstack/react-query"
-import { IconTrophy } from "@tabler/icons-react"
 import { Button } from "@workspace/ui/components/button"
 import { ApiError, api } from "../lib/api"
 import { Feed } from "../components/feed"
@@ -78,16 +76,8 @@ export const Route = createFileRoute("/$handle/")({
 function Profile() {
   const { handle } = Route.useParams()
   const { me } = useMe()
-  const router = useRouter()
   const [user, setUser] = useState<PublicProfile | null>(null)
   const [error, setError] = useState<string | null>(null)
-
-  const challengeMutation = useMutation({
-    mutationFn: (opponentId: string) => api.chessCreateGame(opponentId),
-    onSuccess: ({ game }) => {
-      router.navigate({ to: "/chess/$id", params: { id: game.id } })
-    },
-  })
 
   useEffect(() => {
     setUser(null)
@@ -174,18 +164,7 @@ function Profile() {
                 Edit profile
               </Button>
             ) : (
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={challengeMutation.isPending}
-                  onClick={() => challengeMutation.mutate(user.id)}
-                >
-                  <IconTrophy size={16} className="mr-1.5" />
-                  Challenge
-                </Button>
-                <ProfileActions profile={user} onChange={setUser} />
-              </div>
+              <ProfileActions profile={user} onChange={setUser} />
             )}
           </div>
         </div>

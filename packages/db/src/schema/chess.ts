@@ -2,12 +2,14 @@ import { index, pgEnum, pgTable, text, timestamp, uuid, integer } from 'drizzle-
 import { users } from './auth.ts'
 
 export const chessGameStatusEnum = pgEnum('chess_game_status', [
+  'pending',
   'ongoing',
   'checkmate',
   'draw',
   'resigned',
   'timeout',
   'aborted',
+  'declined',
 ])
 
 export const chessGames = pgTable(
@@ -22,7 +24,7 @@ export const chessGames = pgTable(
       .references(() => users.id, { onDelete: 'cascade' }),
     fen: text('fen').notNull().default('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'),
     pgn: text('pgn').notNull().default(''),
-    status: chessGameStatusEnum('status').notNull().default('ongoing'),
+    status: chessGameStatusEnum('status').notNull().default('pending'),
     winnerId: uuid('winner_id').references(() => users.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -40,7 +42,7 @@ export const chessStats = pgTable(
     userId: uuid('user_id')
       .primaryKey()
       .references(() => users.id, { onDelete: 'cascade' }),
-    elo: integer('elo').notNull().default(1200),
+    elo: integer('elo').notNull().default(800),
     wins: integer('wins').notNull().default(0),
     losses: integer('losses').notNull().default(0),
     draws: integer('draws').notNull().default(0),
