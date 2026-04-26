@@ -741,7 +741,7 @@ function ReplyComposer({
             onFocus={() => setExpanded(true)}
             placeholder="Post your reply"
             rows={1}
-            className="min-h-0 border-0 bg-transparent px-1 py-1 text-[13px] leading-relaxed md:text-[13px]"
+            className="min-h-0 border-0 bg-transparent px-1 py-1 text-[13px] leading-relaxed md:text-[13px] dark:bg-transparent"
           />
 
           <div

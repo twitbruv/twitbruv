@@ -644,7 +644,7 @@ export function PostCard({
                 value={editText}
                 onChange={(e) => setEditText(e.target.value)}
                 rows={3}
-                className="min-h-20 border-0 bg-transparent px-0 py-0 text-sm shadow-none focus-visible:ring-0"
+                className="min-h-20 border-0 bg-transparent px-0 py-0 text-sm shadow-none focus-visible:ring-0 dark:bg-transparent"
                 maxLength={POST_MAX_LEN}
               />
               <div className="mt-1 flex items-center justify-between text-xs">
