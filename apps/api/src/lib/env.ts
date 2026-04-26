@@ -114,7 +114,16 @@ const envSchema = z.object({
   // Databuddy website/client ID — must match the VITE_PUBLIC_DATABUDDY_CLIENT_ID used
   // on the frontend so server-side events are scoped to the same website.
   DATABUDDY_WEBSITE_ID: z.string().optional(),
-})
+}).refine(
+  (env) => {
+    // If one Databuddy key is set, both must be — otherwise server events are either
+    // unauthenticated or unscoped to a website, both of which are silent misconfigurations.
+    const hasKey = !!env.DATABUDDY_API_KEY
+    const hasSite = !!env.DATABUDDY_WEBSITE_ID
+    return hasKey === hasSite
+  },
+  { message: 'DATABUDDY_API_KEY and DATABUDDY_WEBSITE_ID must both be set or both be unset' },
+)
 
 export type Env = z.infer<typeof envSchema>
 

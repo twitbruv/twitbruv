@@ -11,7 +11,7 @@ export function Layout({
   appName?: string
 }) {
   return (
-    <Html>
+  <Html>
       <Head />
       <Preview>{preview}</Preview>
       <Body style={{ fontFamily: 'Inter, system-ui, sans-serif', backgroundColor: '#fff', padding: '32px 0' }}>

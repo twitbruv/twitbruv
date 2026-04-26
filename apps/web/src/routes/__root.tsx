@@ -1,3 +1,6 @@
+import { DatabuddyDevtools } from "@databuddy/devtools/react"
+import { Databuddy } from "@databuddy/sdk/react"
+import { IconContext } from "@phosphor-icons/react"
 import {
   HeadContent,
   Link,
@@ -5,20 +8,17 @@ import {
   Scripts,
   createRootRoute,
 } from "@tanstack/react-router"
-import { IconContext } from "@phosphor-icons/react"
-import { Databuddy } from "@databuddy/sdk/react"
-import { DatabuddyDevtools } from "@databuddy/devtools/react"
 
-import appCss from "@workspace/ui/globals.css?url"
 import { Button } from "@workspace/ui/components/button"
+import appCss from "@workspace/ui/globals.css?url"
 import { AppShell } from "../components/app-shell"
-import { NotFoundPanel } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
-import { ThemeProvider, themeBootstrapScript } from "../lib/theme"
+import { NotFoundPanel } from "../components/page-surface"
 import { APP_NAME, DATABUDDY_CLIENT_ID } from "../lib/env"
 import { MeProvider } from "../lib/me"
 import { QueryProvider } from "../lib/query"
 import { buildSeoMeta } from "../lib/seo"
+import { ThemeProvider, themeBootstrapScript } from "../lib/theme"
 
 const DESCRIPTION = `${APP_NAME} — open-source, free-for-everyone social platform. No AI ranking, no paywalls, no ads.`
 
@@ -84,7 +84,6 @@ export const Route = createRootRoute({
             <AppShell>
               <Outlet />
             </AppShell>
-            {DATABUDDY_CLIENT_ID ? (
               <Databuddy
                 clientId={DATABUDDY_CLIENT_ID}
                 trackWebVitals
@@ -96,7 +95,6 @@ export const Route = createRootRoute({
                 batchSize={20}
                 maskPatterns={["/inbox/*", "/admin/*"]}
               />
-            ) : null}
             <DatabuddyDevtools enabled={import.meta.env.DEV} />
           </MeProvider>
         </ThemeProvider>

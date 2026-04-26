@@ -247,10 +247,11 @@ listsRoute.delete('/:id', requireAuth(), async (c) => {
   const { db, rateLimit } = c.get('ctx')
   await rateLimit(c, 'lists.write')
   const id = c.req.param('id')
-  await db
+  const deleted = await db
     .delete(schema.userLists)
     .where(and(eq(schema.userLists.id, id), eq(schema.userLists.ownerId, session.user.id)))
-  c.get('ctx').track('list_deleted', session.user.id)
+    .returning({ id: schema.userLists.id })
+  if (deleted.length > 0) c.get('ctx').track('list_deleted', session.user.id)
   return c.json({ ok: true })
 })
 
@@ -357,7 +358,7 @@ listsRoute.delete('/:id/members/:memberId', requireAuth(), async (c) => {
         })
         .where(eq(schema.userLists.id, id))
     }
-    c.get('ctx').track('list_member_removed', session.user.id)
+    if (removed.length > 0) c.get('ctx').track('list_member_removed', session.user.id)
     return c.json({ ok: true })
   })
 })
