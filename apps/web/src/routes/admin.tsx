@@ -47,6 +47,12 @@ function AdminLayout() {
       <header className="shrink-0 border-b border-border bg-background/80 px-4 py-3 backdrop-blur-sm">
         <UnderlineTabRow>
           <UnderlineTabLink
+            to="/admin/stats"
+            active={path.startsWith("/admin/stats")}
+          >
+            Stats
+          </UnderlineTabLink>
+          <UnderlineTabLink
             to="/admin/users"
             active={path.startsWith("/admin/users")}
           >

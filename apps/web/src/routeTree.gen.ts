@@ -36,6 +36,7 @@ import { Route as HashtagTagRouteImport } from './routes/hashtag.$tag'
 import { Route as ChessIdRouteImport } from './routes/chess.$id'
 import { Route as ArticlesNewRouteImport } from './routes/articles.new'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as AdminStatsRouteImport } from './routes/admin.stats'
 import { Route as AdminReportsRouteImport } from './routes/admin.reports'
 import { Route as HandleFollowingRouteImport } from './routes/$handle.following'
 import { Route as HandleFollowersRouteImport } from './routes/$handle.followers'
@@ -181,6 +182,11 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminStatsRoute = AdminStatsRouteImport.update({
+  id: '/stats',
+  path: '/stats',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminReportsRoute = AdminReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
@@ -246,6 +252,7 @@ export interface FileRoutesByFullPath {
   '/$handle/followers': typeof HandleFollowersRoute
   '/$handle/following': typeof HandleFollowingRoute
   '/admin/reports': typeof AdminReportsRoute
+  '/admin/stats': typeof AdminStatsRoute
   '/admin/users': typeof AdminUsersRoute
   '/articles/new': typeof ArticlesNewRoute
   '/chess/$id': typeof ChessIdRoute
@@ -281,6 +288,7 @@ export interface FileRoutesByTo {
   '/$handle/followers': typeof HandleFollowersRoute
   '/$handle/following': typeof HandleFollowingRoute
   '/admin/reports': typeof AdminReportsRoute
+  '/admin/stats': typeof AdminStatsRoute
   '/admin/users': typeof AdminUsersRoute
   '/articles/new': typeof ArticlesNewRoute
   '/chess/$id': typeof ChessIdRoute
@@ -320,6 +328,7 @@ export interface FileRoutesById {
   '/$handle/followers': typeof HandleFollowersRoute
   '/$handle/following': typeof HandleFollowingRoute
   '/admin/reports': typeof AdminReportsRoute
+  '/admin/stats': typeof AdminStatsRoute
   '/admin/users': typeof AdminUsersRoute
   '/articles/new': typeof ArticlesNewRoute
   '/chess/$id': typeof ChessIdRoute
@@ -360,6 +369,7 @@ export interface FileRouteTypes {
     | '/$handle/followers'
     | '/$handle/following'
     | '/admin/reports'
+    | '/admin/stats'
     | '/admin/users'
     | '/articles/new'
     | '/chess/$id'
@@ -395,6 +405,7 @@ export interface FileRouteTypes {
     | '/$handle/followers'
     | '/$handle/following'
     | '/admin/reports'
+    | '/admin/stats'
     | '/admin/users'
     | '/articles/new'
     | '/chess/$id'
@@ -433,6 +444,7 @@ export interface FileRouteTypes {
     | '/$handle/followers'
     | '/$handle/following'
     | '/admin/reports'
+    | '/admin/stats'
     | '/admin/users'
     | '/articles/new'
     | '/chess/$id'
@@ -669,6 +681,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/stats': {
+      id: '/admin/stats'
+      path: '/stats'
+      fullPath: '/admin/stats'
+      preLoaderRoute: typeof AdminStatsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/reports': {
       id: '/admin/reports'
       path: '/reports'
@@ -756,12 +775,14 @@ const HandleRouteWithChildren =
 
 interface AdminRouteChildren {
   AdminReportsRoute: typeof AdminReportsRoute
+  AdminStatsRoute: typeof AdminStatsRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminReportsRoute: AdminReportsRoute,
+  AdminStatsRoute: AdminStatsRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
