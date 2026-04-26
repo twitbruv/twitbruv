@@ -10,6 +10,7 @@ import {
   ImageIcon,
   RepeatIcon,
 } from "@phosphor-icons/react"
+import { Textarea } from "@workspace/ui/components/textarea"
 import { ApiError, api } from "../lib/api"
 import { useSubmitHotkey } from "../lib/hotkeys"
 import { Avatar } from "../components/avatar"
@@ -727,7 +728,7 @@ function ReplyComposer({
       <div className="flex gap-2.5">
         <Avatar initial={avatarInitial} src={me?.avatarUrl} size={20} />
         <div className="min-w-0 flex-1">
-          <textarea
+          <Textarea
             ref={textareaRef}
             value={text}
             onChange={(e) => {
@@ -740,7 +741,7 @@ function ReplyComposer({
             onFocus={() => setExpanded(true)}
             placeholder="Post your reply"
             rows={1}
-            className="w-full resize-none bg-transparent px-1 py-1 text-[13px] leading-relaxed placeholder:text-muted-foreground focus:outline-none"
+            className="min-h-0 border-0 bg-transparent px-1 py-1 text-[13px] leading-relaxed md:text-[13px]"
           />
 
           <div

@@ -6,6 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@workspace/ui/components/dialog"
+import { Textarea } from "@workspace/ui/components/textarea"
 import { ApiError, api } from "../lib/api"
 import type { ReportReason } from "../lib/api"
 
@@ -134,13 +135,12 @@ export function ReportDialog({
               </li>
             ))}
           </ul>
-          <textarea
+          <Textarea
             value={details}
             onChange={(e) => setDetails(e.target.value)}
             placeholder="Optional details for the moderation team"
             maxLength={1000}
             rows={3}
-            className="w-full resize-none rounded-md border border-border bg-transparent px-3 py-2 text-sm focus:ring-1 focus:ring-ring focus:outline-none"
           />
           {status && <p className="text-xs text-muted-foreground">{status}</p>}
           <div className="flex justify-end gap-2">

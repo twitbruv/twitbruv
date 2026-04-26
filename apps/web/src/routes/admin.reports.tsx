@@ -6,6 +6,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table"
 import { Button } from "@workspace/ui/components/button"
+import { Textarea } from "@workspace/ui/components/textarea"
 import {
   Sheet,
   SheetContent,
@@ -349,12 +350,12 @@ function ReportSheet({
               )}
               {isOpen && (
                 <Section label="Resolution note (optional)">
-                  <textarea
+                  <Textarea
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                     rows={3}
                     placeholder="What action was taken?"
-                    className="w-full resize-y rounded-md border border-input bg-transparent px-2 py-1.5 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="resize-y bg-transparent text-xs md:text-xs"
                   />
                 </Section>
               )}

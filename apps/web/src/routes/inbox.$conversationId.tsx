@@ -1041,7 +1041,7 @@ function Bubble({
             <span>deleted message</span>
           ) : editing ? (
             <div className="flex flex-col gap-1">
-              <textarea
+              <Textarea
                 value={editText}
                 onChange={(e) => setEditText(e.target.value)}
                 onKeyDown={(e) => {
@@ -1058,7 +1058,7 @@ function Bubble({
                     node.setSelectionRange(node.value.length, node.value.length)
                   }
                 }}
-                className="resize-none rounded bg-background/30 px-2 py-1 text-foreground focus:outline-none"
+                className="min-h-0 rounded border-0 bg-background/30 px-2 py-1 text-foreground"
               />
               <div className="flex justify-end gap-2 text-[11px]">
                 <button
