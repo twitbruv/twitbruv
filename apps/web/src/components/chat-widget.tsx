@@ -459,7 +459,7 @@ function ChatView({
           onPaste={onPaste}
           placeholder={pending ? "Add a caption…" : "Message..."}
           disabled={sending}
-          className="flex-1 bg-transparent text-sm placeholder:text-muted-foreground focus:outline-none"
+          className="flex-1 bg-transparent px-2 py-1 text-sm placeholder:text-muted-foreground focus:outline-none"
         />
         <Button
           type="submit"

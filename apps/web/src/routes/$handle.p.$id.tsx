@@ -740,7 +740,7 @@ function ReplyComposer({
             onFocus={() => setExpanded(true)}
             placeholder="Post your reply"
             rows={1}
-            className="w-full resize-none bg-transparent text-[13px] leading-relaxed placeholder:text-muted-foreground focus:outline-none"
+            className="w-full resize-none bg-transparent px-1 py-1 text-[13px] leading-relaxed placeholder:text-muted-foreground focus:outline-none"
           />
 
           <div
