@@ -2,7 +2,6 @@ import { createFileRoute, useRouter } from "@tanstack/react-router"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
-import { trackedAction } from "../lib/analytics"
 import { ApiError, api } from "../lib/api"
 import { authClient } from "../lib/auth"
 import { usePageHeader } from "../components/app-page-header"
@@ -36,24 +35,14 @@ function NewArticle() {
       setSaving(status === "draft" ? "draft" : "publish")
       setError(null)
       try {
-        const { article } = await trackedAction(
-          "article_created",
-          () =>
-            api.createArticle({
+        const { article } = await api.createArticle({
               title: title.trim(),
               subtitle: subtitle.trim() || undefined,
               bodyJson: body.stateJson,
               bodyText: body.text,
               coverMediaId: coverMediaId ?? undefined,
               status,
-            }),
-          (res) => ({
-            article_id: res.article.id,
-            status,
-            has_subtitle: subtitle.trim().length > 0,
-            has_cover: coverMediaId !== null,
-          }),
-        )
+            })
         if (status === "published" && article.author.handle) {
           router.navigate({
             to: "/$handle/a/$slug",

@@ -4,7 +4,6 @@ import { LockIcon, TrashIcon, XIcon } from "@phosphor-icons/react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
-import { trackedAction } from "../lib/analytics"
 import { ApiError, api } from "../lib/api"
 import { authClient } from "../lib/auth"
 import { usePageHeader } from "../components/app-page-header"
@@ -56,11 +55,7 @@ function ListDetail() {
   const removeList = useCallback(async () => {
     if (!confirm("Delete this list?")) return
     try {
-      await trackedAction(
-        "list_deleted",
-        () => api.deleteList(id),
-        () => ({ list_id: id }),
-      )
+      await api.deleteList(id)
       router.navigate({ to: "/lists" })
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "delete failed")
@@ -191,11 +186,7 @@ function ManageMembers({
   async function add(userId: string) {
     setBusy(true)
     try {
-      await trackedAction(
-        "list_members_added",
-        () => api.addListMembers(listId, [userId]),
-        () => ({ list_id: listId, added_count: 1 }),
-      )
+      await api.addListMembers(listId, [userId])
       await onChanged()
     } finally {
       setBusy(false)
@@ -204,11 +195,7 @@ function ManageMembers({
   async function remove(userId: string) {
     setBusy(true)
     try {
-      await trackedAction(
-        "list_member_removed",
-        () => api.removeListMember(listId, userId),
-        () => ({ list_id: listId, removed_user_id: userId }),
-      )
+      await api.removeListMember(listId, userId)
       await onChanged()
     } finally {
       setBusy(false)

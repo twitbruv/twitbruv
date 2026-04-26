@@ -24,7 +24,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu"
-import { trackedAction } from "../lib/analytics"
 import { api } from "../lib/api"
 import { authClient } from "../lib/auth"
 import { getPastedImageFiles } from "../lib/clipboard-images"
@@ -926,15 +925,7 @@ function Bubble({
     }
     setBusy(true)
     try {
-      await trackedAction(
-        "dm_message_edited",
-        () => api.dmEditMessage(conversationId, message.id, next),
-        () => ({
-          conversation_id: conversationId,
-          message_id: message.id,
-          char_count: next.length,
-        }),
-      )
+      await api.dmEditMessage(conversationId, message.id, next)
       setEditing(false)
     } finally {
       setBusy(false)
@@ -944,11 +935,7 @@ function Bubble({
     if (!window.confirm("Delete this message?")) return
     setBusy(true)
     try {
-      await trackedAction(
-        "dm_message_deleted",
-        () => api.dmDeleteMessage(conversationId, message.id),
-        () => ({ conversation_id: conversationId, message_id: message.id }),
-      )
+      await api.dmDeleteMessage(conversationId, message.id)
     } finally {
       setBusy(false)
     }
@@ -956,15 +943,7 @@ function Bubble({
   async function react(emoji: string) {
     setShowPicker(false)
     try {
-      await trackedAction(
-        "dm_reaction_toggled",
-        () => api.dmToggleReaction(conversationId, message.id, emoji),
-        () => ({
-          conversation_id: conversationId,
-          message_id: message.id,
-          emoji,
-        }),
-      )
+      await api.dmToggleReaction(conversationId, message.id, emoji)
     } catch {
       /* network blip — server is source of truth */
     }
@@ -1337,11 +1316,7 @@ function GroupSettingsDialog({
     if (busy) return
     setBusy(true)
     try {
-      await trackedAction(
-        "dm_members_added",
-        () => api.dmAddMembers(conversation.id, [u.id]),
-        () => ({ conversation_id: conversation.id, added_count: 1 }),
-      )
+      await api.dmAddMembers(conversation.id, [u.id])
       setSearch("")
       setResults([])
       await refresh()
@@ -1354,14 +1329,7 @@ function GroupSettingsDialog({
     if (busy) return
     setBusy(true)
     try {
-      await trackedAction(
-        "dm_member_removed",
-        () => api.dmRemoveMember(conversation.id, userId),
-        () => ({
-          conversation_id: conversation.id,
-          removed_user_id: userId,
-        }),
-      )
+      await api.dmRemoveMember(conversation.id, userId)
       await refresh()
     } finally {
       setBusy(false)

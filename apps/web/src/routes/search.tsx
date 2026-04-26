@@ -21,7 +21,6 @@ import { PageEmpty, PageLoading } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
 import { PostCard } from "../components/post-card"
 import { VerifiedBadge } from "../components/verified-badge"
-import { trackedAction } from "../lib/analytics"
 import { ApiError, api } from "../lib/api"
 import { useMe } from "../lib/me"
 import type { Post, PublicUser, SavedSearch } from "../lib/api"
@@ -63,11 +62,7 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
     const targetHandle = challengeTarget.replace(/^@/, "").trim()
     try {
       const { user } = await api.user(targetHandle)
-      const { game } = await trackedAction(
-        "chess_game_created",
-        () => api.chessCreateGame(user.id),
-        (res) => ({ game_id: res.game.id, opponent_id: user.id }),
-      )
+      const { game } = await api.chessCreateGame(user.id)
       navigate({ to: "/chess/$id", params: { id: game.id } })
     } catch (err) {
       setChallengeError("Could not find user or challenge failed.")
@@ -140,11 +135,7 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
       const id = activeSavedId
       setSaved((prev) => prev.filter((s) => s.id !== id))
       try {
-        await trackedAction(
-          "search_saved_deleted",
-          () => api.deleteSavedSearch(id),
-          () => ({ search_id: id }),
-        )
+        await api.deleteSavedSearch(id)
       } catch {
         const fallback = await api
           .savedSearches()
@@ -153,11 +144,7 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
       }
     } else {
       try {
-        const { item } = await trackedAction(
-          "search_saved",
-          () => api.saveSearch(query),
-          (res) => ({ search_id: res.item.id, query_length: query.length }),
-        )
+        const { item } = await api.saveSearch(query)
         setSaved((prev) =>
           prev.some((s) => s.id === item.id) ? prev : [...prev, item],
         )
@@ -253,11 +240,7 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
                     onClick={async () => {
                       setSaved((prev) => prev.filter((x) => x.id !== s.id))
                       try {
-                        await trackedAction(
-                          "search_saved_deleted",
-                          () => api.deleteSavedSearch(s.id),
-                          () => ({ search_id: s.id }),
-                        )
+                        await api.deleteSavedSearch(s.id)
                       } catch {
                         /* refetch on next mount */
                       }

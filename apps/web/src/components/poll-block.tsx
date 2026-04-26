@@ -4,7 +4,6 @@ import {
   RadioGroup,
   RadioGroupItem,
 } from "@workspace/ui/components/radio-group"
-import { trackedAction } from "../lib/analytics"
 import { ApiError, api } from "../lib/api"
 import { authClient } from "../lib/auth"
 import type { PollDto } from "../lib/api"
@@ -62,15 +61,7 @@ export function PollBlock({
     setError(null)
     try {
       const optionIds = [...selected]
-      await trackedAction(
-        "poll_voted",
-        () => api.votePoll(poll.id, optionIds),
-        () => ({
-          poll_id: poll.id,
-          option_count: optionIds.length,
-          allow_multiple: poll.allowMultiple,
-        }),
-      )
+      await api.votePoll(poll.id, optionIds)
       // Optimistically update the poll: bump counts, mark viewer's vote, increment total.
       const optionSet = new Set(optionIds)
       onChange?.({

@@ -23,7 +23,6 @@ import {
   TableHeader,
   TableRow,
 } from "@workspace/ui/components/table"
-import { trackedAction } from "../lib/analytics"
 import { api } from "../lib/api"
 import { useInfiniteScrollSentinel } from "../lib/use-infinite-scroll-sentinel"
 import { Avatar } from "../components/avatar"
@@ -302,19 +301,10 @@ function ReportSheet({
     if (!detail) return
     setBusy(next)
     try {
-      await trackedAction(
-        "admin_report_resolved",
-        () =>
-          api.adminResolveReport(detail.id, {
+      await api.adminResolveReport(detail.id, {
             status: next,
             resolutionNote: note.trim() || undefined,
-          }),
-        () => ({
-          report_id: detail.id,
-          resolution: next,
-          has_note: note.trim().length > 0,
-        }),
-      )
+          })
       onResolved()
     } finally {
       setBusy(null)

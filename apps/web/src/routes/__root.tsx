@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-router"
 import { IconContext } from "@phosphor-icons/react"
 import { Databuddy } from "@databuddy/sdk/react"
+import { DatabuddyDevtools } from "@databuddy/devtools/react"
 
 import appCss from "@workspace/ui/globals.css?url"
 import { Button } from "@workspace/ui/components/button"
@@ -88,8 +89,15 @@ export const Route = createRootRoute({
                 clientId={DATABUDDY_CLIENT_ID}
                 trackWebVitals
                 trackErrors
+                trackPerformance
+                trackOutgoingLinks
+                trackInteractions
+                enableBatching
+                batchSize={20}
+                maskPatterns={["/inbox/*", "/admin/*"]}
               />
             ) : null}
+            <DatabuddyDevtools enabled={import.meta.env.DEV} />
           </MeProvider>
         </ThemeProvider>
       </QueryProvider>

@@ -18,7 +18,6 @@ import {
   POLL_OPTION_MAX_LEN,
   POST_MAX_LEN,
 } from "@workspace/validators"
-import { trackedAction } from "../lib/analytics"
 import { ApiError, api } from "../lib/api"
 import { setAltText, uploadImage } from "../lib/media"
 import { getPastedImageFiles } from "../lib/clipboard-images"
@@ -232,26 +231,14 @@ export function Compose({
             allowMultiple: poll.allowMultiple,
           }
         : undefined
-      const { post } = await trackedAction(
-        "post_created",
-        () =>
-          api.createPost({
+      const { post } = await api.createPost({
             text: text.trim(),
             replyToId,
             quoteOfId,
             mediaIds: readyMediaIds.length > 0 ? readyMediaIds : undefined,
             poll: pollPayload,
             replyRestriction: showReplyControl ? replyRestriction : undefined,
-          }),
-        ({ post: p }) => ({
-          post_id: p.id,
-          is_reply: !!replyToId,
-          is_quote: !!quoteOfId,
-          media_count: readyMediaIds.length,
-          char_count: text.trim().length,
-          has_poll: !!pollPayload,
-        }),
-      )
+          })
       setText("")
       clearDraft(dKey)
       attachments.forEach((a) => URL.revokeObjectURL(a.previewUrl))

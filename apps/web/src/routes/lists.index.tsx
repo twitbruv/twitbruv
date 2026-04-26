@@ -7,7 +7,6 @@ import { Label } from "@workspace/ui/components/label"
 import { Switch } from "@workspace/ui/components/switch"
 import { Textarea } from "@workspace/ui/components/textarea"
 import { LIST_SLUG_RE, LIST_TITLE_MAX } from "@workspace/validators"
-import { trackedAction } from "../lib/analytics"
 import { ApiError, api } from "../lib/api"
 import { authClient } from "../lib/auth"
 import { usePageHeader } from "../components/app-page-header"
@@ -186,17 +185,12 @@ function CreateListForm({
     setBusy(true)
     setError(null)
     try {
-      await trackedAction(
-        "list_created",
-        () =>
-          api.createList({
+      await api.createList({
             slug: effectiveSlug,
             title: title.trim(),
             description: description.trim() || undefined,
             isPrivate,
-          }),
-        () => ({ slug: effectiveSlug, is_private: isPrivate }),
-      )
+          })
       await onCreated()
     } catch (err) {
       const msg = err instanceof ApiError ? err.message : "create failed"

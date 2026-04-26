@@ -11,7 +11,6 @@ import {
 import { Link } from "@tanstack/react-router"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
-import { trackedAction } from "../lib/analytics"
 import { api } from "../lib/api"
 import { getPastedImageFiles } from "../lib/clipboard-images"
 import { subscribeToDmStream } from "../lib/dm-stream"
@@ -311,19 +310,10 @@ function ChatView({
         const media = await uploadImage(pending.file)
         mediaId = media.id
       }
-      const { message } = await trackedAction(
-        "dm_sent",
-        () =>
-          api.dmSend(conversation.id, {
+      const { message } = await api.dmSend(conversation.id, {
             text: trimmed || undefined,
             mediaId,
-          }),
-        () => ({
-          conversation_id: conversation.id,
-          has_text: !!trimmed,
-          has_media: !!mediaId,
-        }),
-      )
+          })
       setMessages((prev) => [...prev, message])
       setText("")
       clearPending()

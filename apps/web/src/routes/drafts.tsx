@@ -2,7 +2,6 @@ import { createFileRoute, useRouter } from "@tanstack/react-router"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
-import { trackedAction } from "../lib/analytics"
 import { ApiError, api } from "../lib/api"
 import { authClient } from "../lib/auth"
 import { usePageHeader } from "../components/app-page-header"
@@ -50,11 +49,7 @@ function Drafts() {
   async function publish(id: string) {
     setBusyId(id)
     try {
-      await trackedAction(
-        "scheduled_post_published",
-        () => api.publishScheduledPost(id),
-        () => ({ scheduled_post_id: id }),
-      )
+      await api.publishScheduledPost(id)
       await refresh()
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "publish failed")
