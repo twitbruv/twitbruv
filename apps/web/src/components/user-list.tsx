@@ -1,8 +1,27 @@
 import { Link } from "@tanstack/react-router"
-import { useEffect, useState } from "react"
-import { Button } from "@workspace/ui/components/button"
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react"
+import { useWindowVirtualizer } from "@tanstack/react-virtual"
 import { VerifiedBadge } from "./verified-badge"
+import { useInfiniteScrollSentinel } from "../lib/use-infinite-scroll-sentinel"
 import type { PublicUser, UserListPage } from "../lib/api"
+
+const useIsoLayoutEffect =
+  typeof window === "undefined" ? useEffect : useLayoutEffect
+
+const ESTIMATED_ROW_HEIGHT = 76
+const ESTIMATED_BIO_BUMP = 32
+
+function estimateRowHeight(user: PublicUser | undefined): number {
+  if (!user) return ESTIMATED_ROW_HEIGHT
+  return user.bio
+    ? ESTIMATED_ROW_HEIGHT + ESTIMATED_BIO_BUMP
+    : ESTIMATED_ROW_HEIGHT
+}
 
 export function UserList({
   load,
@@ -19,6 +38,9 @@ export function UserList({
 
   useEffect(() => {
     let cancel = false
+    setUsers([])
+    setCursor(null)
+    setError(null)
     setLoading(true)
     load()
       .then((page) => {
@@ -37,17 +59,48 @@ export function UserList({
     }
   }, [load])
 
-  async function more() {
-    if (!cursor || loadingMore) return
+  const cursorRef = useRef(cursor)
+  cursorRef.current = cursor
+
+  async function loadMore() {
+    const next = cursorRef.current
+    if (!next || loadingMore) return
     setLoadingMore(true)
     try {
-      const page = await load(cursor)
-      setUsers((prev) => [...prev, ...page.users])
+      const page = await load(next)
+      setUsers((prev) => {
+        const seen = new Set(prev.map((u) => u.id))
+        const fresh = page.users.filter((u) => !seen.has(u.id))
+        return prev.length === 0 ? page.users : [...prev, ...fresh]
+      })
       setCursor(page.nextCursor)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "failed to load")
     } finally {
       setLoadingMore(false)
     }
   }
+
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const sentinelRef = useRef<HTMLDivElement>(null)
+  const [scrollMargin, setScrollMargin] = useState(0)
+
+  useIsoLayoutEffect(() => {
+    const node = wrapperRef.current
+    if (!node) return
+    const rect = node.getBoundingClientRect()
+    setScrollMargin(rect.top + window.scrollY)
+  }, [users.length === 0])
+
+  const virtualizer = useWindowVirtualizer({
+    count: users.length,
+    estimateSize: (i) => estimateRowHeight(users[i]),
+    overscan: 6,
+    scrollMargin,
+    getItemKey: (i) => users[i].id,
+  })
+
+  useInfiniteScrollSentinel(sentinelRef, !!cursor, loadingMore, loadMore)
 
   if (loading)
     return (
@@ -62,41 +115,61 @@ export function UserList({
       </div>
     )
 
+  const virtualItems = virtualizer.getVirtualItems()
+  const totalSize = virtualizer.getTotalSize()
+
   return (
     <div>
-      {users.map((u) =>
-        u.handle ? (
-          <Link
-            key={u.id}
-            to="/$handle"
-            params={{ handle: u.handle }}
-            className="block border-b border-border px-4 py-3 hover:bg-muted/40"
-          >
-            <div className="flex items-center gap-1 text-sm font-medium">
-              <span className="truncate">
-                {u.displayName || `@${u.handle}`}
-              </span>
-              {u.isVerified && <VerifiedBadge size={14} role={u.role} />}
+      <div
+        ref={wrapperRef}
+        style={{
+          height: Math.max(0, totalSize - scrollMargin),
+          position: "relative",
+          width: "100%",
+        }}
+      >
+        {virtualItems.map((vi) => {
+          const u = users[vi.index]
+          if (!u || !u.handle) return null
+          return (
+            <div
+              key={vi.key}
+              ref={virtualizer.measureElement}
+              data-index={vi.index}
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                transform: `translateY(${vi.start - scrollMargin}px)`,
+              }}
+            >
+              <Link
+                to="/$handle"
+                params={{ handle: u.handle }}
+                className="block border-b border-border px-4 py-3 hover:bg-muted/40"
+              >
+                <div className="flex items-center gap-1 text-sm font-medium">
+                  <span className="truncate">
+                    {u.displayName || `@${u.handle}`}
+                  </span>
+                  {u.isVerified && <VerifiedBadge size={14} role={u.role} />}
+                </div>
+                <div className="text-xs text-muted-foreground">@{u.handle}</div>
+                {u.bio && (
+                  <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                    {u.bio}
+                  </p>
+                )}
+              </Link>
             </div>
-            <div className="text-xs text-muted-foreground">@{u.handle}</div>
-            {u.bio && (
-              <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                {u.bio}
-              </p>
-            )}
-          </Link>
-        ) : null
-      )}
+          )
+        })}
+      </div>
+      <div ref={sentinelRef} aria-hidden className="h-px" />
       {cursor && (
-        <div className="flex justify-center py-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={more}
-            disabled={loadingMore}
-          >
-            {loadingMore ? "loading…" : "load more"}
-          </Button>
+        <div className="flex justify-center py-4 text-xs text-muted-foreground">
+          {loadingMore ? "loading…" : ""}
         </div>
       )}
     </div>
