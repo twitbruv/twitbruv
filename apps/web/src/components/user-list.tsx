@@ -7,8 +7,8 @@ import {
   useState,
 } from "react"
 import { useWindowVirtualizer } from "@tanstack/react-virtual"
-import { VerifiedBadge } from "./verified-badge"
 import { useInfiniteScrollSentinel } from "../lib/use-infinite-scroll-sentinel"
+import { VerifiedBadge } from "./verified-badge"
 import type { PublicUser, UserListPage } from "../lib/api"
 
 const useIsoLayoutEffect =
@@ -164,7 +164,6 @@ export function UserList({
       >
         {virtualItems.map((vi) => {
           const u = visibleUsers[vi.index]
-          if (!u) return null
           return (
             <div
               key={vi.key}
