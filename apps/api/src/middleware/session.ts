@@ -18,9 +18,14 @@ export function sessionMiddleware(ctx: AppContext): MiddlewareHandler<HonoEnv> {
   return async (c, next) => {
     // Bind Databuddy anonymous + session IDs from the client so server-side events
     // are stitched to the same visitor journey in the analytics dashboard.
+    // These are analytics identity only — not trusted for auth or billing.
+    const headerOrNull = (name: string) => {
+      const value = c.req.header(name)?.trim()
+      return value || null
+    }
     const dbIds = {
-      anonymousId: c.req.header('X-Db-Anon-Id') ?? null,
-      sessionId: c.req.header('X-Db-Session-Id') ?? null,
+      anonymousId: headerOrNull('X-Db-Anon-Id'),
+      sessionId: headerOrNull('X-Db-Session-Id'),
     }
     const requestCtx: AppContext = {
       ...ctx,
