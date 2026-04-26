@@ -9,6 +9,7 @@ import { createCache, type Cache } from './cache.ts'
 import { createPubSub, type PubSub } from './pubsub.ts'
 import { createLogger, type Logger } from './logger.ts'
 import { makeRateLimit } from '@workspace/rate-limit'
+import { createTracker, type TrackFn } from './analytics.ts'
 
 export interface AppContext {
   env: Env
@@ -22,6 +23,7 @@ export interface AppContext {
   pubsub: PubSub
   log: Logger
   rateLimit: ReturnType<typeof makeRateLimit>
+  track: TrackFn
 }
 
 export async function buildContext(): Promise<AppContext> {
@@ -94,6 +96,7 @@ export async function buildContext(): Promise<AppContext> {
   const pubsub = createPubSub(env.REDIS_URL)
   const log = createLogger(env)
   const rateLimit = makeRateLimit(env.REDIS_URL, log)
+  const track = createTracker(env.DATABUDDY_API_KEY, log)
 
-  return { env, db, mailer, auth, s3, mediaEnv, boss, cache, pubsub, log, rateLimit }
+  return { env, db, mailer, auth, s3, mediaEnv, boss, cache, pubsub, log, rateLimit, track }
 }
