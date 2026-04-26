@@ -75,7 +75,12 @@ export function UserList({
       })
       setCursor(page.nextCursor)
     } catch (e) {
-      setError(e instanceof Error ? e.message : "failed to load")
+      // Don't replace a populated list with the full-page error UI; the
+      // initial load already succeeded. Pagination failures stay silent
+      // (the sentinel will retry the next time it intersects).
+      if (users.length === 0) {
+        setError(e instanceof Error ? e.message : "failed to load")
+      }
     } finally {
       setLoadingMore(false)
     }
@@ -123,7 +128,7 @@ export function UserList({
       <div
         ref={wrapperRef}
         style={{
-          height: Math.max(0, totalSize - scrollMargin),
+          height: totalSize,
           position: "relative",
           width: "100%",
         }}
