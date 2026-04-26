@@ -6,6 +6,9 @@ import tailwindcss from "@tailwindcss/vite"
 import { nitro } from "nitro/vite"
 
 const config = defineConfig({
+  // Load .env from the monorepo root so VITE_PUBLIC_* lives in the same file
+  // as the API/worker env vars instead of a separate apps/web/.env.
+  envDir: "../..",
   server: {
     port: 3000,
     strictPort: true,
