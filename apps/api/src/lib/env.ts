@@ -108,6 +108,20 @@ const envSchema = z.object({
     .default("false")
     .transform((v) => v === "true"),
 
+  // Hard kill switch. When true, every request (except /healthz and /readyz) is short-circuited
+  // with a 503 + `{ error: "maintenance" }` so the app can be locked down at runtime without a
+  // redeploy when abuse is in progress. The client detects the 503 and renders a maintenance
+  // screen over the whole UI.
+  MAINTENANCE_MODE: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
+  // Human-readable banner shown on the maintenance screen. Kept on the server so it can be
+  // updated without a client redeploy.
+  MAINTENANCE_MESSAGE: z
+    .string()
+    .default("We're temporarily down for maintenance. Check back shortly."),
+
   // Databuddy server-side analytics API key (format: dbdy_xxx). Optional — if unset,
   // server-side event tracking is silently disabled.
   DATABUDDY_API_KEY: z.string().optional(),

@@ -1,5 +1,6 @@
 import { getTrackingIds } from "@databuddy/sdk"
-import { API_URL } from "./env"
+import { API_URL, MAINTENANCE_MODE } from "./env"
+import { setRuntimeMaintenance } from "./maintenance"
 import type { GithubCard } from "@workspace/github-unfurl/card"
 
 export type { GithubCard } from "@workspace/github-unfurl/card"
@@ -15,6 +16,11 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  // Build-time kill switch: refuse to even hit the network so a cached client
+  // can't keep abusing the API while we're locked down.
+  if (MAINTENANCE_MODE) {
+    throw new ApiError(503, "maintenance", "maintenance")
+  }
   const trackingHeaders: Record<string, string> = {}
   const { anonId, sessionId } = getTrackingIds()
   if (anonId) trackingHeaders["X-Db-Anon-Id"] = anonId
@@ -31,6 +37,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   })
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: "unknown" }))
+    if (res.status === 503 && body.error === "maintenance") {
+      setRuntimeMaintenance(true, typeof body.message === "string" ? body.message : null)
+    }
     throw new ApiError(
       res.status,
       body.error ?? "unknown",

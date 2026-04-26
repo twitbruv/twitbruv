@@ -12,10 +12,12 @@ import { DatabuddyDevtools } from "@databuddy/devtools/react"
 import appCss from "@workspace/ui/globals.css?url"
 import { Button } from "@workspace/ui/components/button"
 import { AppShell } from "../components/app-shell"
+import { MaintenanceScreen } from "../components/maintenance-screen"
 import { NotFoundPanel } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
 import { ThemeProvider, themeBootstrapScript } from "../lib/theme"
 import { APP_NAME, DATABUDDY_CLIENT_ID } from "../lib/env"
+import { useMaintenance } from "../lib/maintenance"
 import { MeProvider } from "../lib/me"
 import { QueryProvider } from "../lib/query"
 import { buildSeoMeta } from "../lib/seo"
@@ -76,34 +78,50 @@ export const Route = createRootRoute({
     </AppShell>
   ),
   shellComponent: RootDocument,
-  component: () => (
-    <IconContext.Provider value={{ weight: "duotone" }}>
-      <QueryProvider>
-        <ThemeProvider>
-          <MeProvider>
-            <AppShell>
-              <Outlet />
-            </AppShell>
-            {DATABUDDY_CLIENT_ID ? (
-              <Databuddy
-                clientId={DATABUDDY_CLIENT_ID}
-                trackWebVitals
-                trackErrors
-                trackPerformance
-                trackOutgoingLinks
-                trackInteractions
-                enableBatching
-                batchSize={20}
-                maskPatterns={["/inbox/*", "/admin/*"]}
-              />
-            ) : null}
-            <DatabuddyDevtools enabled={import.meta.env.DEV} />
-          </MeProvider>
-        </ThemeProvider>
-      </QueryProvider>
-    </IconContext.Provider>
-  ),
+  component: RootComponent,
 })
+
+function RootComponent() {
+  return (
+    <IconContext.Provider value={{ weight: "duotone" }}>
+      <ThemeProvider>
+        <MaintenanceGate>
+          <QueryProvider>
+            <MeProvider>
+              <AppShell>
+                <Outlet />
+              </AppShell>
+              {DATABUDDY_CLIENT_ID ? (
+                <Databuddy
+                  clientId={DATABUDDY_CLIENT_ID}
+                  trackWebVitals
+                  trackErrors
+                  trackPerformance
+                  trackOutgoingLinks
+                  trackInteractions
+                  enableBatching
+                  batchSize={20}
+                  maskPatterns={["/inbox/*", "/admin/*"]}
+                />
+              ) : null}
+              <DatabuddyDevtools enabled={import.meta.env.DEV} />
+            </MeProvider>
+          </QueryProvider>
+        </MaintenanceGate>
+      </ThemeProvider>
+    </IconContext.Provider>
+  )
+}
+
+// Whole-app lockout. When build-time VITE_PUBLIC_MAINTENANCE_MODE is set, or the api wrapper
+// has seen a 503 maintenance response, swap the entire app for the maintenance screen. Sits
+// inside ThemeProvider so the screen still respects the user's theme but outside the query
+// + me providers so we don't keep retrying API calls behind the lockout.
+function MaintenanceGate({ children }: { children: React.ReactNode }) {
+  const { active, message } = useMaintenance()
+  if (active) return <MaintenanceScreen message={message} />
+  return <>{children}</>
+}
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
