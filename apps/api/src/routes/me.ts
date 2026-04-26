@@ -11,6 +11,7 @@ import { loadPostMedia } from '../lib/post-media.ts'
 import { loadArticleCards } from '../lib/article-cards.ts'
 import { loadRepostTargets } from '../lib/repost-targets.ts'
 import { loadQuoteTargets } from '../lib/quote-targets.ts'
+import { attachReplyParents } from '../lib/reply-parents.ts'
 import { loadPolls } from '../lib/polls.ts'
 import { loadGithubCards } from '../lib/github-cards.ts'
 import { parseCursor } from '../lib/cursor.ts'
@@ -217,6 +218,7 @@ meRoute.get('/bookmarks', async (c) => {
       githubMap.get(r.post.id),
     ),
   )
+  await attachReplyParents({ db, viewerId: session.user.id, env: mediaEnv, posts })
   const nextCursor = rows.length === limit ? rows[rows.length - 1]!.bookmarkedAt.toISOString() : null
   return c.json({ posts, nextCursor })
 })

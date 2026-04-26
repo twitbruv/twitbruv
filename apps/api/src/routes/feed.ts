@@ -8,6 +8,7 @@ import { loadPostMedia } from '../lib/post-media.ts'
 import { loadArticleCards } from '../lib/article-cards.ts'
 import { loadRepostTargets } from '../lib/repost-targets.ts'
 import { loadQuoteTargets } from '../lib/quote-targets.ts'
+import { attachReplyParents } from '../lib/reply-parents.ts'
 import { loadPolls } from '../lib/polls.ts'
 import { loadGithubCards } from '../lib/github-cards.ts'
 import { parseCursor } from '../lib/cursor.ts'
@@ -101,6 +102,7 @@ feedRoute.get('/', requireAuth(), async (c) => {
       githubMap.get(r.post.id),
     ),
   )
+  await attachReplyParents({ db, viewerId: me, env: mediaEnv, posts })
   const nextCursor = posts.length === limit ? posts[posts.length - 1]!.createdAt : null
   const response = { posts, nextCursor }
 
@@ -309,6 +311,7 @@ feedRoute.get('/network', requireAuth(), async (c) => {
     networkActorTotal: r.actorIds.length,
     networkActivityAt: r.activityAt.toISOString(),
   }))
+  await attachReplyParents({ db, viewerId: me, env: mediaEnv, posts })
   const nextCursor =
     posts.length === limit ? merged[merged.length - 1]!.activityAt.toISOString() : null
   // Suppress unused TTL constant warning (kept for future caching hooks).

@@ -4,6 +4,7 @@ import {
   fetchGithubCard,
   parseGithubUrl,
   persistCardOutcome,
+  persistFailureOnly,
   type GithubRef,
 } from '@workspace/github-unfurl'
 
@@ -27,11 +28,7 @@ export async function handleGithubUnfurlJob(
   if (!ref) {
     // The URL was extracted server-side as recognized; if reparse fails the row's stuck in
     // pending. Mark it failed so it doesn't loop.
-    await persistCardOutcome(db, parsed.data.unfurlId, { kind: 'repo', owner: 'x', repo: 'x' }, {
-      ok: false,
-      reason: 'unknown',
-      message: 'parse_failed',
-    })
+    await persistFailureOnly(db, parsed.data.unfurlId, 'unknown', 'parse_failed')
     return { ok: false, reason: 'parse_failed' }
   }
   const outcome = await fetchGithubCard(ref)

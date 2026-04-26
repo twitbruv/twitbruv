@@ -298,7 +298,7 @@ export function Compose({
           onPaste={onPaste}
           placeholder={placeholder}
           rows={expanded ? 3 : 1}
-          className="border-0 bg-transparent px-0 py-0 text-[15px] leading-relaxed shadow-none focus-visible:ring-0"
+          className="min-h-0 border-0 bg-transparent px-0 py-0 text-[15px] leading-relaxed shadow-none focus-visible:ring-0 md:text-[15px] dark:bg-transparent"
         />
 
         {quoted && (

@@ -603,6 +603,9 @@ export interface Post {
   repostOf?: Post
   /** Populated on quote rows: the post being quoted, rendered as a bordered embed below the text. */
   quoteOf?: Post
+  /** Populated on reply rows: the parent post this row is replying to, rendered as a small
+   *  embed above the post so feed readers have conversation context. Not recursive. */
+  replyParent?: Post
   /** Set when this row is the pinned post on a profile feed. */
   pinned?: boolean
   /** Optional poll attached to this post. */

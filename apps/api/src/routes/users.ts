@@ -10,6 +10,7 @@ import { loadPostMedia } from '../lib/post-media.ts'
 import { loadArticleCards } from '../lib/article-cards.ts'
 import { loadRepostTargets } from '../lib/repost-targets.ts'
 import { loadQuoteTargets } from '../lib/quote-targets.ts'
+import { attachReplyParents } from '../lib/reply-parents.ts'
 import { notify, invalidateUnreadCounts } from '../lib/notify.ts'
 import { loadPolls } from '../lib/polls.ts'
 import { parseCursor } from '../lib/cursor.ts'
@@ -264,6 +265,7 @@ usersRoute.get('/:handle/posts', async (c) => {
       ...(poll ? { poll } : {}),
     }
   })
+  await attachReplyParents({ db, viewerId, env: mediaEnv, posts })
   return c.json({ posts, nextCursor: payload.nextCursor })
 })
 

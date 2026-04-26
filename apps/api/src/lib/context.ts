@@ -82,8 +82,13 @@ export async function buildContext(): Promise<AppContext> {
   const boss = new PgBoss({ connectionString: env.DATABASE_URL })
   boss.on('error', (err) => console.error('pg-boss:', err))
   await boss.start()
-  // NOTE: queues are declared by the worker only (apps/worker). Calling createQueue from both
-  // processes concurrently deadlocks on pgboss.queue row locks in Postgres.
+  // pg-boss v10 requires a queue to exist before send/work succeeds. Declared serially here
+  // so the API can `boss.send` even before the worker has booted; the worker also declares
+  // them on its side, which is fine — createQueue is idempotent. Concurrent creates across
+  // processes used to deadlock; serial within a process does not.
+  await boss.createQueue('email.send')
+  await boss.createQueue('media.process')
+  await boss.createQueue('github.unfurl')
 
   const cache = createCache(env.REDIS_URL)
   const pubsub = createPubSub(env.REDIS_URL)
