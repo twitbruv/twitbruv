@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react"
 import {
   HeadContent,
   Link,
@@ -75,7 +76,11 @@ export const Route = createRootRoute({
     </AppShell>
   ),
   shellComponent: RootDocument,
-  component: () => (
+  component: RootComponent,
+})
+
+function RootComponent() {
+  return (
     <IconContext.Provider value={{ weight: "duotone" }}>
       <QueryProvider>
         <ThemeProvider>
@@ -83,19 +88,31 @@ export const Route = createRootRoute({
             <AppShell>
               <Outlet />
             </AppShell>
-            {DATABUDDY_CLIENT_ID ? (
-              <Databuddy
-                clientId={DATABUDDY_CLIENT_ID}
-                trackWebVitals
-                trackErrors
-              />
-            ) : null}
+            <ClientOnlyDatabuddy />
           </MeProvider>
         </ThemeProvider>
       </QueryProvider>
     </IconContext.Provider>
-  ),
-})
+  )
+}
+
+function ClientOnlyDatabuddy() {
+  // The SDK's React entry crashes during SSR under Bun's isolated install
+  // (react-dom-server and the SDK end up with separate React module
+  // instances, so the dispatcher is null when the SDK calls useEffect).
+  // Skipping the server pass is safe — Databuddy returns null and only
+  // injects its script tag from useEffect, which runs client-only anyway.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+  if (!mounted || !DATABUDDY_CLIENT_ID) return null
+  return (
+    <Databuddy
+      clientId={DATABUDDY_CLIENT_ID}
+      trackWebVitals
+      trackErrors
+    />
+  )
+}
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
