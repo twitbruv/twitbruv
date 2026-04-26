@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router"
 import {
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react"
@@ -15,6 +16,7 @@ const useIsoLayoutEffect =
 
 const ESTIMATED_ROW_HEIGHT = 76
 const ESTIMATED_BIO_BUMP = 32
+const LOAD_MORE_BACKOFF_MS = 3000
 
 function estimateRowHeight(user: PublicUser | undefined): number {
   if (!user) return ESTIMATED_ROW_HEIGHT
@@ -36,55 +38,82 @@ export function UserList({
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // Bumped on every source change so stale fetches (initial load or
+  // pagination) are discarded if `load` swapped while they were in flight.
+  const requestIdRef = useRef(0)
+
   useEffect(() => {
-    let cancel = false
+    const requestId = ++requestIdRef.current
     setUsers([])
     setCursor(null)
     setError(null)
     setLoading(true)
+    setLoadingMore(false)
     load()
       .then((page) => {
-        if (cancel) return
+        if (requestId !== requestIdRef.current) return
         setUsers(page.users)
         setCursor(page.nextCursor)
       })
       .catch((e) => {
-        if (!cancel) setError(e instanceof Error ? e.message : "failed to load")
+        if (requestId !== requestIdRef.current) return
+        setError(e instanceof Error ? e.message : "failed to load")
       })
       .finally(() => {
-        if (!cancel) setLoading(false)
+        if (requestId !== requestIdRef.current) return
+        setLoading(false)
       })
-    return () => {
-      cancel = true
-    }
   }, [load])
 
   const cursorRef = useRef(cursor)
   cursorRef.current = cursor
+  const usersRef = useRef(users)
+  usersRef.current = users
 
   async function loadMore() {
     const next = cursorRef.current
     if (!next || loadingMore) return
+    const requestId = requestIdRef.current
     setLoadingMore(true)
     try {
       const page = await load(next)
+      if (requestId !== requestIdRef.current) return
       setUsers((prev) => {
         const seen = new Set(prev.map((u) => u.id))
         const fresh = page.users.filter((u) => !seen.has(u.id))
-        return prev.length === 0 ? page.users : [...prev, ...fresh]
+        return [...prev, ...fresh]
       })
       setCursor(page.nextCursor)
     } catch (e) {
-      // Don't replace a populated list with the full-page error UI; the
-      // initial load already succeeded. Pagination failures stay silent
-      // (the sentinel will retry the next time it intersects).
-      if (users.length === 0) {
+      if (requestId !== requestIdRef.current) return
+      // Only surface the full-page error when the initial load left us
+      // empty; otherwise the populated list shouldn't be replaced.
+      if (usersRef.current.length === 0) {
         setError(e instanceof Error ? e.message : "failed to load")
       }
+      // Hold loadingMore high through a backoff window. The sentinel
+      // observer is torn down while loading is true and re-attached when
+      // it flips false; without this delay it would re-fire its initial
+      // intersection callback immediately and busy-loop the API on a
+      // persistent failure.
+      await new Promise((resolve) =>
+        setTimeout(resolve, LOAD_MORE_BACKOFF_MS)
+      )
     } finally {
-      setLoadingMore(false)
+      if (requestId === requestIdRef.current) {
+        setLoadingMore(false)
+      }
     }
   }
+
+  // Some users in a page can have `handle: null` (registered but never
+  // claimed). The link-row renderer skips them, which would leave empty
+  // reserved space in the virtualizer — pre-filter so the virtualizer
+  // only allocates rows it can actually render.
+  const visibleUsers = useMemo(
+    () => users.filter((u): u is PublicUser & { handle: string } => !!u.handle),
+    [users]
+  )
 
   const wrapperRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
@@ -95,14 +124,14 @@ export function UserList({
     if (!node) return
     const rect = node.getBoundingClientRect()
     setScrollMargin(rect.top + window.scrollY)
-  }, [users.length === 0])
+  }, [visibleUsers.length === 0])
 
   const virtualizer = useWindowVirtualizer({
-    count: users.length,
-    estimateSize: (i) => estimateRowHeight(users[i]),
+    count: visibleUsers.length,
+    estimateSize: (i) => estimateRowHeight(visibleUsers[i]),
     overscan: 6,
     scrollMargin,
-    getItemKey: (i) => users[i].id,
+    getItemKey: (i) => visibleUsers[i].id,
   })
 
   useInfiniteScrollSentinel(sentinelRef, !!cursor, loadingMore, loadMore)
@@ -113,7 +142,7 @@ export function UserList({
     )
   if (error)
     return <div className="px-4 py-6 text-sm text-destructive">{error}</div>
-  if (users.length === 0)
+  if (visibleUsers.length === 0)
     return (
       <div className="px-4 py-6 text-sm text-muted-foreground">
         {emptyMessage}
@@ -134,8 +163,8 @@ export function UserList({
         }}
       >
         {virtualItems.map((vi) => {
-          const u = users[vi.index]
-          if (!u || !u.handle) return null
+          const u = visibleUsers[vi.index]
+          if (!u) return null
           return (
             <div
               key={vi.key}
