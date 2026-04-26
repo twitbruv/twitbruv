@@ -84,6 +84,7 @@ export const Route = createRootRoute({
             <AppShell>
               <Outlet />
             </AppShell>
+            {DATABUDDY_CLIENT_ID ? (
               <Databuddy
                 clientId={DATABUDDY_CLIENT_ID}
                 trackWebVitals
@@ -95,6 +96,7 @@ export const Route = createRootRoute({
                 batchSize={20}
                 maskPatterns={["/inbox/*", "/admin/*"]}
               />
+            ) : null}
             <DatabuddyDevtools enabled={import.meta.env.DEV} />
           </MeProvider>
         </ThemeProvider>
