@@ -162,3 +162,64 @@
 .macfolio-shimmer {
   animation: macfolio-shimmer 4.2s ease-in-out infinite;
 }
+
+@keyframes heart-pop {
+  0% {
+    transform: scale(1);
+  }
+  15% {
+    transform: scale(0.7);
+  }
+  45% {
+    transform: scale(1.7);
+  }
+  75% {
+    transform: scale(0.92);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes heart-wave {
+  0% {
+    filter: brightness(1) saturate(1);
+  }
+  40% {
+    filter: brightness(1.25) saturate(1.4)
+      drop-shadow(0 0 6px rgba(244, 63, 94, 0.55));
+  }
+  100% {
+    filter: brightness(1) saturate(1);
+  }
+}
+
+@keyframes heart-particle {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(var(--particle-angle)) translateY(0)
+      scale(0.4);
+  }
+  30% {
+    opacity: 1;
+    transform: translate(-50%, -50%) rotate(var(--particle-angle))
+      translateY(calc(var(--particle-travel, 22px) * -0.55)) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(var(--particle-angle))
+      translateY(calc(var(--particle-travel, 22px) * -1)) scale(0);
+  }
+}
+
+.animate-heart-pop {
+  animation: heart-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.animate-heart-wave {
+  animation: heart-wave 0.5s ease-out both;
+}
+
+.animate-heart-particle {
+  animation: heart-particle 0.6s cubic-bezier(0.2, 0.8, 0.3, 1) forwards;
+}
