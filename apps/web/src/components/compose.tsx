@@ -1,566 +1,804 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
-  ChartBarIcon,
-  ImageIcon,
-  UsersIcon,
-  XIcon,
-} from "@phosphor-icons/react"
+	PhotoIcon,
+	ChartBarIcon,
+	GlobeAltIcon,
+	UsersIcon,
+	AtSymbolIcon,
+	XMarkIcon,
+} from "@heroicons/react/24/solid"
 import { toast } from "sonner"
+import { cn } from "@workspace/ui/lib/utils"
 import { Button } from "@workspace/ui/components/button"
+import { Avatar } from "@workspace/ui/components/avatar"
 import { Input } from "@workspace/ui/components/input"
-import { Label } from "@workspace/ui/components/label"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+	Select,
+	SelectTrigger,
+	SelectContent,
+	SelectItem,
 } from "@workspace/ui/components/select"
 import { Switch } from "@workspace/ui/components/switch"
-import { Textarea } from "@workspace/ui/components/textarea"
+import { Label } from "@workspace/ui/components/label"
+import { DropdownMenu } from "@workspace/ui/components/dropdown-menu"
 import {
-  POLL_MAX_OPTIONS,
-  POLL_MIN_OPTIONS,
-  POLL_OPTION_MAX_LEN,
-  POST_MAX_LEN,
+	POST_MAX_LEN,
+	POLL_MAX_OPTIONS,
+	POLL_MIN_OPTIONS,
+	POLL_OPTION_MAX_LEN,
 } from "@workspace/validators"
-import { ApiError, api } from "../lib/api"
-import { setAltText, uploadImage } from "../lib/media"
+import { api } from "../lib/api"
+import { uploadImage, setAltText } from "../lib/media"
 import { getPastedImageFiles } from "../lib/clipboard-images"
-import { clearDraft, draftKey, loadDraft, saveDraft } from "../lib/drafts"
+import { loadDraft, saveDraft, clearDraft, draftKey } from "../lib/drafts"
 import { useMe } from "../lib/me"
-import { VerifiedBadge } from "./verified-badge"
-import type { PollInput, Post } from "../lib/api"
+import type { Post, PollInput } from "../lib/api"
 import type { UploadedMedia } from "../lib/media"
+
+// ───────────────────────────────────────────────────────────────────────────
+// Constants
+// ───────────────────────────────────────────────────────────────────────────
 
 const MAX_ATTACHMENTS = 4
 
-interface PollOption {
-  id: string
-  value: string
-}
+const REPLY_OPTIONS = [
+	{ value: "anyone" as const, label: "Everyone", icon: GlobeAltIcon },
+	{ value: "following" as const, label: "Following", icon: UsersIcon },
+	{ value: "mentioned" as const, label: "Mentions", icon: AtSymbolIcon },
+] as const
 
-interface PollDraft {
-  options: Array<PollOption>
-  durationMinutes: number
-  allowMultiple: boolean
-}
+const POLL_DURATION_CHOICES = [
+	{ label: "5 minutes", minutes: 5 },
+	{ label: "1 hour", minutes: 60 },
+	{ label: "1 day", minutes: 60 * 24 },
+	{ label: "3 days", minutes: 60 * 24 * 3 },
+	{ label: "7 days", minutes: 60 * 24 * 7 },
+] as const
 
-function createPollOption(value = ""): PollOption {
-  return {
-    id:
-      typeof crypto !== "undefined" && "randomUUID" in crypto
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
-    value,
-  }
-}
-
-const POLL_DURATION_CHOICES: Array<{ label: string; minutes: number }> = [
-  { label: "5 minutes", minutes: 5 },
-  { label: "1 hour", minutes: 60 },
-  { label: "1 day", minutes: 60 * 24 },
-  { label: "3 days", minutes: 60 * 24 * 3 },
-  { label: "7 days", minutes: 60 * 24 * 7 },
-]
+// ───────────────────────────────────────────────────────────────────────────
+// Types
+// ───────────────────────────────────────────────────────────────────────────
 
 interface PendingAttachment {
-  tempId: string
-  status: "uploading" | "ready" | "failed"
-  previewUrl: string
-  media?: UploadedMedia
-  altText: string
-  error?: string
+	tempId: string
+	status: "uploading" | "ready" | "failed"
+	previewUrl: string
+	media?: UploadedMedia
+	altText: string
+	error?: string
 }
 
+interface PollOptionState {
+	id: string
+	value: string
+}
+
+interface PollState {
+	options: PollOptionState[]
+	durationMinutes: number
+	allowMultiple: boolean
+}
+
+export interface ComposeProps {
+	onCreated?: (post: Post) => void
+	replyToId?: string
+	quoteOfId?: string
+	quoted?: Post
+	placeholder?: string
+	collapsible?: boolean
+	autoFocus?: boolean
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Helpers
+// ───────────────────────────────────────────────────────────────────────────
+
+function createId(): string {
+	return typeof crypto !== "undefined" && "randomUUID" in crypto
+		? crypto.randomUUID()
+		: `${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
+function createPollOption(value = ""): PollOptionState {
+	return { id: createId(), value }
+}
+
+function resizeTextarea(el: HTMLTextAreaElement | null) {
+	if (!el) return
+	el.style.height = "auto"
+	el.style.height = `${el.scrollHeight}px`
+}
+
+function CharacterRing({ used, max }: { used: number; max: number }) {
+	const radius = 6
+	const circumference = 2 * Math.PI * radius
+	const pct = Math.min(used / max, 1)
+	const dash = circumference * pct
+	const remaining = max - used
+
+	let colorClass = "text-tertiary"
+	if (remaining < 0) {
+		colorClass = "text-danger"
+	} else if (remaining < 20) {
+		colorClass = "text-warn"
+	}
+
+	return (
+		<svg
+			width="16"
+			height="16"
+			viewBox="0 0 16 16"
+			className={`shrink-0 -rotate-90 ${colorClass}`}
+		>
+			<circle
+				cx="8"
+				cy="8"
+				r={radius}
+				fill="none"
+				stroke="currentColor"
+				strokeWidth="2"
+				opacity="0.15"
+			/>
+			<circle
+				cx="8"
+				cy="8"
+				r={radius}
+				fill="none"
+				stroke="currentColor"
+				strokeWidth="2"
+				strokeDasharray={`${dash} ${circumference}`}
+				strokeDashoffset="0"
+				strokeLinecap="round"
+			/>
+		</svg>
+	)
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Compose
+// ───────────────────────────────────────────────────────────────────────────
+
 export function Compose({
-  onCreated,
-  replyToId,
-  quoteOfId,
-  quoted,
-  placeholder = "What's happening?",
-  collapsible = false,
-}: {
-  onCreated?: (post: Post) => void
-  replyToId?: string
-  quoteOfId?: string
-  /** When quoting, render a summary of the quoted post so the author knows what's attached. */
-  quoted?: Post
-  placeholder?: string
-  /** When true, render a single-line collapsed view until the user focuses the input. */
-  collapsible?: boolean
-}) {
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const { me } = useMe()
-  const dKey = useMemo(
-    () => draftKey({ replyToId, quoteOfId }),
-    [replyToId, quoteOfId]
-  )
-  const [text, setText] = useState(() => loadDraft(dKey))
-  const [expanded, setExpanded] = useState(
-    () => !collapsible || loadDraft(dKey).length > 0
-  )
-  // Persist drafts on every keystroke. Tiny localStorage write — fine without debouncing.
-  useEffect(() => {
-    saveDraft(dKey, text)
-  }, [dKey, text])
-  const [attachments, setAttachments] = useState<Array<PendingAttachment>>([])
-  const [poll, setPoll] = useState<PollDraft | null>(null)
-  const [loading, setLoading] = useState(false)
-  // Replies inherit their thread's restriction; only let the user pick on
-  // top-level posts and quotes (which start a new thread).
-  const [replyRestriction, setReplyRestriction] = useState<
-    "anyone" | "following" | "mentioned"
-  >("anyone")
-  const showReplyControl = !replyToId
-  const avatarInitial = (me?.displayName ?? me?.handle ?? "·")
-    .slice(0, 1)
-    .toUpperCase()
+	onCreated,
+	replyToId,
+	quoteOfId,
+	quoted,
+	placeholder = "What's happening?",
+	collapsible = false,
+	autoFocus = false,
+}: ComposeProps) {
+	const { me } = useMe()
+	const fileInputRef = useRef<HTMLInputElement>(null)
+	const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  const remaining = POST_MAX_LEN - text.length
-  const readyMediaIds = attachments
-    .filter((a) => a.status === "ready" && a.media)
-    .map((a) => a.media!.id)
-  const pollValid =
-    !poll ||
-    (poll.options.filter((o) => o.value.trim().length > 0).length >=
-      POLL_MIN_OPTIONS &&
-      poll.options.every((o) => o.value.length <= POLL_OPTION_MAX_LEN))
-  const hasContent =
-    text.trim().length > 0 ||
-    readyMediaIds.length > 0 ||
-    Boolean(quoteOfId) ||
-    Boolean(poll)
-  const noneUploading = attachments.every((a) => a.status !== "uploading")
-  const canSubmit =
-    hasContent && remaining >= 0 && noneUploading && pollValid && !loading
+	const dKey = useMemo(
+		() => draftKey({ replyToId, quoteOfId }),
+		[replyToId, quoteOfId],
+	)
 
-  function startPoll() {
-    if (poll) return
-    setPoll({
-      options: [createPollOption(), createPollOption()],
-      durationMinutes: 60 * 24,
-      allowMultiple: false,
-    })
-  }
-  function updatePollOption(id: string, value: string) {
-    if (!poll) return
-    setPoll({
-      ...poll,
-      options: poll.options.map((opt) =>
-        opt.id === id ? { ...opt, value } : opt
-      ),
-    })
-  }
-  function addPollOption() {
-    if (!poll || poll.options.length >= POLL_MAX_OPTIONS) return
-    setPoll({ ...poll, options: [...poll.options, createPollOption()] })
-  }
-  function removePollOption(id: string) {
-    if (!poll) return
-    if (poll.options.length <= POLL_MIN_OPTIONS) return
-    setPoll({
-      ...poll,
-      options: poll.options.filter((opt) => opt.id !== id),
-    })
-  }
+	const [text, setText] = useState(() => loadDraft(dKey))
+	const [expanded, setExpanded] = useState(
+		() => !collapsible || loadDraft(dKey).length > 0,
+	)
+	const [attachments, setAttachments] = useState<PendingAttachment[]>([])
+	const [poll, setPoll] = useState<PollState | null>(null)
+	const [loading, setLoading] = useState(false)
+	const [replyRestriction, setReplyRestriction] = useState<
+		"anyone" | "following" | "mentioned"
+	>("anyone")
 
-  async function addFiles(files: FileList | ReadonlyArray<File> | null) {
-    if (files == null) return
-    const room = MAX_ATTACHMENTS - attachments.length
-    const incoming = (Array.isArray(files) ? files : Array.from(files)).slice(
-      0,
-      room
-    )
-    for (const file of incoming) {
-      if (!file.type.startsWith("image/")) continue
-      const tempId = crypto.randomUUID()
-      const previewUrl = URL.createObjectURL(file)
-      setAttachments((prev) => [
-        ...prev,
-        { tempId, status: "uploading", previewUrl, altText: "" },
-      ])
-      try {
-        const media = await uploadImage(file)
-        setAttachments((prev) =>
-          prev.map((a) =>
-            a.tempId === tempId ? { ...a, status: "ready", media } : a
-          )
-        )
-      } catch (e) {
-        setAttachments((prev) =>
-          prev.map((a) =>
-            a.tempId === tempId
-              ? {
-                  ...a,
-                  status: "failed",
-                  error: e instanceof Error ? e.message : "upload failed",
-                }
-              : a
-          )
-        )
-      }
-    }
-  }
+	const showReplyControl = !replyToId
 
-  function removeAttachment(tempId: string) {
-    setAttachments((prev) => {
-      const next = prev.filter((a) => a.tempId !== tempId)
-      const removed = prev.find((a) => a.tempId === tempId)
-      if (removed) URL.revokeObjectURL(removed.previewUrl)
-      return next
-    })
-  }
+	useEffect(() => {
+		saveDraft(dKey, text)
+	}, [dKey, text])
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!canSubmit) return
-    setLoading(true)
-    try {
-      // Push alt text just before send. Best-effort — failures don't block the post itself.
-      await Promise.all(
-        attachments
-          .filter(
-            (a) =>
-              a.status === "ready" && a.media && a.altText.trim().length > 0
-          )
-          .map((a) => setAltText(a.media!.id, a.altText).catch(() => {}))
-      )
-      const pollPayload: PollInput | undefined = poll
-        ? {
-            options: poll.options
-              .map((o) => o.value.trim())
-              .filter((o) => o.length > 0),
-            durationMinutes: poll.durationMinutes,
-            allowMultiple: poll.allowMultiple,
-          }
-        : undefined
-      const { post } = await api.createPost({
-        text: text.trim(),
-        replyToId,
-        quoteOfId,
-        mediaIds: readyMediaIds.length > 0 ? readyMediaIds : undefined,
-        poll: pollPayload,
-        replyRestriction: showReplyControl ? replyRestriction : undefined,
-      })
-      setText("")
-      clearDraft(dKey)
-      attachments.forEach((a) => URL.revokeObjectURL(a.previewUrl))
-      setAttachments([])
-      setPoll(null)
-      if (collapsible) setExpanded(false)
-      onCreated?.(post)
-    } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : "failed to post")
-    } finally {
-      setLoading(false)
-    }
-  }
+	useEffect(() => {
+		resizeTextarea(textareaRef.current)
+	}, [text, expanded])
 
-  function onDragOver(e: React.DragEvent) {
-    if (attachments.length >= MAX_ATTACHMENTS) return
-    e.preventDefault()
-  }
-  function onDrop(e: React.DragEvent) {
-    e.preventDefault()
-    addFiles(e.dataTransfer.files)
-  }
+	useEffect(() => {
+		if (autoFocus && textareaRef.current) {
+			textareaRef.current.focus()
+		}
+	}, [autoFocus])
 
-  function onPaste(e: React.ClipboardEvent) {
-    if (attachments.length >= MAX_ATTACHMENTS) return
-    const files = getPastedImageFiles(e)
-    if (files.length === 0) return
-    e.preventDefault()
-    void addFiles(files)
-  }
+	const readyMediaIds = attachments
+		.filter((a) => a.status === "ready" && a.media)
+		.map((a) => a.media!.id)
 
-  return (
-    <form
-      onSubmit={onSubmit}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
-      className="flex gap-3 border-b border-border px-4 py-4"
-    >
-      <div className="size-10 shrink-0 overflow-hidden rounded-full">
-        {me?.avatarUrl ? (
-          <img
-            src={me.avatarUrl}
-            alt=""
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center bg-muted text-sm font-semibold text-foreground/80 uppercase">
-            {avatarInitial}
-          </div>
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <Textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onFocus={() => setExpanded(true)}
-          onPaste={onPaste}
-          placeholder={placeholder}
-          rows={expanded ? 3 : 1}
-          className="min-h-0 border-0 bg-transparent px-0 py-0 text-[15px] leading-relaxed shadow-none focus-visible:ring-0 md:text-[15px] dark:bg-transparent"
-        />
+	const pollValid =
+		!poll ||
+		(poll.options.filter((o) => o.value.trim().length > 0).length >=
+			POLL_MIN_OPTIONS &&
+			poll.options.every((o) => o.value.length <= POLL_OPTION_MAX_LEN))
 
-        {quoted && (
-          <div className="mt-2 rounded-md border border-border p-3 text-sm">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1 font-medium text-foreground">
-                {quoted.author.displayName ||
-                  `@${quoted.author.handle ?? "unknown"}`}
-                {quoted.author.isVerified && (
-                  <VerifiedBadge size={13} role={quoted.author.role} />
-                )}
-              </span>
-              {quoted.author.handle && <span>@{quoted.author.handle}</span>}
-            </div>
-            <p className="mt-1 line-clamp-3 break-words whitespace-pre-wrap">
-              {quoted.text}
-            </p>
-          </div>
-        )}
+	const hasContent =
+		text.trim().length > 0 ||
+		readyMediaIds.length > 0 ||
+		Boolean(quoteOfId) ||
+		Boolean(poll)
 
-        {poll && (
-          <div className="mt-3 flex flex-col gap-2 rounded-md border border-border p-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-muted-foreground">
-                Poll
-              </span>
-              <Button
-                type="button"
-                variant="transparent"
-                size="sm"
-                onClick={() => setPoll(null)}
-                className="h-auto p-0 text-xs text-muted-foreground hover:text-foreground"
-              >
-                Remove
-              </Button>
-            </div>
-            {poll.options.map((opt, idx) => (
-              <div key={opt.id} className="flex items-center gap-2">
-                <Input
-                  value={opt.value}
-                  onChange={(e) => updatePollOption(opt.id, e.target.value)}
-                  placeholder={`Choice ${idx + 1}`}
-                  maxLength={POLL_OPTION_MAX_LEN}
-                  className="h-8 flex-1 text-sm"
-                />
-                {poll.options.length > POLL_MIN_OPTIONS && (
-                  <Button
-                    variant="transparent"
-                    size="sm"
-                    onClick={() => removePollOption(opt.id)}
-                    aria-label="remove option"
-                  >
-                    <XIcon size={14} />
-                  </Button>
-                )}
-              </div>
-            ))}
-            {poll.options.length < POLL_MAX_OPTIONS && (
-              <Button
-                variant="transparent"
-                size="sm"
-                type="button"
-                onClick={addPollOption}
-                className="h-auto w-fit p-0 text-xs"
-              >
-                Add choice
-              </Button>
-            )}
-            <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex min-w-0 flex-1 items-center gap-2">
-                <Label className="shrink-0 text-xs text-muted-foreground">
-                  Duration
-                </Label>
-                <Select
-                  value={String(poll.durationMinutes)}
-                  onValueChange={(v) =>
-                    setPoll({ ...poll, durationMinutes: Number(v) })
-                  }
-                >
-                  <SelectTrigger size="sm" className="h-7 min-w-0 flex-1">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {POLL_DURATION_CHOICES.map((c) => (
-                      <SelectItem key={c.minutes} value={String(c.minutes)}>
-                        {c.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center gap-2">
-                <Label
-                  htmlFor="poll-multi"
-                  className="text-xs text-muted-foreground"
-                >
-                  Multiple choice
-                </Label>
-                <Switch
-                  id="poll-multi"
-                  checked={poll.allowMultiple}
-                  onCheckedChange={(v) =>
-                    setPoll({ ...poll, allowMultiple: v })
-                  }
-                />
-              </div>
-            </div>
-          </div>
-        )}
+	const noneUploading = attachments.every((a) => a.status !== "uploading")
+	const canSubmit =
+		hasContent &&
+		POST_MAX_LEN - text.length >= 0 &&
+		noneUploading &&
+		pollValid &&
+		!loading
 
-        {attachments.length > 0 && (
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            {attachments.map((a) => (
-              <div key={a.tempId} className="flex flex-col gap-1">
-                <div className="relative aspect-square overflow-hidden rounded-md border border-border bg-muted">
-                  <img
-                    src={a.previewUrl}
-                    alt=""
-                    className="h-full w-full object-cover"
-                  />
-                  {a.status === "uploading" && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-background/50 text-xs text-muted-foreground">
-                      uploading…
-                    </div>
-                  )}
-                  {a.status === "failed" && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-destructive/20 p-2 text-center text-xs text-destructive">
-                      {a.error ?? "failed"}
-                    </div>
-                  )}
-                  <Button
-                    variant="transparent"
-                    size="md"
-                    onClick={() => removeAttachment(a.tempId)}
-                    aria-label="remove attachment"
-                  >
-                    <XIcon size={14} />
-                  </Button>
-                </div>
-                <Input
-                  value={a.altText}
-                  onChange={(e) =>
-                    setAttachments((prev) =>
-                      prev.map((x) =>
-                        x.tempId === a.tempId
-                          ? { ...x, altText: e.target.value }
-                          : x
-                      )
-                    )
-                  }
-                  disabled={a.status !== "ready"}
-                  placeholder="Alt text (screen readers)"
-                  maxLength={1000}
-                  className="h-7 text-xs disabled:opacity-50"
-                />
-              </div>
-            ))}
-          </div>
-        )}
+	const handleTextChange = useCallback(
+		(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+			setText(e.target.value)
+			if (collapsible) setExpanded(true)
+		},
+		[collapsible],
+	)
 
-        {expanded && (
-          <div className="mt-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/avif,image/gif,image/heic,image/heif"
-                multiple
-                hidden
-                onChange={(e) => {
-                  addFiles(e.target.files)
-                  e.target.value = ""
-                }}
-              />
-              <Button
-                variant="transparent"
-                size="md"
-                disabled={
-                  attachments.length >= MAX_ATTACHMENTS || Boolean(poll)
-                }
-                onClick={() => fileInputRef.current?.click()}
-                aria-label="add image"
-              >
-                <ImageIcon size={18} />
-              </Button>
-              <Button
-                variant="transparent"
-                size="md"
-                disabled={
-                  Boolean(poll) ||
-                  attachments.length > 0 ||
-                  Boolean(replyToId) ||
-                  Boolean(quoteOfId)
-                }
-                onClick={startPoll}
-                aria-label="add poll"
-                title="Add a poll"
-              >
-                <ChartBarIcon size={18} />
-              </Button>
-              {showReplyControl && (
-                <div
-                  className="flex max-w-[min(100%,12rem)] min-w-0 items-center gap-1.5"
-                  title="Who can reply"
-                >
-                  <UsersIcon className="size-3.5 shrink-0 text-muted-foreground" />
-                  <Select
-                    value={replyRestriction}
-                    onValueChange={(v) =>
-                      setReplyRestriction(
-                        v as "anyone" | "following" | "mentioned"
-                      )
-                    }
-                  >
-                    <SelectTrigger
-                      size="sm"
-                      className="h-7 min-w-0 flex-1 text-xs"
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="anyone">Everyone can reply</SelectItem>
-                      <SelectItem value="following">
-                        People you follow
-                      </SelectItem>
-                      <SelectItem value="mentioned">
-                        Only people you @mention
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              <span
-                className={`text-xs tabular-nums ${
-                  remaining < 0
-                    ? "text-destructive"
-                    : remaining < 20
-                      ? "text-foreground/80"
-                      : "text-muted-foreground"
-                }`}
-              >
-                {remaining}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button type="submit" disabled={!canSubmit} size="md">
-                {loading
-                  ? "Posting…"
-                  : replyToId
-                    ? "Reply"
-                    : quoteOfId
-                      ? "Quote"
-                      : "Post"}
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
-    </form>
-  )
+	// ── Collapsible mode: collapse on Escape when empty ───────────────
+
+	useEffect(() => {
+		if (!collapsible) return
+		function onKeyDown(e: KeyboardEvent) {
+			if (e.key !== "Escape") return
+			if (hasContent) return
+			setExpanded(false)
+			textareaRef.current?.blur()
+		}
+		window.addEventListener("keydown", onKeyDown)
+		return () => window.removeEventListener("keydown", onKeyDown)
+	}, [collapsible, hasContent])
+
+	const addFiles = useCallback(
+		async (files: FileList | ReadonlyArray<File> | null) => {
+			if (!files) return
+			const incoming = (Array.isArray(files)
+				? files
+				: Array.from(files)
+			).slice(0, MAX_ATTACHMENTS - attachments.length)
+
+			for (const file of incoming) {
+				if (!file.type.startsWith("image/")) continue
+				const tempId = createId()
+				const previewUrl = URL.createObjectURL(file)
+				setAttachments((prev) => [
+					...prev,
+					{ tempId, status: "uploading", previewUrl, altText: "" },
+				])
+				try {
+					const media = await uploadImage(file)
+					setAttachments((prev) =>
+						prev.map((a) =>
+							a.tempId === tempId
+								? { ...a, status: "ready", media }
+								: a,
+						),
+					)
+				} catch (e) {
+					setAttachments((prev) =>
+						prev.map((a) =>
+							a.tempId === tempId
+								? {
+										...a,
+										status: "failed",
+										error:
+											e instanceof Error
+												? e.message
+												: "upload failed",
+								  }
+								: a,
+						),
+					)
+				}
+			}
+		},
+		[attachments.length],
+	)
+
+	const removeAttachment = useCallback((tempId: string) => {
+		setAttachments((prev) => {
+			const removed = prev.find((a) => a.tempId === tempId)
+			if (removed) URL.revokeObjectURL(removed.previewUrl)
+			return prev.filter((a) => a.tempId !== tempId)
+		})
+	}, [])
+
+	const startPoll = useCallback(() => {
+		if (poll) return
+		setPoll({
+			options: [createPollOption(), createPollOption()],
+			durationMinutes: 60 * 24,
+			allowMultiple: false,
+		})
+	}, [poll])
+
+	const addPollOption = useCallback(() => {
+		setPoll((p) => {
+			if (!p || p.options.length >= POLL_MAX_OPTIONS) return p
+			return { ...p, options: [...p.options, createPollOption()] }
+		})
+	}, [])
+
+	const updatePollOption = useCallback((id: string, value: string) => {
+		setPoll((p) =>
+			p
+				? {
+						...p,
+						options: p.options.map((o) =>
+							o.id === id ? { ...o, value } : o,
+						),
+				  }
+				: null,
+		)
+	}, [])
+
+	const removePollOption = useCallback((id: string) => {
+		setPoll((p) => {
+			if (!p || p.options.length <= POLL_MIN_OPTIONS) return p
+			return { ...p, options: p.options.filter((o) => o.id !== id) }
+		})
+	}, [])
+
+	const handleSubmit = useCallback(
+		async (e: React.FormEvent) => {
+			e.preventDefault()
+			if (!canSubmit) return
+			setLoading(true)
+			try {
+				await Promise.all(
+					attachments
+						.filter(
+							(a) =>
+								a.status === "ready" &&
+								a.media &&
+								a.altText.trim().length > 0,
+						)
+						.map((a) =>
+							setAltText(a.media!.id, a.altText).catch(() => {}),
+						),
+				)
+
+				const pollPayload: PollInput | undefined = poll
+					? {
+							options: poll.options
+								.map((o) => o.value.trim())
+								.filter((o) => o.length > 0),
+							durationMinutes: poll.durationMinutes,
+							allowMultiple: poll.allowMultiple,
+					  }
+					: undefined
+
+				const { post } = await api.createPost({
+					text: text.trim(),
+					replyToId,
+					quoteOfId,
+					mediaIds:
+						readyMediaIds.length > 0 ? readyMediaIds : undefined,
+					poll: pollPayload,
+					replyRestriction: showReplyControl
+						? replyRestriction
+						: undefined,
+				})
+
+				setText("")
+				clearDraft(dKey)
+				attachments.forEach((a) => URL.revokeObjectURL(a.previewUrl))
+				setAttachments([])
+				setPoll(null)
+				if (collapsible) setExpanded(false)
+				onCreated?.(post)
+			} catch (err) {
+				toast.error(
+					err instanceof Error ? err.message : "failed to post",
+				)
+			} finally {
+				setLoading(false)
+			}
+		},
+		[
+			canSubmit,
+			attachments,
+			poll,
+			text,
+			replyToId,
+			quoteOfId,
+			readyMediaIds,
+			showReplyControl,
+			replyRestriction,
+			dKey,
+			collapsible,
+			onCreated,
+		],
+	)
+
+	const handleKeyDown = useCallback(
+		(e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+			if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+				e.preventDefault()
+				if (canSubmit) {
+					const fakeEvent = new Event("submit", {
+						bubbles: true,
+					}) as unknown as React.FormEvent
+					handleSubmit(fakeEvent)
+				}
+			}
+		},
+		[canSubmit, handleSubmit],
+	)
+
+	const handleDragOver = useCallback(
+		(e: React.DragEvent) => {
+			if (attachments.length >= MAX_ATTACHMENTS) return
+			e.preventDefault()
+		},
+		[attachments.length],
+	)
+
+	const handleDrop = useCallback(
+		(e: React.DragEvent) => {
+			e.preventDefault()
+			addFiles(e.dataTransfer.files)
+		},
+		[addFiles],
+	)
+
+	const handlePaste = useCallback(
+		(e: React.ClipboardEvent) => {
+			if (attachments.length >= MAX_ATTACHMENTS) return
+			const files = getPastedImageFiles(e)
+			if (files.length === 0) return
+			e.preventDefault()
+			void addFiles(files)
+		},
+		[attachments.length, addFiles],
+	)
+
+	// ── Render ─────────────────────────────────────────────────────────
+
+	const currentReply = REPLY_OPTIONS.find(
+		(o) => o.value === replyRestriction,
+	)!
+	const ReplyIcon = currentReply.icon
+
+	function buttonLabel(): string {
+		if (loading) return "Posting…"
+		if (replyToId) return "Reply"
+		if (quoteOfId) return "Quote"
+		return "Post"
+	}
+
+	return (
+		<form
+			onSubmit={handleSubmit}
+			onDragOver={handleDragOver}
+			onDrop={handleDrop}
+			className="flex gap-3 px-4 py-3"
+		>
+			{/* Avatar */}
+			<div className="shrink-0">
+				<Avatar
+					initial={
+						(me?.displayName ?? me?.handle ?? "·")
+							.slice(0, 1)
+							.toUpperCase() || "·"
+					}
+					src={me?.avatarUrl}
+					size="lg"
+				/>
+			</div>
+
+			{/* Content */}
+			<div className="min-w-0 flex-1">
+				{/* Textarea */}
+				<textarea
+					ref={textareaRef}
+					value={text}
+					onChange={handleTextChange}
+					onKeyDown={handleKeyDown}
+					onFocus={() => {
+						if (collapsible) setExpanded(true)
+					}}
+					onPaste={handlePaste}
+					placeholder={placeholder}
+					rows={expanded ? 2 : 1}
+					maxLength={POST_MAX_LEN * 2}
+					className={cn(
+						"w-full resize-none bg-transparent pt-2 text-[15px] leading-relaxed text-primary outline-none placeholder:text-tertiary",
+						!expanded && "h-[24px]",
+					)}
+				/>
+
+				{/* Quoted post preview */}
+				{quoted && (
+					<div className="mt-2 rounded-xl border border-neutral p-3 text-sm">
+						<div className="flex items-center gap-2 text-xs text-tertiary">
+							<span className="font-medium text-primary">
+								{quoted.author.displayName ??
+									`@${quoted.author.handle ?? "unknown"}`}
+							</span>
+							{quoted.author.handle && (
+								<span>@{quoted.author.handle}</span>
+							)}
+						</div>
+						<p className="mt-1 line-clamp-3 whitespace-pre-wrap text-primary">
+							{quoted.text}
+						</p>
+					</div>
+				)}
+
+				{/* Poll */}
+				{poll && (
+					<div className="mt-3 flex flex-col gap-2 rounded-xl border border-neutral p-3">
+						<div className="flex items-center justify-between">
+							<span className="text-xs font-medium text-tertiary">
+								Poll
+							</span>
+							<Button
+								type="button"
+								variant="transparent"
+								size="sm"
+								onClick={() => setPoll(null)}
+								className="text-xs text-tertiary"
+							>
+								Remove
+							</Button>
+						</div>
+						{poll.options.map((opt, idx) => (
+							<div key={opt.id} className="flex items-center gap-2">
+								<Input
+									value={opt.value}
+									onChange={(e) =>
+										updatePollOption(opt.id, e.target.value)
+									}
+									placeholder={`Choice ${idx + 1}`}
+									maxLength={POLL_OPTION_MAX_LEN}
+									className="flex-1"
+								/>
+								{poll.options.length > POLL_MIN_OPTIONS && (
+									<Button
+										type="button"
+										variant="transparent"
+										size="sm"
+										onClick={() => removePollOption(opt.id)}
+										aria-label="Remove choice"
+										iconLeft={<XMarkIcon className="size-4" />}
+									/>
+								)}
+							</div>
+						))}
+						{poll.options.length < POLL_MAX_OPTIONS && (
+							<Button
+								type="button"
+								variant="transparent"
+								size="sm"
+								onClick={addPollOption}
+								className="w-fit text-xs"
+							>
+								Add choice
+							</Button>
+						)}
+						<div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-center sm:justify-between">
+							<div className="flex min-w-0 flex-1 items-center gap-2">
+								<Label className="shrink-0 text-xs text-tertiary">
+									Duration
+								</Label>
+								<Select
+									value={String(poll.durationMinutes)}
+									onValueChange={(v) =>
+										setPoll((p) =>
+											p
+												? {
+														...p,
+														durationMinutes: Number(v),
+												  }
+												: null,
+										)
+									}
+								>
+									<SelectTrigger size="sm" className="h-8 flex-1" />
+									<SelectContent>
+										{POLL_DURATION_CHOICES.map((c) => (
+											<SelectItem
+												key={c.minutes}
+												value={String(c.minutes)}
+											>
+												{c.label}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
+							<div className="flex items-center gap-2">
+								<Switch
+									checked={poll.allowMultiple}
+									onCheckedChange={(v) =>
+										setPoll((p) =>
+											p ? { ...p, allowMultiple: v } : null,
+										)
+									}
+								/>
+								<Label className="text-xs text-tertiary">
+									Multiple choice
+								</Label>
+							</div>
+						</div>
+					</div>
+				)}
+
+				{/* Attachments */}
+				{attachments.length > 0 && (
+					<div className="mt-2 grid grid-cols-2 gap-2">
+						{attachments.map((a, i) => (
+							<div key={a.tempId} className="flex flex-col gap-1">
+								<div className="relative aspect-square overflow-hidden rounded-xl border border-neutral bg-base-2">
+									<img
+										src={a.previewUrl}
+										alt=""
+										className="h-full w-full object-cover"
+									/>
+									{a.status === "uploading" && (
+										<div className="absolute inset-0 flex items-center justify-center bg-base-1/50 text-xs text-secondary">
+											uploading…
+										</div>
+									)}
+									{a.status === "failed" && (
+										<div className="absolute inset-0 flex items-center justify-center bg-danger-subtle/50 p-2 text-center text-xs text-danger">
+											{a.error ?? "failed"}
+										</div>
+									)}
+									<button
+										type="button"
+										onClick={() => removeAttachment(a.tempId)}
+										className="absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-full bg-base-1/80 text-primary backdrop-blur-sm transition-colors hover:bg-base-1"
+									>
+										<XMarkIcon className="size-3.5" />
+									</button>
+								</div>
+								{i === 0 && (
+									<Input
+										value={a.altText}
+										onChange={(e) =>
+											setAttachments((prev) =>
+												prev.map((x) =>
+													x.tempId === a.tempId
+														? {
+																...x,
+																altText: e.target
+																	.value,
+														  }
+														: x,
+												),
+											)
+										}
+										disabled={a.status !== "ready"}
+										placeholder="Alt text"
+										maxLength={1000}
+										className="text-xs"
+									/>
+								)}
+							</div>
+						))}
+					</div>
+				)}
+
+				{/* Action bar */}
+				<div
+					className={cn(
+						"grid transition-[grid-template-rows] duration-200 ease-out-expo",
+						expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+					)}
+				>
+					<div className="min-h-0">
+						<div
+							className={cn(
+								"mt-3 flex items-center justify-between origin-top transition-all duration-200 ease-out-expo",
+								expanded
+									? "opacity-100 scale-100 translate-y-0"
+									: "opacity-0 scale-95 -translate-y-1",
+							)}
+						>
+							<div className="flex items-center gap-1">
+							{/* Hidden file input */}
+							<input
+								ref={fileInputRef}
+								type="file"
+								accept="image/*"
+								multiple
+								hidden
+								onChange={(e) => {
+									addFiles(e.target.files)
+									e.currentTarget.value = ""
+								}}
+							/>
+
+							{/* Photo button */}
+							<Button
+								type="button"
+								variant="transparent"
+								size="sm"
+								disabled={
+									attachments.length >= MAX_ATTACHMENTS ||
+									Boolean(poll)
+								}
+								onClick={() => fileInputRef.current?.click()}
+								aria-label="Add image"
+								iconLeft={<PhotoIcon className="size-4" />}
+							/>
+
+							{/* Poll button */}
+							<Button
+								type="button"
+								variant="transparent"
+								size="sm"
+								disabled={
+									Boolean(poll) ||
+									attachments.length > 0 ||
+									Boolean(replyToId) ||
+									Boolean(quoteOfId)
+								}
+								onClick={startPoll}
+								aria-label="Add poll"
+								iconLeft={<ChartBarIcon className="size-4" />}
+							/>
+
+							{/* Reply restriction */}
+							{showReplyControl && (
+								<DropdownMenu.Root>
+									<DropdownMenu.Trigger
+										render={
+											<Button
+												type="button"
+												variant="transparent"
+												size="sm"
+												iconLeft={
+													<ReplyIcon className="size-4" />
+												}
+											>
+												{currentReply.label}
+											</Button>
+										}
+									/>
+									<DropdownMenu.Content align="start" sideOffset={4}>
+										{REPLY_OPTIONS.map((opt) => {
+											const Icon = opt.icon
+											return (
+												<DropdownMenu.Item
+													key={opt.value}
+													onClick={() =>
+														setReplyRestriction(opt.value)
+													}
+													icon={
+														<Icon className="size-4" />
+													}
+												>
+													{opt.label}
+												</DropdownMenu.Item>
+											)
+										})}
+									</DropdownMenu.Content>
+								</DropdownMenu.Root>
+							)}
+
+							{/* Character ring */}
+							<div className="ml-2">
+								<CharacterRing used={text.length} max={POST_MAX_LEN} />
+							</div>
+							</div>
+
+							{/* Post button */}
+							<Button
+								type="submit"
+								variant="primary"
+								size="sm"
+								disabled={!canSubmit}
+								className="rounded-full px-4"
+							>
+								{buttonLabel()}
+							</Button>
+						</div>
+					</div>
+				</div>
+		</div>
+	</form>
+)
 }

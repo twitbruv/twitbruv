@@ -1,7 +1,8 @@
+import { useState } from "react"
 import { useRouter } from "@tanstack/react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
-	Dialog,
+	Dialog as DialogRoot,
 	DialogContent,
 	DialogDescription,
 	DialogFooter,
@@ -13,22 +14,31 @@ import { authClient } from "../lib/auth"
 import { api } from "../lib/api"
 import { AppSidebar } from "./app-sidebar"
 import { LightboxProvider } from "./lightbox-provider"
+import { ComposeModal } from "./compose-modal"
 import type { ReactNode } from "react"
 
 export function AppShell({ children }: { children: ReactNode }) {
 	const { data: session } = authClient.useSession()
 	const authed = Boolean(session)
+	const [composeOpen, setComposeOpen] = useState(false)
 
 	return (
 		<LightboxProvider>
 			{authed && <ChessChallengePoller enabled />}
+			{authed && (
+				<ComposeModal
+					open={composeOpen}
+					onOpenChange={setComposeOpen}
+					onCreated={() => setComposeOpen(false)}
+				/>
+			)}
 
 			{/* Fixed sidebar - never scrolls, always visible at left edge of centered layout */}
 			<div
 				className="fixed top-0 z-40 h-svh w-[68px] xl:w-[240px]"
 				style={{ left: "max(0px, calc((100vw - 1080px) / 2))" }}
 			>
-				<AppSidebar onCompose={() => {}} />
+				<AppSidebar onCompose={() => setComposeOpen(true)} />
 			</div>
 
 			{/* Main content - scrolls with body, scrollbar hugs right edge of viewport */}
@@ -74,7 +84,7 @@ function ChessChallengePoller({ enabled }: { enabled: boolean }) {
 	const pendingGame = data?.games[0]
 
 	return (
-		<Dialog open={!!pendingGame}>
+		<DialogRoot open={!!pendingGame}>
 			<DialogContent showCloseButton={false}>
 				<DialogHeader>
 					<DialogTitle>Chess Challenge!</DialogTitle>
@@ -103,6 +113,6 @@ function ChessChallengePoller({ enabled }: { enabled: boolean }) {
 					</Button>
 				</DialogFooter>
 			</DialogContent>
-		</Dialog>
+		</DialogRoot>
 	)
 }
