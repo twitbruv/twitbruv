@@ -163,6 +163,9 @@ const envSchema = z.object({
   // Hard ceiling on the ranker call. The product budget is roughly p95 < 120ms; we kill the
   // request past that and fall back rather than letting a slow ranker drag the API timeline.
   FEED_RANKER_TIMEOUT_MS: z.coerce.number().int().min(20).max(2000).default(120),
+}).refine((env) => Boolean(env.FEED_RANKER_URL) === Boolean(env.FEED_RANKER_TOKEN), {
+  message: "FEED_RANKER_URL and FEED_RANKER_TOKEN must be provided together",
+  path: ["FEED_RANKER_URL"],
 })
 
 export type Env = z.infer<typeof envSchema>

@@ -16,7 +16,7 @@ import {
   type ForYouRankRequest,
 } from '@workspace/types'
 import { requireHandle, type HonoEnv } from '../middleware/session.ts'
-import { toPostDto } from '../lib/post-dto.ts'
+import { toPostDto, type PostDto } from '../lib/post-dto.ts'
 import { loadViewerFlags } from '../lib/viewer-flags.ts'
 import { loadPostMedia } from '../lib/post-media.ts'
 import { loadArticleCards } from '../lib/article-cards.ts'
@@ -515,7 +515,7 @@ feedRoute.get('/for-you', requireHandle(), async (c) => {
 })
 
 interface ForYouFeedResponse {
-  posts: unknown[]
+  posts: PostDto[]
   nextCursor: string | null
   algoVersion: string
   variant: string
