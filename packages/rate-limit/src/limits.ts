@@ -85,7 +85,8 @@ export const BUCKETS = {
     { windowMs: HOUR, max: 60 },
   ],
   // Verification email resend — prevents using our SMTP relay to bomb a target inbox.
-  'auth.email-verify-resend': [{ windowMs: HOUR, max: 5 }],
+  // 90s spacing between sends; the verify-email screen mirrors the same countdown client-side.
+  'auth.email-verify-resend': [{ windowMs: 90 * 1000, max: 1 }],
   // OAuth callback — IP-keyed cap against bot-driven account creation via OAuth providers.
   'auth.oauth-callback': [{ windowMs: MIN, max: 60 }],
   // Handle claim — irreversible. Tight cap to make handle-squatting scripts expensive.

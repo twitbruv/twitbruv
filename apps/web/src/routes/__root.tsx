@@ -12,6 +12,7 @@ import { Toaster } from "sonner"
 import appCss from "@workspace/ui/globals.css?url"
 import { Button } from "@workspace/ui/components/button"
 import { AppShell } from "../components/app-shell"
+import { EmailVerifiedGate } from "../components/email-verified-gate"
 import { MaintenanceScreen } from "../components/maintenance-screen"
 import { NotFoundPanel } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
@@ -88,9 +89,11 @@ function RootComponent() {
         <MaintenanceGate>
           <QueryProvider>
             <MeProvider>
-              <AppShell>
-                <Outlet />
-              </AppShell>
+              <EmailVerifiedGate>
+                <AppShell>
+                  <Outlet />
+                </AppShell>
+              </EmailVerifiedGate>
               <ThemedToaster />
               {DATABUDDY_CLIENT_ID ? (
                 <Databuddy

@@ -45,6 +45,7 @@ function SignUp() {
         email,
         password,
         name: displayName || handle,
+        callbackURL: `${window.location.origin}/?verified=1`,
       })
       if (err) throw new Error(err.message ?? "Sign up failed")
       await api.claimHandle(handle).catch(() => {})

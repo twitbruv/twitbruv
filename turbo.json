@@ -16,6 +16,9 @@
     "format": {
       "dependsOn": ["^format"]
     },
+    "format:check": {
+      "dependsOn": ["^format:check"]
+    },
     "typecheck": {
       "dependsOn": ["^typecheck"]
     },

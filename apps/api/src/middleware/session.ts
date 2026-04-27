@@ -56,11 +56,11 @@ export function requireAuth(): MiddlewareHandler<HonoEnv> {
   }
 }
 
-// Stricter than requireAuth — also runs an authoritative ban/soft-delete check against the DB
-// and refuses to let the request proceed unless the user has claimed a handle. Used on every
-// route where a logged-in user is "doing something" on the platform; only /api/me and the
-// handle-claim endpoint should fall back to plain requireAuth so a handleless user can still
-// read their own state and claim a handle.
+// Stricter than requireAuth — also runs an authoritative ban/soft-delete/email-verified check
+// against the DB and refuses to let the request proceed unless the user has claimed a handle.
+// Used on every route where a logged-in user is "doing something" on the platform; only /api/me
+// and the handle-claim endpoint should fall back to plain requireAuth so a handleless or
+// unverified user can still read their own state, verify their email, and claim a handle.
 export function requireHandle(): MiddlewareHandler<HonoEnv> {
   return async (c, next) => {
     const session = c.get('session')
@@ -71,11 +71,13 @@ export function requireHandle(): MiddlewareHandler<HonoEnv> {
         banned: schema.users.banned,
         deletedAt: schema.users.deletedAt,
         handle: schema.users.handle,
+        emailVerified: schema.users.emailVerified,
       })
       .from(schema.users)
       .where(eq(schema.users.id, session.user.id))
       .limit(1)
     if (!user || user.banned || user.deletedAt) return c.json({ error: 'banned' }, 403)
+    if (!user.emailVerified) return c.json({ error: 'email_not_verified' }, 403)
     if (!user.handle) return c.json({ error: 'handle_required' }, 403)
     await next()
   }
@@ -95,11 +97,13 @@ export function requireRole(...roles: Array<Role>): MiddlewareHandler<HonoEnv> {
         banned: schema.users.banned,
         deletedAt: schema.users.deletedAt,
         handle: schema.users.handle,
+        emailVerified: schema.users.emailVerified,
       })
       .from(schema.users)
       .where(eq(schema.users.id, session.user.id))
       .limit(1)
     if (!row || row.banned || row.deletedAt) return c.json({ error: 'banned' }, 403)
+    if (!row.emailVerified) return c.json({ error: 'email_not_verified' }, 403)
     if (!row.handle) return c.json({ error: 'handle_required' }, 403)
     const role = (row.role ?? 'user') as Role
     if (!roles.includes(role)) return c.json({ error: 'forbidden' }, 403)

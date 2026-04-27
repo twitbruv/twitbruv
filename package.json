@@ -8,6 +8,7 @@
     "lint": "turbo lint",
     "lint:fix": "turbo lint:fix",
     "format": "turbo format",
+    "format:check": "turbo format:check",
     "typecheck": "turbo typecheck",
     "db:push": "bun --env-file=../../.env run --cwd packages/db push",
     "db:studio": "bun --env-file=../../.env run --cwd packages/db studio",
