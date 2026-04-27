@@ -46,7 +46,7 @@
       },
     },
     "apps/playground": {
-      "name": "@workspace/playground",
+      "name": "playground",
       "version": "0.0.0",
       "dependencies": {
         "@workspace/ui": "workspace:*",
@@ -1546,8 +1546,6 @@
 
     "@workspace/media": ["@workspace/media@workspace:packages/media"],
 
-    "@workspace/playground": ["@workspace/playground@workspace:apps/playground"],
-
     "@workspace/rate-limit": ["@workspace/rate-limit@workspace:packages/rate-limit"],
 
     "@workspace/types": ["@workspace/types@workspace:packages/types"],
@@ -2531,6 +2529,8 @@
     "pino-std-serializers": ["pino-std-serializers@7.1.0", "", {}, "sha512-BndPH67/JxGExRgiX1dX0w1FvZck5Wa4aal9198SrRhZjH3GxKQUKIBnYJTdj2HDN3UQAS06HlfcSbQj2OHmaw=="],
 
     "pkg-types": ["pkg-types@2.3.0", "", { "dependencies": { "confbox": "^0.2.2", "exsolve": "^1.0.7", "pathe": "^2.0.3" } }, "sha512-SIqCzDRg0s9npO5XQ3tNZioRY1uK06lA41ynBC1YmFTmnY6FjUjVt6s4LoADmwoig1qqD0oK8h1p/8mlMx8Oig=="],
+
+    "playground": ["playground@workspace:apps/playground"],
 
     "postal-mime": ["postal-mime@2.7.4", "", {}, "sha512-0WdnFQYUrPGGTFu1uOqD2s7omwua8xaeYGdO6rb88oD5yJ/4pPHDA4sdWqfD8wQVfCny563n/HQS7zTFft+f/g=="],
 
