@@ -1,10 +1,12 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
+import { useCallback, useDeferredValue, useMemo, useState } from "react"
 import { XMarkIcon } from "@heroicons/react/24/solid"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import { api } from "../lib/api"
+import { qk } from "../lib/query-keys"
 import { Avatar } from "../components/avatar"
 import { usePageHeader } from "../components/app-page-header"
 import { PageError } from "../components/page-surface"
@@ -19,38 +21,28 @@ export const Route = createFileRoute("/inbox/new")({
 function NewConversation() {
   const router = useRouter()
   const [q, setQ] = useState("")
-  const [results, setResults] = useState<Array<PublicUser>>([])
-  const [searching, setSearching] = useState(false)
   const [selected, setSelected] = useState<Array<PublicUser>>([])
   const [title, setTitle] = useState("")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (q.trim().length < 2) {
-      setResults([])
-      return
-    }
-    setSearching(true)
-    const t = setTimeout(async () => {
-      try {
-        const { users } = await api.search(q.trim())
-        setResults(users.filter((u) => !selected.some((s) => s.id === u.id)))
-      } catch {
-        setResults([])
-      } finally {
-        setSearching(false)
-      }
-    }, 200)
-    return () => clearTimeout(t)
-  }, [q, selected])
+  const deferredQ = useDeferredValue(q.trim())
+  const { data: searchResult, isFetching: searching } = useQuery({
+    queryKey: qk.search(deferredQ),
+    queryFn: () => api.search(deferredQ),
+    enabled: deferredQ.length >= 2,
+  })
+
+  const results = useMemo(() => {
+    const raw = searchResult?.users ?? []
+    return raw.filter((u) => !selected.some((s) => s.id === u.id))
+  }, [searchResult?.users, selected])
 
   function add(u: PublicUser) {
     setSelected((prev) =>
       prev.some((s) => s.id === u.id) ? prev : [...prev, u]
     )
     setQ("")
-    setResults([])
   }
 
   function remove(id: string) {

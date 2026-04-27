@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router"
+import { useQuery } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import {
   BookmarkIcon,
@@ -11,8 +12,9 @@ import {
   UserGroupIcon,
 } from "@heroicons/react/24/solid"
 import { api } from "../lib/api"
+import { qk } from "../lib/query-keys"
 import { PageError } from "../components/page-surface"
-import type { AdminOnline, AdminStats } from "../lib/api"
+import type { AdminOnline } from "../lib/api"
 
 type Icon = React.ComponentType<{ className?: string }>
 
@@ -264,63 +266,42 @@ function OnlineNow({ online }: { online: AdminOnline | null }) {
 }
 
 function AdminStatsPage() {
-  const [stats, setStats] = useState<AdminStats | null>(null)
-  const [online, setOnline] = useState<AdminOnline | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [visible, setVisible] = useState(
+    () =>
+      typeof document !== "undefined" &&
+      document.visibilityState === "visible"
+  )
 
   useEffect(() => {
-    let cancelled = false
-    api
-      .adminStats()
-      .then((res) => {
-        if (!cancelled) setStats(res)
-      })
-      .catch((e) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : "failed")
-      })
-    return () => {
-      cancelled = true
-    }
+    const fn = () => setVisible(document.visibilityState === "visible")
+    fn()
+    document.addEventListener("visibilitychange", fn)
+    return () => document.removeEventListener("visibilitychange", fn)
   }, [])
 
-  // Live online users. Polled only while the admin tab is visible — a tab opened in the
-  // background never fires a visibilitychange until shown, so we have to gate the initial
-  // tick on visibility too, otherwise a backgrounded admin tab would poll indefinitely.
-  useEffect(() => {
-    let cancelled = false
-    const tick = () => {
-      api
-        .adminOnline()
-        .then((res) => {
-          if (!cancelled) setOnline(res)
-        })
-        .catch(() => {
-          // transient — leave the previous count in place rather than blanking the card
-        })
-    }
-    let timer: ReturnType<typeof setInterval> | null = null
-    const start = () => {
-      if (timer) return
-      tick()
-      timer = setInterval(tick, ONLINE_POLL_MS)
-    }
-    const stop = () => {
-      if (!timer) return
-      clearInterval(timer)
-      timer = null
-    }
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") start()
-      else stop()
-    }
-    onVisibility()
-    document.addEventListener("visibilitychange", onVisibility)
-    return () => {
-      cancelled = true
-      stop()
-      document.removeEventListener("visibilitychange", onVisibility)
-    }
-  }, [])
+  const {
+    data: stats,
+    error: statsError,
+  } = useQuery({
+    queryKey: qk.admin.stats(),
+    queryFn: () => api.adminStats(),
+    staleTime: 60_000,
+  })
+
+  const { data: online } = useQuery({
+    queryKey: qk.admin.online(),
+    queryFn: () => api.adminOnline(),
+    enabled: visible,
+    refetchInterval: visible ? ONLINE_POLL_MS : false,
+    staleTime: 0,
+  })
+
+  const error =
+    statsError instanceof Error
+      ? statsError.message
+      : statsError
+        ? "failed"
+        : null
 
   if (error) {
     return (
@@ -333,7 +314,7 @@ function AdminStatsPage() {
   return (
     <main className="flex min-h-0 flex-1 flex-col overflow-auto overscroll-contain">
       <div className="space-y-4 bg-gradient-to-b from-base-2/30 via-base-1 to-base-1 p-4">
-        <OnlineNow online={online} />
+        <OnlineNow online={online ?? null} />
 
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
           <HeroCard

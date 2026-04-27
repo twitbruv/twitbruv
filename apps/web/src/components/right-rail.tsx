@@ -1,35 +1,25 @@
 import { Link } from "@tanstack/react-router"
-import { useEffect, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { APP_NAME } from "../lib/env"
 import { api } from "../lib/api"
+import { qk } from "../lib/query-keys"
 
 export function RightRail() {
-  const [trending, setTrending] = useState<Array<{
-    tag: string
-    postCount: number
-  }> | null>(null)
-
-  useEffect(() => {
-    let cancel = false
-    api
-      .trendingHashtags()
-      .then(({ hashtags }) => {
-        if (!cancel) setTrending(hashtags)
-      })
-      .catch(() => {
-        if (!cancel) setTrending([])
-      })
-    return () => {
-      cancel = true
-    }
-  }, [])
+  const { data: trending = [], isPending } = useQuery({
+    queryKey: qk.trending(),
+    queryFn: async () => {
+      const { hashtags } = await api.trendingHashtags()
+      return hashtags
+    },
+    staleTime: 5 * 60_000,
+  })
 
   return (
     <aside className="hidden w-[320px] shrink-0 xl:block">
       <div className="sticky top-14 space-y-4 px-4 py-4">
         <section className="rounded-xl border border-border bg-card/40 p-4">
           <h2 className="text-sm font-semibold">Trending</h2>
-          {trending === null ? (
+          {isPending ? (
             <p className="mt-1 text-xs text-muted-foreground">loading…</p>
           ) : trending.length === 0 ? (
             <p className="mt-1 text-xs text-muted-foreground">

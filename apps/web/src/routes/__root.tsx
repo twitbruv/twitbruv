@@ -3,8 +3,10 @@ import {
   Link,
   Outlet,
   Scripts,
-  createRootRoute,
+  createRootRouteWithContext,
 } from "@tanstack/react-router"
+import { QueryClientProvider } from "@tanstack/react-query"
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools"
 import { Databuddy } from "@databuddy/sdk/react"
 import { DatabuddyDevtools } from "@databuddy/devtools/react"
 import { Toaster } from "sonner"
@@ -19,13 +21,14 @@ import { ThemeProvider, themeBootstrapScript, useTheme } from "../lib/theme"
 import { APP_NAME, DATABUDDY_CLIENT_ID } from "../lib/env"
 import { useMaintenance } from "../lib/maintenance"
 import { MeProvider } from "../lib/me"
-import { QueryProvider } from "../lib/query"
+import { queryClient } from "../lib/query-client"
+import type { RouterAppContext } from "../lib/router-context"
 import { buildSeoMeta } from "../lib/seo"
-import { getServerAuthState } from "../lib/auth.server"
+import { getServerAuthState } from "../lib/auth-fns"
 
 const DESCRIPTION = `${APP_NAME} — open-source, free-for-everyone social platform. No AI ranking, no paywalls, no ads.`
 
-export const Route = createRootRoute({
+export const Route = createRootRouteWithContext<RouterAppContext>()({
   loader: () => getServerAuthState(),
   head: () => ({
     meta: [
@@ -89,7 +92,7 @@ function RootComponent() {
   return (
     <ThemeProvider>
       <MaintenanceGate>
-        <QueryProvider>
+        <QueryClientProvider client={queryClient}>
           <MeProvider initialMe={initialMe}>
             <EmailVerifiedGate>
               <AppShell>
@@ -112,7 +115,10 @@ function RootComponent() {
             ) : null}
             <DatabuddyDevtools enabled={import.meta.env.DEV} />
           </MeProvider>
-        </QueryProvider>
+          {import.meta.env.DEV ? (
+            <ReactQueryDevtools buttonPosition="bottom-left" />
+          ) : null}
+        </QueryClientProvider>
       </MaintenanceGate>
     </ThemeProvider>
   )

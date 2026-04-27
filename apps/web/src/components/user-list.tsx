@@ -1,6 +1,8 @@
 import { Link } from "@tanstack/react-router"
+import { useInfiniteQuery } from "@tanstack/react-query"
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { useWindowVirtualizer } from "@tanstack/react-virtual"
+import type { InfiniteData } from "@tanstack/react-query"
 import { useInfiniteScrollSentinel } from "../lib/use-infinite-scroll-sentinel"
 import { VerifiedBadge } from "./verified-badge"
 import type { PublicUser, UserListPage } from "../lib/api"
@@ -10,7 +12,6 @@ const useIsoLayoutEffect =
 
 const ESTIMATED_ROW_HEIGHT = 76
 const ESTIMATED_BIO_BUMP = 32
-const LOAD_MORE_BACKOFF_MS = 3000
 
 function estimateRowHeight(user: PublicUser | undefined): number {
   if (!user) return ESTIMATED_ROW_HEIGHT
@@ -20,88 +21,39 @@ function estimateRowHeight(user: PublicUser | undefined): number {
 }
 
 export function UserList({
+  queryKey,
   load,
   emptyMessage = "No users yet.",
 }: {
+  queryKey: readonly unknown[]
   load: (cursor?: string) => Promise<UserListPage>
   emptyMessage?: string
 }) {
-  const [users, setUsers] = useState<Array<PublicUser>>([])
-  const [cursor, setCursor] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [loadingMore, setLoadingMore] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const {
+    data,
+    error,
+    isPending,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery<
+    UserListPage,
+    Error,
+    InfiniteData<UserListPage, string | undefined>,
+    readonly unknown[],
+    string | undefined
+  >({
+    queryKey,
+    queryFn: ({ pageParam }) => load(pageParam),
+    initialPageParam: undefined,
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
+  })
 
-  // Bumped on every source change so stale fetches (initial load or
-  // pagination) are discarded if `load` swapped while they were in flight.
-  const requestIdRef = useRef(0)
+  const users = useMemo(
+    () => data?.pages.flatMap((p) => p.users) ?? [],
+    [data]
+  )
 
-  useEffect(() => {
-    const requestId = ++requestIdRef.current
-    setUsers([])
-    setCursor(null)
-    setError(null)
-    setLoading(true)
-    setLoadingMore(false)
-    load()
-      .then((page) => {
-        if (requestId !== requestIdRef.current) return
-        setUsers(page.users)
-        setCursor(page.nextCursor)
-      })
-      .catch((e) => {
-        if (requestId !== requestIdRef.current) return
-        setError(e instanceof Error ? e.message : "failed to load")
-      })
-      .finally(() => {
-        if (requestId !== requestIdRef.current) return
-        setLoading(false)
-      })
-  }, [load])
-
-  const cursorRef = useRef(cursor)
-  cursorRef.current = cursor
-  const usersRef = useRef(users)
-  usersRef.current = users
-
-  async function loadMore() {
-    const next = cursorRef.current
-    if (!next || loadingMore) return
-    const requestId = requestIdRef.current
-    setLoadingMore(true)
-    try {
-      const page = await load(next)
-      if (requestId !== requestIdRef.current) return
-      setUsers((prev) => {
-        const seen = new Set(prev.map((u) => u.id))
-        const fresh = page.users.filter((u) => !seen.has(u.id))
-        return [...prev, ...fresh]
-      })
-      setCursor(page.nextCursor)
-    } catch (e) {
-      if (requestId !== requestIdRef.current) return
-      // Only surface the full-page error when the initial load left us
-      // empty; otherwise the populated list shouldn't be replaced.
-      if (usersRef.current.length === 0) {
-        setError(e instanceof Error ? e.message : "failed to load")
-      }
-      // Hold loadingMore high through a backoff window. The sentinel
-      // observer is torn down while loading is true and re-attached when
-      // it flips false; without this delay it would re-fire its initial
-      // intersection callback immediately and busy-loop the API on a
-      // persistent failure.
-      await new Promise((resolve) => setTimeout(resolve, LOAD_MORE_BACKOFF_MS))
-    } finally {
-      if (requestId === requestIdRef.current) {
-        setLoadingMore(false)
-      }
-    }
-  }
-
-  // Some users in a page can have `handle: null` (registered but never
-  // claimed). The link-row renderer skips them, which would leave empty
-  // reserved space in the virtualizer — pre-filter so the virtualizer
-  // only allocates rows it can actually render.
   const visibleUsers = useMemo(
     () => users.filter((u): u is PublicUser & { handle: string } => !!u.handle),
     [users]
@@ -126,14 +78,21 @@ export function UserList({
     getItemKey: (i) => visibleUsers[i].id,
   })
 
-  useInfiniteScrollSentinel(sentinelRef, !!cursor, loadingMore, loadMore)
+  useInfiniteScrollSentinel(
+    sentinelRef,
+    !!hasNextPage,
+    isFetchingNextPage,
+    () => fetchNextPage()
+  )
 
-  if (loading)
+  if (isPending)
     return (
       <div className="px-4 py-6 text-sm text-muted-foreground">loading…</div>
     )
   if (error)
-    return <div className="px-4 py-6 text-sm text-destructive">{error}</div>
+    return (
+      <div className="px-4 py-6 text-sm text-destructive">{error.message}</div>
+    )
   if (visibleUsers.length === 0)
     return (
       <div className="px-4 py-6 text-sm text-muted-foreground">
@@ -192,9 +151,9 @@ export function UserList({
         })}
       </div>
       <div ref={sentinelRef} aria-hidden className="h-px" />
-      {cursor && (
+      {hasNextPage && (
         <div className="flex justify-center py-4 text-xs text-muted-foreground">
-          {loadingMore ? "loading…" : ""}
+          {isFetchingNextPage ? "loading…" : ""}
         </div>
       )}
     </div>

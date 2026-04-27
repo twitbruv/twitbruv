@@ -1,25 +1,30 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { ArrowLeftIcon } from "@heroicons/react/24/solid"
 import { Button } from "@workspace/ui/components/button"
 import { ApiError, api } from "../lib/api"
 import { APP_NAME } from "../lib/env"
+import { qk } from "../lib/query-keys"
+import type { RouterAppContext } from "../lib/router-context"
 import { buildSeoMeta, canonicalLink, clipDescription } from "../lib/seo"
 import { Compose } from "../components/compose"
 import { FeedPostCard } from "../components/feed-post-card"
 import { PageError } from "../components/page-surface"
 import type { Post, Thread } from "../lib/api"
 
-// ───────────────────────────────────────────────────────────────────────────
-// Route definition (SEO loader + head)
-// ───────────────────────────────────────────────────────────────────────────
-
 export const Route = createFileRoute("/$handle/p/$id")({
 	component: ThreadView,
-	loader: async ({ params }) => {
+	loader: async ({ params, context }) => {
+		const ctx = context as RouterAppContext
 		try {
-			const { post } = await api.post(params.id)
-			return { post }
+			const postResult = await api.post(params.id)
+			ctx.queryClient.setQueryData(qk.post(params.id), postResult)
+			await ctx.queryClient.ensureQueryData({
+				queryKey: qk.thread(params.id),
+				queryFn: () => api.thread(params.id),
+			})
+			return { post: postResult.post }
 		} catch {
 			return { post: null }
 		}
@@ -101,111 +106,67 @@ export const Route = createFileRoute("/$handle/p/$id")({
 	},
 })
 
-// ───────────────────────────────────────────────────────────────────────────
-// Thread view component
-// ───────────────────────────────────────────────────────────────────────────
-
 function ThreadView() {
 	const { handle, id } = Route.useParams()
 	const navigate = useNavigate()
-	const [thread, setThread] = useState<Thread | null>(null)
-	const [error, setError] = useState<string | null>(null)
+	const queryClient = useQueryClient()
 	const focalRef = useRef<HTMLDivElement>(null)
 	const didScrollRef = useRef(false)
 
-	// Load thread data
+	const {
+		data: thread,
+		error: queryError,
+		isPending,
+		isError,
+	} = useQuery({
+		queryKey: qk.thread(id),
+		queryFn: () => api.thread(id),
+		retry: false,
+	})
+
+	const error = isError
+		? queryError instanceof ApiError && queryError.status === 404
+			? "Post not found"
+			: "Something went wrong"
+		: null
+
 	useEffect(() => {
-		setThread(null)
-		setError(null)
 		didScrollRef.current = false
-		api.thread(id)
-			.then(setThread)
-			.catch((e) => {
-				if (e instanceof ApiError && e.status === 404) {
-					setError("Post not found")
-				} else {
-					setError("Something went wrong")
-				}
-			})
 	}, [id])
 
-	// Scroll to focal post on load (Twitter-style: parents hidden above)
 	useEffect(() => {
 		if (!thread || didScrollRef.current) return
-		if (thread.ancestors.length === 0) return // no parents to scroll past
+		if (thread.ancestors.length === 0) return
 		didScrollRef.current = true
 		requestAnimationFrame(() => {
 			focalRef.current?.scrollIntoView({ block: "start" })
 		})
 	}, [thread])
 
-	// ── Optimistic update helpers ──────────────────────────────────────
-
-	const replace = useCallback((next: Post) => {
-		setThread((t) =>
-			t
-				? {
-						ancestors: t.ancestors.map((p) =>
-							p.id === next.id ? next : p,
-						),
-						post:
-							t.post && t.post.id === next.id ? next : t.post,
-						replies: t.replies.map((p) =>
-							p.id === next.id
-								? { ...p, ...next }
-								: p,
-						),
-					}
-				: t,
-		)
-	}, [])
-
-	const removeFromThread = useCallback(
-		(removeId: string) => {
-			setThread((t) =>
-				t
-					? {
-							ancestors: t.ancestors.filter(
-								(p) => p.id !== removeId,
-							),
-							post:
-								t.post && t.post.id === removeId
-									? null
-									: t.post,
-							replies: t.replies.filter(
-								(p) => p.id !== removeId,
-							),
-						}
-					: t,
-			)
+	const onReply = useCallback(
+		(post: Post) => {
+			queryClient.setQueryData(qk.thread(id), (prev: Thread | undefined) => {
+				if (!prev) return prev
+				return {
+					...prev,
+					post: prev.post
+						? {
+								...prev.post,
+								counts: {
+									...prev.post.counts,
+									replies: prev.post.counts.replies + 1,
+								},
+							}
+						: prev.post,
+					replies: [
+						...prev.replies,
+						{ ...post, descendantReplyCount: 0 },
+					],
+				}
+			})
 		},
-		[],
+		[queryClient, id],
 	)
-
-	const onReply = useCallback((post: Post) => {
-		setThread((t) =>
-			t
-				? {
-						...t,
-						post: t.post
-							? {
-									...t.post,
-									counts: {
-										...t.post.counts,
-										replies: t.post.counts.replies + 1,
-									},
-								}
-							: t.post,
-						replies: [
-							...t.replies,
-							{ ...post, descendantReplyCount: 0 },
-						],
-					}
-				: t,
-		)
-	}, [])
-
-	// ── Error / loading states ─────────────────────────────────────────
 
 	if (error) {
 		return (
@@ -224,7 +185,7 @@ function ThreadView() {
 		)
 	}
 
-	if (!thread) {
+	if (isPending || !thread) {
 		return (
 			<main>
 				<div className="px-4 py-16 text-center">
@@ -238,7 +199,6 @@ function ThreadView() {
 
 	return (
 		<main>
-			{/* Sticky header */}
 			<header className="sticky top-0 z-40 flex h-12 items-center gap-3 bg-base-1/80 px-4 backdrop-blur-md">
 				<Button
 					variant="transparent"
@@ -252,7 +212,6 @@ function ThreadView() {
 				</span>
 			</header>
 
-			{/* Parent chain */}
 			{hasParents &&
 				thread.ancestors.map((p, i) => {
 					const isFirst = i === 0
@@ -261,25 +220,15 @@ function ThreadView() {
 						<FeedPostCard
 							key={p.id}
 							post={p}
-							onChange={replace}
-							onRemove={() => removeFromThread(p.id)}
 							threadLine={threadLine}
 						/>
 					)
 				})}
 
-			{/* Focal post */}
 			{thread.post && (
 				<div ref={focalRef}>
 					<FeedPostCard
 						post={thread.post}
-						onChange={replace}
-						onRemove={() => {
-							navigate({
-								to: "/$handle",
-								params: { handle },
-							})
-						}}
 						threadLine={hasParents ? "top" : undefined}
 						disableHover
 						truncateText={false}
@@ -287,7 +236,6 @@ function ThreadView() {
 				</div>
 			)}
 
-			{/* Reply composer */}
 			{thread.post && (
 				<div>
 					<Compose
@@ -299,14 +247,9 @@ function ThreadView() {
 				</div>
 			)}
 
-			{/* Replies */}
 			{thread.replies.map((reply) => (
 				<div key={reply.id}>
-					<FeedPostCard
-						post={reply}
-						onChange={replace}
-						onRemove={() => removeFromThread(reply.id)}
-					/>
+					<FeedPostCard post={reply} />
 					{reply.descendantReplyCount > 0 && reply.author.handle && (
 						<div className="px-4 pb-2 pl-[68px]">
 							<Button

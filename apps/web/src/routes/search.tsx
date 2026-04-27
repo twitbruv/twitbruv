@@ -1,5 +1,6 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
-import { useEffect, useMemo, useState } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useMemo, useState } from "react"
 import {
   BookmarkIcon,
   MagnifyingGlassIcon,
@@ -23,8 +24,9 @@ import { PageFrame } from "../components/page-frame"
 import { PostCard } from "../components/post-card"
 import { VerifiedBadge } from "../components/verified-badge"
 import { ApiError, api } from "../lib/api"
+import { qk } from "../lib/query-keys"
 import { useMe } from "../lib/me"
-import type { Post, PublicUser, SavedSearch } from "../lib/api"
+import type { Post, PublicUser } from "../lib/api"
 
 type SearchParams = { q?: string }
 
@@ -42,20 +44,42 @@ function Search() {
 
 function SearchInner({ initialQuery }: { initialQuery: string }) {
   const navigate = Route.useNavigate()
+  const qc = useQueryClient()
   const { me } = useMe()
   const [draft, setDraft] = useState(initialQuery)
-  const [users, setUsers] = useState<Array<PublicUser>>([])
-  const [posts, setPosts] = useState<Array<Post>>([])
-  const [loading, setLoading] = useState(false)
-  const [saved, setSaved] = useState<Array<SavedSearch>>([])
-  const [savedError, setSavedError] = useState<string | null>(null)
+  const [savedActionError, setSavedActionError] = useState<string | null>(
+    null
+  )
 
   const query = draft.trim()
-  const activeSavedId = saved.find((s) => s.query === query)?.id ?? null
 
   const isChessSearch = query.toLowerCase() === "chess"
   const [challengeTarget, setChallengeTarget] = useState("")
   const [challengeError, setChallengeError] = useState<string | null>(null)
+
+  const { data: saved = [], error: savedErr } = useQuery({
+    queryKey: qk.savedSearches(),
+    queryFn: async () => (await api.savedSearches()).items,
+    enabled: !!me,
+  })
+
+  const activeSavedId = saved.find((s) => s.query === query)?.id ?? null
+
+  const savedError =
+    savedErr instanceof ApiError
+      ? savedErr.message
+      : savedErr
+        ? "couldn't load saved searches"
+        : null
+
+  const { data: searchResult, isFetching: loading } = useQuery({
+    queryKey: qk.search(query),
+    queryFn: () => api.search(query),
+    enabled: query.length >= 2,
+  })
+
+  const users: Array<PublicUser> = searchResult?.users ?? []
+  const posts: Array<Post> = searchResult?.posts ?? []
 
   async function submitChallenge(e: React.FormEvent) {
     e.preventDefault()
@@ -70,52 +94,6 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
     }
   }
 
-  // Load saved searches once on mount when signed in.
-  useEffect(() => {
-    if (!me) {
-      setSaved([])
-      return
-    }
-    api
-      .savedSearches()
-      .then(({ items }) => setSaved(items))
-      .catch((e) =>
-        setSavedError(
-          e instanceof ApiError ? e.message : "couldn't load saved searches"
-        )
-      )
-  }, [me])
-
-  useEffect(() => {
-    if (query.length < 2) {
-      setUsers([])
-      setPosts([])
-      setLoading(false)
-      return
-    }
-    let cancelled = false
-    setLoading(true)
-    api
-      .search(query)
-      .then(({ users: u, posts: p }) => {
-        if (cancelled) return
-        setUsers(u)
-        setPosts(p)
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setUsers([])
-          setPosts([])
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [query])
-
   function onSubmit(e: React.FormEvent) {
     e.preventDefault()
     const term = draft.trim()
@@ -129,25 +107,21 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
   async function toggleSaved() {
     if (!me) return
     if (query.length < 2) return
+    setSavedActionError(null)
     if (activeSavedId) {
       const id = activeSavedId
-      setSaved((prev) => prev.filter((s) => s.id !== id))
       try {
         await api.deleteSavedSearch(id)
+        await qc.invalidateQueries({ queryKey: qk.savedSearches() })
       } catch {
-        const fallback = await api
-          .savedSearches()
-          .catch(() => ({ items: saved }))
-        setSaved(fallback.items)
+        await qc.invalidateQueries({ queryKey: qk.savedSearches() })
       }
     } else {
       try {
-        const { item } = await api.saveSearch(query)
-        setSaved((prev) =>
-          prev.some((s) => s.id === item.id) ? prev : [...prev, item]
-        )
+        await api.saveSearch(query)
+        await qc.invalidateQueries({ queryKey: qk.savedSearches() })
       } catch (e) {
-        setSavedError(
+        setSavedActionError(
           e instanceof ApiError ? e.message : "couldn't save search"
         )
       }
@@ -206,10 +180,10 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
                 </details>
               </div>
             )}
-            {savedError && (
+            {(savedError || savedActionError) && (
               <Alert variant="destructive" className="mt-2 text-left">
                 <AlertDescription className="text-xs">
-                  {savedError}
+                  {savedActionError ?? savedError}
                 </AlertDescription>
               </Alert>
             )}
@@ -240,11 +214,15 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
                     variant="transparent"
                     aria-label={`delete saved search ${s.query}`}
                     onClick={async () => {
-                      setSaved((prev) => prev.filter((x) => x.id !== s.id))
                       try {
                         await api.deleteSavedSearch(s.id)
+                        await qc.invalidateQueries({
+                          queryKey: qk.savedSearches(),
+                        })
                       } catch {
-                        /* refetch on next mount */
+                        await qc.invalidateQueries({
+                          queryKey: qk.savedSearches(),
+                        })
                       }
                     }}
                   >

@@ -1,4 +1,9 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
+import {
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   flexRender,
@@ -35,13 +40,14 @@ import {
 } from "@workspace/ui/components/table"
 import { ChevronDownIcon } from "@heroicons/react/24/solid"
 import { api } from "../lib/api"
+import { qk } from "../lib/query-keys"
 import { useInfiniteScrollSentinel } from "../lib/use-infinite-scroll-sentinel"
 import { useMe } from "../lib/me"
 import { Avatar } from "../components/avatar"
 import { PageError, PageLoading } from "../components/page-surface"
 import { VerifiedBadge } from "../components/verified-badge"
 import type { ColumnDef } from "@tanstack/react-table"
-import type { AdminUser, AdminUserDetail } from "../lib/api"
+import type { AdminUser } from "../lib/api"
 
 export const Route = createFileRoute("/admin/users")({ component: AdminUsers })
 
@@ -66,69 +72,62 @@ const COLUMN_WIDTHS: Record<string, string> = {
 
 function AdminUsers() {
   const { me } = useMe()
+  const qc = useQueryClient()
   const [q, setQ] = useState("")
-  const [users, setUsers] = useState<Array<AdminUser>>([])
-  const [cursor, setCursor] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [loadingMore, setLoadingMore] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [debouncedQ, setDebouncedQ] = useState("")
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(q), 250)
+    return () => clearTimeout(t)
+  }, [q])
+
+  const filters = useMemo(
+    () => ({ q: debouncedQ.trim() || undefined }),
+    [debouncedQ]
+  )
+
+  const {
+    data,
+    error,
+    isPending,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+  } = useInfiniteQuery({
+    queryKey: qk.admin.users(filters),
+    queryFn: ({ pageParam }) => api.adminUsers(filters.q, pageParam),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
+  })
+
+  const users = useMemo(
+    () => data?.pages.flatMap((p) => p.users) ?? [],
+    [data]
+  )
+
+  const loadError =
+    error instanceof Error ? error.message : error ? "failed" : null
+
   const [busyId, setBusyId] = useState<string | null>(null)
   const [dialog, setDialog] = useState<ActionDialogState>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [detailVersion, setDetailVersion] = useState(0)
-  // Bumped on every fresh load so in-flight loadMore results from a prior
-  // search/refresh are discarded instead of getting appended to the new list.
-  const generationRef = useRef(0)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
 
-  const load = useCallback(async (search: string) => {
-    const gen = ++generationRef.current
-    setLoading(true)
-    setError(null)
-    try {
-      const res = await api.adminUsers(search || undefined)
-      if (generationRef.current !== gen) return
-      setUsers(res.users)
-      setCursor(res.nextCursor)
-    } catch (e) {
-      if (generationRef.current !== gen) return
-      setError(e instanceof Error ? e.message : "failed")
-    } finally {
-      if (generationRef.current === gen) setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    const t = setTimeout(() => load(q), 250)
-    return () => clearTimeout(t)
-  }, [q, load])
-
-  const loadMore = useCallback(async () => {
-    if (!cursor || loadingMore) return
-    const gen = generationRef.current
-    setLoadingMore(true)
-    try {
-      const res = await api.adminUsers(q || undefined, cursor)
-      if (generationRef.current !== gen) return
-      setUsers((prev) => [...prev, ...res.users])
-      setCursor(res.nextCursor)
-    } finally {
-      setLoadingMore(false)
-    }
-  }, [cursor, loadingMore, q])
+  const loadMore = useCallback(() => {
+    void fetchNextPage()
+  }, [fetchNextPage])
 
   const act = useCallback(
     async (userId: string, op: () => Promise<unknown>) => {
       setBusyId(userId)
       try {
         await op()
-        await load(q)
-        setDetailVersion((v) => v + 1)
+        await qc.invalidateQueries({ queryKey: qk.admin.users(filters) })
+        await qc.invalidateQueries({ queryKey: qk.admin.user(userId) })
       } finally {
         setBusyId(null)
       }
     },
-    [load, q]
+    [filters, qc]
   )
 
   const columns = useMemo<Array<ColumnDef<AdminUser>>>(
@@ -378,9 +377,15 @@ function AdminUsers() {
       ? totalSize - virtualRows[virtualRows.length - 1].end
       : 0
 
-  useInfiniteScrollSentinel(sentinelRef, !!cursor, loadingMore, loadMore, {
-    root: scrollRoot,
-  })
+  useInfiniteScrollSentinel(
+    sentinelRef,
+    Boolean(hasNextPage),
+    isFetchingNextPage,
+    loadMore,
+    {
+      root: scrollRoot,
+    }
+  )
 
   return (
     <main className="flex min-h-0 flex-1 flex-col">
@@ -391,8 +396,8 @@ function AdminUsers() {
           placeholder="search by handle or email…"
         />
       </div>
-      {error && <PageError message={error} />}
-      {loading && users.length === 0 && (
+      {loadError && <PageError message={loadError} />}
+      {isPending && users.length === 0 && (
         <PageLoading className="py-8" label="Loading…" />
       )}
       {users.length > 0 && (
@@ -465,9 +470,9 @@ function AdminUsers() {
             </TableBody>
           </Table>
           <div ref={sentinelRef} aria-hidden className="h-px" />
-          {cursor && (
+          {hasNextPage && (
             <div className="flex justify-center py-3 text-xs text-tertiary">
-              {loadingMore ? "loading…" : ""}
+              {isFetchingNextPage ? "loading…" : ""}
             </div>
           )}
         </div>
@@ -482,8 +487,8 @@ function AdminUsers() {
           try {
             await run()
             setDialog(null)
-            await load(q)
-            setDetailVersion((v) => v + 1)
+            await qc.invalidateQueries({ queryKey: qk.admin.users(filters) })
+            await qc.invalidateQueries({ queryKey: qk.admin.user(id) })
           } finally {
             setBusyId(null)
           }
@@ -491,7 +496,6 @@ function AdminUsers() {
       />
       <UserDetailSheet
         userId={selectedId}
-        version={detailVersion}
         onClose={() => setSelectedId(null)}
       />
     </main>
@@ -739,43 +743,23 @@ function actionLabel(action: string) {
 
 function UserDetailSheet({
   userId,
-  version,
   onClose,
 }: {
   userId: string | null
-  version: number
   onClose: () => void
 }) {
-  const [detail, setDetail] = useState<AdminUserDetail | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const {
+    data: detail,
+    error,
+    isPending: loading,
+  } = useQuery({
+    queryKey: qk.admin.user(userId ?? ""),
+    queryFn: () => api.adminUser(userId!),
+    enabled: !!userId,
+  })
 
-  useEffect(() => {
-    if (!userId) {
-      setDetail(null)
-      setError(null)
-      return
-    }
-    let cancelled = false
-    setLoading(true)
-    setError(null)
-    api
-      .adminUser(userId)
-      .then((d) => {
-        if (cancelled) return
-        setDetail(d)
-      })
-      .catch((e: unknown) => {
-        if (cancelled) return
-        setError(e instanceof Error ? e.message : "failed")
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [userId, version])
+  const sheetErr =
+    error instanceof Error ? error.message : error ? "failed" : null
 
   const open = !!userId
   const u = detail?.user
@@ -798,15 +782,15 @@ function UserDetailSheet({
               ? `${u.role} · joined ${new Date(u.createdAt).toLocaleDateString()}`
               : loading
                 ? "Loading…"
-                : (error ?? "")}
+                : (sheetErr ?? "")}
           </SheetDescription>
         </SheetHeader>
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-6 py-4 text-sm">
           {loading && !detail && (
             <p className="text-tertiary">loading…</p>
           )}
-          {error && !loading && (
-            <p className="text-xs text-destructive">{error}</p>
+          {sheetErr && !loading && (
+            <p className="text-xs text-destructive">{sheetErr}</p>
           )}
           {detail && u && (
             <>

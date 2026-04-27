@@ -1,4 +1,5 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
@@ -9,7 +10,7 @@ import { Editor } from "../components/editor/editor"
 import { PageFrame } from "../components/page-frame"
 import { CoverPicker } from "../components/cover-picker"
 import type { AppPageHeaderSpec } from "../components/app-page-header"
-import type { ArticleDto } from "../lib/api"
+import { qk } from "../lib/query-keys"
 import type { EditorPayload } from "../components/editor/editor"
 
 export const Route = createFileRoute("/articles/$id/edit")({
@@ -18,13 +19,21 @@ export const Route = createFileRoute("/articles/$id/edit")({
 
 function EditArticle() {
   const { id } = Route.useParams()
+  const qc = useQueryClient()
   const { data: session, isPending } = authClient.useSession()
   const router = useRouter()
   useEffect(() => {
     if (!isPending && !session) router.navigate({ to: "/login" })
   }, [isPending, session, router])
 
-  const [article, setArticle] = useState<ArticleDto | null>(null)
+  const {
+    data: article,
+    error: articleQueryError,
+  } = useQuery({
+    queryKey: qk.articles.byId(id),
+    queryFn: async () => (await api.article(id)).article,
+  })
+
   const [title, setTitle] = useState("")
   const [subtitle, setSubtitle] = useState("")
   const [body, setBody] = useState<EditorPayload | null>(null)
@@ -32,21 +41,20 @@ function EditArticle() {
     undefined
   )
   const [saving, setSaving] = useState<"draft" | "publish" | null>(null)
-  const [loadError, setLoadError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    api
-      .article(id)
-      .then(({ article: next }) => {
-        setArticle(next)
-        setTitle(next.title)
-        setSubtitle(next.subtitle ?? "")
-      })
-      .catch((e) =>
-        setLoadError(e instanceof ApiError ? e.message : "not found")
-      )
-  }, [id])
+    if (!article) return
+    setTitle(article.title)
+    setSubtitle(article.subtitle ?? "")
+  }, [article?.id])
+
+  const loadError =
+    articleQueryError instanceof ApiError
+      ? articleQueryError.message
+      : articleQueryError
+        ? "not found"
+        : null
 
   // Memoize the initial JSON so the Lexical composer isn't re-initialized on every render.
   const initialStateJson = useMemo(
@@ -65,11 +73,10 @@ function EditArticle() {
           subtitle: subtitle.trim() || undefined,
           bodyJson: body?.stateJson ?? article.bodyJson,
           bodyText: body?.text ?? article.bodyText,
-          // `undefined` = leave alone, `null` = clear, value = set.
           ...(coverMediaId !== undefined ? { coverMediaId } : {}),
           status,
         })
-        setArticle(updated)
+        qc.setQueryData(qk.articles.byId(id), updated)
         if (status === "published" && updated.author.handle) {
           router.navigate({
             to: "/$handle/a/$slug",
@@ -82,7 +89,7 @@ function EditArticle() {
         setSaving(null)
       }
     },
-    [article, title, subtitle, body, coverMediaId, router]
+    [article, title, subtitle, body, coverMediaId, router, qc, id]
   )
 
   const appHeader = useMemo<AppPageHeaderSpec>(() => {
@@ -134,7 +141,7 @@ function EditArticle() {
       </PageFrame>
     )
   }
-  if (!article) {
+  if (!article && !loadError) {
     return (
       <PageFrame>
         <main className="px-4 py-16">
@@ -142,6 +149,10 @@ function EditArticle() {
         </main>
       </PageFrame>
     )
+  }
+
+  if (!article) {
+    return null
   }
 
   return (

@@ -1,4 +1,9 @@
-import { Link, createFileRoute, useNavigate } from "@tanstack/react-router"
+import {
+  Link,
+  createFileRoute,
+  redirect,
+  useNavigate,
+} from "@tanstack/react-router"
 import { useCallback, useState } from "react"
 import {
   Alert,
@@ -6,11 +11,11 @@ import {
   AlertTitle,
 } from "@workspace/ui/components/alert"
 import { Button } from "@workspace/ui/components/button"
-import { Card } from "@workspace/ui/components/card"
 import { SegmentedControl } from "@workspace/ui/components/segmented-control"
 import { authClient } from "../lib/auth"
+import { checkSessionCookie } from "../lib/auth-fns"
 import { api } from "../lib/api"
-import { APP_NAME } from "../lib/env"
+import { qk } from "../lib/query-keys"
 import { useMe } from "../lib/me"
 import { Compose } from "../components/compose"
 import { useOnModalPostCreated } from "../components/compose-provider"
@@ -29,7 +34,11 @@ const TAB_LABELS: Record<FeedTab, string> = {
 }
 
 export const Route = createFileRoute("/")({
-  component: Landing,
+  beforeLoad: async () => {
+    const { hasSessionCookie } = await checkSessionCookie()
+    if (!hasSessionCookie) throw redirect({ to: "/welcome" })
+  },
+  component: Home,
   validateSearch: (search: Record<string, unknown>): { tab?: FeedTab } => {
     const raw = search.tab
     if (typeof raw === "string" && FEED_TABS.includes(raw as FeedTab)) {
@@ -39,8 +48,8 @@ export const Route = createFileRoute("/")({
   },
 })
 
-function Landing() {
-  const { data: session, isPending } = authClient.useSession()
+function Home() {
+  const { isPending } = authClient.useSession()
   const { me } = useMe()
   const navigate = useNavigate()
   const { tab: searchTab } = Route.useSearch()
@@ -48,71 +57,67 @@ function Landing() {
   const [newPost, setNewPost] = useState<Post | null>(null)
 
   // Prepend posts created from the modal composer (e.g. quote posts)
-  useOnModalPostCreated(useCallback((post: Post) => {
-    setNewPost(post)
-  }, []))
+  useOnModalPostCreated(
+    useCallback((post: Post) => {
+      setNewPost(post)
+    }, []),
+  )
 
   const loadFeed = useCallback((cursor?: string) => api.feed(cursor), [])
   const loadPublic = useCallback(
     (cursor?: string) => api.publicTimeline(cursor),
-    []
+    [],
   )
   const loadNetwork = useCallback(
     (cursor?: string) => api.networkFeed(cursor),
-    []
+    [],
   )
 
-  if (isPending) {
-    return (
-      <PageFrame>
+  const needsHandle = me && !me.handle
+  return (
+    <PageFrame>
+      <header className="sticky top-0 z-40 flex h-12 items-center bg-base-1/80 px-4 backdrop-blur-md">
+        <SegmentedControl
+          layout="fit"
+          variant="ghost"
+          value={tab}
+          options={FEED_TABS.map((key) => ({
+            value: key,
+            label: TAB_LABELS[key],
+          }))}
+          onValueChange={(value) => {
+            void navigate({
+              to: "/",
+              search: value === "following" ? undefined : { tab: value },
+            })
+          }}
+        />
+      </header>
+      {needsHandle ? (
+        <Alert className="m-4">
+          <AlertTitle>Finish setup</AlertTitle>
+          <AlertDescription>
+            Choose a handle so others can find you. Handles are permanent in
+            v1.
+          </AlertDescription>
+          <div className="mt-3">
+            <Button
+              size="sm"
+              nativeButton={false}
+              render={<Link to="/settings" />}
+            >
+              Claim your handle
+            </Button>
+          </div>
+        </Alert>
+      ) : (
+        <Compose onCreated={(p) => setNewPost(p)} collapsible />
+      )}
+      {isPending ? (
         <PageLoading />
-      </PageFrame>
-    )
-  }
-
-  if (session) {
-    const needsHandle = me && !me.handle
-    return (
-      <PageFrame>
-        <header className="sticky top-0 z-40 flex h-12 items-center bg-base-1/80 px-4 backdrop-blur-md">
-          <SegmentedControl
-            layout="fit"
-            variant="ghost"
-            value={tab}
-            options={FEED_TABS.map((key) => ({
-              value: key,
-              label: TAB_LABELS[key],
-            }))}
-            onValueChange={(value) => {
-              void navigate({
-                to: "/",
-                search: value === "following" ? undefined : { tab: value },
-              })
-            }}
-          />
-        </header>
-        {needsHandle ? (
-          <Alert className="m-4">
-            <AlertTitle>Finish setup</AlertTitle>
-            <AlertDescription>
-              Choose a handle so others can find you. Handles are permanent in
-              v1.
-            </AlertDescription>
-            <div className="mt-3">
-              <Button
-                size="sm"
-                nativeButton={false}
-                render={<Link to="/settings" />}
-              >
-                Claim your handle
-              </Button>
-            </div>
-          </Alert>
-        ) : (
-          <Compose onCreated={(p) => setNewPost(p)} collapsible />
-        )}
+      ) : (
         <Feed
-          queryKey={["feed", tab]}
+          queryKey={qk.feed(tab)}
           load={
             tab === "following"
               ? loadFeed
@@ -161,68 +166,7 @@ function Landing() {
               : undefined
           }
         />
-      </PageFrame>
-    )
-  }
-
-  return (
-    <PageFrame>
-      <main className="mx-auto max-w-3xl px-4 py-14">
-        <h1 className="text-2xl font-semibold tracking-tight text-primary">
-          A calm place to build in public
-        </h1>
-        <p className="mt-3 max-w-prose text-sm leading-relaxed text-secondary">
-          {APP_NAME} is a social layer for developers: short posts, articles,
-          DMs, and repo context. No paywalls, no ads, no black-box feeds.
-        </p>
-        <div className="mt-6 flex flex-wrap gap-2">
-          <Button size="md" nativeButton={false} render={<Link to="/signup" />}>
-            Create an account
-          </Button>
-          <Button
-            size="md"
-            variant="outline"
-            nativeButton={false}
-            render={<Link to="/login" />}
-          >
-            Sign in
-          </Button>
-        </div>
-        <div className="mt-10 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <Card>
-            <Card.Header>
-              <span className="text-sm font-medium text-primary">Posts and articles</span>
-              <span className="text-xs text-tertiary">
-                Short updates and long-form writing in one place.
-              </span>
-            </Card.Header>
-          </Card>
-          <Card>
-            <Card.Header>
-              <span className="text-sm font-medium text-primary">Developer context</span>
-              <span className="text-xs text-tertiary">
-                Connect GitHub, GitLab, and tools you already use.
-              </span>
-            </Card.Header>
-          </Card>
-          <Card>
-            <Card.Header>
-              <span className="text-sm font-medium text-primary">Simple analytics</span>
-              <span className="text-xs text-tertiary">
-                A creator dashboard without upsells or model-driven ranking.
-              </span>
-            </Card.Header>
-          </Card>
-          <Card>
-            <Card.Header>
-              <span className="text-sm font-medium text-primary">Your data</span>
-              <span className="text-xs text-tertiary">
-                Export and self-host with AGPL-3.0.
-              </span>
-            </Card.Header>
-          </Card>
-        </div>
-      </main>
+      )}
     </PageFrame>
   )
 }

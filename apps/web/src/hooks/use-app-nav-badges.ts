@@ -1,59 +1,41 @@
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { api } from "../lib/api"
 import { subscribeToDmStream } from "../lib/dm-stream"
+import { qk } from "../lib/query-keys"
 
 export function useUnreadNotifications(enabled: boolean) {
-  const [count, setCount] = useState(0)
-  useEffect(() => {
-    if (!enabled) {
-      setCount(0)
-      return
-    }
-    let cancel = false
-    let latest = 0
-    async function tick() {
-      const requestId = ++latest
-      try {
-        const { count: next } = await api.notificationsUnreadCount()
-        if (!cancel && requestId === latest) setCount(next)
-      } catch {}
-    }
-    tick()
-    const iv = setInterval(tick, 60_000)
-    return () => {
-      cancel = true
-      clearInterval(iv)
-    }
-  }, [enabled])
-  return count
+  const { data } = useQuery({
+    queryKey: qk.notifications.unread(),
+    queryFn: () => api.notificationsUnreadCount(),
+    enabled,
+    refetchInterval: enabled ? 60_000 : false,
+    select: (d) => d.count,
+  })
+  return data ?? 0
 }
 
 export function useUnreadDms(enabled: boolean) {
-  const [count, setCount] = useState(0)
+  const qc = useQueryClient()
   useEffect(() => {
-    if (!enabled) {
-      setCount(0)
-      return
-    }
-    let cancel = false
-    let latest = 0
-    async function refresh() {
-      const requestId = ++latest
-      try {
-        const { count: next } = await api.dmUnreadCount()
-        if (!cancel && requestId === latest) setCount(next)
-      } catch {}
-    }
-    refresh()
-    const iv = setInterval(refresh, 120_000)
-    const unsubscribe = subscribeToDmStream(() => {
-      refresh()
+    if (!enabled) return
+    const unsub = subscribeToDmStream(() => {
+      qc.invalidateQueries({ queryKey: qk.dms.unread() })
+      qc.invalidateQueries({
+        predicate: (q) =>
+          Array.isArray(q.queryKey) &&
+          q.queryKey[0] === "dms" &&
+          q.queryKey[1] === "conversations",
+      })
     })
-    return () => {
-      cancel = true
-      clearInterval(iv)
-      unsubscribe()
-    }
-  }, [enabled])
-  return count
+    return unsub
+  }, [enabled, qc])
+  const { data } = useQuery({
+    queryKey: qk.dms.unread(),
+    queryFn: () => api.dmUnreadCount(),
+    enabled,
+    refetchInterval: enabled ? 120_000 : false,
+    select: (d) => d.count,
+  })
+  return data ?? 0
 }

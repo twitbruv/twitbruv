@@ -1,50 +1,50 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router"
-import { useEffect, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
+import { useState } from "react"
 import { Button } from "@workspace/ui/components/button"
 import { ApiError, api } from "../lib/api"
 import { authClient } from "../lib/auth"
 import { Avatar } from "../components/avatar"
 import { PageFrame } from "../components/page-frame"
 import { VerifiedBadge } from "../components/verified-badge"
-import type { InvitePreview } from "../lib/api"
+import { qk } from "../lib/query-keys"
 
 export const Route = createFileRoute("/invite/$token")({
   component: InvitePage,
 })
 
+function invitePreviewErrMsg(e: unknown): string {
+  if (e instanceof ApiError) {
+    if (e.code === "expired") return "This invite has expired."
+    if (e.code === "exhausted")
+      return "This invite has reached its max uses."
+    if (e.code === "revoked") return "This invite has been revoked."
+    return "This invite is invalid or no longer exists."
+  }
+  return "Couldn't load this invite."
+}
+
 function InvitePage() {
   const { token } = Route.useParams()
   const router = useRouter()
   const { data: session } = authClient.useSession()
-  const [preview, setPreview] = useState<InvitePreview | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const [acceptError, setAcceptError] = useState<string | null>(null)
   const [accepting, setAccepting] = useState(false)
 
-  useEffect(() => {
-    setPreview(null)
-    setError(null)
-    api
-      .invitePreview(token)
-      .then((r) => setPreview(r.invite))
-      .catch((e) => {
-        const msg =
-          e instanceof ApiError
-            ? e.code === "expired"
-              ? "This invite has expired."
-              : e.code === "exhausted"
-                ? "This invite has reached its max uses."
-                : e.code === "revoked"
-                  ? "This invite has been revoked."
-                  : "This invite is invalid or no longer exists."
-            : "Couldn't load this invite."
-        setError(msg)
-      })
-  }, [token])
+  const {
+    data: preview,
+    error: previewErr,
+    isPending,
+  } = useQuery({
+    queryKey: qk.invitePreview(token),
+    queryFn: async () => (await api.invitePreview(token)).invite,
+    retry: false,
+  })
 
   async function accept() {
     if (accepting) return
+    setAcceptError(null)
     if (!session) {
-      // Bounce through login then come back here.
       router.navigate({
         to: "/login",
         search: { redirect: `/invite/${token}` },
@@ -59,23 +59,25 @@ function InvitePage() {
         params: { conversationId: id },
       })
     } catch (e) {
-      setError(e instanceof Error ? e.message : "couldn't join")
+      setAcceptError(e instanceof Error ? e.message : "couldn't join")
     } finally {
       setAccepting(false)
     }
   }
 
-  if (error) {
+  if (previewErr && !isPending) {
     return (
       <PageFrame>
         <main className="mx-auto max-w-md px-4 py-16 text-center">
           <h1 className="text-lg font-semibold">Can't join</h1>
-          <p className="mt-2 text-sm text-muted-foreground">{error}</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {invitePreviewErrMsg(previewErr)}
+          </p>
         </main>
       </PageFrame>
     )
   }
-  if (!preview) {
+  if (isPending || !preview) {
     return (
       <PageFrame>
         <main className="px-4 py-16 text-center text-sm text-muted-foreground">
@@ -100,6 +102,9 @@ function InvitePage() {
   return (
     <PageFrame>
       <main className="mx-auto max-w-md px-4 py-16">
+        {acceptError && (
+          <p className="mb-4 text-center text-sm text-destructive">{acceptError}</p>
+        )}
         <div className="rounded-lg border border-border p-6 text-center">
           <div className="mb-4 flex justify-center -space-x-2">
             {conv.previewMembers.slice(0, 4).map((m) => (

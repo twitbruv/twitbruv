@@ -4,6 +4,7 @@ import { magicLink } from "better-auth/plugins/magic-link"
 import { twoFactor } from "better-auth/plugins/two-factor"
 import { admin as adminPlugin } from "better-auth/plugins/admin"
 import type { Database } from "@workspace/db"
+import { COOKIE_PREFIX } from "./constants.ts"
 
 // Passkey support is a follow-up: better-auth ships passkeys as a separate plugin package.
 // Wire it in at M2 once the signup flow lands.
@@ -53,7 +54,7 @@ export function createAuth(config: AuthConfig) {
       database: {
         generateId: false,
       },
-      cookiePrefix: "twotter",
+      cookiePrefix: COOKIE_PREFIX,
       cookies: {
         session_token: {
           attributes: {

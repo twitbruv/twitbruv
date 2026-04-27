@@ -1,4 +1,9 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
+import {
+  useInfiniteQuery,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   flexRender,
@@ -24,6 +29,7 @@ import {
   TableRow,
 } from "@workspace/ui/components/table"
 import { api } from "../lib/api"
+import { qk } from "../lib/query-keys"
 import { useInfiniteScrollSentinel } from "../lib/use-infinite-scroll-sentinel"
 import { Avatar } from "../components/avatar"
 import { PageEmpty, PageLoading } from "../components/page-surface"
@@ -52,52 +58,43 @@ const STATUSES: Array<ReportStatus> = [
 type Resolution = "triaged" | "actioned" | "dismissed"
 
 function AdminReports() {
+  const qc = useQueryClient()
   const [status, setStatus] = useState<ReportStatus>("open")
-  const [reports, setReports] = useState<Array<AdminReport>>([])
-  const [cursor, setCursor] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [loadingMore, setLoadingMore] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  // Bumped on every fresh load so in-flight loadMore results from a prior
-  // status change are discarded instead of getting appended to the new list.
-  const generationRef = useRef(0)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const [scrollRoot, setScrollRoot] = useState<HTMLDivElement | null>(null)
 
-  const load = useCallback(async (s: ReportStatus) => {
-    const gen = ++generationRef.current
-    setLoading(true)
-    try {
-      const res = await api.adminReports(s)
-      if (generationRef.current !== gen) return
-      setReports(res.reports)
-      setCursor(res.nextCursor)
-    } finally {
-      if (generationRef.current === gen) setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    load(status)
-  }, [status, load])
-
-  const loadMore = useCallback(async () => {
-    if (!cursor || loadingMore) return
-    const gen = generationRef.current
-    setLoadingMore(true)
-    try {
-      const res = await api.adminReports(status, cursor)
-      if (generationRef.current !== gen) return
-      setReports((prev) => [...prev, ...res.reports])
-      setCursor(res.nextCursor)
-    } finally {
-      setLoadingMore(false)
-    }
-  }, [cursor, loadingMore, status])
-
-  useInfiniteScrollSentinel(sentinelRef, !!cursor, loadingMore, loadMore, {
-    root: scrollRoot,
+  const {
+    data,
+    isPending,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+  } = useInfiniteQuery({
+    queryKey: qk.admin.reports(status),
+    queryFn: ({ pageParam }) => api.adminReports(status, pageParam),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
   })
+
+  const reports = useMemo(
+    () => data?.pages.flatMap((p) => p.reports) ?? [],
+    [data]
+  )
+
+  const loadMore = useCallback(() => {
+    void fetchNextPage()
+  }, [fetchNextPage])
+
+  useInfiniteScrollSentinel(
+    sentinelRef,
+    Boolean(hasNextPage),
+    isFetchingNextPage,
+    loadMore,
+    {
+      root: scrollRoot,
+    }
+  )
 
   const columns = useMemo<Array<ColumnDef<AdminReport>>>(
     () => [
@@ -189,10 +186,10 @@ function AdminReports() {
         ref={setScrollRoot}
         className="flex-1 overflow-auto overscroll-contain"
       >
-        {loading && reports.length === 0 && (
+        {isPending && reports.length === 0 && (
           <PageLoading className="py-8" label="Loading…" />
         )}
-        {!loading && reports.length === 0 && (
+        {!isPending && reports.length === 0 && (
           <PageEmpty
             title={`No ${status} reports`}
             description="Change the status filter or check back later."
@@ -241,9 +238,9 @@ function AdminReports() {
           </Table>
         )}
         <div ref={sentinelRef} aria-hidden className="h-px" />
-        {cursor && (
+        {hasNextPage && (
           <div className="flex justify-center py-3 text-xs text-muted-foreground">
-            {loadingMore ? "loading…" : ""}
+            {isFetchingNextPage ? "loading…" : ""}
           </div>
         )}
       </div>
@@ -252,7 +249,7 @@ function AdminReports() {
         onClose={() => setSelectedId(null)}
         onResolved={() => {
           setSelectedId(null)
-          load(status)
+          void qc.invalidateQueries({ queryKey: qk.admin.reports(status) })
         }}
       />
     </main>
@@ -268,34 +265,28 @@ function ReportSheet({
   onClose: () => void
   onResolved: () => void
 }) {
-  const [detail, setDetail] = useState<AdminReportDetail | null>(null)
-  const [loading, setLoading] = useState(false)
+  const qc = useQueryClient()
+
+  const {
+    data: detail,
+    isPending: loading,
+  } = useQuery({
+    queryKey: qk.admin.report(reportId ?? ""),
+    queryFn: () => api.adminReportDetail(reportId!),
+    enabled: !!reportId,
+  })
+
   const [note, setNote] = useState("")
   const [busy, setBusy] = useState<Resolution | null>(null)
 
   useEffect(() => {
     if (!reportId) {
-      setDetail(null)
       setNote("")
       setBusy(null)
       return
     }
-    let cancelled = false
-    setLoading(true)
-    api
-      .adminReportDetail(reportId)
-      .then((d) => {
-        if (cancelled) return
-        setDetail(d)
-        setNote(d.resolutionNote ?? "")
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [reportId])
+    if (detail) setNote(detail.resolutionNote ?? "")
+  }, [reportId, detail?.id])
 
   async function resolve(next: Resolution) {
     if (!detail) return
@@ -305,6 +296,7 @@ function ReportSheet({
         status: next,
         resolutionNote: note.trim() || undefined,
       })
+      await qc.invalidateQueries({ queryKey: qk.admin.report(detail.id) })
       onResolved()
     } finally {
       setBusy(null)

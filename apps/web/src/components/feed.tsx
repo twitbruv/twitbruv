@@ -130,38 +130,6 @@ export function Feed({
     return all
   }, [data, hideReplies, onlyReplies])
 
-  function replace(next: Post) {
-    queryClient.setQueryData<InfiniteData<FeedPage, string | undefined>>(
-      queryKey,
-      (current) => {
-        if (!current) return current
-        return {
-          ...current,
-          pages: current.pages.map((page) => ({
-            ...page,
-            posts: page.posts.map((p) => (p.id === next.id ? next : p)),
-          })),
-        }
-      }
-    )
-  }
-
-  function remove(id: string) {
-    queryClient.setQueryData<InfiniteData<FeedPage, string | undefined>>(
-      queryKey,
-      (current) => {
-        if (!current) return current
-        return {
-          ...current,
-          pages: current.pages.map((page) => ({
-            ...page,
-            posts: page.posts.filter((p) => p.id !== id),
-          })),
-        }
-      }
-    )
-  }
-
   if (isPending)
     return (
       <div>
@@ -188,7 +156,7 @@ export function Feed({
         {banner && (
           <div className="px-4 pt-2">{banner}</div>
         )}
-        <FeedPostCard post={post} onChange={replace} onRemove={remove} />
+        <FeedPostCard post={post} />
       </>
     )
   }

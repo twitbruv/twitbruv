@@ -1,5 +1,6 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useMemo } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@workspace/ui/components/button"
 import { ApiError, api } from "../lib/api"
 import { Feed } from "../components/feed"
@@ -11,15 +12,28 @@ import { GithubBlock } from "../components/github-block"
 import { VerifiedBadge } from "../components/verified-badge"
 import { NotFoundPanel, PageLoading } from "../components/page-surface"
 import { useMe } from "../lib/me"
+import { qk } from "../lib/query-keys"
+import type { RouterAppContext } from "../lib/router-context"
 import { APP_NAME, WEB_URL } from "../lib/env"
 import { buildSeoMeta, canonicalLink, clipDescription } from "../lib/seo"
-import type { PublicProfile, UserList } from "../lib/api"
+import type { UserList } from "../lib/api"
 
 export const Route = createFileRoute("/$handle/")({
   component: Profile,
-  loader: async ({ params }) => {
+  loader: async ({ params, context }) => {
+    const ctx = context as RouterAppContext
     try {
       const { user } = await api.user(params.handle)
+      if (!user) return { user: null }
+      ctx.queryClient.setQueryData(qk.user(params.handle), user)
+      await ctx.queryClient.prefetchQuery({
+        queryKey: qk.userLists(params.handle),
+        queryFn: async () => (await api.userLists(params.handle)).lists,
+      })
+      await ctx.queryClient.prefetchQuery({
+        queryKey: qk.listsListedOn(params.handle),
+        queryFn: async () => (await api.listsListedOn(params.handle)).lists,
+      })
       return { user }
     } catch {
       return { user: null }
@@ -78,24 +92,31 @@ export const Route = createFileRoute("/$handle/")({
 function Profile() {
   const { handle } = Route.useParams()
   const { me } = useMe()
-  const [user, setUser] = useState<PublicProfile | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const qc = useQueryClient()
 
-  useEffect(() => {
-    setUser(null)
-    setError(null)
-    api
-      .user(handle)
-      .then(({ user: next }) => setUser(next))
-      .catch((e) => setError(e instanceof ApiError ? e.message : "not found"))
-  }, [handle])
+  const {
+    data: user,
+    error,
+    isPending,
+  } = useQuery({
+    queryKey: qk.user(handle),
+    queryFn: async () => (await api.user(handle)).user,
+    retry: false,
+  })
 
   const load = useCallback(
     (cursor?: string) => api.userPosts(handle, cursor),
     [handle]
   )
 
-  if (error) {
+  const profileError =
+    error instanceof ApiError
+      ? error.message
+      : error
+        ? "not found"
+        : null
+
+  if (profileError) {
     return (
       <NotFoundPanel
         title="User not found"
@@ -103,7 +124,7 @@ function Profile() {
       />
     )
   }
-  if (!user) {
+  if (isPending || !user) {
     return (
       <main className="px-4 py-12">
         <PageLoading />
@@ -166,7 +187,12 @@ function Profile() {
                 Edit profile
               </Button>
             ) : (
-              <ProfileActions profile={user} onChange={setUser} />
+              <ProfileActions
+                profile={user}
+                onChange={(next) =>
+                  qc.setQueryData(qk.user(handle), next)
+                }
+              />
             )}
           </div>
         </div>
@@ -234,7 +260,7 @@ function Profile() {
       {user.handle && <ProfileLists handle={user.handle} />}
       <div className="border-t border-border">
         <Feed
-          queryKey={["userPosts", handle]}
+          queryKey={qk.userPosts(handle)}
           load={load}
           emptyMessage={`@${user.handle} hasn't posted yet.`}
         />
@@ -244,41 +270,30 @@ function Profile() {
 }
 
 function ProfileLists({ handle }: { handle: string }) {
-  const [pinned, setPinned] = useState<Array<UserList> | null>(null)
-  const [listedOn, setListedOn] = useState<Array<UserList> | null>(null)
-  useEffect(() => {
-    let cancelled = false
-    api
-      .userLists(handle)
-      .then(({ lists }) => {
-        if (cancelled) return
-        setPinned(lists.filter((l) => l.pinnedAt))
-      })
-      .catch(() => {
-        if (!cancelled) setPinned([])
-      })
-    api
-      .listsListedOn(handle)
-      .then(({ lists }) => {
-        if (!cancelled) setListedOn(lists.slice(0, 10))
-      })
-      .catch(() => {
-        if (!cancelled) setListedOn([])
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [handle])
+  const { data: myLists } = useQuery({
+    queryKey: qk.userLists(handle),
+    queryFn: async () => (await api.userLists(handle)).lists,
+  })
+  const { data: listedFull } = useQuery({
+    queryKey: qk.listsListedOn(handle),
+    queryFn: async () => (await api.listsListedOn(handle)).lists,
+  })
 
-  if (
-    (pinned === null || pinned.length === 0) &&
-    (listedOn === null || listedOn.length === 0)
-  ) {
+  const pinned = useMemo(
+    () => (myLists ?? []).filter((l: UserList) => l.pinnedAt),
+    [myLists]
+  )
+  const listedOn = useMemo(
+    () => (listedFull ?? []).slice(0, 10),
+    [listedFull]
+  )
+
+  if (pinned.length === 0 && listedOn.length === 0) {
     return null
   }
   return (
     <div className="border-t border-border px-4 py-3 text-xs">
-      {pinned && pinned.length > 0 && (
+      {pinned.length > 0 && (
         <div className="mb-2">
           <h2 className="mb-1.5 text-xs font-medium text-muted-foreground">
             Pinned lists
@@ -300,7 +315,7 @@ function ProfileLists({ handle }: { handle: string }) {
           </div>
         </div>
       )}
-      {listedOn && listedOn.length > 0 && (
+      {listedOn.length > 0 && (
         <div>
           <h2 className="mb-1.5 text-xs font-medium text-muted-foreground">
             Lists @{handle} is on

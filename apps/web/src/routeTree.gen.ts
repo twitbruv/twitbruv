@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -48,6 +49,11 @@ import { Route as HandlePIdRouteImport } from './routes/$handle.p.$id'
 import { Route as HandleASlugRouteImport } from './routes/$handle.a.$slug'
 import { Route as OgArticleHandleSlugRouteImport } from './routes/og.article.$handle.$slug'
 
+const WelcomeRoute = WelcomeRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
@@ -255,6 +261,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/welcome': typeof WelcomeRoute
   '/$handle/followers': typeof HandleFollowersRoute
   '/$handle/following': typeof HandleFollowingRoute
   '/admin/posts': typeof AdminPostsRoute
@@ -292,6 +299,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/welcome': typeof WelcomeRoute
   '/$handle/followers': typeof HandleFollowersRoute
   '/$handle/following': typeof HandleFollowingRoute
   '/admin/posts': typeof AdminPostsRoute
@@ -333,6 +341,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/welcome': typeof WelcomeRoute
   '/$handle/followers': typeof HandleFollowersRoute
   '/$handle/following': typeof HandleFollowingRoute
   '/admin/posts': typeof AdminPostsRoute
@@ -375,6 +384,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/sitemap.xml'
+    | '/welcome'
     | '/$handle/followers'
     | '/$handle/following'
     | '/admin/posts'
@@ -412,6 +422,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/sitemap.xml'
+    | '/welcome'
     | '/$handle/followers'
     | '/$handle/following'
     | '/admin/posts'
@@ -452,6 +463,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/signup'
     | '/sitemap.xml'
+    | '/welcome'
     | '/$handle/followers'
     | '/$handle/following'
     | '/admin/posts'
@@ -493,6 +505,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   SignupRoute: typeof SignupRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  WelcomeRoute: typeof WelcomeRoute
   ArticlesNewRoute: typeof ArticlesNewRoute
   ChessIdRoute: typeof ChessIdRoute
   HashtagTagRoute: typeof HashtagTagRoute
@@ -504,6 +517,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/welcome': {
+      id: '/welcome'
+      path: '/welcome'
+      fullPath: '/welcome'
+      preLoaderRoute: typeof WelcomeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sitemap.xml': {
       id: '/sitemap.xml'
       path: '/sitemap.xml'
@@ -854,6 +874,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   SignupRoute: SignupRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  WelcomeRoute: WelcomeRoute,
   ArticlesNewRoute: ArticlesNewRoute,
   ChessIdRoute: ChessIdRoute,
   HashtagTagRoute: HashtagTagRoute,
@@ -867,10 +888,11 @@ export const routeTree = rootRouteImport
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
+import type { startInstance } from './start.ts'
 declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
     router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }

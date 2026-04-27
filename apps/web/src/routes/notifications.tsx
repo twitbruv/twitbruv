@@ -20,6 +20,7 @@ import {
 import { Button } from "@workspace/ui/components/button"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { api } from "../lib/api"
+import { qk } from "../lib/query-keys"
 import { authClient } from "../lib/auth"
 import { Avatar } from "../components/avatar"
 import { usePageHeader } from "../components/app-page-header"
@@ -38,8 +39,7 @@ interface NotificationsPage {
   nextCursor: string | null
 }
 
-const NOTIFICATIONS_QUERY_KEY = ["notifications"] as const
-type NotificationsQueryKey = typeof NOTIFICATIONS_QUERY_KEY
+type NotificationsQueryKey = ReturnType<typeof qk.notifications.list>
 
 const ESTIMATED_NOTIFICATION_HEIGHT = 140
 
@@ -88,18 +88,22 @@ function Notifications() {
     NotificationsQueryKey,
     string | undefined
   >({
-    queryKey: NOTIFICATIONS_QUERY_KEY,
+    queryKey: qk.notifications.list(),
     queryFn: ({ pageParam }) => api.notifications(pageParam),
     initialPageParam: undefined,
     getNextPageParam: (last) => last.nextCursor ?? undefined,
     enabled: !!session,
   })
 
-  // Mark everything as read on arrival. Fire-and-forget.
   useEffect(() => {
     if (!session) return
-    api.notificationsMarkRead({ all: true }).catch(() => {})
-  }, [session])
+    api
+      .notificationsMarkRead({ all: true })
+      .then(() =>
+        queryClient.invalidateQueries({ queryKey: qk.notifications.unread() })
+      )
+      .catch(() => {})
+  }, [session, queryClient])
 
   const items = useMemo(
     () => data?.pages.flatMap((p) => p.notifications) ?? [],
@@ -111,7 +115,7 @@ function Notifications() {
     const now = new Date().toISOString()
     queryClient.setQueryData<
       InfiniteData<NotificationsPage, string | undefined>
-    >(NOTIFICATIONS_QUERY_KEY, (current) => {
+    >(qk.notifications.list(), (current) => {
       if (!current) return current
       return {
         ...current,

@@ -14,6 +14,7 @@ import {
   UsersIcon,
 } from "@heroicons/react/24/solid"
 import { useCallback, useEffect, useMemo, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 import {
   Select,
   SelectContent,
@@ -22,6 +23,7 @@ import {
   SelectValue,
 } from "@workspace/ui/components/select"
 import { api } from "../lib/api"
+import { qk } from "../lib/query-keys"
 import { authClient } from "../lib/auth"
 import { usePageHeader } from "../components/app-page-header"
 import { PageFrame } from "../components/page-frame"
@@ -101,23 +103,26 @@ function DailySparkline({
 function Analytics() {
   const { data: session, isPending } = authClient.useSession()
   const router = useRouter()
-  const [data, setData] = useState<AnalyticsOverview | null>(null)
-  const [error, setError] = useState<string | null>(null)
   const [days, setDays] = useState(28)
 
   useEffect(() => {
     if (!isPending && !session) router.navigate({ to: "/login" })
   }, [isPending, session, router])
 
-  useEffect(() => {
-    if (!session) return
-    setData(null)
-    setError(null)
-    api
-      .analyticsOverview(days)
-      .then(setData)
-      .catch((e) => setError(e instanceof Error ? e.message : "failed to load"))
-  }, [session, days])
+  const {
+    data: overview,
+    error: overviewErr,
+    isPending: overviewPending,
+  } = useQuery({
+    queryKey: qk.analytics(days),
+    queryFn: () => api.analyticsOverview(days),
+    enabled: !!session,
+  })
+
+  const error =
+    overviewErr instanceof Error ? overviewErr.message : overviewErr
+      ? "failed to load"
+      : null
 
   const onDays = useCallback((v: string | null) => {
     if (v == null) return
@@ -151,9 +156,13 @@ function Analytics() {
     <PageFrame>
       <main>
         {error && <PageError message={error} />}
-        {!data && !error && <PageLoading label="Loading…" />}
+        {overviewPending && !overview && !error && (
+          <PageLoading label="Loading…" />
+        )}
 
-        {data ? <AnalyticsLoaded data={data} days={days} /> : null}
+        {overview ? (
+          <AnalyticsLoaded data={overview} days={days} />
+        ) : null}
       </main>
     </PageFrame>
   )

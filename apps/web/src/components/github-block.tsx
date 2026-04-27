@@ -1,36 +1,18 @@
-import { useEffect, useState } from "react"
-import { ApiError, api } from "../lib/api"
-import type {
-  GithubContributions,
-  GithubPinnedRepo,
-  GithubProfilePayload,
-} from "../lib/api"
+import { useQuery } from "@tanstack/react-query"
+import { api } from "../lib/api"
+import { qk } from "../lib/query-keys"
+import type { GithubContributions, GithubPinnedRepo } from "../lib/api"
 
 interface Props {
   handle: string
 }
 
 export function GithubBlock({ handle }: Props) {
-  const [data, setData] = useState<GithubProfilePayload | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    setData(null)
-    setError(null)
-    api
-      .userGithub(handle)
-      .then((res) => {
-        if (!cancelled) setData(res)
-      })
-      .catch((e) => {
-        if (!cancelled)
-          setError(e instanceof ApiError ? e.message : "load_failed")
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [handle])
+  const { data, error } = useQuery({
+    queryKey: qk.connectors.userGithub(handle),
+    queryFn: () => api.userGithub(handle),
+    retry: false,
+  })
 
   if (error) return null
   if (!data || !data.connected) return null

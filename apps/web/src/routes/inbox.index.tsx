@@ -1,4 +1,5 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useMemo, useState } from "react"
 import { PencilSquareIcon } from "@heroicons/react/24/solid"
 import { Button } from "@workspace/ui/components/button"
@@ -15,6 +16,7 @@ import {
 } from "../components/underline-tab-row"
 import { VerifiedBadge } from "../components/verified-badge"
 import { subscribeToDmStream } from "../lib/dm-stream"
+import { qk } from "../lib/query-keys"
 import type { DmConversation, DmMember } from "../lib/api"
 
 export const Route = createFileRoute("/inbox/")({ component: InboxList })
@@ -86,34 +88,36 @@ function ConversationList({
   folder: Folder
   onRequestCount: (count: number) => void
 }) {
-  const [conversations, setConversations] =
-    useState<Array<DmConversation> | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const qc = useQueryClient()
+  const { data, error, isPending } = useQuery({
+    queryKey: qk.dms.conversations(folder),
+    queryFn: () => api.dmConversations(folder),
+    refetchInterval: 120_000,
+    refetchIntervalInBackground: false,
+  })
 
   useEffect(() => {
-    let cancel = false
-    async function load() {
-      try {
-        const res = await api.dmConversations(folder)
-        if (cancel) return
-        setConversations(res.conversations)
-        onRequestCount(res.requestCount)
-      } catch (e) {
-        if (!cancel) setError(e instanceof Error ? e.message : "failed to load")
-      }
-    }
-    load()
-    const unsubscribe = subscribeToDmStream(() => load())
-    const iv = setInterval(load, 120_000)
-    return () => {
-      cancel = true
-      clearInterval(iv)
-      unsubscribe()
-    }
-  }, [folder, onRequestCount])
+    if (data) onRequestCount(data.requestCount)
+  }, [data?.requestCount, folder, onRequestCount])
 
-  if (error) return <PageError message={error} />
-  if (!conversations) {
+  useEffect(() => {
+    const unsubscribe = subscribeToDmStream(() => {
+      qc.invalidateQueries({ queryKey: qk.dms.conversations(folder) })
+      qc.invalidateQueries({ queryKey: qk.dms.conversationsAll() })
+      qc.invalidateQueries({ queryKey: qk.dms.unread() })
+    })
+    return unsubscribe
+  }, [folder, qc])
+
+  const conversations = data?.conversations ?? []
+  const errorMsg = error
+    ? error instanceof Error
+      ? error.message
+      : "failed to load"
+    : null
+
+  if (errorMsg) return <PageError message={errorMsg} />
+  if (isPending) {
     return (
       <ul>
         {Array.from({ length: 6 }).map((_, i) => (

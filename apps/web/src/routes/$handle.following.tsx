@@ -1,6 +1,7 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
 import { useCallback, useMemo } from "react"
 import { api } from "../lib/api"
+import { qk } from "../lib/query-keys"
 import { usePageHeader } from "../components/app-page-header"
 import { PageFrame } from "../components/page-frame"
 import { UserList } from "../components/user-list"
@@ -12,6 +13,7 @@ export const Route = createFileRoute("/$handle/following")({
 
 function Following() {
   const { handle } = Route.useParams()
+  const listKey = useMemo(() => qk.userFollowing(handle), [handle])
   const load = useCallback(
     (cursor?: string) => api.following(handle, cursor),
     [handle]
@@ -43,6 +45,7 @@ function Following() {
     <PageFrame>
       <main>
         <UserList
+          queryKey={listKey}
           load={load}
           emptyMessage={`@${handle} isn't following anyone yet.`}
         />

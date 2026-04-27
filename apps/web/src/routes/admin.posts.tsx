@@ -1,4 +1,5 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   flexRender,
@@ -42,6 +43,7 @@ import {
   HeartIcon,
 } from "@heroicons/react/24/solid"
 import { api } from "../lib/api"
+import { qk, type AdminPostFilters } from "../lib/query-keys"
 import { useInfiniteScrollSentinel } from "../lib/use-infinite-scroll-sentinel"
 import { Avatar } from "../components/avatar"
 import { PageError, PageLoading } from "../components/page-surface"
@@ -140,106 +142,70 @@ function StatHeader({
 }
 
 function AdminPosts() {
+  const qc = useQueryClient()
   const [q, setQ] = useState("")
+  const [debouncedQ, setDebouncedQ] = useState("")
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQ(q), 250)
+    return () => clearTimeout(t)
+  }, [q])
+
   const [sort, setSort] = useState<AdminPostSort>("created")
   const [order, setOrder] = useState<"asc" | "desc">("desc")
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("any")
   const [visibility, setVisibility] = useState<VisibilityFilter>("any")
   const [status, setStatus] = useState<StatusFilter>("any")
 
-  const [posts, setPosts] = useState<Array<AdminPost>>([])
-  const [cursor, setCursor] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [loadingMore, setLoadingMore] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [busyId, setBusyId] = useState<string | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<AdminPost | null>(null)
-
-  // Bumped on every fresh load so in-flight loadMore results from a stale set of filters are
-  // dropped instead of getting appended to the new list.
-  const generationRef = useRef(0)
-  const sentinelRef = useRef<HTMLDivElement | null>(null)
-
-  const load = useCallback(
-    async (
-      search: string,
-      s: AdminPostSort,
-      o: "asc" | "desc",
-      t: TypeFilter,
-      v: VisibilityFilter,
-      st: StatusFilter
-    ) => {
-      const gen = ++generationRef.current
-      setLoading(true)
-      setError(null)
-      try {
-        const res = await api.adminPosts({
-          q: search || undefined,
-          sort: s,
-          order: o,
-          type: t,
-          visibility: v,
-          status: st,
-        })
-        if (generationRef.current !== gen) return
-        setPosts(res.posts)
-        setCursor(res.nextCursor)
-      } catch (e) {
-        if (generationRef.current !== gen) return
-        setError(e instanceof Error ? e.message : "failed")
-      } finally {
-        if (generationRef.current === gen) setLoading(false)
-      }
-    },
-    []
+  const filters = useMemo(
+    (): AdminPostFilters => ({
+      q: debouncedQ.trim() || undefined,
+      sort,
+      order,
+      type: typeFilter,
+      visibility,
+      status,
+    }),
+    [debouncedQ, sort, order, typeFilter, visibility, status]
   )
 
-  // The two effects below split the load triggers: q is debounced so we don't fire a request
-  // on every keystroke, while filter/sort changes call load synchronously. Each effect reads
-  // the values it doesn't want to react to via a ref, so changing one set doesn't cancel or
-  // re-run the other.
-  const latestRef = useRef({ q, sort, order, typeFilter, visibility, status })
-  latestRef.current = { q, sort, order, typeFilter, visibility, status }
-
-  useEffect(() => {
-    const t = setTimeout(() => {
-      const v = latestRef.current
-      load(v.q, v.sort, v.order, v.typeFilter, v.visibility, v.status)
-    }, 250)
-    return () => clearTimeout(t)
-  }, [q, load])
-
-  const isFirstFilterRunRef = useRef(true)
-  useEffect(() => {
-    if (isFirstFilterRunRef.current) {
-      isFirstFilterRunRef.current = false
-      return
-    }
-    const v = latestRef.current
-    load(v.q, v.sort, v.order, v.typeFilter, v.visibility, v.status)
-  }, [sort, order, typeFilter, visibility, status, load])
-
-  const loadMore = useCallback(async () => {
-    if (!cursor || loadingMore) return
-    const gen = generationRef.current
-    setLoadingMore(true)
-    try {
-      const res = await api.adminPosts({
-        q: q || undefined,
-        cursor,
+  const {
+    data,
+    error,
+    isPending,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+  } = useInfiniteQuery({
+    queryKey: qk.admin.posts(filters),
+    queryFn: ({ pageParam }) =>
+      api.adminPosts({
+        q: filters.q,
+        cursor: pageParam,
         sort,
         order,
         type: typeFilter,
         visibility,
         status,
-      })
-      if (generationRef.current !== gen) return
-      setPosts((prev) => [...prev, ...res.posts])
-      setCursor(res.nextCursor)
-    } finally {
-      setLoadingMore(false)
-    }
-  }, [cursor, loadingMore, q, sort, order, typeFilter, visibility, status])
+      }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
+  })
+
+  const posts = useMemo(
+    () => data?.pages.flatMap((p) => p.posts) ?? [],
+    [data]
+  )
+
+  const loadError =
+    error instanceof Error ? error.message : error ? "failed" : null
+
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<AdminPost | null>(null)
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
+
+  const loadMore = useCallback(() => {
+    void fetchNextPage()
+  }, [fetchNextPage])
 
   const onHeaderSort = useCallback(
     (next: AdminPostSort) => {
@@ -511,9 +477,15 @@ function AdminPosts() {
       ? totalSize - virtualRows[virtualRows.length - 1].end
       : 0
 
-  useInfiniteScrollSentinel(sentinelRef, !!cursor, loadingMore, loadMore, {
-    root: scrollRoot,
-  })
+  useInfiniteScrollSentinel(
+    sentinelRef,
+    Boolean(hasNextPage),
+    isFetchingNextPage,
+    loadMore,
+    {
+      root: scrollRoot,
+    }
+  )
 
   return (
     <main className="flex min-h-0 flex-1 flex-col">
@@ -606,11 +578,11 @@ function AdminPosts() {
           </FilterField>
         </div>
       </div>
-      {error && <PageError message={error} />}
-      {loading && posts.length === 0 && (
+      {loadError && <PageError message={loadError} />}
+      {isPending && posts.length === 0 && (
         <PageLoading className="py-8" label="Loading…" />
       )}
-      {!loading && posts.length === 0 && !error && (
+      {!isPending && posts.length === 0 && !loadError && (
         <div className="py-8 text-center text-xs text-tertiary">
           No posts match these filters.
         </div>
@@ -680,9 +652,9 @@ function AdminPosts() {
             </TableBody>
           </Table>
           <div ref={sentinelRef} aria-hidden className="h-px" />
-          {cursor && (
+          {hasNextPage && (
             <div className="flex justify-center py-3 text-xs text-tertiary">
-              {loadingMore ? "loading…" : ""}
+              {isFetchingNextPage ? "loading…" : ""}
             </div>
           )}
         </div>
@@ -698,7 +670,7 @@ function AdminPosts() {
           try {
             await api.adminDeletePost(id, { reason: reason || undefined })
             setDeleteTarget(null)
-            await load(q, sort, order, typeFilter, visibility, status)
+            await qc.invalidateQueries({ queryKey: qk.admin.posts(filters) })
           } finally {
             setBusyId(null)
           }

@@ -1,51 +1,60 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useCallback, useDeferredValue, useMemo, useState } from "react"
 import { LockClosedIcon, TrashIcon, XMarkIcon } from "@heroicons/react/24/solid"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import { ApiError, api } from "../lib/api"
 import { authClient } from "../lib/auth"
+import { qk } from "../lib/query-keys"
 import { usePageHeader } from "../components/app-page-header"
 import { Avatar } from "../components/avatar"
 import { Feed } from "../components/feed"
 import { PageEmpty, PageError, PageLoading } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
-import type { PublicUser, UserList, UserListMember } from "../lib/api"
+import type { PublicUser, UserListMember } from "../lib/api"
 
 export const Route = createFileRoute("/lists/$id")({ component: ListDetail })
 
 function ListDetail() {
   const { id } = Route.useParams()
+  const qc = useQueryClient()
   const { data: session } = authClient.useSession()
   const router = useRouter()
 
-  const [list, setList] = useState<UserList | null>(null)
-  const [members, setMembers] = useState<Array<UserListMember>>([])
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [opError, setOpError] = useState<string | null>(null)
   const [showAdd, setShowAdd] = useState(false)
+
+  const listQuery = useQuery({
+    queryKey: qk.lists.detail(id),
+    queryFn: async () => (await api.list(id)).list,
+  })
+  const membersQuery = useQuery({
+    queryKey: qk.lists.members(id),
+    queryFn: async () => (await api.listMembers(id)).members,
+  })
+
+  const list = listQuery.data ?? null
+  const members = membersQuery.data ?? []
+  const loading = listQuery.isPending || membersQuery.isPending
+  const fetchErr = listQuery.error ?? membersQuery.error
+  const error =
+    fetchErr instanceof ApiError
+      ? fetchErr.message
+      : fetchErr
+        ? "load failed"
+        : null
 
   const isOwner = Boolean(session && list && session.user.id === list.ownerId)
 
   async function refresh() {
-    setError(null)
-    try {
-      const [listRes, memRes] = await Promise.all([
-        api.list(id),
-        api.listMembers(id),
-      ])
-      setList(listRes.list)
-      setMembers(memRes.members)
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : "load failed")
-    } finally {
-      setLoading(false)
-    }
+    setOpError(null)
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: qk.lists.detail(id) }),
+      qc.invalidateQueries({ queryKey: qk.lists.members(id) }),
+    ])
   }
-  useEffect(() => {
-    void refresh()
-  }, [id])
 
   const load = useCallback(
     (cursor?: string) => api.listTimeline(id, cursor),
@@ -56,11 +65,12 @@ function ListDetail() {
     if (!confirm("Delete this list?")) return
     try {
       await api.deleteList(id)
+      await qc.invalidateQueries({ queryKey: qk.lists.mine() })
       router.navigate({ to: "/lists" })
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "delete failed")
+      setOpError(e instanceof ApiError ? e.message : "delete failed")
     }
-  }, [id, router])
+  }, [id, router, qc])
 
   const appHeader = useMemo(() => {
     if (loading || !list) return null
@@ -130,8 +140,11 @@ function ListDetail() {
   return (
     <PageFrame>
       <main>
-        {error && (
-          <PageError message={error} className="border-b border-neutral" />
+        {(error || opError) && (
+          <PageError
+            message={error ?? opError ?? ""}
+            className="border-b border-neutral"
+          />
         )}
 
         {isOwner && showAdd && (
@@ -139,7 +152,7 @@ function ListDetail() {
         )}
 
         <Feed
-          queryKey={["listTimeline", id]}
+          queryKey={qk.lists.timeline(id)}
           load={load}
           emptyMessage={
             isOwner
@@ -162,26 +175,15 @@ function ManageMembers({
   onChanged: () => Promise<void>
 }) {
   const [q, setQ] = useState("")
-  const [results, setResults] = useState<Array<PublicUser>>([])
   const [busy, setBusy] = useState(false)
 
-  useEffect(() => {
-    if (q.trim().length < 2) {
-      setResults([])
-      return
-    }
-    let cancel = false
-    const handle = window.setTimeout(async () => {
-      try {
-        const { users } = await api.search(q.trim())
-        if (!cancel) setResults(users)
-      } catch {}
-    }, 200)
-    return () => {
-      cancel = true
-      window.clearTimeout(handle)
-    }
-  }, [q])
+  const deferredQ = useDeferredValue(q.trim())
+  const { data: searchResult } = useQuery({
+    queryKey: qk.search(deferredQ),
+    queryFn: () => api.search(deferredQ),
+    enabled: deferredQ.length >= 2,
+  })
+  const results: Array<PublicUser> = searchResult?.users ?? []
 
   const memberIds = new Set(members.map((m) => m.id))
 

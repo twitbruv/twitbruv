@@ -1,19 +1,18 @@
 import { useNavigate } from "@tanstack/react-router"
-import { useMutation } from "@tanstack/react-query"
 import {
 	PostCard,
 	type PostMedia as UIPostMedia,
 	type PostQuoteOf,
 } from "@workspace/ui/components/post-card"
-import { api } from "../lib/api"
+import {
+	useTogglePostBookmark,
+	useTogglePostLike,
+	useTogglePostRepost,
+} from "../lib/mutations/posts"
 import { useLightbox } from "./lightbox-provider"
 import { useCompose } from "./compose-provider"
 import { LightboxSidebar } from "./lightbox-sidebar"
 import type { Post, PostMedia } from "../lib/api"
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 function relativeTime(iso: string): string {
 	const d = new Date(iso).getTime()
@@ -62,28 +61,15 @@ function mapMedia(media: PostMedia[]): UIPostMedia[] {
 		.filter((m): m is UIPostMedia => m !== null)
 }
 
-// ---------------------------------------------------------------------------
-// FeedPostCard
-// ---------------------------------------------------------------------------
-
 interface FeedPostCardProps {
 	post: Post
-	/** Called with updated post after optimistic mutation */
-	onChange?: (post: Post) => void
-	/** Called when the post is removed */
-	onRemove?: (id: string) => void
-	/** Thread line for connected posts */
 	threadLine?: "top" | "bottom" | "both"
-	/** Disable hover (for detail views) */
 	disableHover?: boolean
-	/** Truncate text in feed */
 	truncateText?: boolean
 }
 
 export function FeedPostCard({
 	post: outerPost,
-	onChange,
-	onRemove: _onRemove,
 	threadLine,
 	disableHover = false,
 	truncateText = true,
@@ -92,87 +78,14 @@ export function FeedPostCard({
 	const lightbox = useLightbox()
 	const compose = useCompose()
 
-	// Unwrap reposts
 	const isRepost = Boolean(outerPost.repostOf)
 	const post = outerPost.repostOf ?? outerPost
 	const authorHandle = post.author.handle ?? "unknown"
 
-	// Mutations
-	const likeMutation = useMutation({
-		mutationFn: () =>
-			post.viewer?.liked ? api.unlike(post.id) : api.like(post.id),
-		onMutate: () => {
-			if (!onChange) return
-			const wasLiked = post.viewer?.liked ?? false
-			onChange({
-				...outerPost,
-				...(isRepost && outerPost.repostOf
-					? {
-							repostOf: {
-								...post,
-								viewer: { ...post.viewer!, liked: !wasLiked, bookmarked: post.viewer?.bookmarked ?? false, reposted: post.viewer?.reposted ?? false },
-								counts: { ...post.counts, likes: post.counts.likes + (wasLiked ? -1 : 1) },
-							},
-						}
-					: {
-							viewer: { ...post.viewer!, liked: !wasLiked, bookmarked: post.viewer?.bookmarked ?? false, reposted: post.viewer?.reposted ?? false },
-							counts: { ...post.counts, likes: post.counts.likes + (wasLiked ? -1 : 1) },
-						}),
-			})
-		},
-	})
+	const likeMutation = useTogglePostLike(post)
+	const repostMutation = useTogglePostRepost(post)
+	const bookmarkMutation = useTogglePostBookmark(post)
 
-	const repostMutation = useMutation({
-		mutationFn: () =>
-			post.viewer?.reposted ? api.unrepost(post.id) : api.repost(post.id),
-		onMutate: () => {
-			if (!onChange) return
-			const wasReposted = post.viewer?.reposted ?? false
-			onChange({
-				...outerPost,
-				...(isRepost && outerPost.repostOf
-					? {
-							repostOf: {
-								...post,
-								viewer: { ...post.viewer!, reposted: !wasReposted, liked: post.viewer?.liked ?? false, bookmarked: post.viewer?.bookmarked ?? false },
-								counts: { ...post.counts, reposts: post.counts.reposts + (wasReposted ? -1 : 1) },
-							},
-						}
-					: {
-							viewer: { ...post.viewer!, reposted: !wasReposted, liked: post.viewer?.liked ?? false, bookmarked: post.viewer?.bookmarked ?? false },
-							counts: { ...post.counts, reposts: post.counts.reposts + (wasReposted ? -1 : 1) },
-						}),
-			})
-		},
-	})
-
-	const bookmarkMutation = useMutation({
-		mutationFn: () =>
-			post.viewer?.bookmarked
-				? api.unbookmark(post.id)
-				: api.bookmark(post.id),
-		onMutate: () => {
-			if (!onChange) return
-			const wasBookmarked = post.viewer?.bookmarked ?? false
-			onChange({
-				...outerPost,
-				...(isRepost && outerPost.repostOf
-					? {
-							repostOf: {
-								...post,
-								viewer: { ...post.viewer!, bookmarked: !wasBookmarked, liked: post.viewer?.liked ?? false, reposted: post.viewer?.reposted ?? false },
-								counts: { ...post.counts, bookmarks: post.counts.bookmarks + (wasBookmarked ? -1 : 1) },
-							},
-						}
-					: {
-							viewer: { ...post.viewer!, bookmarked: !wasBookmarked, liked: post.viewer?.liked ?? false, reposted: post.viewer?.reposted ?? false },
-							counts: { ...post.counts, bookmarks: post.counts.bookmarks + (wasBookmarked ? -1 : 1) },
-						}),
-			})
-		},
-	})
-
-	// Build quote embed data
 	const quoteOf: PostQuoteOf | undefined = post.quoteOf
 		? (() => {
 				const q = post.quoteOf

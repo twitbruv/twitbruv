@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { Spinner } from "@workspace/ui/components/spinner"
 import { api } from "../lib/api"
+import { qk } from "../lib/query-keys"
 import { FeedPostCard } from "./feed-post-card"
 import type { Post } from "../lib/api"
 
@@ -14,7 +15,7 @@ interface LightboxSidebarProps {
  */
 export function LightboxSidebar({ post }: LightboxSidebarProps) {
 	const { data, isLoading } = useQuery({
-		queryKey: ["thread", post.id],
+		queryKey: qk.thread(post.id),
 		queryFn: () => api.thread(post.id),
 	})
 

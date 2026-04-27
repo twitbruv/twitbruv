@@ -1,4 +1,5 @@
 import { Link, createFileRoute, useRouter } from "@tanstack/react-router"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { LockClosedIcon, MapPinIcon, UsersIcon } from "@heroicons/react/24/solid"
 import { Button } from "@workspace/ui/components/button"
@@ -8,37 +9,39 @@ import { Switch } from "@workspace/ui/components/switch"
 import { Textarea } from "@workspace/ui/components/textarea"
 import { LIST_SLUG_RE, LIST_TITLE_MAX } from "@workspace/validators"
 import { ApiError, api } from "../lib/api"
+import { qk } from "../lib/query-keys"
 import { authClient } from "../lib/auth"
 import { usePageHeader } from "../components/app-page-header"
 import { PageEmpty, PageError, PageLoading } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
-import type { UserList } from "../lib/api"
-
 export const Route = createFileRoute("/lists/")({ component: ListsIndex })
 
 function ListsIndex() {
   const { data: session, isPending } = authClient.useSession()
   const router = useRouter()
+  const qc = useQueryClient()
   useEffect(() => {
     if (!isPending && !session) router.navigate({ to: "/login" })
   }, [isPending, session, router])
 
-  const [lists, setLists] = useState<Array<UserList> | null>(null)
   const [creating, setCreating] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
-  async function refresh() {
-    try {
-      const { lists: next } = await api.myLists()
-      setLists(next)
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : "load failed")
-      setLists([])
-    }
-  }
-  useEffect(() => {
-    if (session) void refresh()
-  }, [session])
+  const {
+    data: lists = [],
+    error: listsErr,
+    isPending: listsPending,
+  } = useQuery({
+    queryKey: qk.lists.mine(),
+    queryFn: async () => (await api.myLists()).lists,
+    enabled: !!session,
+  })
+
+  const error =
+    listsErr instanceof ApiError ? listsErr.message : listsErr ? "load failed" : null
+
+  const refresh = useCallback(async () => {
+    await qc.invalidateQueries({ queryKey: qk.lists.mine() })
+  }, [qc])
 
   const toggleCreating = useCallback(() => {
     setCreating((v) => !v)
@@ -72,7 +75,7 @@ function ListsIndex() {
 
         {error && <PageError message={error} />}
 
-        {lists === null ? (
+        {listsPending ? (
           <PageLoading label="Loading…" />
         ) : lists.length === 0 ? (
           <PageEmpty

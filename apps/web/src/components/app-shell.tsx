@@ -11,6 +11,7 @@ import {
 import { Button } from "@workspace/ui/components/button"
 import { authClient } from "../lib/auth"
 import { api } from "../lib/api"
+import { qk } from "../lib/query-keys"
 import { AppSidebar } from "./app-sidebar"
 import { LightboxProvider } from "./lightbox-provider"
 import { ComposeProvider, useCompose } from "./compose-provider"
@@ -58,7 +59,7 @@ function ChessChallengePoller({ enabled }: { enabled: boolean }) {
 	const queryClient = useQueryClient()
 
 	const { data } = useQuery({
-		queryKey: ["chess", "pending"],
+		queryKey: qk.chess.pending(),
 		queryFn: () => api.chessPendingGames(),
 		enabled,
 		refetchInterval: 5000,
@@ -67,7 +68,7 @@ function ChessChallengePoller({ enabled }: { enabled: boolean }) {
 	const acceptMutation = useMutation({
 		mutationFn: (id: string) => api.chessAcceptGame(id),
 		onSuccess: ({ game }) => {
-			queryClient.invalidateQueries({ queryKey: ["chess", "pending"] })
+			queryClient.invalidateQueries({ queryKey: qk.chess.pending() })
 			router.navigate({ to: "/chess/$id", params: { id: game.id } })
 		},
 	})
@@ -75,7 +76,7 @@ function ChessChallengePoller({ enabled }: { enabled: boolean }) {
 	const declineMutation = useMutation({
 		mutationFn: (id: string) => api.chessDeclineGame(id),
 		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ["chess", "pending"] })
+			queryClient.invalidateQueries({ queryKey: qk.chess.pending() })
 		},
 	})
 

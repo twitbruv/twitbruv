@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { useCallback, useMemo } from "react"
 import { api } from "../lib/api"
+import { qk } from "../lib/query-keys"
 import { usePageHeader } from "../components/app-page-header"
 import { Feed } from "../components/feed"
 import { PageFrame } from "../components/page-frame"
@@ -26,6 +27,7 @@ export const Route = createFileRoute("/hashtag/$tag")({
 
 function HashtagPage() {
   const { tag } = Route.useParams()
+  const feedKey = useMemo(() => qk.hashtag(tag), [tag])
   const load = useCallback((cursor?: string) => api.hashtag(tag, cursor), [tag])
 
   const appHeader = useMemo<AppPageHeaderSpec>(
@@ -50,7 +52,7 @@ function HashtagPage() {
     <PageFrame>
       <main>
         <Feed
-          queryKey={["hashtag", tag]}
+          queryKey={feedKey}
           load={load}
           emptyMessage={`Nothing tagged #${tag} yet.`}
         />

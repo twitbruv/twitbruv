@@ -1,4 +1,5 @@
 import { Link, createFileRoute, useRouter } from "@tanstack/react-router"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useMemo, useState } from "react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
@@ -8,6 +9,7 @@ import { updateProfileSchema } from "@workspace/validators"
 import { Textarea } from "@workspace/ui/components/textarea"
 import { ApiError, api } from "../lib/api"
 import { authClient } from "../lib/auth"
+import { qk } from "../lib/query-keys"
 import { API_URL } from "../lib/env"
 import { useMe } from "../lib/me"
 import { ClaimHandle } from "../components/claim-handle"
@@ -22,8 +24,6 @@ import {
   UnderlineTabRow,
 } from "../components/underline-tab-row"
 import { VerifiedBadge } from "../components/verified-badge"
-import type { BlockedUser, GithubConnectorMe, MutedUser } from "../lib/api"
-
 type SettingsTab =
   | "profile"
   | "account"
@@ -550,42 +550,27 @@ function SessionsSection({
 }
 
 function PrivacySection() {
+  const qc = useQueryClient()
   const [tab, setTab] = useState<"blocks" | "mutes">("blocks")
-  const [blocks, setBlocks] = useState<Array<BlockedUser> | null>(null)
-  const [mutes, setMutes] = useState<Array<MutedUser> | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
 
-  async function loadBlocks() {
-    setError(null)
-    try {
-      const { users } = await api.blocks()
-      setBlocks(users)
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : "couldn't load blocks")
-    }
-  }
+  const blocksQuery = useQuery({
+    queryKey: qk.blocks(),
+    queryFn: async () => (await api.blocks()).users,
+    enabled: tab === "blocks",
+  })
 
-  async function loadMutes() {
-    setError(null)
-    try {
-      const { users } = await api.mutes()
-      setMutes(users)
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : "couldn't load mutes")
-    }
-  }
-
-  useEffect(() => {
-    if (tab === "blocks" && blocks === null) loadBlocks()
-    if (tab === "mutes" && mutes === null) loadMutes()
-  }, [tab, blocks, mutes])
+  const mutesQuery = useQuery({
+    queryKey: qk.mutes(),
+    queryFn: async () => (await api.mutes()).users,
+    enabled: tab === "mutes",
+  })
 
   async function unblock(handle: string, id: string) {
     setBusyId(id)
     try {
       await api.unblock(handle)
-      setBlocks((prev) => (prev ? prev.filter((u) => u.id !== id) : prev))
+      await qc.invalidateQueries({ queryKey: qk.blocks() })
     } finally {
       setBusyId(null)
     }
@@ -595,11 +580,14 @@ function PrivacySection() {
     setBusyId(id)
     try {
       await api.unmute(handle)
-      setMutes((prev) => (prev ? prev.filter((u) => u.id !== id) : prev))
+      await qc.invalidateQueries({ queryKey: qk.mutes() })
     } finally {
       setBusyId(null)
     }
   }
+
+  const blocksCount = blocksQuery.data?.length ?? 0
+  const mutesCount = mutesQuery.data?.length ?? 0
 
   return (
     <section className="space-y-3">
@@ -611,8 +599,8 @@ function PrivacySection() {
           onClick={() => setTab("blocks")}
         >
           Blocked
-          {blocks !== null && blocks.length > 0 && (
-            <span className="ml-1.5 text-xs opacity-80">{blocks.length}</span>
+          {blocksQuery.data !== undefined && blocksCount > 0 && (
+            <span className="ml-1.5 text-xs opacity-80">{blocksCount}</span>
           )}
         </Button>
         <Button
@@ -621,15 +609,23 @@ function PrivacySection() {
           onClick={() => setTab("mutes")}
         >
           Muted
-          {mutes !== null && mutes.length > 0 && (
-            <span className="ml-1.5 text-xs opacity-80">{mutes.length}</span>
+          {mutesQuery.data !== undefined && mutesCount > 0 && (
+            <span className="ml-1.5 text-xs opacity-80">{mutesCount}</span>
           )}
         </Button>
       </div>
-      {error && <p className="text-xs text-destructive">{error}</p>}
-      {tab === "blocks" && (
+      {tab === "blocks" && blocksQuery.isError && (
+        <p className="text-xs text-destructive">
+          {blocksQuery.error instanceof ApiError
+            ? blocksQuery.error.message
+            : "couldn't load blocks"}
+        </p>
+      )}
+      {tab === "blocks" && !blocksQuery.isError && (
         <PrivacyList
-          users={blocks}
+          users={
+            blocksQuery.isPending ? null : (blocksQuery.data ?? [])
+          }
           emptyText="You haven't blocked anyone."
           renderTrailing={(u) => (
             <Button
@@ -646,9 +642,18 @@ function PrivacySection() {
           }
         />
       )}
-      {tab === "mutes" && (
+      {tab === "mutes" && mutesQuery.isError && (
+        <p className="text-xs text-destructive">
+          {mutesQuery.error instanceof ApiError
+            ? mutesQuery.error.message
+            : "couldn't load mutes"}
+        </p>
+      )}
+      {tab === "mutes" && !mutesQuery.isError && (
         <PrivacyList
-          users={mutes}
+          users={
+            mutesQuery.isPending ? null : (mutesQuery.data ?? [])
+          }
           emptyText="You haven't muted anyone."
           renderTrailing={(u) => (
             <Button
@@ -801,13 +806,12 @@ function DangerZone({ onDeleted }: { onDeleted: () => void }) {
 }
 
 function ConnectionsSection() {
-  const [state, setState] = useState<GithubConnectorMe | null>(null)
+  const qc = useQueryClient()
   const [busy, setBusy] = useState<"refresh" | "disconnect" | "toggle" | null>(
     null
   )
   const [status, setStatus] = useState<string | null>(null)
 
-  // Surface OAuth-roundtrip outcomes the callback redirects with.
   const search =
     typeof window !== "undefined"
       ? new URLSearchParams(window.location.search)
@@ -815,18 +819,10 @@ function ConnectionsSection() {
   const connected = search?.get("connected")
   const connectError = search?.get("connect_error")
 
-  async function load() {
-    try {
-      const res = await api.connectorsGithubMe()
-      setState(res)
-    } catch (e) {
-      setStatus(e instanceof ApiError ? e.message : "couldn't load connection")
-    }
-  }
-
-  useEffect(() => {
-    load()
-  }, [])
+  const { data: state, isPending } = useQuery({
+    queryKey: qk.connectors.githubMe(),
+    queryFn: () => api.connectorsGithubMe(),
+  })
 
   async function refresh() {
     if (busy) return
@@ -837,7 +833,7 @@ function ConnectionsSection() {
       if (r.stale)
         setStatus("Refresh hit GitHub's limit — showing last good data.")
       else setStatus("Refreshed.")
-      await load()
+      await qc.invalidateQueries({ queryKey: qk.connectors.githubMe() })
     } catch (e) {
       setStatus(e instanceof ApiError ? e.message : "refresh failed")
     } finally {
@@ -857,7 +853,7 @@ function ConnectionsSection() {
     setBusy("disconnect")
     try {
       await api.connectorsGithubDisconnect()
-      setState({ connected: false, configured: state?.configured ?? true })
+      await qc.invalidateQueries({ queryKey: qk.connectors.githubMe() })
       setStatus("Disconnected.")
     } catch (e) {
       setStatus(e instanceof ApiError ? e.message : "disconnect failed")
@@ -871,7 +867,7 @@ function ConnectionsSection() {
     setBusy("toggle")
     try {
       await api.connectorsGithubSetVisibility(next)
-      setState({ ...state, showOnProfile: next })
+      await qc.invalidateQueries({ queryKey: qk.connectors.githubMe() })
     } catch (e) {
       setStatus(e instanceof ApiError ? e.message : "couldn't update")
     } finally {
@@ -902,7 +898,7 @@ function ConnectionsSection() {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="text-sm font-semibold">GitHub</div>
-            {!state && (
+            {isPending && !state && (
               <p className="text-xs text-muted-foreground">loading…</p>
             )}
             {state && state.configured === false && (

@@ -1,6 +1,7 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router"
 import { useCallback, useEffect, useMemo } from "react"
 import { api } from "../lib/api"
+import { qk } from "../lib/query-keys"
 import { authClient } from "../lib/auth"
 import { usePageHeader } from "../components/app-page-header"
 import { Feed } from "../components/feed"
@@ -29,7 +30,7 @@ function Bookmarks() {
     <PageFrame>
       <main className="">
         <Feed
-          queryKey={["bookmarks"]}
+          queryKey={qk.bookmarks()}
           load={load}
           emptyMessage="no bookmarks yet. tap the bookmark icon on a post to save it."
         />

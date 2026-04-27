@@ -1,21 +1,26 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
-import { useEffect, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { Button } from "@workspace/ui/components/button"
 import { ApiError, api } from "../lib/api"
+import { qk } from "../lib/query-keys"
+import type { RouterAppContext } from "../lib/router-context"
 import { Editor } from "../components/editor/editor"
 import { VerifiedBadge } from "../components/verified-badge"
 import { authClient } from "../lib/auth"
 import { APP_NAME } from "../lib/env"
 import { buildSeoMeta, canonicalLink, clipDescription } from "../lib/seo"
-import type { ArticleDto } from "../lib/api"
-
 export const Route = createFileRoute("/$handle/a/$slug")({
   component: ArticleView,
-  loader: async ({ params }) => {
+  loader: async ({ params, context }) => {
+    const ctx = context as RouterAppContext
     try {
       const { article } = await api.userArticleBySlug(
         params.handle,
         params.slug
+      )
+      ctx.queryClient.setQueryData(
+        qk.articles.userBySlug(params.handle, params.slug),
+        article
       )
       return { article }
     } catch {
@@ -83,26 +88,29 @@ export const Route = createFileRoute("/$handle/a/$slug")({
 function ArticleView() {
   const { handle, slug } = Route.useParams()
   const { data: session } = authClient.useSession()
-  const [article, setArticle] = useState<ArticleDto | null>(null)
-  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    setArticle(null)
-    setError(null)
-    api
-      .userArticleBySlug(handle, slug)
-      .then(({ article: next }) => setArticle(next))
-      .catch((e) => setError(e instanceof ApiError ? e.message : "not found"))
-  }, [handle, slug])
+  const {
+    data: article,
+    error,
+    isPending,
+  } = useQuery({
+    queryKey: qk.articles.userBySlug(handle, slug),
+    queryFn: async () =>
+      (await api.userArticleBySlug(handle, slug)).article,
+    retry: false,
+  })
 
-  if (error) {
+  const articleError =
+    error instanceof ApiError ? error.message : error ? "not found" : null
+
+  if (articleError) {
     return (
       <main className="px-4 py-16 text-center">
         <p className="text-sm text-muted-foreground">article not found</p>
       </main>
     )
   }
-  if (!article) {
+  if (isPending || !article) {
     return (
       <main className="px-4 py-16">
         <p className="text-sm text-muted-foreground">loading…</p>

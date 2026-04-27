@@ -1,8 +1,11 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useEffect, useMemo, useState } from "react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { ApiError, api } from "../lib/api"
+import { feedLikePredicate } from "../lib/query-cache"
+import { qk } from "../lib/query-keys"
 import { authClient } from "../lib/auth"
 import { usePageHeader } from "../components/app-page-header"
 import { PageEmpty, PageError, PageLoading } from "../components/page-surface"
@@ -20,39 +23,47 @@ type Tab = "drafts" | "scheduled"
 function Drafts() {
   const { data: session, isPending } = authClient.useSession()
   const router = useRouter()
+  const qc = useQueryClient()
   useEffect(() => {
     if (!isPending && !session) router.navigate({ to: "/login" })
   }, [isPending, session, router])
 
   const [tab, setTab] = useState<Tab>("drafts")
-  const [items, setItems] = useState<Array<ScheduledPost> | null>(null)
-  const [error, setError] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
 
-  const refresh = useCallback(async () => {
-    setError(null)
-    try {
-      const { items: next } = await api.scheduledPosts(
-        tab === "drafts" ? "draft" : "scheduled"
-      )
-      setItems(next)
-    } catch (e) {
-      setError(e instanceof ApiError ? e.message : "load failed")
-      setItems([])
-    }
-  }, [tab])
+  const kind = tab === "drafts" ? "draft" : "scheduled"
+  const {
+    data: items = [],
+    error: itemsErr,
+    isPending: itemsPending,
+  } = useQuery({
+    queryKey: qk.scheduled(kind),
+    queryFn: async () => (await api.scheduledPosts(kind)).items,
+    enabled: !!session,
+  })
 
-  useEffect(() => {
-    void refresh()
-  }, [refresh])
+  const error =
+    itemsErr instanceof ApiError
+      ? itemsErr.message
+      : itemsErr
+        ? "load failed"
+        : null
+
+  async function invalidateScheduled() {
+    await qc.invalidateQueries({ queryKey: qk.scheduled("draft") })
+    await qc.invalidateQueries({ queryKey: qk.scheduled("scheduled") })
+  }
 
   async function publish(id: string) {
     setBusyId(id)
+    setActionError(null)
     try {
       await api.publishScheduledPost(id)
-      await refresh()
+      await invalidateScheduled()
+      await qc.invalidateQueries({ predicate: feedLikePredicate })
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "publish failed")
+      setActionError(e instanceof ApiError ? e.message : "publish failed")
     } finally {
       setBusyId(null)
     }
@@ -60,11 +71,12 @@ function Drafts() {
   async function remove(id: string) {
     if (!confirm("Delete this draft?")) return
     setBusyId(id)
+    setActionError(null)
     try {
       await api.deleteScheduledPost(id)
-      await refresh()
+      await invalidateScheduled()
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "delete failed")
+      setActionError(e instanceof ApiError ? e.message : "delete failed")
     } finally {
       setBusyId(null)
     }
@@ -79,11 +91,12 @@ function Drafts() {
 
   async function reschedule(id: string, scheduledFor: string | null) {
     setBusyId(id)
+    setActionError(null)
     try {
       await api.updateScheduledPost(id, { scheduledFor })
-      await refresh()
+      await invalidateScheduled()
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "update failed")
+      setActionError(e instanceof ApiError ? e.message : "update failed")
     } finally {
       setBusyId(null)
     }
@@ -104,9 +117,11 @@ function Drafts() {
           ))}
         </UnderlineTabRow>
 
-        {error && <PageError message={error} />}
+        {(error || actionError) && (
+          <PageError message={(error ?? actionError)!} />
+        )}
 
-        {items === null ? (
+        {itemsPending ? (
           <PageLoading label="Loading…" />
         ) : items.length === 0 ? (
           <PageEmpty
