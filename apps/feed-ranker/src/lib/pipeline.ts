@@ -1,37 +1,28 @@
-import type { Database } from "@workspace/db"
 import type { ForYouRankRequest, ForYouRankResponse } from "@workspace/types"
-import type Redis from "ioredis"
-import type { Env } from "../env.ts"
-import type { Logger } from "./logger.ts"
+import { hashUserId } from "./anonymize.ts"
 import { loadCandidates } from "./candidates.ts"
 import { applyPreScoringFilters } from "./filters.ts"
 import { hydrateQueryContext } from "./query-context.ts"
 import { selectRankedCandidates } from "./rerank.ts"
+import type { RankerRuntime } from "./runtime.ts"
 import { scoreCandidates } from "./scorers.ts"
 import { persistRankedSession, recordRankerSideEffects } from "./side-effects.ts"
 
-export interface RankerRuntime {
-  env: Env
-  db: Database
-  redis: Redis
-  log: Logger
-}
-
 export async function runForYouPipeline(
-  runtime: RankerRuntime,
-  request: ForYouRankRequest
+  request: ForYouRankRequest,
+  runtime: RankerRuntime
 ): Promise<ForYouRankResponse> {
   const context = await hydrateQueryContext(request)
-  const candidates = await loadCandidates(context)
+  const candidates = await loadCandidates(context, runtime)
   const filtered = applyPreScoringFilters(context, candidates)
   const scored = scoreCandidates(context, filtered)
   const selected = selectRankedCandidates(context, scored)
-  const session = await persistRankedSession(context, selected)
-  await recordRankerSideEffects(context, selected)
+  const session = await persistRankedSession(context, selected, runtime)
+  await recordRankerSideEffects(context, selected, runtime)
 
   runtime.log.info(
     {
-      userId: request.userId,
+      anonymizedUserId: hashUserId(request.userId),
       algoVersion: request.algoVersion,
       variant: request.variant,
       candidates: candidates.length,
