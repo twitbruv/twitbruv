@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./schema": "./src/schema/index.ts",
-    "./client": "./src/client.ts"
+    "./client": "./src/client.ts",
+    "./feed-policy": "./src/feed-policy.ts"
   },
   "scripts": {
     "push": "drizzle-kit push",
