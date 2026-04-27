@@ -1,4 +1,4 @@
-import type { ForYouCandidate } from "./candidates.ts"
+import type { ForYouCandidate } from "./candidates/index.ts"
 import type { QueryContext } from "./query-context.ts"
 
 export function applyPreScoringFilters(

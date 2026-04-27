@@ -1,5 +1,5 @@
 import { hashUserId } from "./anonymize.ts"
-import { loadCandidates } from "./candidates.ts"
+import { loadCandidates } from "./candidates/index.ts"
 import { applyPreScoringFilters } from "./filters.ts"
 import { hydrateQueryContext } from "./query-context.ts"
 import { encodeSessionCursor } from "./cursor.ts"
