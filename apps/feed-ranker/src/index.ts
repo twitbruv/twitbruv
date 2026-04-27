@@ -4,12 +4,14 @@ import { z } from "zod"
 import { createDb, sql } from "@workspace/db"
 import {
   FOR_YOU_ALGO_VERSION,
-  FOR_YOU_VARIANTS,
-  type ForYouRankRequest,
+  FOR_YOU_VARIANTS
+  
 } from "@workspace/types"
 import { loadEnv } from "./env.ts"
 import { createLogger } from "./lib/logger.ts"
 import { runForYouPipeline } from "./lib/pipeline.ts"
+import { RankedSessionExpiredError } from "./lib/query-context.ts"
+import type {ForYouRankRequest} from "@workspace/types";
 import type { RankerRuntime } from "./lib/runtime.ts"
 
 const rankRequestSchema = z.object({
@@ -41,7 +43,12 @@ app.use("*", async (c, next) => {
   const path = c.req.path
   if (path === "/healthz" || path === "/readyz") return
   log.info(
-    { method: c.req.method, path, status: c.res.status, ms: Date.now() - start },
+    {
+      method: c.req.method,
+      path,
+      status: c.res.status,
+      ms: Date.now() - start,
+    },
     "req"
   )
 })
@@ -71,16 +78,32 @@ app.post("/internal/for-you", async (c) => {
   const body = await c.req.json().catch(() => null)
   const parsed = rankRequestSchema.safeParse(body)
   if (!parsed.success) {
-    return c.json({ error: "invalid_request", details: parsed.error.flatten().fieldErrors }, 400)
+    return c.json(
+      { error: "invalid_request", details: parsed.error.flatten().fieldErrors },
+      400
+    )
   }
 
-  const response = await runForYouPipeline(parsed.data satisfies ForYouRankRequest, runtime)
-  return c.json(response)
+  try {
+    const response = await runForYouPipeline(
+      parsed.data satisfies ForYouRankRequest,
+      runtime
+    )
+    return c.json(response)
+  } catch (err) {
+    if (err instanceof RankedSessionExpiredError) {
+      return c.json({ error: "session_expired", restartRequired: true }, 410)
+    }
+    throw err
+  }
 })
 
 app.notFound((c) => c.json({ error: "not_found" }, 404))
 app.onError((err, c) => {
-  log.error({ err: err.stack ?? err.message, path: c.req.path }, "unhandled_error")
+  log.error(
+    { err: err.stack ?? err.message, path: c.req.path },
+    "unhandled_error"
+  )
   return c.json({ error: "internal_error" }, 500)
 })
 
@@ -100,7 +123,10 @@ const shutdown = async (signal: NodeJS.Signals) => {
   log.info({ signal }, "feed_ranker_shutdown_start")
 
   const timeout = setTimeout(() => {
-    log.error({ timeoutMs: SHUTDOWN_TIMEOUT_MS }, "feed_ranker_shutdown_timeout")
+    log.error(
+      { timeoutMs: SHUTDOWN_TIMEOUT_MS },
+      "feed_ranker_shutdown_timeout"
+    )
     process.exit(1)
   }, SHUTDOWN_TIMEOUT_MS)
 
