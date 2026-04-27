@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull, lte, schema, sql } from '@workspace/db'
+import { and, eq, inArray, isNotNull, isNull, lte, schema } from '@workspace/db'
 import type { Database } from '@workspace/db'
 
 // Scan for due scheduled posts and publish them. Each row is published in its own transaction
@@ -6,27 +6,29 @@ import type { Database } from '@workspace/db'
 // don't get retried indefinitely; the user can edit/delete them via the drafts page.
 export async function publishDueScheduledPosts(db: Database, batchSize = 25): Promise<number> {
   const now = new Date()
-  // SELECT FOR UPDATE SKIP LOCKED so multiple workers can run safely without double-publishing.
-  const due = await db.execute(sql`
-    SELECT id, author_id
-    FROM ${schema.scheduledPosts}
-    WHERE scheduled_for IS NOT NULL
-      AND scheduled_for <= ${now}
-      AND published_at IS NULL
-      AND failed_at IS NULL
-    ORDER BY scheduled_for ASC
-    LIMIT ${batchSize}
-    FOR UPDATE SKIP LOCKED
-  `)
+  // Unlocked scan to find candidates. The actual row lock is taken inside publishOne's
+  // transaction with FOR UPDATE SKIP LOCKED — that's the only place a lock is held long
+  // enough to actually prevent two workers from grabbing the same row.
+  const candidates = await db
+    .select({ id: schema.scheduledPosts.id, authorId: schema.scheduledPosts.authorId })
+    .from(schema.scheduledPosts)
+    .where(
+      and(
+        isNotNull(schema.scheduledPosts.scheduledFor),
+        lte(schema.scheduledPosts.scheduledFor, now),
+        isNull(schema.scheduledPosts.publishedAt),
+        isNull(schema.scheduledPosts.failedAt),
+      ),
+    )
+    .orderBy(schema.scheduledPosts.scheduledFor)
+    .limit(batchSize)
 
-  const rows = due as unknown as Array<{ id: string; author_id: string }>
-  if (rows.length === 0) return 0
+  if (candidates.length === 0) return 0
 
   let published = 0
-  for (const row of rows) {
+  for (const row of candidates) {
     try {
-      await publishOne(db, row.author_id, row.id)
-      published++
+      if (await publishOne(db, row.authorId, row.id)) published++
     } catch (err) {
       const reason = err instanceof Error ? err.message : String(err)
       await db
@@ -38,8 +40,13 @@ export async function publishDueScheduledPosts(db: Database, batchSize = 25): Pr
   return published
 }
 
-async function publishOne(db: Database, authorId: string, scheduledId: string) {
-  await db.transaction(async (tx) => {
+// Returns true if this call published the row, false if another worker beat us to it (or the
+// row is no longer eligible). A return of false is not an error.
+async function publishOne(db: Database, authorId: string, scheduledId: string): Promise<boolean> {
+  return await db.transaction(async (tx) => {
+    // SKIP LOCKED: if another worker already holds this row, bail — we'll see it next scan
+    // if it's still due. The eligibility filters are re-checked under the lock to handle the
+    // case where it was published or failed between the outer scan and now.
     const [draft] = await tx
       .select()
       .from(schema.scheduledPosts)
@@ -48,10 +55,12 @@ async function publishOne(db: Database, authorId: string, scheduledId: string) {
           eq(schema.scheduledPosts.id, scheduledId),
           eq(schema.scheduledPosts.authorId, authorId),
           isNull(schema.scheduledPosts.publishedAt),
+          isNull(schema.scheduledPosts.failedAt),
         ),
       )
       .limit(1)
-    if (!draft) throw new Error('draft_disappeared')
+      .for('update', { skipLocked: true })
+    if (!draft) return false
 
     const [post] = await tx
       .insert(schema.posts)
@@ -85,5 +94,7 @@ async function publishOne(db: Database, authorId: string, scheduledId: string) {
       .update(schema.scheduledPosts)
       .set({ publishedAt: new Date(), publishedPostId: post.id })
       .where(eq(schema.scheduledPosts.id, scheduledId))
+
+    return true
   })
 }

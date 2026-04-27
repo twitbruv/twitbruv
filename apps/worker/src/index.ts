@@ -110,7 +110,7 @@ const scheduledTimer = setInterval(async () => {
     const n = await publishDueScheduledPosts(db)
     if (n > 0) log.info({ published: n }, 'scheduled_posts_published')
   } catch (err) {
-    log.error({ err: err instanceof Error ? err.message : err }, 'scheduled_posts_failed')
+    log.error({ err }, 'scheduled_posts_failed')
   } finally {
     scheduledRunning = false
   }
