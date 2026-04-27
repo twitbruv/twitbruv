@@ -37,7 +37,12 @@ postsRoute.post('/', requireHandle(), async (c) => {
     const rows = await db
       .select({ kind: schema.media.kind, originalKey: schema.media.originalKey })
       .from(schema.media)
-      .where(inArray(schema.media.id, body.mediaIds))
+      .where(
+        and(
+          inArray(schema.media.id, body.mediaIds),
+          eq(schema.media.ownerId, session.user.id),
+        ),
+      )
     imageUrls = rows
       .filter((r) => r.kind === 'image' || r.kind === 'gif')
       .map((r) => publicUrl(mediaEnv, r.originalKey))
