@@ -1,6 +1,20 @@
 import { Hono } from 'hono'
-import { and, desc, eq, inArray, isNull, lt, sql } from '@workspace/db'
-import { schema } from '@workspace/db'
+import {
+  and,
+  desc,
+  eq,
+  inArray,
+  isNull,
+  lt,
+  sql,
+  schema,
+  type Database,
+} from '@workspace/db'
+import {
+  FOR_YOU_ALGO_VERSION,
+  bucketForYouVariant,
+  type ForYouRankRequest,
+} from '@workspace/types'
 import { requireHandle, type HonoEnv } from '../middleware/session.ts'
 import { toPostDto } from '../lib/post-dto.ts'
 import { loadViewerFlags } from '../lib/viewer-flags.ts'
@@ -13,6 +27,8 @@ import { attachReplyParents } from '../lib/reply-parents.ts'
 import { loadPolls } from '../lib/polls.ts'
 import { loadUnfurlCards } from '../lib/unfurl-cards.ts'
 import { parseCursor } from '../lib/cursor.ts'
+import { callForYouRanker } from '../lib/feed-ranker.ts'
+import { hydratePostsByIds } from '../lib/feed-hydrate.ts'
 
 export const feedRoute = new Hono<HonoEnv>()
 
@@ -321,3 +337,273 @@ feedRoute.get('/network', requireHandle(), async (c) => {
   void NETWORK_FEED_TTL_SEC
   return c.json({ posts, nextCursor })
 })
+
+// =============================================================================
+// For You feed
+// =============================================================================
+//
+// Thin orchestration layer over the internal feed-ranker service. The API:
+//
+//   1. computes `variant` and `algoVersion` itself (so the cache key is correct
+//      *before* any ranker call), then
+//   2. checks a short-TTL page-0 cache, then
+//   3. asks the ranker for ordered post IDs with a strict timeout, then
+//   4. hydrates and re-applies safety filters in this process, then
+//   5. returns the page along with `algoVersion` + `variant` so analytics events
+//      can attribute outcomes back to the ranking formula they came from.
+//
+// On page 1 a ranker timeout / outage falls back to a blended chrono feed (network ->
+// following -> public top-up). On page 2+ a missing ranking session is surfaced to the
+// client as `restartRequired: true`, never silently swapped to a chrono feed — the plan
+// is explicit that mid-scroll feed swaps are worse than a clean restart.
+const FOR_YOU_PAGE_TTL_SEC = 30
+const FOR_YOU_DEFAULT_LIMIT = 40
+const FOR_YOU_MAX_LIMIT = 100
+// API asks the ranker for a little more than the client requested. The hydrate step may
+// drop posts that became invisible between ranker pre-filter and now (delete / block /
+// mute), so a small overfetch keeps the page full without a second round trip.
+const FOR_YOU_OVERFETCH = 20
+const FOR_YOU_RANKER_MAX_LIMIT = 200
+
+export function forYouFeedCacheKey(args: {
+  userId: string
+  variant: string
+  algoVersion: string
+}) {
+  return `feed:foryou:${args.userId}:${args.variant}:${args.algoVersion}:v1`
+}
+
+// Opaque ranker cursor — base64url-ish string, max length bounded so a malicious or buggy
+// client can't push arbitrary blobs through to the ranker. We don't decode it here; that's
+// the ranker's responsibility (it owns the session payload format).
+function isValidRankerCursor(raw: string): boolean {
+  if (raw.length === 0 || raw.length > 256) return false
+  return /^[A-Za-z0-9_\-=.]+$/.test(raw)
+}
+
+feedRoute.get('/for-you', requireHandle(), async (c) => {
+  const session = c.get('session')!
+  const { db, mediaEnv, cache, env, log, rateLimit } = c.get('ctx')
+  await rateLimit(c, 'reads.feed')
+
+  const me = session.user.id
+  const limitRaw = Number(c.req.query('limit') ?? FOR_YOU_DEFAULT_LIMIT)
+  const limit = Math.min(
+    Math.max(Number.isFinite(limitRaw) ? Math.floor(limitRaw) : FOR_YOU_DEFAULT_LIMIT, 1),
+    FOR_YOU_MAX_LIMIT,
+  )
+  const cursorRaw = c.req.query('cursor')
+  const cursor = cursorRaw && isValidRankerCursor(cursorRaw) ? cursorRaw : null
+
+  // Compute experiment assignment + algo version on the API side so the cache key, response
+  // metadata, and analytics attribution all match even if the ranker is unreachable.
+  const algoVersion = FOR_YOU_ALGO_VERSION
+  const variant = bucketForYouVariant(me)
+
+  const cacheable = !cursor && limit === FOR_YOU_DEFAULT_LIMIT
+  const cacheKey = forYouFeedCacheKey({ userId: me, variant, algoVersion })
+
+  if (cacheable) {
+    const hit = await cache.get<ForYouFeedResponse>(cacheKey)
+    if (hit) {
+      c.header('x-cache', 'hit')
+      return c.json(hit)
+    }
+  }
+
+  const rankerLimit = Math.min(limit + FOR_YOU_OVERFETCH, FOR_YOU_RANKER_MAX_LIMIT)
+  const rankRequest: ForYouRankRequest = {
+    userId: me,
+    limit: rankerLimit,
+    cursor,
+    algoVersion,
+    variant,
+  }
+
+  const ranker = await callForYouRanker({
+    config: {
+      url: env.FEED_RANKER_URL,
+      token: env.FEED_RANKER_TOKEN,
+      timeoutMs: env.FEED_RANKER_TIMEOUT_MS,
+    },
+    request: rankRequest,
+    log,
+  })
+
+  if (ranker.kind === 'session_expired') {
+    // Page 2+ with a stale session. The client should refresh from page 1.
+    return c.json(
+      {
+        error: 'session_expired',
+        restartRequired: true,
+        algoVersion,
+        variant,
+      },
+      410,
+    )
+  }
+
+  if (ranker.kind === 'unavailable') {
+    if (cursor) {
+      // We can't honour a ranker cursor without the ranker. Treat this the same as an
+      // expired session: tell the client to restart, don't quietly swap feed mode.
+      log.warn(
+        { userId: me, reason: ranker.reason },
+        'feed_for_you_cursor_without_ranker',
+      )
+      return c.json(
+        {
+          error: 'session_expired',
+          restartRequired: true,
+          algoVersion,
+          variant,
+        },
+        410,
+      )
+    }
+
+    const fallbackIds = await buildForYouFallbackIds({
+      db,
+      viewerId: me,
+      limit: limit + FOR_YOU_OVERFETCH,
+    })
+    const fallbackPosts = await hydratePostsByIds({
+      db,
+      viewerId: me,
+      mediaEnv,
+      postIds: fallbackIds,
+    })
+    const trimmed = fallbackPosts.slice(0, limit)
+    const fallbackResponse: ForYouFeedResponse = {
+      posts: trimmed,
+      nextCursor: null,
+      algoVersion,
+      variant,
+      fallback: true,
+    }
+    // Don't cache fallback under the page-0 key — we want to retry the ranker on the next
+    // request, not lock in a chrono response for 30s.
+    c.header('x-cache', 'fallback')
+    c.header('x-feed-fallback-reason', ranker.reason)
+    return c.json(fallbackResponse)
+  }
+
+  const ordered = await hydratePostsByIds({
+    db,
+    viewerId: me,
+    mediaEnv,
+    postIds: ranker.data.postIds,
+  })
+  const trimmed = ordered.slice(0, limit)
+
+  const response: ForYouFeedResponse = {
+    posts: trimmed,
+    // The ranker's nextCursor refers to its session, not to anything API-side. Pass it
+    // through unchanged. If hydration dropped enough posts that we're returning fewer than
+    // `limit`, we still pass the cursor through — the client will try to fetch more and
+    // the ranker will continue from its offset.
+    nextCursor: ranker.data.nextCursor,
+    algoVersion: ranker.data.algoVersion,
+    variant: ranker.data.variant,
+  }
+
+  if (cacheable) {
+    await cache.set(cacheKey, response, FOR_YOU_PAGE_TTL_SEC)
+    c.header('x-cache', 'miss')
+  }
+  return c.json(response)
+})
+
+interface ForYouFeedResponse {
+  posts: unknown[]
+  nextCursor: string | null
+  algoVersion: string
+  variant: string
+  fallback?: boolean
+}
+
+// =============================================================================
+// Page-1 fallback: blended chrono feed
+// =============================================================================
+//
+// Used only when the ranker is unreachable / times out / errors and the client is asking
+// for the first page (no cursor). Mixes three buckets in priority order, dedups by post id,
+// and returns the trimmed list. We deliberately keep the queries simple — this is the
+// degraded path; correctness and resilience matter, the perfect blend doesn't.
+async function buildForYouFallbackIds(args: {
+  db: Database
+  viewerId: string
+  limit: number
+}): Promise<string[]> {
+  const { db, viewerId, limit } = args
+  const perBucket = Math.max(limit, 20)
+
+  const [networkRows, followingRows, publicRows] = await Promise.all([
+    db
+      .select({ id: schema.posts.id, ts: schema.likes.createdAt })
+      .from(schema.likes)
+      .innerJoin(
+        schema.follows,
+        and(
+          eq(schema.follows.followerId, viewerId),
+          eq(schema.follows.followeeId, schema.likes.userId),
+        ),
+      )
+      .innerJoin(schema.posts, eq(schema.posts.id, schema.likes.postId))
+      .where(
+        and(
+          isNull(schema.posts.deletedAt),
+          eq(schema.posts.visibility, 'public'),
+          sql`NOT EXISTS (SELECT 1 FROM ${schema.follows} ff WHERE ff.follower_id = ${viewerId} AND ff.followee_id = ${schema.posts.authorId})`,
+          sql`${schema.posts.authorId} <> ${viewerId}`,
+          sql`NOT EXISTS (SELECT 1 FROM ${schema.blocks} b WHERE (b.blocker_id = ${viewerId} AND b.blocked_id = ${schema.posts.authorId}) OR (b.blocker_id = ${schema.posts.authorId} AND b.blocked_id = ${viewerId}))`,
+          sql`NOT EXISTS (SELECT 1 FROM ${schema.mutes} m WHERE m.muter_id = ${viewerId} AND m.muted_id = ${schema.posts.authorId} AND (m.scope = 'feed' OR m.scope = 'both'))`,
+        ),
+      )
+      .orderBy(desc(schema.likes.createdAt))
+      .limit(perBucket),
+    db
+      .select({ id: schema.posts.id, ts: schema.posts.createdAt })
+      .from(schema.posts)
+      .innerJoin(
+        schema.follows,
+        eq(schema.follows.followeeId, schema.posts.authorId),
+      )
+      .where(
+        and(
+          eq(schema.follows.followerId, viewerId),
+          isNull(schema.posts.deletedAt),
+          sql`NOT EXISTS (SELECT 1 FROM ${schema.blocks} b WHERE (b.blocker_id = ${viewerId} AND b.blocked_id = ${schema.posts.authorId}) OR (b.blocker_id = ${schema.posts.authorId} AND b.blocked_id = ${viewerId}))`,
+          sql`NOT EXISTS (SELECT 1 FROM ${schema.mutes} m WHERE m.muter_id = ${viewerId} AND m.muted_id = ${schema.posts.authorId} AND (m.scope = 'feed' OR m.scope = 'both'))`,
+        ),
+      )
+      .orderBy(desc(schema.posts.createdAt))
+      .limit(perBucket),
+    db
+      .select({ id: schema.posts.id, ts: schema.posts.createdAt })
+      .from(schema.posts)
+      .where(
+        and(
+          isNull(schema.posts.deletedAt),
+          eq(schema.posts.visibility, 'public'),
+          sql`${schema.posts.authorId} <> ${viewerId}`,
+          sql`NOT EXISTS (SELECT 1 FROM ${schema.blocks} b WHERE (b.blocker_id = ${viewerId} AND b.blocked_id = ${schema.posts.authorId}) OR (b.blocker_id = ${schema.posts.authorId} AND b.blocked_id = ${viewerId}))`,
+          sql`NOT EXISTS (SELECT 1 FROM ${schema.mutes} m WHERE m.muter_id = ${viewerId} AND m.muted_id = ${schema.posts.authorId} AND (m.scope = 'feed' OR m.scope = 'both'))`,
+        ),
+      )
+      .orderBy(desc(schema.posts.createdAt))
+      .limit(perBucket),
+  ])
+
+  const seen = new Set<string>()
+  const ordered: string[] = []
+  for (const bucket of [networkRows, followingRows, publicRows]) {
+    for (const row of bucket) {
+      if (seen.has(row.id)) continue
+      seen.add(row.id)
+      ordered.push(row.id)
+      if (ordered.length >= limit) return ordered
+    }
+  }
+  return ordered
+}

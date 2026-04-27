@@ -154,6 +154,15 @@ const envSchema = z.object({
       z.union([z.string(), z.undefined()])
     )
   ),
+
+  // Internal ranker service used by the For You feed. All three vars are optional so the API
+  // boots and serves every existing feed even when feed-ranker isn't deployed yet — in that
+  // case /api/feed/for-you transparently falls back to a blended chrono feed on page 1.
+  FEED_RANKER_URL: z.string().url().optional(),
+  FEED_RANKER_TOKEN: z.string().min(16).optional(),
+  // Hard ceiling on the ranker call. The product budget is roughly p95 < 120ms; we kill the
+  // request past that and fall back rather than letting a slow ranker drag the API timeline.
+  FEED_RANKER_TIMEOUT_MS: z.coerce.number().int().min(20).max(2000).default(120),
 })
 
 export type Env = z.infer<typeof envSchema>
