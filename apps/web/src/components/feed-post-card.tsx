@@ -3,9 +3,11 @@ import { useMutation } from "@tanstack/react-query"
 import {
 	PostCard,
 	type PostMedia as UIPostMedia,
+	type PostQuoteOf,
 } from "@workspace/ui/components/post-card"
 import { api } from "../lib/api"
 import { useLightbox } from "./lightbox-provider"
+import { useCompose } from "./compose-provider"
 import { LightboxSidebar } from "./lightbox-sidebar"
 import type { Post, PostMedia } from "../lib/api"
 
@@ -88,6 +90,7 @@ export function FeedPostCard({
 }: FeedPostCardProps) {
 	const navigate = useNavigate()
 	const lightbox = useLightbox()
+	const compose = useCompose()
 
 	// Unwrap reposts
 	const isRepost = Boolean(outerPost.repostOf)
@@ -169,6 +172,36 @@ export function FeedPostCard({
 		},
 	})
 
+	// Build quote embed data
+	const quoteOf: PostQuoteOf | undefined = post.quoteOf
+		? (() => {
+				const q = post.quoteOf
+				const qHandle = q.author.handle ?? "unknown"
+				const thumb = q.media?.find(
+					(m) => m.processingState === "ready" && m.variants.length > 0,
+				)
+				const thumbVariant =
+					thumb?.variants.find((v) => v.kind === "thumb") ??
+					thumb?.variants.find((v) => v.kind === "medium") ??
+					thumb?.variants[0]
+				return {
+					author: {
+						handle: q.author.handle,
+						displayName: q.author.displayName,
+						avatarUrl: q.author.avatarUrl,
+					},
+					text: q.text,
+					time: relativeTime(q.createdAt),
+					thumbnailUrl: thumbVariant?.url,
+					onClick: () =>
+						navigate({
+							to: "/$handle/p/$id",
+							params: { handle: qHandle, id: q.id },
+						}),
+				}
+			})()
+		: undefined
+
 	return (
 		<PostCard
 			author={{
@@ -206,6 +239,7 @@ export function FeedPostCard({
 					? outerPost.author.displayName ?? outerPost.author.handle ?? undefined
 					: undefined
 			}
+			quoteOf={quoteOf}
 			truncateText={truncateText}
 			disableHover={disableHover}
 			threadLine={threadLine}
@@ -218,6 +252,9 @@ export function FeedPostCard({
 			onLike={() => likeMutation.mutate()}
 			onRepost={() => repostMutation.mutate()}
 			onBookmark={() => bookmarkMutation.mutate()}
+			onQuote={() =>
+				compose.open({ quoteOfId: post.id, quoted: post })
+			}
 			onReply={() =>
 				navigate({
 					to: "/$handle/p/$id",

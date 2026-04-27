@@ -166,7 +166,7 @@ export function Feed({
     return (
       <div>
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="flex gap-3 border-b border-border px-4 py-4">
+          <div key={i} className="flex gap-3 px-4 py-4">
             <Skeleton className="size-10 shrink-0 rounded-full" />
             <div className="flex-1 space-y-3">
               <Skeleton className="h-4 w-1/3" />

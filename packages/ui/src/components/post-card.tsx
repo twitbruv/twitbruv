@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect } from "react"
 import { cn } from "@workspace/ui/lib/utils"
 import { Avatar } from "@workspace/ui/components/avatar"
 import { Button } from "@workspace/ui/components/button"
+import { DropdownMenu } from "@workspace/ui/components/dropdown-menu"
 import { Hover } from "@workspace/ui/components/hover"
 import { AnimatedNumber } from "@workspace/ui/components/animated-number"
 import {
@@ -10,6 +11,7 @@ import {
 	HeartIcon as HeartOutline,
 	BookmarkIcon as BookmarkOutline,
 	EllipsisHorizontalIcon,
+	ChatBubbleBottomCenterTextIcon,
 } from "@heroicons/react/24/outline"
 import {
 	ArrowPathRoundedSquareIcon as ArrowPathSolid,
@@ -20,6 +22,19 @@ import {
 export type PostMedia =
 	| { type: "image"; url: string; alt?: string }
 	| { type: "video"; url: string; thumbnailUrl: string }
+
+export interface PostQuoteOf {
+	author: {
+		handle: string | null
+		displayName: string | null
+		avatarUrl: string | null
+	}
+	text: string
+	time: string
+	/** Optional thumbnail for the quoted post's media */
+	thumbnailUrl?: string
+	onClick?: () => void
+}
 
 export interface PostCardProps {
 	author: {
@@ -39,6 +54,8 @@ export interface PostCardProps {
 	media?: PostMedia[]
 	/** Show "X reposted" badge above the post */
 	repostedBy?: string
+	/** Quoted post embed */
+	quoteOf?: PostQuoteOf
 	/** Truncate long text in feed mode. When false, shows full text. */
 	truncateText?: boolean
 	/** Disable hover effect (e.g. for the main post on a detail page) */
@@ -49,6 +66,7 @@ export interface PostCardProps {
 	onClick?: () => void
 	onLike?: () => void
 	onRepost?: () => void
+	onQuote?: () => void
 	onBookmark?: () => void
 	onReply?: () => void
 	/** Called when an image in the media grid is clicked, with the image index */
@@ -67,12 +85,14 @@ export function PostCard({
 	bookmarked = false,
 	media,
 	repostedBy,
+	quoteOf,
 	truncateText = false,
 	threadLine,
 	className,
 	onClick,
 	onLike,
 	onRepost,
+	onQuote,
 	onBookmark,
 	onReply,
 	onMediaClick,
@@ -198,6 +218,9 @@ export function PostCard({
 						<MediaGrid media={media} onImageClick={onMediaClick} />
 					)}
 
+					{/* Quote embed */}
+					{quoteOf && <QuoteEmbed quote={quoteOf} />}
+
 					{/* Action bar */}
 					<div className="mt-2 flex items-center">
 						{/* Reply */}
@@ -217,22 +240,38 @@ export function PostCard({
 						</div>
 
 						{/* Repost */}
-						<div className="flex-1">
-							<Button
-								variant="transparent"
-								size="sm"
-								iconLeft={<ArrowPathOutline />}
-								onClick={(e) => {
-									e.stopPropagation()
-									onRepost?.()
-								}}
-								className={cn(
-									"text-tertiary",
-									reposted && "text-success",
-								)}
-							>
-								{reposts > 0 ? <AnimatedNumber value={reposts} /> : null}
-							</Button>
+						<div className="flex-1" onClick={(e) => e.stopPropagation()}>
+							<DropdownMenu.Root>
+								<DropdownMenu.Trigger
+									render={
+										<Button
+											variant="transparent"
+											size="sm"
+											iconLeft={reposted ? <ArrowPathSolid /> : <ArrowPathOutline />}
+											className={cn(
+												"text-tertiary",
+												reposted && "text-success",
+											)}
+										>
+											{reposts > 0 ? <AnimatedNumber value={reposts} /> : null}
+										</Button>
+									}
+								/>
+								<DropdownMenu.Content align="start" sideOffset={4}>
+									<DropdownMenu.Item
+										onClick={() => onRepost?.()}
+										icon={<ArrowPathOutline className="size-4" />}
+									>
+										{reposted ? "Undo repost" : "Repost"}
+									</DropdownMenu.Item>
+									<DropdownMenu.Item
+										onClick={() => onQuote?.()}
+										icon={<ChatBubbleBottomCenterTextIcon className="size-4" />}
+									>
+										Quote
+									</DropdownMenu.Item>
+								</DropdownMenu.Content>
+							</DropdownMenu.Root>
 						</div>
 
 						{/* Like */}
@@ -392,6 +431,59 @@ function MediaGrid({
 					}}
 				/>
 			))}
+		</div>
+	)
+}
+
+// ── Quote embed ───────────────────────────────────────
+
+function QuoteEmbed({ quote }: { quote: PostQuoteOf }) {
+	const displayName =
+		quote.author.displayName || `@${quote.author.handle ?? "unknown"}`
+	const handle = quote.author.handle
+
+	return (
+		<div
+			className="mt-2 overflow-hidden rounded-xl border border-neutral transition-colors hover:bg-subtle/50"
+			onClick={(e) => {
+				e.stopPropagation()
+				quote.onClick?.()
+			}}
+			role={quote.onClick ? "button" : undefined}
+		>
+			<div className="flex gap-3 p-3">
+				<div className="min-w-0 flex-1">
+					<div className="flex items-center gap-1.5 text-xs">
+						<Avatar
+							initial={displayName[0] ?? "?"}
+							src={quote.author.avatarUrl}
+							size="xs"
+						/>
+						<span className="font-semibold text-primary">
+							{displayName}
+						</span>
+						{handle && (
+							<span className="text-tertiary">@{handle}</span>
+						)}
+						<span className="text-tertiary">&middot;</span>
+						<span className="text-tertiary">{quote.time}</span>
+					</div>
+					{quote.text && (
+						<p className="mt-1 line-clamp-3 text-sm leading-relaxed text-primary whitespace-pre-wrap">
+							{quote.text}
+						</p>
+					)}
+				</div>
+				{quote.thumbnailUrl && (
+					<div className="size-16 shrink-0 overflow-hidden rounded-lg">
+						<img
+							src={quote.thumbnailUrl}
+							alt=""
+							className="h-full w-full object-cover"
+						/>
+					</div>
+				)}
+			</div>
 		</div>
 	)
 }

@@ -33,6 +33,12 @@ export interface SegmentedControlProps<T extends string = string> {
 	 * - `fit` - segments hug their content
 	 */
 	layout?: "fill" | "fit"
+	/**
+	 * Visual variant:
+	 * - `solid` (default) - bg-subtle container with bg-base-2 indicator pill
+	 * - `ghost` - transparent container with bg-subtle indicator pill
+	 */
+	variant?: "solid" | "ghost"
 	className?: string
 }
 
@@ -53,6 +59,7 @@ export function SegmentedControl<T extends string = string>({
 	defaultValue,
 	onValueChange,
 	layout = "fill",
+	variant = "solid",
 	className,
 }: SegmentedControlProps<T>) {
 	const [internalValue, setInternalValue] = useState<T>(
@@ -118,11 +125,15 @@ export function SegmentedControl<T extends string = string>({
 				}
 			: { opacity: 0 }
 
+	const isGhost = variant === "ghost"
+	const radius = isGhost ? "rounded-lg" : "rounded-[6px]"
+
 	return (
 		<div
 			ref={containerRef}
 			className={cn(
-				"relative rounded-md bg-subtle",
+				"relative",
+				!isGhost && "rounded-md bg-subtle",
 				isFill ? "grid" : "inline-flex",
 				className,
 			)}
@@ -136,14 +147,23 @@ export function SegmentedControl<T extends string = string>({
 			<div
 				aria-hidden
 				className={cn(
-					"absolute inset-y-0 p-0.5",
+					"absolute inset-y-0",
+					isGhost ? "p-0" : "p-0.5",
 					"transition-all duration-200 ease-out-expo",
 					"motion-reduce:transition-none",
 					!isFill && !hasMeasuredRef.current && "transition-none",
 				)}
 				style={indicatorStyle}
 			>
-				<div className="h-full rounded-[6px] bg-base-2 shadow-xs" />
+				<div
+					className={cn(
+						"h-full",
+						radius,
+						isGhost
+							? "bg-subtle"
+							: "bg-base-2 shadow-xs",
+					)}
+				/>
 			</div>
 
 			{/* Option buttons */}
@@ -157,7 +177,9 @@ export function SegmentedControl<T extends string = string>({
 					aria-pressed={option.value === activeValue}
 					onClick={() => handleSelect(option.value)}
 					className={cn(
-						"relative z-[1] flex items-center justify-center gap-1.5 px-2.5 h-8 rounded-[6px]",
+						"relative z-[1] flex items-center justify-center gap-1.5 h-8",
+						isGhost ? "px-3" : "px-2.5",
+						radius,
 						"text-sm font-medium select-none cursor-pointer",
 						"outline-none focus-visible:ring-2 focus-visible:ring-focus",
 						"transition-colors duration-150",

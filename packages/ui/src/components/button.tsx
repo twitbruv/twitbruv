@@ -43,6 +43,12 @@ const variantConfig = {
 		bgClassName: "group-hover/btn:bg-danger/30 group-active/btn:bg-danger/50",
 		text: "text-danger",
 	},
+	glass: {
+		active: true,
+		bg: "bg-white/10 backdrop-blur-sm",
+		bgClassName: "group-hover/btn:bg-white/20 group-active/btn:bg-white/25",
+		text: "text-white/80",
+	},
 } as const
 
 const sizeStyles = {

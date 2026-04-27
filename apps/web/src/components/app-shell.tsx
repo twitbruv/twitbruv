@@ -1,4 +1,3 @@
-import { useState } from "react"
 import { useRouter } from "@tanstack/react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
@@ -14,45 +13,44 @@ import { authClient } from "../lib/auth"
 import { api } from "../lib/api"
 import { AppSidebar } from "./app-sidebar"
 import { LightboxProvider } from "./lightbox-provider"
-import { ComposeModal } from "./compose-modal"
+import { ComposeProvider, useCompose } from "./compose-provider"
 import type { ReactNode } from "react"
 
 export function AppShell({ children }: { children: ReactNode }) {
 	const { data: session } = authClient.useSession()
 	const authed = Boolean(session)
-	const [composeOpen, setComposeOpen] = useState(false)
 
 	return (
-		<LightboxProvider>
-			{authed && <ChessChallengePoller enabled />}
-			{authed && (
-				<ComposeModal
-					open={composeOpen}
-					onOpenChange={setComposeOpen}
-					onCreated={() => setComposeOpen(false)}
-				/>
-			)}
+		<ComposeProvider>
+			<LightboxProvider>
+				{authed && <ChessChallengePoller enabled />}
 
-			{/* Fixed sidebar - never scrolls, always visible at left edge of centered layout */}
-			<div
-				className="fixed top-0 z-40 h-svh w-[68px] xl:w-[240px]"
-				style={{ left: "max(0px, calc((100vw - 1080px) / 2))" }}
-			>
-				<AppSidebar onCompose={() => setComposeOpen(true)} />
-			</div>
+				{/* Fixed sidebar - never scrolls, always visible at left edge of centered layout */}
+				<div
+					className="fixed top-0 z-40 h-svh w-[68px] xl:w-[240px]"
+					style={{ left: "max(0px, calc((100vw - 1080px) / 2))" }}
+				>
+					<SidebarWithCompose />
+				</div>
 
-			{/* Main content - scrolls with body, scrollbar hugs right edge of viewport */}
-			<div className="mx-auto flex min-h-svh max-w-[1080px]">
-				{/* Spacer matching sidebar width so content isn't hidden behind it */}
-				<div className="w-[68px] shrink-0 xl:w-[240px]" />
-				<main className="flex-1">
-					{children}
-				</main>
-				{/* Right gutter */}
-				<div className="hidden w-[320px] shrink-0 lg:block" />
-			</div>
-		</LightboxProvider>
+				{/* Main content - scrolls with body, scrollbar hugs right edge of viewport */}
+				<div className="mx-auto flex min-h-svh max-w-[1080px]">
+					{/* Spacer matching sidebar width so content isn't hidden behind it */}
+					<div className="w-[68px] shrink-0 xl:w-[240px]" />
+					<main className="flex-1">
+						{children}
+					</main>
+					{/* Right gutter */}
+					<div className="hidden w-[320px] shrink-0 lg:block" />
+				</div>
+			</LightboxProvider>
+		</ComposeProvider>
 	)
+}
+
+function SidebarWithCompose() {
+	const compose = useCompose()
+	return <AppSidebar onCompose={() => compose.open()} />
 }
 
 function ChessChallengePoller({ enabled }: { enabled: boolean }) {

@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog"
-import { cn } from "@workspace/ui/lib/utils"
 import {
 	XMarkIcon,
 	ChevronLeftIcon,
 	ChevronRightIcon,
 } from "@heroicons/react/24/outline"
+import { Button } from "@workspace/ui/components/button"
 
 export interface LightboxImage {
 	url: string
@@ -77,16 +77,18 @@ export function Lightbox({
 						className="relative flex flex-1 items-center justify-center animate-[lightboxContentIn_300ms_cubic-bezier(0.16,1,0.3,1)_forwards]"
 						onClick={() => onOpenChange(false)}
 					>
-						{/* Close button */}
-						<LightboxButton
-							onClick={(e) => {
-								e.stopPropagation()
-								onOpenChange(false)
-							}}
-							className="absolute top-4 left-4"
-						>
-							<XMarkIcon className="size-5" />
-						</LightboxButton>
+					{/* Close button */}
+					<Button
+						variant="glass"
+						size="md"
+						onClick={(e) => {
+							e.stopPropagation()
+							onOpenChange(false)
+						}}
+						aria-label="Close"
+						iconLeft={<XMarkIcon className="size-5" />}
+						className="absolute top-4 left-4"
+					/>
 
 						{/* Counter */}
 						{images.length > 1 && (
@@ -95,18 +97,20 @@ export function Lightbox({
 							</span>
 						)}
 
-						{/* Previous arrow */}
-						{hasPrev && (
-							<LightboxButton
-								onClick={(e) => {
-									e.stopPropagation()
-									goPrev()
-								}}
-								className="absolute left-4 top-1/2 -translate-y-1/2"
-							>
-								<ChevronLeftIcon className="size-5" />
-							</LightboxButton>
-						)}
+					{/* Previous arrow */}
+					{hasPrev && (
+						<Button
+							variant="glass"
+							size="md"
+							onClick={(e) => {
+								e.stopPropagation()
+								goPrev()
+							}}
+							aria-label="Previous image"
+							iconLeft={<ChevronLeftIcon className="size-5" />}
+							className="absolute left-4 top-1/2 -translate-y-1/2"
+						/>
+					)}
 
 						{/* Image */}
 						{current && (
@@ -119,18 +123,20 @@ export function Lightbox({
 							/>
 						)}
 
-						{/* Next arrow */}
-						{hasNext && (
-							<LightboxButton
-								onClick={(e) => {
-									e.stopPropagation()
-									goNext()
-								}}
-								className="absolute right-4 top-1/2 -translate-y-1/2"
-							>
-								<ChevronRightIcon className="size-5" />
-							</LightboxButton>
-						)}
+					{/* Next arrow */}
+					{hasNext && (
+						<Button
+							variant="glass"
+							size="md"
+							onClick={(e) => {
+								e.stopPropagation()
+								goNext()
+							}}
+							aria-label="Next image"
+							iconLeft={<ChevronRightIcon className="size-5" />}
+							className="absolute right-4 top-1/2 -translate-y-1/2"
+						/>
+					)}
 					</div>
 
 					{/* Sidebar (comments) */}
@@ -147,29 +153,3 @@ export function Lightbox({
 	)
 }
 
-// ── Lightbox button ───────────────────────────────────
-// Dark-context button with visible bg on hover. Can't use the standard
-// Button component here because its variants assume a light background.
-
-function LightboxButton({
-	children,
-	onClick,
-	className,
-}: {
-	children: ReactNode
-	onClick?: (e: React.MouseEvent) => void
-	className?: string
-}) {
-	return (
-		<button
-			type="button"
-			onClick={onClick}
-			className={cn(
-				"flex size-9 items-center justify-center rounded-full bg-white/10 text-white/70 outline-none transition-colors hover:bg-white/20 hover:text-white focus-visible:ring-1 focus-visible:ring-white/20 active:scale-95",
-				className,
-			)}
-		>
-			{children}
-		</button>
-	)
-}

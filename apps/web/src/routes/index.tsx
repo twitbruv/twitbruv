@@ -1,4 +1,4 @@
-import { Link, createFileRoute } from "@tanstack/react-router"
+import { Link, createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useCallback, useState } from "react"
 import {
   Alert,
@@ -7,7 +7,7 @@ import {
 } from "@workspace/ui/components/alert"
 import { Button } from "@workspace/ui/components/button"
 import { Card } from "@workspace/ui/components/card"
-import { cn } from "@workspace/ui/lib/utils"
+import { SegmentedControl } from "@workspace/ui/components/segmented-control"
 import { authClient } from "../lib/auth"
 import { api } from "../lib/api"
 import { APP_NAME } from "../lib/env"
@@ -41,6 +41,7 @@ export const Route = createFileRoute("/")({
 function Landing() {
   const { data: session, isPending } = authClient.useSession()
   const { me } = useMe()
+  const navigate = useNavigate()
   const { tab: searchTab } = Route.useSearch()
   const tab: FeedTab = searchTab ?? "following"
   const [newPost, setNewPost] = useState<Post | null>(null)
@@ -67,22 +68,22 @@ function Landing() {
     const needsHandle = me && !me.handle
     return (
       <PageFrame>
-        <header className="sticky top-0 z-40 flex h-12 items-center gap-1 bg-base-1/80 px-4 backdrop-blur-md">
-          {FEED_TABS.map((key) => (
-            <Link
-              key={key}
-              to="/"
-              search={key === "following" ? undefined : { tab: key }}
-              className={cn(
-                "rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
-                tab === key
-                  ? "bg-subtle text-primary"
-                  : "text-tertiary hover:text-secondary",
-              )}
-            >
-              {TAB_LABELS[key]}
-            </Link>
-          ))}
+        <header className="sticky top-0 z-40 flex h-12 items-center bg-base-1/80 px-4 backdrop-blur-md">
+          <SegmentedControl
+            layout="fit"
+            variant="ghost"
+            value={tab}
+            options={FEED_TABS.map((key) => ({
+              value: key,
+              label: TAB_LABELS[key],
+            }))}
+            onValueChange={(value) => {
+              void navigate({
+                to: "/",
+                search: value === "following" ? undefined : { tab: value },
+              })
+            }}
+          />
         </header>
         {needsHandle ? (
           <Alert className="m-4">
