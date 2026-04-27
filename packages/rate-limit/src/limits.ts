@@ -1,3 +1,4 @@
+import { RESEND_COOLDOWN_SEC } from '@workspace/validators/auth'
 import type { FixedWindowLimit } from './index.ts'
 
 const MIN = 60 * 1000
@@ -85,8 +86,10 @@ export const BUCKETS = {
     { windowMs: HOUR, max: 60 },
   ],
   // Verification email resend — prevents using our SMTP relay to bomb a target inbox.
-  // 90s spacing between sends; the verify-email screen mirrors the same countdown client-side.
-  'auth.email-verify-resend': [{ windowMs: 90 * 1000, max: 1 }],
+  // Fixed-window: at most 1 send per 90s window; worst case is ~2 sends straddling a
+  // window boundary. The verify-email screen mirrors the same cooldown client-side via
+  // the shared RESEND_COOLDOWN_SEC, so realistic abuse requires bypassing the UI.
+  'auth.email-verify-resend': [{ windowMs: RESEND_COOLDOWN_SEC * 1000, max: 1 }],
   // OAuth callback — IP-keyed cap against bot-driven account creation via OAuth providers.
   'auth.oauth-callback': [{ windowMs: MIN, max: 60 }],
   // Handle claim — irreversible. Tight cap to make handle-squatting scripts expensive.

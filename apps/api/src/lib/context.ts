@@ -55,9 +55,13 @@ export async function buildContext(): Promise<AppContext> {
     sendEmail: async ({ to, subject, template, data }) => {
       // Dev: don't hit SMTP/Resend — print the link to the server console so the engineer can
       // click it without running a local mail catcher. Production still goes through the mailer.
+      // Recipient is masked (`a***@domain`) so dev logs pasted into a bug report or screenshot
+      // don't leak a real address; the URL stays plaintext intentionally — clicking it is the
+      // whole point of this branch, and a redacted token can't be used to verify.
       if (env.NODE_ENV !== 'production') {
         const url = typeof data.url === 'string' ? data.url : null
-        log.info({ to, subject, template, url }, 'email_dev_console')
+        const maskedTo = to.replace(/^(.).*(@.*)$/, '$1***$2')
+        log.info({ to: maskedTo, subject, template, url }, 'email_dev_console')
         return
       }
       await mailer.send({ to, subject, template, data: { ...data, appName: env.APP_NAME } })

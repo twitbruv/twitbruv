@@ -1,6 +1,11 @@
 import { z } from 'zod'
 import { handleSchema } from './users.ts'
 
+// Cooldown between verification-email resends. Mirrored on the server in the
+// `auth.email-verify-resend` rate-limit bucket and on the client in the
+// resend-button countdown — keep the two in lock-step by importing this constant.
+export const RESEND_COOLDOWN_SEC = 90
+
 export const emailSchema = z.string().email().max(254)
 export const passwordSchema = z
   .string()

@@ -8,10 +8,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@workspace/ui/components/card"
+import { RESEND_COOLDOWN_SEC } from "@workspace/validators/auth"
 import { authClient } from "../lib/auth"
 import { useMe } from "../lib/me"
 
-const RESEND_COOLDOWN_SEC = 90
 // While the verify screen is up, poll /api/me faster than the ambient 30s so that clicking
 // the email link in another tab unlocks the app within ~5s.
 const POLL_INTERVAL_MS = 5_000
