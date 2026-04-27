@@ -4,7 +4,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string().url(),
   REDIS_URL: z.string().default("redis://localhost:6379"),
   INTERNAL_SERVICE_TOKEN: z.string().min(16),
-  PORT: z.coerce.number().default(3002),
+  PORT: z.coerce.number().int().min(1).max(65535).default(3002),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   LOG_LEVEL: z.string().default("info"),
   DB_POOL_MAX: z.coerce.number().int().positive().default(5),

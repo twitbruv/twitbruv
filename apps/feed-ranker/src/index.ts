@@ -9,7 +9,8 @@ import {
 } from "@workspace/types"
 import { loadEnv } from "./env.ts"
 import { createLogger } from "./lib/logger.ts"
-import { runForYouPipeline, type RankerRuntime } from "./lib/pipeline.ts"
+import { runForYouPipeline } from "./lib/pipeline.ts"
+import type { RankerRuntime } from "./lib/runtime.ts"
 
 const rankRequestSchema = z.object({
   userId: z.string().uuid(),
@@ -73,7 +74,7 @@ app.post("/internal/for-you", async (c) => {
     return c.json({ error: "invalid_request", details: parsed.error.flatten().fieldErrors }, 400)
   }
 
-  const response = await runForYouPipeline(runtime, parsed.data satisfies ForYouRankRequest)
+  const response = await runForYouPipeline(parsed.data satisfies ForYouRankRequest, runtime)
   return c.json(response)
 })
 
@@ -87,14 +88,36 @@ function errMsg(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
 }
 
-const shutdown = () => {
-  log.info("feed_ranker_shutdown")
-  redis.disconnect()
-  process.exit(0)
+const SHUTDOWN_TIMEOUT_MS = 5_000
+let shuttingDown = false
+
+const server = Bun.serve({ port: env.PORT, fetch: app.fetch })
+
+const shutdown = async (signal: NodeJS.Signals) => {
+  if (shuttingDown) return
+  shuttingDown = true
+
+  log.info({ signal }, "feed_ranker_shutdown_start")
+
+  const timeout = setTimeout(() => {
+    log.error({ timeoutMs: SHUTDOWN_TIMEOUT_MS }, "feed_ranker_shutdown_timeout")
+    process.exit(1)
+  }, SHUTDOWN_TIMEOUT_MS)
+
+  try {
+    await server.stop(false)
+    redis.disconnect()
+    clearTimeout(timeout)
+    log.info("feed_ranker_shutdown_complete")
+    process.exit(0)
+  } catch (err) {
+    clearTimeout(timeout)
+    log.error({ err: errMsg(err) }, "feed_ranker_shutdown_failed")
+    process.exit(1)
+  }
 }
 
 process.on("SIGINT", shutdown)
 process.on("SIGTERM", shutdown)
 
-log.info({ port: env.PORT }, "feed_ranker_listening")
-export default { port: env.PORT, fetch: app.fetch }
+log.info({ port: server.port }, "feed_ranker_listening")
