@@ -73,7 +73,9 @@ export function EmailVerifyScreen({ email }: { email: string }) {
       toast.success("Verification email sent")
       startCountdown(RESEND_COOLDOWN_SEC)
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not send verification email")
+      toast.error(
+        e instanceof Error ? e.message : "Could not send verification email"
+      )
     } finally {
       setSending(false)
     }

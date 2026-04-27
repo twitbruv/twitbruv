@@ -18,9 +18,13 @@ function notify() {
   for (const fn of listeners) fn()
 }
 
-export function setRuntimeMaintenance(active: boolean, message?: string | null) {
+export function setRuntimeMaintenance(
+  active: boolean,
+  message?: string | null
+) {
   const nextMessage = active ? (message ?? runtimeState.message) : null
-  if (active === runtimeState.active && nextMessage === runtimeState.message) return
+  if (active === runtimeState.active && nextMessage === runtimeState.message)
+    return
   runtimeState = { active, message: nextMessage }
   notify()
 }
@@ -44,7 +48,11 @@ function subscribe(fn: () => void) {
 }
 
 export function useMaintenance(): RuntimeMaintenanceState {
-  const runtime = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
+  const runtime = useSyncExternalStore(
+    subscribe,
+    getSnapshot,
+    getServerSnapshot
+  )
   if (BUILD_MAINTENANCE) return buildSnapshot
   return runtime
 }

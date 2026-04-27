@@ -42,8 +42,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
         ? (raw as Record<string, unknown>)
         : null
     const code = typeof body?.error === "string" ? body.error : "unknown"
-    const messageStr =
-      typeof body?.message === "string" ? body.message : null
+    const messageStr = typeof body?.message === "string" ? body.message : null
     if (res.status === 503 && code === "maintenance") {
       setRuntimeMaintenance(true, messageStr)
     }
