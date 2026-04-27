@@ -5,6 +5,7 @@ import {
   UsersIcon,
   XIcon,
 } from "@phosphor-icons/react"
+import { toast } from "sonner"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
@@ -106,7 +107,6 @@ export function Compose({
   const [attachments, setAttachments] = useState<Array<PendingAttachment>>([])
   const [poll, setPoll] = useState<PollDraft | null>(null)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   // Replies inherit their thread's restriction; only let the user pick on
   // top-level posts and quotes (which start a new thread).
   const [replyRestriction, setReplyRestriction] = useState<
@@ -215,7 +215,6 @@ export function Compose({
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!canSubmit) return
-    setError(null)
     setLoading(true)
     try {
       // Push alt text just before send. Best-effort — failures don't block the post itself.
@@ -252,7 +251,7 @@ export function Compose({
       if (collapsible) setExpanded(false)
       onCreated?.(post)
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "failed to post")
+      toast.error(err instanceof ApiError ? err.message : "failed to post")
     } finally {
       setLoading(false)
     }
@@ -550,9 +549,6 @@ export function Compose({
               </span>
             </div>
             <div className="flex items-center gap-2">
-              {error && (
-                <span className="text-xs text-destructive">{error}</span>
-              )}
               <Button type="submit" disabled={!canSubmit} size="lg">
                 {loading
                   ? "Posting…"

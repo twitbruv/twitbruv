@@ -8,13 +8,14 @@ import {
 import { IconContext } from "@phosphor-icons/react"
 import { Databuddy } from "@databuddy/sdk/react"
 import { DatabuddyDevtools } from "@databuddy/devtools/react"
+import { Toaster } from "sonner"
 import appCss from "@workspace/ui/globals.css?url"
 import { Button } from "@workspace/ui/components/button"
 import { AppShell } from "../components/app-shell"
 import { MaintenanceScreen } from "../components/maintenance-screen"
 import { NotFoundPanel } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
-import { ThemeProvider, themeBootstrapScript } from "../lib/theme"
+import { ThemeProvider, themeBootstrapScript, useTheme } from "../lib/theme"
 import { APP_NAME, DATABUDDY_CLIENT_ID } from "../lib/env"
 import { useMaintenance } from "../lib/maintenance"
 import { MeProvider } from "../lib/me"
@@ -90,6 +91,7 @@ function RootComponent() {
               <AppShell>
                 <Outlet />
               </AppShell>
+              <ThemedToaster />
               {DATABUDDY_CLIENT_ID ? (
                 <Databuddy
                   clientId={DATABUDDY_CLIENT_ID}
@@ -110,6 +112,11 @@ function RootComponent() {
       </ThemeProvider>
     </IconContext.Provider>
   )
+}
+
+function ThemedToaster() {
+  const { resolvedTheme } = useTheme()
+  return <Toaster theme={resolvedTheme} richColors closeButton />
 }
 
 // Whole-app lockout. When build-time VITE_PUBLIC_MAINTENANCE_MODE is set, or the api wrapper

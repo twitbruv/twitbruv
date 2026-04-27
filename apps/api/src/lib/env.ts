@@ -128,6 +128,11 @@ const envSchema = z.object({
   // Databuddy website/client ID — must match the VITE_PUBLIC_DATABUDDY_CLIENT_ID used
   // on the frontend so server-side events are scoped to the same website.
   DATABUDDY_WEBSITE_ID: z.string().optional(),
+
+  // OpenAI API key for the /v1/moderations endpoint used to pre-publish-screen posts.
+  // Optional — when unset, moderation is disabled and every post is accepted (with a
+  // one-time warning at boot). Network errors / timeouts also fail open.
+  OPENAI_API_KEY: z.string().optional(),
 })
 
 export type Env = z.infer<typeof envSchema>
