@@ -2,16 +2,12 @@ import { Hono } from "hono"
 import Redis from "ioredis"
 import { z } from "zod"
 import { createDb, sql } from "@workspace/db"
-import {
-  FOR_YOU_ALGO_VERSION,
-  FOR_YOU_VARIANTS
-  
-} from "@workspace/types"
+import { FOR_YOU_ALGO_VERSION, FOR_YOU_VARIANTS } from "@workspace/types"
 import { loadEnv } from "./env.ts"
 import { createLogger } from "./lib/logger.ts"
 import { runForYouPipeline } from "./lib/pipeline.ts"
 import { RankedSessionExpiredError } from "./lib/query-context.ts"
-import type {ForYouRankRequest} from "@workspace/types";
+import type { ForYouRankRequest } from "@workspace/types"
 import type { RankerRuntime } from "./lib/runtime.ts"
 
 const rankRequestSchema = z.object({

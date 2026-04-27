@@ -1,7 +1,7 @@
-import { FOR_YOU_ALGO_VERSION  } from "@workspace/types"
+import { FOR_YOU_ALGO_VERSION } from "@workspace/types"
 import { eq, schema, sql } from "@workspace/db"
 import { decodeSessionCursor } from "./cursor.ts"
-import type {ForYouRankRequest} from "@workspace/types";
+import type { ForYouRankRequest } from "@workspace/types"
 import type { RankerRuntime } from "./runtime.ts"
 
 export const RANKED_SESSION_TTL_SECONDS = 10 * 60
