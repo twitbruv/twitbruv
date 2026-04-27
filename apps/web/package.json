@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@databuddy/sdk": "^2.4.11",
+    "@heroicons/react": "^2.2.0",
     "@lexical/code": "^0.37.0",
     "@lexical/link": "^0.37.0",
     "@lexical/list": "^0.37.0",

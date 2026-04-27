@@ -2,19 +2,19 @@ import { createFileRoute } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
 import {
   BookmarkIcon,
-  ChatCircleIcon,
-  CircleIcon,
+  ChatBubbleLeftIcon,
   EyeIcon,
   FlagIcon,
   HeartIcon,
-  RepeatIcon,
+  ArrowPathIcon,
   UsersIcon,
-  UsersThreeIcon,
-} from "@phosphor-icons/react"
+  UserGroupIcon,
+} from "@heroicons/react/24/solid"
 import { api } from "../lib/api"
 import { PageError } from "../components/page-surface"
-import type { Icon } from "@phosphor-icons/react"
 import type { AdminOnline, AdminStats } from "../lib/api"
+
+type Icon = React.ComponentType<{ className?: string }>
 
 // How often the admin dashboard refreshes the live online count. Tighter than the user-side
 // presence heartbeat (30s) so the number ticks visibly instead of jumping in 30s steps.
@@ -100,30 +100,30 @@ function HeroCard({
   const a = ACCENT[accent]
   const isLoading = value === null || value === undefined
   return (
-    <div className="group relative overflow-hidden rounded-lg border border-border bg-card p-4 transition-colors hover:border-foreground/20">
+    <div className="group relative overflow-hidden rounded-lg border border-neutral bg-base-1 p-4 transition-colors hover:border-primary/20">
       <div
         className={`pointer-events-none absolute -top-6 -right-6 size-20 rounded-full opacity-60 blur-2xl ${a.bg}`}
       />
       <div className="relative flex items-start justify-between gap-2">
-        <p className="text-[10px] font-medium tracking-[0.12em] text-muted-foreground uppercase">
+        <p className="text-[10px] font-medium tracking-[0.12em] text-tertiary uppercase">
           {label}
         </p>
         <span
           className={`flex size-7 items-center justify-center rounded-md ring-1 ${a.bg} ${a.text} ${a.ring}`}
         >
-          <Icon className="size-4" weight="bold" />
+          <Icon className="size-4" />
         </span>
       </div>
       <p
         className={`relative mt-3 text-3xl font-semibold tracking-tight tabular-nums ${
-          isLoading ? "text-muted-foreground" : ""
+          isLoading ? "text-tertiary" : ""
         }`}
         title={isLoading ? undefined : fullFormatter.format(value)}
       >
         {formatStat(value, true)}
       </p>
       {delta !== undefined && delta !== null && (
-        <p className="relative mt-1 text-[11px] text-muted-foreground">
+        <p className="relative mt-1 text-[11px] text-tertiary">
           <span className={`font-medium ${a.text}`}>
             +{fullFormatter.format(delta)}
           </span>{" "}
@@ -148,20 +148,20 @@ function MiniStat({
   const isLoading = value === null || value === undefined
   const toneCls =
     tone === "destructive"
-      ? "text-destructive"
+      ? "text-danger"
       : tone === "warning"
         ? "text-amber-600 dark:text-amber-500"
         : tone === "positive"
           ? "text-emerald-600 dark:text-emerald-500"
           : ""
   return (
-    <div className="flex items-baseline justify-between gap-2 rounded-md border border-border/60 bg-background/50 px-2.5 py-1.5">
-      <span className="truncate text-[10px] font-medium tracking-wider text-muted-foreground uppercase">
+    <div className="flex items-baseline justify-between gap-2 rounded-md border border-neutral/60 bg-base-1/50 px-2.5 py-1.5">
+      <span className="truncate text-[10px] font-medium tracking-wider text-tertiary uppercase">
         {label}
       </span>
       <span
         className={`shrink-0 text-sm font-semibold tabular-nums ${
-          isLoading ? "text-muted-foreground" : toneCls
+          isLoading ? "text-tertiary" : toneCls
         }`}
         title={isLoading ? undefined : fullFormatter.format(value)}
       >
@@ -184,11 +184,11 @@ function Section({
 }) {
   const a = ACCENT[accent]
   return (
-    <div className="rounded-lg border border-border bg-card/50 p-3">
+    <div className="rounded-lg border border-neutral bg-base-1/50 p-3">
       <div className="mb-2 flex items-center gap-2">
         <span className={`size-1 rounded-full ${a.bar}`} />
-        <Icon className={`size-3.5 ${a.text}`} weight="bold" />
-        <h3 className="text-[11px] font-semibold tracking-[0.14em] text-foreground uppercase">
+        <Icon className={`size-3.5 ${a.text}`} />
+        <h3 className="text-[11px] font-semibold tracking-[0.14em] text-primary uppercase">
           {title}
         </h3>
       </div>
@@ -205,27 +205,27 @@ function OnlineNow({ online }: { online: AdminOnline | null }) {
   const initials = (s: AdminOnline["sample"][number]) =>
     (s.displayName ?? s.handle ?? "?").trim().slice(0, 1).toUpperCase()
   return (
-    <div className="relative overflow-hidden rounded-lg border border-border bg-card p-4">
+    <div className="relative overflow-hidden rounded-lg border border-neutral bg-base-1 p-4">
       <div className="pointer-events-none absolute -top-8 -right-8 size-24 rounded-full bg-emerald-500/10 opacity-60 blur-2xl" />
       <div className="relative flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <span className="relative flex size-9 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-600 ring-1 ring-emerald-500/30 dark:text-emerald-400">
-            <CircleIcon className="size-3" weight="fill" />
+            <div className="size-3 rounded-full bg-emerald-500" />
             <span className="absolute inset-0 m-auto size-3 animate-ping rounded-full bg-emerald-500/40" />
           </span>
           <div>
-            <p className="text-[10px] font-medium tracking-[0.12em] text-muted-foreground uppercase">
+            <p className="text-[10px] font-medium tracking-[0.12em] text-tertiary uppercase">
               Online now
             </p>
             <p
               className={`text-2xl font-semibold tracking-tight tabular-nums ${
-                isLoading ? "text-muted-foreground" : ""
+                isLoading ? "text-tertiary" : ""
               }`}
               title={count === null ? undefined : fullFormatter.format(count)}
             >
               {formatStat(count, true)}
             </p>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[11px] text-tertiary">
               tabs open in the last 90 seconds
             </p>
           </div>
@@ -237,7 +237,7 @@ function OnlineNow({ online }: { online: AdminOnline | null }) {
                 <span
                   key={u.id}
                   title={u.handle ? `@${u.handle}` : (u.displayName ?? u.id)}
-                  className="inline-flex size-7 items-center justify-center overflow-hidden rounded-full border-2 border-card bg-muted text-[10px] font-semibold text-muted-foreground"
+                  className="inline-flex size-7 items-center justify-center overflow-hidden rounded-full border-2 border-base-1 bg-base-2 text-[10px] font-semibold text-tertiary"
                 >
                   {u.avatarUrl ? (
                     <img
@@ -252,7 +252,7 @@ function OnlineNow({ online }: { online: AdminOnline | null }) {
               ))}
             </div>
             {count !== null && count > shownSample.length && (
-              <span className="text-[11px] text-muted-foreground tabular-nums">
+              <span className="text-[11px] text-tertiary tabular-nums">
                 +{fullFormatter.format(count - shownSample.length)}
               </span>
             )}
@@ -332,7 +332,7 @@ function AdminStatsPage() {
 
   return (
     <main className="flex min-h-0 flex-1 flex-col overflow-auto overscroll-contain">
-      <div className="space-y-4 bg-gradient-to-b from-muted/30 via-background to-background p-4">
+      <div className="space-y-4 bg-gradient-to-b from-base-2/30 via-base-1 to-base-1 p-4">
         <OnlineNow online={online} />
 
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
@@ -345,7 +345,7 @@ function AdminStatsPage() {
             deltaLabel="new today"
           />
           <HeroCard
-            icon={ChatCircleIcon}
+            icon={ChatBubbleLeftIcon}
             label="Posts"
             value={stats?.posts.total}
             accent="violet"
@@ -361,7 +361,7 @@ function AdminStatsPage() {
             deltaLabel="new today"
           />
           <HeroCard
-            icon={RepeatIcon}
+            icon={ArrowPathIcon}
             label="Reposts"
             value={stats?.engagement.reposts}
             accent="emerald"
@@ -407,7 +407,7 @@ function AdminStatsPage() {
             />
           </Section>
 
-          <Section title="Posts" icon={ChatCircleIcon} accent="violet">
+          <Section title="Posts" icon={ChatBubbleLeftIcon} accent="violet">
             <MiniStat label="Total" value={stats?.posts.total} />
             <MiniStat label="Original" value={stats?.posts.original} />
             <MiniStat label="Replies" value={stats?.posts.replies} />
@@ -456,7 +456,7 @@ function AdminStatsPage() {
             <MiniStat label="Messages" value={stats?.messaging.messages} />
           </Section>
 
-          <Section title="Social graph" icon={UsersThreeIcon} accent="emerald">
+          <Section title="Social graph" icon={UserGroupIcon} accent="emerald">
             <MiniStat label="Follows" value={stats?.social.follows} />
             <MiniStat
               label="Follows 24h"

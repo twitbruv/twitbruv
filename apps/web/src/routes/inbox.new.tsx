@@ -1,6 +1,6 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { XIcon } from "@phosphor-icons/react"
+import { XMarkIcon } from "@heroicons/react/24/solid"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
@@ -107,7 +107,7 @@ function NewConversation() {
               {selected.map((u) => (
                 <span
                   key={u.id}
-                  className="flex items-center gap-1.5 rounded-full bg-muted py-1 pr-2 pl-1 text-xs"
+                  className="flex items-center gap-1.5 rounded-full bg-base-2 py-1 pr-2 pl-1 text-xs"
                 >
                   <Avatar
                     initial={(u.displayName || u.handle || "?")
@@ -119,15 +119,15 @@ function NewConversation() {
                   <span className="flex items-center gap-1 font-medium">
                     {u.displayName ||
                       (u.handle ? `@${u.handle}` : u.id.slice(0, 8))}
-                    {u.isVerified && <VerifiedBadge size={12} role={u.role} />}
+                    {u.isVerified && <VerifiedBadge className="size-3" role={u.role} />}
                   </span>
                   <button
                     type="button"
                     onClick={() => remove(u.id)}
                     aria-label={`remove ${u.handle ?? u.id}`}
-                    className="ml-0.5 text-muted-foreground hover:text-foreground"
+                    className="ml-0.5 text-tertiary hover:text-primary"
                   >
-                    <XIcon size={12} />
+                    <XMarkIcon className="size-3" />
                   </button>
                 </span>
               ))}
@@ -137,7 +137,7 @@ function NewConversation() {
           <div className="flex flex-col gap-1.5">
             <Label
               htmlFor="new-dm-search"
-              className="text-xs text-muted-foreground"
+              className="text-xs text-tertiary"
             >
               Search
             </Label>
@@ -153,7 +153,7 @@ function NewConversation() {
             <div className="flex flex-col gap-1.5">
               <Label
                 htmlFor="new-dm-group-title"
-                className="text-xs text-muted-foreground"
+              className="text-xs text-tertiary"
               >
                 Group name
               </Label>
@@ -170,26 +170,26 @@ function NewConversation() {
           {error && <PageError className="p-0" message={error} />}
 
           {q.trim().length >= 2 && (
-            <ul className="rounded-md border border-border">
+            <ul className="rounded-md border border-neutral">
               {searching && results.length === 0 && (
-                <li className="p-3 text-sm text-muted-foreground">
+                <li className="p-3 text-sm text-tertiary">
                   searching…
                 </li>
               )}
               {!searching && results.length === 0 && (
-                <li className="p-3 text-sm text-muted-foreground">
+                <li className="p-3 text-sm text-tertiary">
                   no matches
                 </li>
               )}
               {results.map((u) => (
                 <li
                   key={u.id}
-                  className="border-b border-border last:border-b-0"
+                  className="border-b border-neutral last:border-b-0"
                 >
                   <button
                     type="button"
                     onClick={() => add(u)}
-                    className="flex w-full items-center gap-3 px-3 py-2 text-left transition hover:bg-muted/30"
+                    className="flex w-full items-center gap-3 px-3 py-2 text-left transition hover:bg-base-2/30"
                   >
                     <Avatar
                       initial={(u.displayName || u.handle || "?")
@@ -209,7 +209,7 @@ function NewConversation() {
                         )}
                       </div>
                       {u.handle && (
-                        <div className="truncate text-xs text-muted-foreground">
+                        <div className="truncate text-xs text-tertiary">
                           @{u.handle}
                         </div>
                       )}

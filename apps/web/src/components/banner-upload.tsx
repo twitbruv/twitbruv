@@ -1,5 +1,5 @@
 import { useRef, useState } from "react"
-import { CameraIcon, TrashIcon } from "@phosphor-icons/react"
+import { CameraIcon, TrashIcon } from "@heroicons/react/24/solid"
 import { Button } from "@workspace/ui/components/button"
 import { getPastedImageFiles } from "../lib/clipboard-images"
 import { pickVariantUrl, uploadImage } from "../lib/media"
@@ -66,18 +66,18 @@ export function BannerUpload({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-foreground">Banner</span>
+        <span className="text-xs font-medium text-primary">Banner</span>
         <div className="flex items-center gap-3 text-xs">
           {uploading && (
-            <span className="text-muted-foreground">uploading…</span>
+            <span className="text-tertiary">uploading…</span>
           )}
-          {error && <span className="text-destructive">{error}</span>}
+          {error && <span className="text-danger">{error}</span>}
           {currentUrl && !uploading && (
             <Button
               variant="transparent"
               size="sm"
               onClick={() => onChange(null)}
-              className="text-destructive hover:underline"
+              className="text-danger hover:underline"
             >
               <TrashIcon className="size-4" /> Remove
             </Button>
@@ -93,15 +93,15 @@ export function BannerUpload({
         onDragLeave={onDragLeave}
         onDrop={onDrop}
         onPaste={onPaste}
-        className={`group relative block h-36 w-full overflow-hidden rounded-md border bg-muted transition ${
-          dragOver ? "border-primary ring-2 ring-primary" : "border-border"
+        className={`group relative block h-36 w-full overflow-hidden rounded-md border bg-base-2 transition ${
+          dragOver ? "border-accent ring-2 ring-accent" : "border-neutral"
         }`}
         aria-label="upload banner"
       >
         {currentUrl ? (
           <img src={currentUrl} alt="" className="h-full w-full object-cover" />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
+          <div className="flex h-full w-full items-center justify-center text-xs text-tertiary">
             {dragOver
               ? "drop image to upload"
               : "click to upload a banner image (wide is better)"}
@@ -110,8 +110,8 @@ export function BannerUpload({
         <div
           className={`absolute inset-0 flex items-center justify-center transition ${
             dragOver
-              ? "bg-primary/10 opacity-100"
-              : "bg-background/0 opacity-0 group-hover:bg-background/30 group-hover:opacity-100"
+              ? "bg-accent/10 opacity-100"
+              : "bg-base-1/0 opacity-0 group-hover:bg-base-1/30 group-hover:opacity-100"
           }`}
         >
           <CameraIcon className="size-4" />

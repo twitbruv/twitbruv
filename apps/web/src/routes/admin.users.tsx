@@ -33,7 +33,7 @@ import {
   TableHeader,
   TableRow,
 } from "@workspace/ui/components/table"
-import { CaretDownIcon } from "@phosphor-icons/react"
+import { ChevronDownIcon } from "@heroicons/react/24/solid"
 import { api } from "../lib/api"
 import { useInfiniteScrollSentinel } from "../lib/use-infinite-scroll-sentinel"
 import { useMe } from "../lib/me"
@@ -156,16 +156,16 @@ function AdminUsers() {
                     onClick={(e) => e.stopPropagation()}
                   >
                     {u.displayName ?? u.handle}
-                    {u.isVerified && <VerifiedBadge size={14} role={u.role} />}
+                    {u.isVerified && <VerifiedBadge className="size-14" role={u.role} />}
                   </Link>
                 ) : (
                   <span className="flex items-center gap-1 text-sm font-semibold">
                     {u.displayName ?? u.email}
-                    {u.isVerified && <VerifiedBadge size={14} role={u.role} />}
+                    {u.isVerified && <VerifiedBadge className="size-14" role={u.role} />}
                   </span>
                 )}
                 {u.handle && (
-                  <p className="truncate text-xs text-muted-foreground">
+                  <p className="truncate text-xs text-tertiary">
                     @{u.handle}
                   </p>
                 )}
@@ -178,7 +178,7 @@ function AdminUsers() {
         id: "email",
         header: "Email",
         cell: ({ row }) => (
-          <span className="block truncate text-xs text-muted-foreground">
+          <span className="block truncate text-xs text-tertiary">
             {row.original.email}
           </span>
         ),
@@ -191,7 +191,7 @@ function AdminUsers() {
           const canEdit = me?.role === "owner" && u.id !== me.id
           if (!canEdit) {
             return (
-              <span className="text-xs tracking-wider text-muted-foreground uppercase">
+              <span className="text-xs tracking-wider text-tertiary uppercase">
                 {u.role}
               </span>
             )
@@ -210,7 +210,7 @@ function AdminUsers() {
                   }
                 >
                   {u.role}
-                  <CaretDownIcon className="size-3" />
+                  <ChevronDownIcon className="size-3" />
                 </DropdownMenu.Trigger>
                 <DropdownMenu.Content align="start">
                   <DropdownMenu.Group>
@@ -227,7 +227,7 @@ function AdminUsers() {
                       >
                         <span className="tracking-wider uppercase">{r}</span>
                         {r === u.role && (
-                          <span className="ml-auto text-[10px] text-muted-foreground">
+                          <span className="ml-auto text-[10px] text-tertiary">
                             current
                           </span>
                         )}
@@ -257,7 +257,7 @@ function AdminUsers() {
               <span
                 className={`text-xs ${
                   status === "active"
-                    ? "text-muted-foreground"
+                    ? "text-tertiary"
                     : "text-destructive"
                 }`}
               >
@@ -384,7 +384,7 @@ function AdminUsers() {
 
   return (
     <main className="flex min-h-0 flex-1 flex-col">
-      <div className="shrink-0 border-b border-border p-4">
+      <div className="shrink-0 border-b border-neutral p-4">
         <Input
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -406,7 +406,7 @@ function AdminUsers() {
                 <col key={col.id} style={{ width: COLUMN_WIDTHS[col.id] }} />
               ))}
             </colgroup>
-            <TableHeader className="sticky top-0 z-10 bg-background">
+            <TableHeader className="sticky top-0 z-10 bg-base-1">
               {table.getHeaderGroups().map((hg) => (
                 <TableRow key={hg.id}>
                   {hg.headers.map((header) => (
@@ -466,7 +466,7 @@ function AdminUsers() {
           </Table>
           <div ref={sentinelRef} aria-hidden className="h-px" />
           {cursor && (
-            <div className="flex justify-center py-3 text-xs text-muted-foreground">
+            <div className="flex justify-center py-3 text-xs text-tertiary">
               {loadingMore ? "loading…" : ""}
             </div>
           )}
@@ -630,7 +630,7 @@ function ActionDialog({
             <div className="flex flex-col gap-1.5">
               <Label
                 htmlFor="admin-action-handle"
-                className="text-xs text-muted-foreground"
+                className="text-xs text-tertiary"
               >
                 New handle
               </Label>
@@ -648,7 +648,7 @@ function ActionDialog({
           <div className="flex flex-col gap-1.5">
             <Label
               htmlFor="admin-action-reason"
-              className="text-xs text-muted-foreground"
+              className="text-xs text-tertiary"
             >
               Reason (optional)
             </Label>
@@ -663,7 +663,7 @@ function ActionDialog({
             <div className="flex flex-col gap-1.5">
               <Label
                 htmlFor="admin-action-hours"
-                className="text-xs text-muted-foreground"
+                className="text-xs text-tertiary"
               >
                 Duration in hours (blank = permanent)
               </Label>
@@ -680,10 +680,10 @@ function ActionDialog({
             <div className="flex flex-col gap-1.5">
               <Label
                 htmlFor="admin-action-confirm"
-                className="text-xs text-muted-foreground"
+                className="text-xs text-tertiary"
               >
                 Type{" "}
-                <code className="rounded bg-muted px-1">
+                <code className="rounded bg-base-2 px-1">
                   {deleteConfirmText}
                 </code>{" "}
                 to confirm
@@ -791,7 +791,7 @@ function UserDetailSheet({
         side="right"
         className="flex w-full flex-col gap-0 sm:max-w-md"
       >
-        <SheetHeader className="border-b border-border">
+        <SheetHeader className="border-b border-neutral">
           <SheetTitle>{subject}</SheetTitle>
           <SheetDescription>
             {u
@@ -803,7 +803,7 @@ function UserDetailSheet({
         </SheetHeader>
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-6 py-4 text-sm">
           {loading && !detail && (
-            <p className="text-muted-foreground">loading…</p>
+            <p className="text-tertiary">loading…</p>
           )}
           {error && !loading && (
             <p className="text-xs text-destructive">{error}</p>
@@ -821,18 +821,18 @@ function UserDetailSheet({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1 text-sm font-semibold">
                     {u.displayName ?? u.handle ?? u.email}
-                    {u.isVerified && <VerifiedBadge size={14} role={u.role} />}
+                    {u.isVerified && <VerifiedBadge className="size-14" role={u.role} />}
                   </div>
                   {u.handle && (
                     <Link
                       to="/$handle"
                       params={{ handle: u.handle }}
-                      className="text-xs text-muted-foreground hover:underline"
+                      className="text-xs text-tertiary hover:underline"
                     >
                       @{u.handle}
                     </Link>
                   )}
-                  <p className="truncate text-xs text-muted-foreground">
+                  <p className="truncate text-xs text-tertiary">
                     {u.email}
                   </p>
                 </div>
@@ -846,13 +846,13 @@ function UserDetailSheet({
 
               <DetailSection label="Status">
                 <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
-                  <dt className="text-muted-foreground">User ID</dt>
+                  <dt className="text-tertiary">User ID</dt>
                   <dd className="truncate font-mono">{u.id}</dd>
-                  <dt className="text-muted-foreground">Role</dt>
+                  <dt className="text-tertiary">Role</dt>
                   <dd className="tracking-wider uppercase">{u.role}</dd>
-                  <dt className="text-muted-foreground">Verified</dt>
+                  <dt className="text-tertiary">Verified</dt>
                   <dd>{u.isVerified ? "yes" : "no"}</dd>
-                  <dt className="text-muted-foreground">Banned</dt>
+                  <dt className="text-tertiary">Banned</dt>
                   <dd className={u.banned ? "text-destructive" : ""}>
                     {u.banned
                       ? u.banExpires
@@ -862,17 +862,17 @@ function UserDetailSheet({
                   </dd>
                   {u.banReason && (
                     <>
-                      <dt className="text-muted-foreground">Ban reason</dt>
+                      <dt className="text-tertiary">Ban reason</dt>
                       <dd className="text-destructive">{u.banReason}</dd>
                     </>
                   )}
-                  <dt className="text-muted-foreground">Shadowbanned</dt>
+                  <dt className="text-tertiary">Shadowbanned</dt>
                   <dd className={u.shadowBannedAt ? "text-destructive" : ""}>
                     {u.shadowBannedAt
                       ? `since ${new Date(u.shadowBannedAt).toLocaleString()}`
                       : "no"}
                   </dd>
-                  <dt className="text-muted-foreground">Deleted</dt>
+                  <dt className="text-tertiary">Deleted</dt>
                   <dd className={u.deletedAt ? "text-destructive" : ""}>
                     {u.deletedAt
                       ? new Date(u.deletedAt).toLocaleString()
@@ -885,7 +885,7 @@ function UserDetailSheet({
                 label={`Moderation history (${detail.actions.length})`}
               >
                 {detail.actions.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-tertiary">
                     No moderation actions on record.
                   </p>
                 ) : (
@@ -893,18 +893,18 @@ function UserDetailSheet({
                     {detail.actions.map((a) => (
                       <li
                         key={a.id}
-                        className="rounded-md border border-border p-2 text-xs"
+                        className="rounded-md border border-neutral p-2 text-xs"
                       >
                         <div className="flex items-baseline justify-between gap-2">
                           <span className="font-semibold">
                             {actionLabel(a.action)}
                           </span>
-                          <time className="text-[10px] text-muted-foreground">
+                          <time className="text-[10px] text-tertiary">
                             {new Date(a.createdAt).toLocaleString()}
                           </time>
                         </div>
                         {a.durationHours != null && (
-                          <p className="text-[10px] text-muted-foreground">
+                          <p className="text-[10px] text-tertiary">
                             duration: {a.durationHours}h
                           </p>
                         )}
@@ -914,7 +914,7 @@ function UserDetailSheet({
                           </p>
                         )}
                         {a.privateNote && (
-                          <p className="mt-1 whitespace-pre-wrap text-muted-foreground">
+                          <p className="mt-1 whitespace-pre-wrap text-tertiary">
                             note: {a.privateNote}
                           </p>
                         )}
@@ -928,7 +928,7 @@ function UserDetailSheet({
                 label={`Reports against (${detail.reports.length})`}
               >
                 {detail.reports.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-tertiary">
                     No reports filed against this user.
                   </p>
                 ) : (
@@ -936,15 +936,15 @@ function UserDetailSheet({
                     {detail.reports.map((r) => (
                       <li
                         key={r.id}
-                        className="rounded-md border border-border p-2 text-xs"
+                        className="rounded-md border border-neutral p-2 text-xs"
                       >
                         <div className="flex items-baseline justify-between gap-2">
                           <span className="font-semibold">{r.reason}</span>
-                          <time className="text-[10px] text-muted-foreground">
+                          <time className="text-[10px] text-tertiary">
                             {new Date(r.createdAt).toLocaleString()}
                           </time>
                         </div>
-                        <p className="text-[10px] text-muted-foreground">
+                        <p className="text-[10px] text-tertiary">
                           status: {r.status}
                         </p>
                         {r.details && (
@@ -962,27 +962,27 @@ function UserDetailSheet({
                 label={`Recent posts (${detail.recentPosts.length})`}
               >
                 {detail.recentPosts.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">No posts yet.</p>
+                  <p className="text-xs text-tertiary">No posts yet.</p>
                 ) : (
                   <ul className="flex flex-col gap-2">
                     {detail.recentPosts.map((p) => (
                       <li
                         key={p.id}
-                        className="rounded-md border border-border p-2 text-xs"
+                        className="rounded-md border border-neutral p-2 text-xs"
                       >
                         <div className="mb-1 flex items-baseline justify-between gap-2">
-                          <span className="text-[10px] text-muted-foreground">
+                          <span className="text-[10px] text-tertiary">
                             {p.replyToId ? "reply" : "post"}
                             {p.sensitive ? " · sensitive" : ""}
                             {p.deletedAt ? " · deleted" : ""}
                           </span>
-                          <time className="text-[10px] text-muted-foreground">
+                          <time className="text-[10px] text-tertiary">
                             {new Date(p.createdAt).toLocaleString()}
                           </time>
                         </div>
                         <p className="line-clamp-3 whitespace-pre-wrap">
                           {p.text || (
-                            <span className="text-muted-foreground">
+                            <span className="text-tertiary">
                               (no text)
                             </span>
                           )}
@@ -1009,7 +1009,7 @@ function DetailSection({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+      <span className="text-[10px] font-semibold tracking-wider text-tertiary uppercase">
         {label}
       </span>
       {children}

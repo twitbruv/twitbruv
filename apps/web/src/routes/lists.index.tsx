@@ -1,6 +1,6 @@
 import { Link, createFileRoute, useRouter } from "@tanstack/react-router"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { LockIcon, PushPinIcon, UsersIcon } from "@phosphor-icons/react"
+import { LockClosedIcon, MapPinIcon, UsersIcon } from "@heroicons/react/24/solid"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
@@ -80,11 +80,11 @@ function ListsIndex() {
             description="Create a list, then add members to build a focused timeline."
           />
         ) : (
-          <ul className="divide-y divide-border">
+          <ul className="divide-y divide-neutral">
             {lists.map((list) => (
               <li
                 key={list.id}
-                className="flex items-start gap-2 px-4 py-3 transition hover:bg-muted/40"
+                className="flex items-start gap-2 px-4 py-3 transition hover:bg-base-2/40"
               >
                 <Link
                   to="/lists/$id"
@@ -94,27 +94,25 @@ function ListsIndex() {
                   <div className="flex items-center justify-between">
                     <h2 className="flex items-center gap-1.5 text-sm font-semibold">
                       {list.pinnedAt && (
-                        <PushPinIcon
-                          size={12}
-                          weight="fill"
-                          className="text-primary"
+                        <MapPinIcon
+                          className="size-3 text-primary"
                         />
                       )}
                       {list.title}
                     </h2>
                     {list.isPrivate && (
-                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <LockIcon size={12} /> private
+                        <span className="flex items-center gap-1 text-xs text-tertiary">
+                        <LockClosedIcon className="size-3" /> private
                       </span>
                     )}
                   </div>
                   {list.description && (
-                    <p className="mt-1 text-sm text-muted-foreground">
+                    <p className="mt-1 text-sm text-tertiary">
                       {list.description}
                     </p>
                   )}
-                  <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-                    <UsersIcon size={12} />
+                  <p className="mt-1 flex items-center gap-1 text-xs text-tertiary">
+                    <UsersIcon className="size-3" />
                     {list.memberCount}{" "}
                     {list.memberCount === 1 ? "member" : "members"}
                   </p>
@@ -142,13 +140,11 @@ function ListsIndex() {
                   }}
                 >
                   {list.pinnedAt ? (
-                    <PushPinIcon
-                      size={14}
-                      weight="fill"
-                      className="text-primary"
+                    <MapPinIcon
+                      className="size-3.5 text-primary"
                     />
                   ) : (
-                    <PushPinIcon size={14} />
+                    <MapPinIcon className="size-3.5" />
                   )}
                 </Button>
               </li>
@@ -215,7 +211,7 @@ function CreateListForm({
   return (
     <form
       onSubmit={submit}
-      className="flex flex-col gap-3 border-b border-border px-4 py-3"
+      className="flex flex-col gap-3 border-b border-neutral px-4 py-3"
     >
       <div className="flex flex-col gap-2">
         <div className="flex flex-col gap-1.5">
@@ -254,7 +250,7 @@ function CreateListForm({
         <div className="flex items-center justify-between gap-2 pt-0.5">
           <Label
             htmlFor="list-private"
-            className="text-xs text-muted-foreground"
+            className="text-xs text-tertiary"
           >
             Private list
           </Label>
@@ -265,7 +261,7 @@ function CreateListForm({
           />
         </div>
       </div>
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error && <p className="text-xs text-danger">{error}</p>}
       <div className="mt-2 flex items-center justify-end gap-2">
         <Button size="sm" variant="transparent" onClick={onCancel} disabled={busy}>
           Cancel

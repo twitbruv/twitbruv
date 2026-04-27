@@ -1,13 +1,13 @@
 import { useState } from "react"
 import {
-  DotsThreeIcon,
+  EllipsisHorizontalIcon,
   EyeIcon,
   EyeSlashIcon,
   FlagIcon,
-  PencilIcon,
-  PushPinIcon,
+  PencilSquareIcon,
+  MapPinIcon,
   TrashIcon,
-} from "@phosphor-icons/react"
+} from "@heroicons/react/24/solid"
 import { Button } from "@workspace/ui/components/button"
 import { DropdownMenu } from "@workspace/ui/components/dropdown-menu"
 import { ApiError, api } from "../lib/api"
@@ -109,20 +109,20 @@ export function PostMenu({
                 aria-label="Post menu"
                 className="size-5"
               >
-                <DotsThreeIcon size={12} />
+                <EllipsisHorizontalIcon className="size-3" />
               </Button>
             }
           />
           <DropdownMenu.Content align="end" sideOffset={4} className="w-40">
             {isOwner && canEdit && (
               <DropdownMenu.Item onClick={() => onStartEdit?.()}>
-                <PencilIcon size={14} />
+                <PencilSquareIcon className="size-3.5" />
                 <span>Edit</span>
               </DropdownMenu.Item>
             )}
             {isOwner && !isRepost && !post.replyToId && !post.quoteOfId && (
               <DropdownMenu.Item onClick={togglePin}>
-                <PushPinIcon size={14} />
+                <MapPinIcon className="size-3.5" />
                 <span>{post.pinned ? "Unpin" : "Pin to profile"}</span>
               </DropdownMenu.Item>
             )}
@@ -132,23 +132,23 @@ export function PostMenu({
                 onClick={onDelete}
                 disabled={busy}
               >
-                <TrashIcon size={14} />
+                <TrashIcon className="size-3.5" />
                 <span>Delete</span>
               </DropdownMenu.Item>
             )}
             {canHide && !isOwner && (
               <DropdownMenu.Item onClick={toggleHide}>
                 {post.hidden ? (
-                  <EyeIcon size={14} />
+                  <EyeIcon className="size-3.5" />
                 ) : (
-                  <EyeSlashIcon size={14} />
+                  <EyeSlashIcon className="size-3.5" />
                 )}
                 <span>{post.hidden ? "Unhide reply" : "Hide reply"}</span>
               </DropdownMenu.Item>
             )}
             {!isOwner && (
               <DropdownMenu.Item onClick={() => setReportOpen(true)}>
-                <FlagIcon size={14} />
+                <FlagIcon className="size-3.5" />
                 <span>Report</span>
               </DropdownMenu.Item>
             )}

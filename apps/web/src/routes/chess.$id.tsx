@@ -10,7 +10,7 @@ import {
   AlertTitle,
 } from "@workspace/ui/components/alert"
 import { Input } from "@workspace/ui/components/input"
-import { FlagIcon, HandPalmIcon } from "@phosphor-icons/react"
+import { FlagIcon, HandRaisedIcon } from "@heroicons/react/24/solid"
 import { PageError, PageLoading } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
 import { api } from "../lib/api"
@@ -137,13 +137,13 @@ function ChessGamePage() {
           {/* Left side: Board */}
           <div className="mx-auto flex max-w-[600px] min-w-[300px] flex-1 flex-col md:mx-0">
             {/* Top Player Info */}
-            <div className="flex items-center gap-2 rounded-t-lg border border-b-0 border-border bg-muted/20 p-2">
+            <div className="flex items-center gap-2 rounded-t-lg border border-b-0 border-neutral bg-base-2/20 p-2">
               <Avatar initial={topPlayer[0].toUpperCase()} size={32} />
               <span className="text-sm font-semibold">{topPlayer}</span>
             </div>
 
             {/* Board */}
-            <div className="aspect-square w-full overflow-hidden rounded-sm border-4 border-border bg-[#769656] shadow-xl">
+            <div className="aspect-square w-full overflow-hidden rounded-sm border-4 border-neutral bg-[#769656] shadow-xl">
               <Chessboard
                 options={{
                   position: chess.fen(),
@@ -156,25 +156,25 @@ function ChessGamePage() {
             </div>
 
             {/* Bottom Player Info */}
-            <div className="flex items-center gap-2 rounded-b-lg border border-t-0 border-border bg-muted/20 p-2">
+            <div className="flex items-center gap-2 rounded-b-lg border border-t-0 border-neutral bg-base-2/20 p-2">
               <Avatar initial={bottomPlayer[0].toUpperCase()} size={32} />
               <span className="text-sm font-semibold">{bottomPlayer}</span>
             </div>
           </div>
 
           {/* Right side: Chat and Controls */}
-          <div className="flex h-[600px] w-full shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-background md:w-[350px]">
-            <div className="border-b border-border bg-muted/40 p-3">
+          <div className="flex h-[600px] w-full shrink-0 flex-col overflow-hidden rounded-lg border border-neutral bg-base-1 md:w-[350px]">
+            <div className="border-b border-neutral bg-base-2/40 p-3">
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-bold">Game Review</h2>
-                <span className="rounded bg-muted px-2 py-1 font-mono text-xs">
+                <span className="rounded bg-base-2 px-2 py-1 font-mono text-xs">
                   {isFinished ? game.status.toUpperCase() : "LIVE"}
                 </span>
               </div>
             </div>
 
             {isFinished && (
-              <div className="border-b border-border bg-muted/20 p-3">
+              <div className="border-b border-neutral bg-base-2/20 p-3">
                 <Alert className="mb-0">
                   <AlertTitle className="text-sm">
                     {game.winnerId === me?.id
@@ -183,20 +183,20 @@ function ChessGamePage() {
                         ? "You Lost"
                         : "It's a Draw"}
                   </AlertTitle>
-                  <AlertDescription className="mt-1 text-xs text-muted-foreground">
+                  <AlertDescription className="mt-1 text-xs text-tertiary">
                     Game over by {game.status}.
                   </AlertDescription>
                 </Alert>
               </div>
             )}
 
-            <div className="flex gap-2 border-b border-border bg-muted/10 p-3">
+            <div className="flex gap-2 border-b border-neutral bg-base-2/10 p-3">
               <Button
                 variant="outline"
                 className="flex-1"
                 disabled={isFinished}
               >
-                <HandPalmIcon size={16} className="mr-1.5" />
+                <HandRaisedIcon className="mr-1.5 size-4" />
                 Draw
               </Button>
               <Button
@@ -204,34 +204,34 @@ function ChessGamePage() {
                 className="flex-1"
                 disabled={isFinished}
               >
-                <FlagIcon size={16} className="mr-1.5" />
+                <FlagIcon className="mr-1.5 size-4" />
                 Resign
               </Button>
             </div>
 
             {/* Moves & Chat Area */}
             <div className="flex flex-1 flex-col overflow-hidden">
-              <div className="flex border-b border-border text-xs font-medium">
-                <button className="flex-1 border-r border-border py-2 text-center text-muted-foreground hover:bg-muted/40">
+              <div className="flex border-b border-neutral text-xs font-medium">
+                <button className="flex-1 border-r border-neutral py-2 text-center text-tertiary hover:bg-base-2/40">
                   Moves
                 </button>
-                <button className="flex-1 border-b-2 border-primary py-2 text-center text-foreground">
+                <button className="flex-1 border-b-2 border-primary py-2 text-center text-primary">
                   Chat
                 </button>
               </div>
 
               <div
                 ref={scrollRef}
-                className="flex flex-1 flex-col gap-2 overflow-y-auto bg-muted/5 p-3 text-sm"
+                className="flex flex-1 flex-col gap-2 overflow-y-auto bg-base-2/5 p-3 text-sm"
               >
                 {messages.length === 0 ? (
-                  <div className="mt-4 text-center text-xs text-muted-foreground">
+                  <div className="mt-4 text-center text-xs text-tertiary">
                     Send a message to your opponent...
                   </div>
                 ) : (
                   messages.map((m) => (
                     <div key={m.id} className="flex flex-col">
-                      <span className="text-xs font-semibold text-muted-foreground">
+                      <span className="text-xs font-semibold text-tertiary">
                         {m.senderId === me?.id ? "You" : "Opponent"}
                       </span>
                       <span>{m.text}</span>
@@ -243,7 +243,7 @@ function ChessGamePage() {
               {/* Chat input */}
               <form
                 onSubmit={handleSendChat}
-                className="flex gap-2 border-t border-border p-2"
+                className="flex gap-2 border-t border-neutral p-2"
               >
                 <Input
                   value={chatMessage}

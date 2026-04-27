@@ -1,18 +1,18 @@
 import { Link, createFileRoute, useRouter } from "@tanstack/react-router"
 import {
-  ArticleIcon,
+  ArrowPathIcon,
+  ArrowTrendingUpIcon,
+  BoltIcon,
   BookmarkIcon,
-  ChatCircleIcon,
+  ChatBubbleLeftIcon,
+  ChatBubbleLeftRightIcon,
+  DocumentTextIcon,
   EyeIcon,
   HeartIcon,
-  LightningIcon,
-  QuotesIcon,
-  RepeatIcon,
-  TrendUpIcon,
   UserCircleIcon,
   UserPlusIcon,
   UsersIcon,
-} from "@phosphor-icons/react"
+} from "@heroicons/react/24/solid"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   Select,
@@ -70,7 +70,7 @@ function DailySparkline({
   emptyLabel: string
 }) {
   if (series.every((s) => s.n === 0)) {
-    return <p className="mt-3 text-xs text-muted-foreground">{emptyLabel}</p>
+    return <p className="mt-3 text-xs text-tertiary">{emptyLabel}</p>
   }
 
   const width = 600
@@ -181,25 +181,25 @@ function AnalyticsLoaded({
     <div className="flex flex-col gap-6 px-4 py-4">
       <section>
         <h2 className="text-sm font-semibold">Audience and reach</h2>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-tertiary">
           Follower and following totals are current; new-follower counts use
           only the selected window.
         </p>
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <SnapshotCard
-            icon={<UsersIcon size={18} />}
+            icon={<UsersIcon className="size-[18px]" />}
             label="Followers"
             value={data.snapshot.followerCount.toLocaleString()}
             hint={`+${data.totals.newFollowers.toLocaleString()} this period`}
           />
           <SnapshotCard
-            icon={<UserCircleIcon size={18} />}
+            icon={<UserCircleIcon className="size-[18px]" />}
             label="Following"
             value={data.snapshot.followingCount.toLocaleString()}
             hint="Accounts you follow"
           />
           <SnapshotCard
-            icon={<UserPlusIcon size={18} />}
+            icon={<UserPlusIcon className="size-[18px]" />}
             label="New followers"
             value={data.totals.newFollowers.toLocaleString()}
             hint="First-time follows in this window"
@@ -209,25 +209,25 @@ function AnalyticsLoaded({
 
       <section>
         <h2 className="text-sm font-semibold">Content you published</h2>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-tertiary">
           Posts and articles first published during the window (reposts counted
           separately).
         </p>
         <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <SnapshotCard
-            icon={<ChatCircleIcon size={18} />}
+            icon={<ChatBubbleLeftIcon className="size-[18px]" />}
             label="Original posts"
             value={data.snapshot.originalPosts.toLocaleString()}
             hint="Excludes repost rows"
           />
           <SnapshotCard
-            icon={<RepeatIcon size={18} />}
+            icon={<ArrowPathIcon className="size-[18px]" />}
             label="Reposts"
             value={data.snapshot.repostsAuthored.toLocaleString()}
             hint="Shares of other people's posts"
           />
           <SnapshotCard
-            icon={<ArticleIcon size={18} />}
+            icon={<DocumentTextIcon className="size-[18px]" />}
             label="Articles published"
             value={data.snapshot.articlesPublished.toLocaleString()}
             hint="Long-form pieces went live"
@@ -237,20 +237,20 @@ function AnalyticsLoaded({
 
       <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Stat
-          icon={<EyeIcon size={18} />}
-          label="Impressions"
+            icon={<EyeIcon className="size-[18px]" />}
+            label="Impressions"
           value={data.totals.impressions}
           hint="Feed or profile surfaces of your posts (client-reported)"
         />
         <Stat
-          icon={<LightningIcon size={18} />}
-          label="Engagements"
+            icon={<BoltIcon className="size-[18px]" />}
+            label="Engagements"
           value={data.totals.engagements}
           hint="Likes, reposts, replies, bookmarks, quotes on your posts"
         />
         <Stat
-          icon={<TrendUpIcon size={18} />}
-          label="Engagement rate"
+            icon={<ArrowTrendingUpIcon className="size-[18px]" />}
+            label="Engagement rate"
           value={`${(data.totals.engagementRate * 100).toFixed(1)}%`}
           hint={
             data.totals.impressions === 0
@@ -261,12 +261,12 @@ function AnalyticsLoaded({
       </section>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <section className="rounded-md border border-border p-4">
+        <section className="rounded-md border border-neutral p-4">
           <h2 className="flex items-center gap-2 text-sm font-semibold">
-            <EyeIcon size={16} className="text-muted-foreground" />
+            <EyeIcon className="size-4 text-tertiary" />
             Impressions per day
           </h2>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-tertiary">
             How often your posts were surfaced to viewers (same source as
             headline impressions).
           </p>
@@ -275,12 +275,12 @@ function AnalyticsLoaded({
             emptyLabel="No impressions recorded in this period."
           />
         </section>
-        <section className="rounded-md border border-border p-4">
+        <section className="rounded-md border border-neutral p-4">
           <h2 className="flex items-center gap-2 text-sm font-semibold">
-            <UserPlusIcon size={16} className="text-muted-foreground" />
+            <UserPlusIcon className="size-4 text-tertiary" />
             New follows per day
           </h2>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-tertiary">
             New followers only; unfollows are not subtracted here.
           </p>
           <DailySparkline
@@ -290,15 +290,15 @@ function AnalyticsLoaded({
         </section>
       </div>
 
-      <section className="rounded-md border border-border">
-        <header className="border-b border-border px-4 py-3">
+      <section className="rounded-md border border-neutral">
+        <header className="border-b border-neutral px-4 py-3">
           <h2 className="text-sm font-semibold">Engagement breakdown</h2>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-tertiary">
             Actions others took on your posts in this window. Share shows
             fraction of total engagements.
           </p>
         </header>
-        <ul className="divide-y divide-border px-4 py-1">
+        <ul className="divide-y divide-neutral px-4 py-1">
           <BreakdownRow
             icon={<HeartIcon className="size-4 shrink-0" />}
             label="Likes"
@@ -308,7 +308,7 @@ function AnalyticsLoaded({
             }
           />
           <BreakdownRow
-            icon={<RepeatIcon className="size-4 shrink-0" />}
+            icon={<ArrowPathIcon className="size-4 shrink-0" />}
             label="Reposts"
             value={data.totals.reposts}
             share={
@@ -316,7 +316,7 @@ function AnalyticsLoaded({
             }
           />
           <BreakdownRow
-            icon={<ChatCircleIcon className="size-4 shrink-0" />}
+            icon={<ChatBubbleLeftIcon className="size-4 shrink-0" />}
             label="Replies"
             value={data.totals.replies}
             share={
@@ -324,7 +324,7 @@ function AnalyticsLoaded({
             }
           />
           <BreakdownRow
-            icon={<QuotesIcon className="size-4 shrink-0" />}
+            icon={<ChatBubbleLeftRightIcon className="size-4 shrink-0" />}
             label="Quotes"
             value={data.totals.quotes}
             share={
@@ -341,23 +341,23 @@ function AnalyticsLoaded({
           />
         </ul>
         {engagementTotal === 0 && (
-          <p className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
+          <p className="border-t border-neutral px-4 py-3 text-xs text-tertiary">
             No engagements in this window yet. Posting publicly and getting
             replies or likes will populate this section.
           </p>
         )}
       </section>
 
-      <section className="rounded-md border border-border">
-        <header className="border-b border-border px-4 py-3">
+      <section className="rounded-md border border-neutral">
+        <header className="border-b border-neutral px-4 py-3">
           <h2 className="text-sm font-semibold">Top posts</h2>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-tertiary">
             Your posts from this period, ranked by lifetime engagement counters
             (likes, reposts, replies, bookmarks, quotes).
           </p>
         </header>
         {data.topPosts.length === 0 ? (
-          <p className="p-4 text-sm text-muted-foreground">
+          <p className="p-4 text-sm text-tertiary">
             No posts in this period yet.
           </p>
         ) : (
@@ -384,12 +384,12 @@ function SnapshotCard({
   hint: string
 }) {
   return (
-    <div className="flex gap-3 rounded-md border border-border p-3">
-      <div className="shrink-0 text-muted-foreground">{icon}</div>
+    <div className="flex gap-3 rounded-md border border-neutral p-3">
+      <div className="shrink-0 text-tertiary">{icon}</div>
       <div className="min-w-0">
-        <div className="text-xs text-muted-foreground">{label}</div>
+        <div className="text-xs text-tertiary">{label}</div>
         <div className="mt-0.5 text-xl font-semibold tabular-nums">{value}</div>
-        <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+        <p className="mt-1 text-[11px] leading-snug text-tertiary">
           {hint}
         </p>
       </div>
@@ -409,15 +409,15 @@ function Stat({
   hint?: string
 }) {
   return (
-    <div className="flex gap-2 rounded-md border border-border p-3">
-      <div className="mt-0.5 shrink-0 text-muted-foreground">{icon}</div>
+    <div className="flex gap-2 rounded-md border border-neutral p-3">
+      <div className="mt-0.5 shrink-0 text-tertiary">{icon}</div>
       <div className="min-w-0">
-        <div className="text-xs text-muted-foreground">{label}</div>
+        <div className="text-xs text-tertiary">{label}</div>
         <div className="mt-1 text-2xl font-semibold tabular-nums">
           {typeof value === "number" ? value.toLocaleString() : value}
         </div>
         {hint && (
-          <div className="mt-1 text-[11px] leading-snug text-muted-foreground">
+          <div className="mt-1 text-[11px] leading-snug text-tertiary">
             {hint}
           </div>
         )}
@@ -441,17 +441,17 @@ function BreakdownRow({
   return (
     <li className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
       <div className="flex min-w-0 flex-1 items-center gap-2">
-        <span className="text-muted-foreground">{icon}</span>
-        <span className="text-sm text-muted-foreground">{label}</span>
+        <span className="text-tertiary">{icon}</span>
+        <span className="text-sm text-tertiary">{label}</span>
       </div>
       <div className="flex w-full flex-col items-stretch gap-1 sm:w-48 sm:items-end">
         <span className="text-sm font-semibold tabular-nums sm:text-right">
           {value.toLocaleString()}
-          <span className="ml-2 text-xs font-normal text-muted-foreground">
+          <span className="ml-2 text-xs font-normal text-tertiary">
             {value === 0 ? "0%" : `${pct}%`}
           </span>
         </span>
-        <div className="h-1 w-full overflow-hidden rounded-full bg-muted sm:max-w-[12rem]">
+        <div className="h-1 w-full overflow-hidden rounded-full bg-base-2 sm:max-w-[12rem]">
           <div
             className="h-full rounded-full bg-primary transition-[width]"
             style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
@@ -483,7 +483,7 @@ function TopPostRow({ post: p }: { post: Post }) {
     : null
 
   return (
-    <li className="flex flex-col gap-3 border-t border-border px-4 py-3 first:border-t-0 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+    <li className="flex flex-col gap-3 border-t border-neutral px-4 py-3 first:border-t-0 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
       <div className="min-w-0 flex-1">
         {path ? (
           <Link {...path} className="text-sm leading-snug hover:underline">
@@ -492,20 +492,20 @@ function TopPostRow({ post: p }: { post: Post }) {
         ) : (
           <span className="text-sm leading-snug">{excerpt}</span>
         )}
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="mt-1 text-xs text-tertiary">
           {formatPostAge(p.createdAt)}
         </p>
-        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-muted-foreground">
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-tertiary">
           <span className="inline-flex items-center gap-1.5">
             <HeartIcon className="size-4 shrink-0" aria-hidden />
             <span className="text-xs tabular-nums">{p.counts.likes}</span>
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <RepeatIcon className="size-4 shrink-0" aria-hidden />
+            <ArrowPathIcon className="size-4 shrink-0" aria-hidden />
             <span className="text-xs tabular-nums">{p.counts.reposts}</span>
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <ChatCircleIcon className="size-4 shrink-0" aria-hidden />
+            <ChatBubbleLeftIcon className="size-4 shrink-0" aria-hidden />
             <span className="text-xs tabular-nums">{p.counts.replies}</span>
           </span>
           <span className="inline-flex items-center gap-1.5">
@@ -513,16 +513,16 @@ function TopPostRow({ post: p }: { post: Post }) {
             <span className="text-xs tabular-nums">{p.counts.bookmarks}</span>
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <QuotesIcon className="size-4 shrink-0" aria-hidden />
+            <ChatBubbleLeftRightIcon className="size-4 shrink-0" aria-hidden />
             <span className="text-xs tabular-nums">{p.counts.quotes}</span>
           </span>
         </div>
       </div>
-      <div className="shrink-0 border-border sm:border-l sm:pl-4 sm:text-right">
+      <div className="shrink-0 border-neutral sm:border-l sm:pl-4 sm:text-right">
         <div className="text-sm font-semibold tabular-nums">
           {total.toLocaleString()}
         </div>
-        <div className="text-xs text-muted-foreground">engagement</div>
+        <div className="text-xs text-tertiary">engagement</div>
       </div>
     </li>
   )

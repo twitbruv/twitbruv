@@ -61,12 +61,13 @@ const POLL_DURATION_CHOICES = [
 // ───────────────────────────────────────────────────────────────────────────
 
 interface PendingAttachment {
-	tempId: string
-	status: "uploading" | "ready" | "failed"
-	previewUrl: string
-	media?: UploadedMedia
-	altText: string
-	error?: string
+  tempId: string
+  status: "uploading" | "ready" | "failed"
+  previewUrl: string
+  media?: UploadedMedia
+  altText: string
+  error?: string
+  removing?: boolean
 }
 
 interface PollOptionState {
@@ -191,8 +192,6 @@ export function Compose({
 		null,
 	)
 	const [isDragging, setIsDragging] = useState(false)
-	const dragCounter = useRef(0)
-
 	const showReplyControl = !replyToId
 
 	useEffect(() => {
@@ -302,11 +301,18 @@ export function Compose({
 	)
 
 	const removeAttachment = useCallback((tempId: string) => {
-		setAttachments((prev) => {
-			const removed = prev.find((a) => a.tempId === tempId)
-			if (removed) URL.revokeObjectURL(removed.previewUrl)
-			return prev.filter((a) => a.tempId !== tempId)
-		})
+		setAttachments((prev) =>
+			prev.map((a) =>
+				a.tempId === tempId ? { ...a, removing: true } : a,
+			),
+		)
+		setTimeout(() => {
+			setAttachments((prev) => {
+				const removed = prev.find((a) => a.tempId === tempId)
+				if (removed) URL.revokeObjectURL(removed.previewUrl)
+				return prev.filter((a) => a.tempId !== tempId)
+			})
+		}, 200)
 	}, [])
 
 	const startPoll = useCallback(() => {
@@ -432,41 +438,39 @@ export function Compose({
 		[canSubmit, handleSubmit],
 	)
 
-	const handleDragEnter = useCallback((e: React.DragEvent) => {
-		e.preventDefault()
-		dragCounter.current++
-		if (dragCounter.current === 1) {
+	// Window-level drag listeners for drop-anywhere
+	useEffect(() => {
+		function onDragEnter(e: DragEvent) {
+			if (attachments.length >= MAX_ATTACHMENTS) return
+			if (!e.dataTransfer?.types.includes("Files")) return
+			e.preventDefault()
 			setIsDragging(true)
 			if (collapsible) setExpanded(true)
 		}
-	}, [collapsible])
-
-	const handleDragLeave = useCallback((e: React.DragEvent) => {
-		e.preventDefault()
-		dragCounter.current--
-		if (dragCounter.current <= 0) {
-			dragCounter.current = 0
-			setIsDragging(false)
-		}
-	}, [])
-
-	const handleDragOver = useCallback(
-		(e: React.DragEvent) => {
+		function onDragOver(e: DragEvent) {
 			if (attachments.length >= MAX_ATTACHMENTS) return
 			e.preventDefault()
-		},
-		[attachments.length],
-	)
-
-	const handleDrop = useCallback(
-		(e: React.DragEvent) => {
+		}
+		function onDragLeave(e: DragEvent) {
+			if (!e.relatedTarget) setIsDragging(false)
+		}
+		function onDrop(e: DragEvent) {
+			if (attachments.length >= MAX_ATTACHMENTS) return
 			e.preventDefault()
-			dragCounter.current = 0
 			setIsDragging(false)
-			addFiles(e.dataTransfer.files)
-		},
-		[addFiles],
-	)
+			if (e.dataTransfer?.files?.length) addFiles(e.dataTransfer.files)
+		}
+		window.addEventListener("dragenter", onDragEnter)
+		window.addEventListener("dragover", onDragOver)
+		window.addEventListener("dragleave", onDragLeave)
+		window.addEventListener("drop", onDrop)
+		return () => {
+			window.removeEventListener("dragenter", onDragEnter)
+			window.removeEventListener("dragover", onDragOver)
+			window.removeEventListener("dragleave", onDragLeave)
+			window.removeEventListener("drop", onDrop)
+		}
+	}, [attachments.length, addFiles, collapsible])
 
 	const handlePaste = useCallback(
 		(e: React.ClipboardEvent) => {
@@ -494,14 +498,22 @@ export function Compose({
 	}
 
 	return (
-		<form
-			onSubmit={handleSubmit}
-			onDragEnter={handleDragEnter}
-			onDragLeave={handleDragLeave}
-			onDragOver={handleDragOver}
-			onDrop={handleDrop}
-			className="flex gap-3 px-4 py-3"
-		>
+		<>
+			{/* Fullscreen overlay behind composer */}
+			<div
+				className={cn(
+					"pointer-events-none fixed inset-0 z-40 transition-[opacity,transform] duration-200 ease-out-expo",
+					isDragging && attachments.length < MAX_ATTACHMENTS
+						? "opacity-100 scale-100"
+						: "opacity-0 scale-95",
+				)}
+			>
+				<div className="h-full w-full bg-base-1/80" />
+			</div>
+			<form
+				onSubmit={handleSubmit}
+				className="relative z-50 flex gap-3 px-4 py-3"
+			>
 			{/* Avatar */}
 			<div className="shrink-0">
 				<Avatar
@@ -653,81 +665,103 @@ export function Compose({
 					</div>
 				)}
 
-{/* Attachments */}
-				{attachments.length > 0 && (
-					<div className="mt-2 space-y-2">
-						<div
-							className={cn(
-								"grid gap-0.5 overflow-hidden rounded-xl",
-								attachments.length === 1 && "grid-cols-1",
-								attachments.length === 2 && "grid-cols-2",
-								attachments.length >= 3 &&
-									"grid-cols-2 grid-rows-2",
-							)}
-						>
-							{attachments.map((a, i) => (
-								<div
-									key={a.tempId}
-									className="relative"
-								>
+				{/* Attachments */}
+				<div
+					className={cn(
+						"grid transition-[grid-template-rows] duration-200 ease-out-expo",
+						attachments.length > 0
+							? "grid-rows-[1fr]"
+							: "grid-rows-[0fr]",
+					)}
+				>
+					<div className="min-h-0 overflow-hidden">
+						<div className="mt-2 space-y-2">
+							<div
+								className={cn(
+									"grid gap-0.5 overflow-hidden rounded-xl",
+									attachments.length === 1 && "grid-cols-1",
+									attachments.length === 2 && "grid-cols-2",
+									attachments.length >= 3 &&
+										"grid-cols-2 grid-rows-2",
+								)}
+							>
+								{attachments.map((a, i) => (
 									<div
+										key={a.tempId}
 										className={cn(
-											"relative overflow-hidden bg-base-2",
-											attachments.length === 1 &&
-												"max-h-80",
-											attachments.length === 2 &&
-												"aspect-[4/3]",
-											attachments.length >= 3 &&
-												i === 0 &&
-												"row-span-2 h-full",
-											attachments.length >= 3 &&
-												i > 0 &&
-												"aspect-square",
+											"grid transition-[grid-template-rows] duration-200 ease-out-expo",
+											a.removing
+												? "grid-rows-[0fr]"
+												: "grid-rows-[1fr]",
 										)}
 									>
-										<img
-											src={a.previewUrl}
-											alt=""
-											className="h-full w-full object-cover"
-										/>
-										{a.status === "uploading" && (
-											<div className="absolute inset-0 flex items-center justify-center bg-base-1/50">
-												<div className="h-5 w-5 animate-spin rounded-full border-2 border-secondary border-t-primary" />
+										<div className="min-h-0 overflow-hidden">
+											<div
+												className={cn(
+													"relative transition-all duration-200 ease-out-expo",
+													a.removing
+														? "opacity-0 scale-95"
+														: "opacity-100 scale-100",
+												)}
+											>
+												<div
+													className={cn(
+														"relative overflow-hidden bg-base-2",
+														attachments.length === 1 &&
+															"max-h-80",
+														attachments.length === 2 &&
+															"aspect-[4/3]",
+														attachments.length >= 3 &&
+															i === 0 &&
+															"row-span-2 h-full",
+														attachments.length >= 3 &&
+															i > 0 &&
+															"aspect-square",
+													)}
+												>
+													<img
+														src={a.previewUrl}
+														alt=""
+														className="h-full w-full object-cover"
+													/>
+													{a.status === "uploading" && (
+														<div className="absolute inset-0 flex items-center justify-center bg-base-1/50">
+															<div className="h-5 w-5 animate-spin rounded-full border-2 border-secondary border-t-primary" />
+														</div>
+													)}
+													{a.status === "failed" && (
+														<div className="absolute inset-0 flex items-center justify-center bg-danger-subtle/50 p-2 text-center text-xs text-danger">
+															{a.error ?? "failed"}
+														</div>
+													)}
+													{/* Edit button */}
+													<button
+														type="button"
+														onClick={() =>
+															setEditingAttachmentId(
+																editingAttachmentId === a.tempId
+																	? null
+																	: a.tempId,
+															)
+														}
+														className="absolute top-1.5 left-1.5 flex size-7 items-center justify-center rounded-full bg-base-1/80 text-primary backdrop-blur-sm transition-colors hover:bg-base-1"
+													>
+														<PencilSquareIcon className="size-3.5" />
+													</button>
+													{/* Remove button */}
+													<button
+														type="button"
+														onClick={() => removeAttachment(a.tempId)}
+														disabled={a.removing}
+														className="absolute top-1.5 right-1.5 flex size-7 items-center justify-center rounded-full bg-base-1/80 text-primary backdrop-blur-sm transition-colors hover:bg-base-1"
+													>
+														<XMarkIcon className="size-3.5" />
+													</button>
+												</div>
 											</div>
-										)}
-										{a.status === "failed" && (
-											<div className="absolute inset-0 flex items-center justify-center bg-danger-subtle/50 p-2 text-center text-xs text-danger">
-												{a.error ?? "failed"}
-											</div>
-										)}
-										{/* Edit button */}
-										<button
-											type="button"
-											onClick={() =>
-												setEditingAttachmentId(
-													editingAttachmentId ===
-														a.tempId
-														? null
-														: a.tempId,
-												)
-											}
-											className="absolute top-1.5 left-1.5 flex size-7 items-center justify-center rounded-full bg-base-1/80 text-primary backdrop-blur-sm transition-colors hover:bg-base-1"
-										>
-											<PencilSquareIcon className="size-3.5" />
-										</button>
-										{/* Remove button */}
-										<button
-											type="button"
-											onClick={() =>
-												removeAttachment(a.tempId)
-											}
-											className="absolute top-1.5 right-1.5 flex size-7 items-center justify-center rounded-full bg-base-1/80 text-primary backdrop-blur-sm transition-colors hover:bg-base-1"
-										>
-											<XMarkIcon className="size-3.5" />
-										</button>
+										</div>
 									</div>
-								</div>
-							))}
+								))}
 						</div>
 						{/* Alt text panel for editing */}
 						{editingAttachmentId && (
@@ -779,18 +813,35 @@ export function Compose({
 								)
 							})()
 						)}
+						</div>
 					</div>
-				)}
+				</div>
 
 				{/* Drop zone */}
-				{isDragging && attachments.length < MAX_ATTACHMENTS && (
-					<div className="mt-2 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-neutral-strong bg-subtle py-10">
-						<PhotoIcon className="size-8 text-tertiary" />
-						<span className="mt-2 text-sm text-tertiary">
-							Drop images here
-						</span>
+				<div
+					className={cn(
+						"grid transition-[grid-template-rows] duration-200 ease-out-expo",
+						isDragging && attachments.length < MAX_ATTACHMENTS
+							? "grid-rows-[1fr]"
+							: "grid-rows-[0fr]",
+					)}
+				>
+					<div className="min-h-0">
+						<div
+							className={cn(
+								"mt-2 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-neutral-strong bg-subtle py-10 origin-top transition-all duration-200 ease-out-expo",
+								isDragging && attachments.length < MAX_ATTACHMENTS
+									? "opacity-100 scale-100 translate-y-0"
+									: "opacity-0 scale-95 -translate-y-1",
+							)}
+						>
+							<PhotoIcon className="size-8 text-tertiary" />
+							<span className="mt-2 text-sm text-tertiary">
+								Drop images here
+							</span>
+						</div>
 					</div>
-				)}
+				</div>
 
 				{/* Action bar */}
 				<div
@@ -910,6 +961,7 @@ export function Compose({
 					</div>
 				</div>
 		</div>
-	</form>
-)
+		</form>
+		</>
+	)
 }

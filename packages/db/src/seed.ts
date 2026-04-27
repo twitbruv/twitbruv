@@ -192,7 +192,7 @@ async function seed() {
 					],
 				})
 				.returning({ id: schema.media.id })
-			mediaRecords.push({ id: inserted.id, key: img.key, ownerId: alice })
+			mediaRecords.push({ id: inserted!.id, key: img.key, ownerId: alice })
 		} catch (e) {
 			console.log(`    skipped ${img.key}: ${(e as Error).message}`)
 		}
@@ -229,7 +229,7 @@ async function seed() {
 				conversationDepth: opts.conversationDepth ?? 0,
 			})
 			.returning({ id: schema.posts.id })
-		return row.id
+			return row!.id
 	}
 
 	// --- Regular posts ---

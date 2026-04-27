@@ -33,14 +33,14 @@ import {
   TableRow,
 } from "@workspace/ui/components/table"
 import {
-  CaretDownIcon,
-  CaretUpIcon,
-  ChatCircleIcon,
+  ArrowPathIcon,
+  BookmarkIcon,
+  ChatBubbleLeftIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
   EyeIcon,
   HeartIcon,
-  QuotesIcon,
-  RepeatIcon,
-} from "@phosphor-icons/react"
+} from "@heroicons/react/24/solid"
 import { api } from "../lib/api"
 import { useInfiniteScrollSentinel } from "../lib/use-infinite-scroll-sentinel"
 import { Avatar } from "../components/avatar"
@@ -123,17 +123,17 @@ function StatHeader({
       onClick={() => onSort(sortKey)}
       className={`flex items-center gap-1 text-xs ${
         active
-          ? "text-foreground"
-          : "text-muted-foreground hover:text-foreground"
+          ? "text-primary"
+          : "text-tertiary hover:text-primary"
       }`}
     >
       {icon}
       <span>{label}</span>
       {active &&
         (currentOrder === "desc" ? (
-          <CaretDownIcon className="size-3" />
+          <ChevronDownIcon className="size-3" />
         ) : (
-          <CaretUpIcon className="size-3" />
+          <ChevronUpIcon className="size-3" />
         ))}
     </button>
   )
@@ -262,7 +262,7 @@ function AdminPosts() {
           const a = row.original.author
           if (!a) {
             return (
-              <span className="text-xs text-muted-foreground">(unknown)</span>
+              <span className="text-xs text-tertiary">(unknown)</span>
             )
           }
           return (
@@ -285,7 +285,7 @@ function AdminPosts() {
                     <span className="truncate">
                       {a.displayName ?? a.handle}
                     </span>
-                    {a.isVerified && <VerifiedBadge size={12} role={a.role} />}
+                    {a.isVerified && <VerifiedBadge className="size-3" role={a.role} />}
                   </Link>
                 ) : (
                   <span className="text-xs font-semibold">
@@ -293,7 +293,7 @@ function AdminPosts() {
                   </span>
                 )}
                 {a.handle && (
-                  <p className="truncate text-[10px] text-muted-foreground">
+                  <p className="truncate text-[10px] text-tertiary">
                     @{a.handle}
                   </p>
                 )}
@@ -318,28 +318,28 @@ function AdminPosts() {
                   onClick={(e) => e.stopPropagation()}
                 >
                   {p.text || (
-                    <span className="text-muted-foreground">(no text)</span>
+                    <span className="text-tertiary">(no text)</span>
                   )}
                 </Link>
               ) : (
                 <span className="line-clamp-2 text-xs whitespace-pre-wrap">
                   {p.text || (
-                    <span className="text-muted-foreground">(no text)</span>
+                    <span className="text-tertiary">(no text)</span>
                   )}
                 </span>
               )}
-              <div className="flex flex-wrap gap-1 text-[10px] text-muted-foreground">
+              <div className="flex flex-wrap gap-1 text-[10px] text-tertiary">
                 {p.visibility !== "public" && (
-                  <span className="rounded bg-muted px-1">{p.visibility}</span>
+                  <span className="rounded bg-base-2 px-1">{p.visibility}</span>
                 )}
                 {p.sensitive && (
-                  <span className="rounded bg-muted px-1 text-destructive">
+                  <span className="rounded bg-base-2 px-1 text-danger">
                     sensitive
                   </span>
                 )}
                 {p.editedAt && <span>edited</span>}
                 {p.deletedAt && (
-                  <span className="text-destructive">deleted</span>
+                  <span className="text-danger">deleted</span>
                 )}
               </div>
             </div>
@@ -350,7 +350,7 @@ function AdminPosts() {
         id: "type",
         header: "Type",
         cell: ({ row }) => (
-          <span className="text-[10px] tracking-wider text-muted-foreground uppercase">
+          <span className="text-[10px] tracking-wider text-tertiary uppercase">
             {row.original.postType}
           </span>
         ),
@@ -379,7 +379,7 @@ function AdminPosts() {
           <StatHeader
             label="Reposts"
             sortKey="reposts"
-            icon={<RepeatIcon className="size-3" />}
+            icon={<ArrowPathIcon className="size-3" />}
             currentSort={sort}
             currentOrder={order}
             onSort={onHeaderSort}
@@ -397,7 +397,7 @@ function AdminPosts() {
           <StatHeader
             label="Replies"
             sortKey="replies"
-            icon={<ChatCircleIcon className="size-3" />}
+            icon={<ChatBubbleLeftIcon className="size-3" />}
             currentSort={sort}
             currentOrder={order}
             onSort={onHeaderSort}
@@ -415,7 +415,7 @@ function AdminPosts() {
           <StatHeader
             label="Saves"
             sortKey="bookmarks"
-            icon={<QuotesIcon className="size-3" />}
+            icon={<BookmarkIcon className="size-3" />}
             currentSort={sort}
             currentOrder={order}
             onSort={onHeaderSort}
@@ -463,7 +463,7 @@ function AdminPosts() {
               <time
                 dateTime={p.createdAt}
                 title={new Date(p.createdAt).toLocaleString()}
-                className="text-xs text-muted-foreground"
+                className="text-xs text-tertiary"
               >
                 {formatRelative(p.createdAt)}
               </time>
@@ -471,7 +471,7 @@ function AdminPosts() {
                 <Button
                   size="sm"
                   variant="transparent"
-                  className="h-7 px-2 text-xs text-destructive hover:text-destructive"
+                  className="h-7 px-2 text-xs text-danger hover:text-danger"
                   disabled={busyId === p.id}
                   onClick={(e) => {
                     e.stopPropagation()
@@ -517,7 +517,7 @@ function AdminPosts() {
 
   return (
     <main className="flex min-h-0 flex-1 flex-col">
-      <div className="shrink-0 space-y-3 border-b border-border p-4">
+      <div className="shrink-0 space-y-3 border-b border-neutral p-4">
         <Input
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -611,7 +611,7 @@ function AdminPosts() {
         <PageLoading className="py-8" label="Loading…" />
       )}
       {!loading && posts.length === 0 && !error && (
-        <div className="py-8 text-center text-xs text-muted-foreground">
+        <div className="py-8 text-center text-xs text-tertiary">
           No posts match these filters.
         </div>
       )}
@@ -626,7 +626,7 @@ function AdminPosts() {
                 <col key={col.id} style={{ width: COLUMN_WIDTHS[col.id] }} />
               ))}
             </colgroup>
-            <TableHeader className="sticky top-0 z-10 bg-background">
+            <TableHeader className="sticky top-0 z-10 bg-base-1">
               {table.getHeaderGroups().map((hg) => (
                 <TableRow key={hg.id}>
                   {hg.headers.map((header) => (
@@ -681,7 +681,7 @@ function AdminPosts() {
           </Table>
           <div ref={sentinelRef} aria-hidden className="h-px" />
           {cursor && (
-            <div className="flex justify-center py-3 text-xs text-muted-foreground">
+            <div className="flex justify-center py-3 text-xs text-tertiary">
               {loadingMore ? "loading…" : ""}
             </div>
           )}
@@ -717,7 +717,7 @@ function FilterField({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+      <span className="text-[10px] font-semibold tracking-wider text-tertiary uppercase">
         {label}
       </span>
       {children}
@@ -767,14 +767,14 @@ function DeletePostDialog({
           </DialogDescription>
         </DialogHeader>
         {target && (
-          <div className="rounded-md border border-border p-3 text-xs">
+          <div className="rounded-md border border-neutral p-3 text-xs">
             <p className="line-clamp-4 whitespace-pre-wrap">
               {target.text || (
-                <span className="text-muted-foreground">(no text)</span>
+                <span className="text-tertiary">(no text)</span>
               )}
             </p>
             {target.author?.handle && (
-              <p className="mt-2 text-[10px] text-muted-foreground">
+              <p className="mt-2 text-[10px] text-tertiary">
                 @{target.author.handle}
               </p>
             )}
@@ -783,7 +783,7 @@ function DeletePostDialog({
         <div className="flex flex-col gap-1.5">
           <Label
             htmlFor="admin-post-delete-reason"
-            className="text-xs text-muted-foreground"
+            className="text-xs text-tertiary"
           >
             Reason (optional)
           </Label>
@@ -794,7 +794,7 @@ function DeletePostDialog({
             placeholder="Reason"
           />
         </div>
-        {error && <p className="text-xs text-destructive">{error}</p>}
+        {error && <p className="text-xs text-danger">{error}</p>}
         <DialogFooter>
           <Button size="sm" variant="transparent" onClick={onClose} disabled={busy}>
             Cancel

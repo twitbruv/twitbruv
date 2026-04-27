@@ -1,5 +1,5 @@
 import { useRef, useState } from "react"
-import { ImageIcon, XIcon } from "@phosphor-icons/react"
+import { PhotoIcon, XMarkIcon } from "@heroicons/react/24/solid"
 import { Button } from "@workspace/ui/components/button"
 import { getPastedImageFiles } from "../lib/clipboard-images"
 import { compressImage, uploadImage } from "../lib/media"
@@ -105,9 +105,9 @@ export function CoverPicker({
             variant="transparent"
             onClick={clear}
             aria-label="remove cover"
-            className="absolute top-2 right-2 size-7 rounded-full bg-background/80 backdrop-blur-sm"
+            className="absolute top-2 right-2 size-7 rounded-full bg-base-1/80 backdrop-blur-sm"
           >
-            <XIcon size={14} />
+            <XMarkIcon className="size-3.5" />
           </Button>
         </div>
       ) : (
@@ -117,11 +117,11 @@ export function CoverPicker({
           disabled={busy}
           className={`flex aspect-[3/1] w-full flex-col items-center justify-center gap-1 rounded-md border-2 border-dashed text-xs transition ${
             dragOver
-              ? "border-primary bg-primary/10 text-foreground"
-              : "border-border text-muted-foreground hover:bg-muted/30"
+              ? "border-accent bg-accent/10 text-primary"
+              : "border-neutral text-tertiary hover:bg-base-2/30"
           }`}
         >
-          <ImageIcon size={20} />
+          <PhotoIcon className="size-5" />
           <span>
             {busy
               ? "uploading…"
@@ -131,7 +131,7 @@ export function CoverPicker({
           </span>
         </button>
       )}
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error && <p className="text-xs text-danger">{error}</p>}
     </div>
   )
 }

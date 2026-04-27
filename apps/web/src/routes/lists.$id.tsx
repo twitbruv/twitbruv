@@ -1,6 +1,6 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { LockIcon, TrashIcon, XIcon } from "@phosphor-icons/react"
+import { LockClosedIcon, TrashIcon, XMarkIcon } from "@heroicons/react/24/solid"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
@@ -70,8 +70,8 @@ function ListDetail() {
         <span className="inline-flex min-w-0 items-center gap-2">
           <span className="truncate">{list.title}</span>
           {list.isPrivate ? (
-            <span className="inline-flex shrink-0 items-center gap-0.5 text-xs font-normal text-muted-foreground">
-              <LockIcon size={12} />
+            <span className="inline-flex shrink-0 items-center gap-0.5 text-xs font-normal text-tertiary">
+              <LockClosedIcon className="size-3" />
               Private
             </span>
           ) : null}
@@ -92,7 +92,7 @@ function ListDetail() {
             onClick={removeList}
             className="text-destructive"
           >
-            <TrashIcon size={14} /> Delete
+            <TrashIcon className="size-3.5" /> Delete
           </Button>
         </div>
       ) : undefined,
@@ -131,7 +131,7 @@ function ListDetail() {
     <PageFrame>
       <main>
         {error && (
-          <PageError message={error} className="border-b border-border" />
+          <PageError message={error} className="border-b border-neutral" />
         )}
 
         {isOwner && showAdd && (
@@ -205,16 +205,16 @@ function ManageMembers({
   }
 
   return (
-    <section className="border-b border-border px-4 py-3">
+    <section className="border-b border-neutral px-4 py-3">
       <h2 className="text-sm font-semibold">Members</h2>
       {members.length === 0 ? (
-        <p className="mt-1 text-xs text-muted-foreground">No members yet.</p>
+        <p className="mt-1 text-xs text-tertiary">No members yet.</p>
       ) : (
         <ul className="mt-2 flex flex-wrap gap-2">
           {members.map((m) => (
             <li
               key={m.id}
-              className="flex items-center gap-2 rounded-full border border-border bg-card/40 py-1 pr-2 pl-1 text-xs"
+              className="flex items-center gap-2 rounded-full border border-neutral bg-card/40 py-1 pr-2 pl-1 text-xs"
             >
               <Avatar
                 src={m.avatarUrl}
@@ -232,10 +232,10 @@ function ManageMembers({
                 variant="transparent"
                 onClick={() => remove(m.id)}
                 disabled={busy}
-                className="shrink-0 text-muted-foreground hover:text-destructive"
+                className="shrink-0 text-tertiary hover:text-destructive"
                 aria-label="Remove"
               >
-                <XIcon size={12} />
+                <XMarkIcon className="size-3" />
               </Button>
             </li>
           ))}
@@ -244,7 +244,7 @@ function ManageMembers({
       <div className="mt-3">
         <Label
           htmlFor="list-member-search"
-          className="text-xs text-muted-foreground"
+          className="text-xs text-tertiary"
         >
           Add a user
         </Label>
@@ -256,7 +256,7 @@ function ManageMembers({
           className="mt-1.5 h-8 text-sm"
         />
         {results.length > 0 && (
-          <ul className="mt-2 divide-y divide-border rounded-md border border-border">
+          <ul className="mt-2 divide-y divide-neutral rounded-md border border-neutral">
             {results.map((u) => {
               const already = memberIds.has(u.id)
               return (
@@ -276,7 +276,7 @@ function ManageMembers({
                       <div className="font-medium">
                         {u.displayName ?? `@${u.handle}`}
                       </div>
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-xs text-tertiary">
                         @{u.handle}
                       </div>
                     </div>

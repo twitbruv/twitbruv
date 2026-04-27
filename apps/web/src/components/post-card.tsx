@@ -2,11 +2,12 @@ import { Link, useNavigate } from "@tanstack/react-router"
 import { useEffect, useRef, useState } from "react"
 import {
   BookmarkIcon,
-  ChatCircleIcon,
-  PushPinIcon,
-  QuotesIcon,
-  RepeatIcon,
-} from "@phosphor-icons/react"
+  ChatBubbleLeftIcon,
+  MapPinIcon,
+  ChatBubbleLeftRightIcon,
+  ArrowPathIcon,
+} from "@heroicons/react/24/solid"
+import { BookmarkIcon as BookmarkIconOutline } from "@heroicons/react/24/outline"
 import { Button } from "@workspace/ui/components/button"
 import { Textarea } from "@workspace/ui/components/textarea"
 import { cn } from "@workspace/ui/lib/utils"
@@ -83,12 +84,12 @@ export function ArticleCardBlock({
 }) {
   if (!card.authorHandle) {
     return (
-      <div className="mt-2 rounded-md border border-border p-3 text-sm">
+      <div className="mt-2 rounded-md border border-neutral p-3 text-sm">
         <h3 className="font-semibold">{card.title}</h3>
         {card.subtitle && (
-          <p className="mt-1 text-muted-foreground">{card.subtitle}</p>
+          <p className="mt-1 text-tertiary">{card.subtitle}</p>
         )}
-        <p className="mt-2 text-xs text-muted-foreground">
+        <p className="mt-2 text-xs text-tertiary">
           article · {card.readingMinutes} min read
         </p>
       </div>
@@ -98,20 +99,20 @@ export function ArticleCardBlock({
     <Link
       to="/$handle/a/$slug"
       params={{ handle: card.authorHandle, slug: card.slug }}
-      className="mt-2 block rounded-md border border-border p-3 text-sm transition hover:bg-muted/40"
+      className="mt-2 block rounded-md border border-neutral p-3 text-sm transition hover:bg-base-2/40"
     >
-      <div className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+      <div className="text-xs font-semibold tracking-wide text-tertiary uppercase">
         Article
       </div>
       <h3 className="mt-1 text-base leading-snug font-semibold">
         {card.title}
       </h3>
       {card.subtitle && (
-        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+        <p className="mt-1 line-clamp-2 text-sm text-tertiary">
           {card.subtitle}
         </p>
       )}
-      <p className="mt-2 text-xs text-muted-foreground">
+      <p className="mt-2 text-xs text-tertiary">
         {card.readingMinutes} min read
         {card.publishedAt
           ? ` · ${new Date(card.publishedAt).toLocaleDateString()}`
@@ -128,23 +129,23 @@ export function ArticleCardBlock({
 export function ReplyParentEmbed({ post }: { post: Post }) {
   const handle = post.author.handle
   const content = (
-    <div className="mb-2 overflow-hidden rounded-md border border-border/60 bg-muted/30 transition hover:bg-muted/50">
+    <div className="mb-2 overflow-hidden rounded-md border border-neutral/60 bg-base-2/30 transition hover:bg-base-2/50">
       <div className="px-3 py-2">
-        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-          <ChatCircleIcon size={12} />
+        <div className="flex items-center gap-1 text-xs text-tertiary">
+          <ChatBubbleLeftIcon className="size-3" />
           <span>
             Replying to{" "}
             {handle ? (
-              <span className="font-medium text-foreground">@{handle}</span>
+              <span className="font-medium text-primary">@{handle}</span>
             ) : (
-              <span className="font-medium text-foreground">unknown</span>
+              <span className="font-medium text-primary">unknown</span>
             )}
           </span>
           <span>·</span>
           <time dateTime={post.createdAt}>{relativeTime(post.createdAt)}</time>
         </div>
         {post.text && (
-          <p className="mt-1 line-clamp-3 text-sm leading-snug break-words whitespace-pre-wrap text-muted-foreground">
+          <p className="mt-1 line-clamp-3 text-sm leading-snug break-words whitespace-pre-wrap text-tertiary">
             {post.text}
           </p>
         )}
@@ -174,19 +175,19 @@ export function QuoteEmbed({ post }: { post: Post }) {
     thumb?.variants.find((v) => v.kind === "medium") ??
     thumb?.variants[0]
   const content = (
-    <div className="mt-2 overflow-hidden rounded-md border border-border transition hover:bg-muted/40">
+    <div className="mt-2 overflow-hidden rounded-md border border-neutral transition hover:bg-base-2/40">
       <div className="flex gap-3 p-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 text-xs">
-            <span className="flex items-center gap-1 font-semibold text-foreground">
+            <span className="flex items-center gap-1 font-semibold text-primary">
               {post.author.displayName || `@${handle ?? "unknown"}`}
               {post.author.isVerified && (
                 <VerifiedBadge size={13} role={post.author.role} />
               )}
             </span>
-            {handle && <span className="text-muted-foreground">@{handle}</span>}
-            <span className="text-muted-foreground">·</span>
-            <time className="text-muted-foreground" dateTime={post.createdAt}>
+            {handle && <span className="text-tertiary">@{handle}</span>}
+            <span className="text-tertiary">·</span>
+            <time className="text-tertiary" dateTime={post.createdAt}>
               {relativeTime(post.createdAt)}
             </time>
           </div>
@@ -246,7 +247,7 @@ function MediaGrid({ media }: { media: NonNullable<Post["media"]> }) {
             className="block h-full w-full"
           >
             <div
-              className="h-full w-full overflow-hidden bg-muted"
+              className="h-full w-full overflow-hidden bg-base-2"
               style={aspect ? { aspectRatio: aspect } : undefined}
             >
               {isReady ? (
@@ -257,7 +258,7 @@ function MediaGrid({ media }: { media: NonNullable<Post["media"]> }) {
                   className="h-full w-full object-cover"
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
+                <div className="flex h-full w-full items-center justify-center text-xs text-tertiary">
                   {m.processingState === "failed"
                     ? "media failed"
                     : "processing…"}
@@ -450,11 +451,11 @@ export function PostCard({
   return (
     <article
       ref={articleRef}
-      className="border-b border-border px-4 py-4 transition-colors hover:bg-muted/20"
+      className="border-b border-neutral px-4 py-4 transition-colors hover:bg-base-2/20"
     >
       {outerPost.pinned && (
-        <div className="mb-2 ml-10 flex items-center gap-1.5 text-xs text-muted-foreground">
-          <PushPinIcon size={14} weight="fill" />
+        <div className="mb-2 ml-10 flex items-center gap-1.5 text-xs text-tertiary">
+          <MapPinIcon className="size-3.5" />
           <span>Pinned</span>
         </div>
       )}
@@ -462,9 +463,9 @@ export function PostCard({
         <Link
           to="/$handle"
           params={{ handle: outerPost.author.handle }}
-          className="mb-2 ml-10 flex items-center gap-1.5 text-xs text-muted-foreground hover:underline"
+          className="mb-2 ml-10 flex items-center gap-1.5 text-xs text-tertiary hover:underline"
         >
-          <RepeatIcon size={14} />
+          <ArrowPathIcon className="size-3.5" />
           <span className="flex items-center gap-1">
             <span>
               Reposted by{" "}
@@ -483,14 +484,14 @@ export function PostCard({
               <Avatar
                 initial={initial}
                 src={post.author.avatarUrl}
-                className="size-10 text-sm ring-1 ring-border"
+                className="size-10 text-sm ring-1 ring-neutral"
               />
             </Link>
           ) : (
             <Avatar
               initial={initial}
               src={post.author.avatarUrl}
-              className="size-10 text-sm ring-1 ring-border"
+              className="size-10 text-sm ring-1 ring-neutral"
             />
           )}
         </div>
@@ -508,7 +509,7 @@ export function PostCard({
               <Link
                 to="/$handle"
                 params={{ handle: authorHandle }}
-                className="flex items-center gap-1 font-semibold text-foreground hover:underline"
+                className="flex items-center gap-1 font-semibold text-primary hover:underline"
               >
                 {post.author.displayName || `@${authorHandle}`}
                 {post.author.isVerified && (
@@ -516,7 +517,7 @@ export function PostCard({
                 )}
               </Link>
             ) : (
-              <span className="flex items-center gap-1 font-semibold text-foreground">
+              <span className="flex items-center gap-1 font-semibold text-primary">
                 {post.author.displayName ?? "unknown"}
                 {post.author.isVerified && (
                   <VerifiedBadge size={15} role={post.author.role} />
@@ -524,14 +525,14 @@ export function PostCard({
               </span>
             )}
             {authorHandle && (
-              <span className="text-muted-foreground">@{authorHandle}</span>
+              <span className="text-tertiary">@{authorHandle}</span>
             )}
-            <span className="text-muted-foreground">·</span>
+            <span className="text-tertiary">·</span>
             {showPostLink && authorHandle ? (
               <Link
                 to="/$handle/p/$id"
                 params={{ handle: authorHandle, id: post.id }}
-                className="text-muted-foreground hover:underline"
+                className="text-tertiary hover:underline"
                 title={post.createdAt}
               >
                 <time dateTime={post.createdAt}>
@@ -539,7 +540,7 @@ export function PostCard({
                 </time>
               </Link>
             ) : (
-              <time className="text-muted-foreground" dateTime={post.createdAt}>
+              <time className="text-tertiary" dateTime={post.createdAt}>
                 {relativeTime(post.createdAt)}
               </time>
             )}
@@ -547,7 +548,7 @@ export function PostCard({
               <button
                 type="button"
                 onClick={() => setHistoryOpen(true)}
-                className="text-xs text-muted-foreground hover:underline"
+                className="text-xs text-tertiary hover:underline"
                 title="View edit history"
               >
                 (edited)
@@ -585,7 +586,7 @@ export function PostCard({
                   className={
                     editText.length > POST_MAX_LEN
                       ? "text-destructive"
-                      : "text-muted-foreground"
+                      : "text-tertiary"
                   }
                 >
                   {POST_MAX_LEN - editText.length}
@@ -638,7 +639,7 @@ export function PostCard({
           )}
           {post.quoteOf && <QuoteEmbed post={post.quoteOf} />}
           <footer
-            className="mt-3 flex items-center gap-2 text-sm text-muted-foreground"
+            className="mt-3 flex items-center gap-2 text-sm text-tertiary"
             onClick={(event) => event.stopPropagation()}
           >
             {showPostLink && authorHandle && (
@@ -647,15 +648,15 @@ export function PostCard({
                 size="sm"
                 nativeButton={false}
                 disabled={busy || !post.viewer}
-                className="flex items-center gap-2 transition hover:text-foreground"
+                className="flex items-center gap-2 transition hover:text-primary"
                 aria-pressed={post.viewer?.reposted}
                 render={
                   <Link
                     to="/$handle/p/$id"
                     params={{ handle: authorHandle, id: post.id }}
-                    className="flex items-center gap-2 hover:text-foreground"
+                    className="flex items-center gap-2 hover:text-primary"
                   >
-                    <ChatCircleIcon className="size-4" />
+                    <ChatBubbleLeftIcon className="size-4" />
                     <span className="text-xs">{post.counts.replies}</span>
                   </Link>
                 }
@@ -679,7 +680,7 @@ export function PostCard({
               size="sm"
               onClick={toggleLike}
               disabled={busy || !post.viewer}
-              className={`flex cursor-pointer items-center gap-2 transition hover:text-foreground ${post.viewer?.liked ? "text-foreground" : ""}`}
+              className={`flex cursor-pointer items-center gap-2 transition hover:text-primary ${post.viewer?.liked ? "text-primary" : ""}`}
               aria-pressed={post.viewer?.liked}
             >
               <LikeIconBurst
@@ -694,13 +695,13 @@ export function PostCard({
               size="sm"
               onClick={toggleBookmark}
               disabled={busy || !post.viewer}
-              className={`flex cursor-pointer items-center gap-2 transition hover:text-foreground ${post.viewer?.bookmarked ? "text-foreground" : ""}`}
+              className={`flex cursor-pointer items-center gap-2 transition hover:text-primary ${post.viewer?.bookmarked ? "text-primary" : ""}`}
               aria-pressed={post.viewer?.bookmarked}
             >
               {post.viewer?.bookmarked ? (
-                <BookmarkIcon className="size-4" weight="fill" />
-              ) : (
                 <BookmarkIcon className="size-4" />
+              ) : (
+                <BookmarkIconOutline className="size-4" />
               )}
               <span className="text-xs">{post.counts.bookmarks}</span>
             </Button>
@@ -733,10 +734,10 @@ function RepostControl({
         size="sm"
         onClick={onToggleRepost}
         disabled={disabled}
-        className="flex cursor-pointer items-center gap-2 text-foreground transition hover:text-foreground"
+        className="flex cursor-pointer items-center gap-2 text-primary transition hover:text-primary"
         aria-pressed
       >
-        <RepeatIcon className="size-4" />
+        <ArrowPathIcon className="size-4" />
         <span className="text-xs">
           {post.counts.reposts + post.counts.quotes}
         </span>
@@ -753,9 +754,9 @@ function RepostControl({
               variant="transparent"
               size="sm"
               disabled={disabled}
-              className="flex cursor-pointer items-center gap-2 transition hover:text-foreground"
+              className="flex cursor-pointer items-center gap-2 transition hover:text-primary"
             >
-              <RepeatIcon className="size-4" />
+        <ArrowPathIcon className="size-4" />
               <span className="text-xs">
                 {post.counts.reposts + post.counts.quotes}
               </span>
@@ -764,18 +765,18 @@ function RepostControl({
         />
         <DropdownMenu.Content align="start" sideOffset={4} className="w-40">
           <DropdownMenu.Item onClick={onToggleRepost}>
-            <RepeatIcon className="size-3.5" />
+            <ArrowPathIcon className="size-3.5" />
             <span>Repost</span>
           </DropdownMenu.Item>
           <DropdownMenu.Item onClick={() => setQuoteOpen(true)}>
-            <QuotesIcon className="size-3.5" />
+            <ChatBubbleLeftRightIcon className="size-3.5" />
             <span>Quote post</span>
           </DropdownMenu.Item>
         </DropdownMenu.Content>
       </DropdownMenu.Root>
       <Dialog open={quoteOpen} onOpenChange={setQuoteOpen}>
         <DialogContent className="max-w-lg p-0">
-          <DialogHeader className="border-b border-border px-4 py-3">
+          <DialogHeader className="border-b border-neutral px-4 py-3">
             <DialogTitle className="text-sm font-semibold">
               Quote post
             </DialogTitle>
@@ -833,8 +834,8 @@ function EditHistoryDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="max-h-[60vh] space-y-3 overflow-y-auto pt-2">
-          <div className="rounded-md border border-border p-3">
-            <div className="mb-1 text-xs text-muted-foreground">
+          <div className="rounded-md border border-neutral p-3">
+            <div className="mb-1 text-xs text-tertiary">
               Current version
               {post.editedAt
                 ? ` · edited ${new Date(post.editedAt).toLocaleString()}`
@@ -846,17 +847,17 @@ function EditHistoryDialog({
           </div>
           {error && <p className="text-xs text-destructive">{error}</p>}
           {!error && edits === null && (
-            <p className="text-xs text-muted-foreground">loading…</p>
+            <p className="text-xs text-tertiary">loading…</p>
           )}
           {edits && edits.length === 0 && (
-            <p className="text-xs text-muted-foreground">No prior versions.</p>
+            <p className="text-xs text-tertiary">No prior versions.</p>
           )}
           {edits?.map((edit) => (
-            <div key={edit.id} className="rounded-md border border-border p-3">
-              <div className="mb-1 text-xs text-muted-foreground">
+            <div key={edit.id} className="rounded-md border border-neutral p-3">
+              <div className="mb-1 text-xs text-tertiary">
                 Replaced at {new Date(edit.editedAt).toLocaleString()}
               </div>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground">
+              <p className="text-sm leading-relaxed whitespace-pre-wrap text-tertiary">
                 {edit.previousText}
               </p>
             </div>

@@ -1,5 +1,5 @@
 import { useRef, useState } from "react"
-import { CameraIcon, TrashIcon } from "@phosphor-icons/react"
+import { CameraIcon, TrashIcon } from "@heroicons/react/24/solid"
 import { Button } from "@workspace/ui/components/button"
 import { getPastedImageFiles } from "../lib/clipboard-images"
 import { pickVariantUrl, uploadImage } from "../lib/media"
@@ -77,7 +77,7 @@ export function AvatarUpload({
       >
         <div
           className={`size-20 overflow-hidden rounded-full ring-2 transition ${
-            dragOver ? "ring-primary" : "ring-background"
+            dragOver ? "ring-accent" : "ring-base-1"
           }`}
         >
           {currentUrl ? (
@@ -87,7 +87,7 @@ export function AvatarUpload({
               className="h-full w-full object-cover"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-muted text-2xl font-semibold text-foreground/80 uppercase">
+            <div className="flex h-full w-full items-center justify-center bg-base-2 text-2xl font-semibold text-primary/80 uppercase">
               {initial}
             </div>
           )}
@@ -104,17 +104,17 @@ export function AvatarUpload({
         </Button>
       </div>
       <div className="flex flex-col gap-1 text-xs">
-        <span className="font-medium text-foreground">Avatar</span>
-        <span className="text-muted-foreground">
+        <span className="font-medium text-primary">Avatar</span>
+        <span className="text-tertiary">
           {uploading ? "uploading…" : "square images look best."}
         </span>
-        {error && <span className="text-destructive">{error}</span>}
+        {error && <span className="text-danger">{error}</span>}
         {currentUrl && !uploading && (
           <Button
             variant="transparent"
             size="sm"
             onClick={() => onChange(null)}
-            className="mt-1 self-start text-destructive hover:underline"
+            className="mt-1 self-start text-danger hover:underline"
           >
             <TrashIcon className="size-4" /> Remove
           </Button>

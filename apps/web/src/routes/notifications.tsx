@@ -10,13 +10,13 @@ import {
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query"
 import { useVirtualizer, useWindowVirtualizer } from "@tanstack/react-virtual"
 import {
-  AtIcon,
-  ChatCircleIcon,
+  ArrowPathIcon,
+  AtSymbolIcon,
+  ChatBubbleBottomCenterTextIcon,
+  ChatBubbleOvalLeftIcon,
   HeartIcon,
-  QuotesIcon,
-  RepeatIcon,
   UserPlusIcon,
-} from "@phosphor-icons/react"
+} from "@heroicons/react/24/solid"
 import { Button } from "@workspace/ui/components/button"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { api } from "../lib/api"
@@ -153,7 +153,7 @@ function Notifications() {
             {Array.from({ length: 5 }).map((_, i) => (
               <div
                 key={i}
-                className="flex items-start gap-3 border-b border-border px-4 py-3"
+                className="flex items-start gap-3 border-b border-neutral px-4 py-3"
               >
                 <Skeleton className="size-10 shrink-0 rounded-full" />
                 <div className="flex-1 space-y-2">
@@ -168,7 +168,7 @@ function Notifications() {
         ) : items.length === 0 ? (
           <div className="px-4 py-16 text-center">
             <p className="text-sm font-semibold">All caught up</p>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-1 text-xs text-tertiary">
               New likes, replies, mentions, and follows will show up here.
             </p>
           </div>
@@ -212,7 +212,7 @@ function NotificationsList(props: NotificationsListProps) {
           <NotificationRow key={item.id} item={item} />
         ))}
         {props.hasNextPage && (
-          <div className="flex justify-center py-4 text-xs text-muted-foreground">
+          <div className="flex justify-center py-4 text-xs text-tertiary">
             {props.isFetchingNextPage ? "loading…" : ""}
           </div>
         )}
@@ -294,7 +294,7 @@ function WindowNotificationsList({
       </div>
       <div ref={sentinelRef} aria-hidden className="h-px" />
       {hasNextPage && (
-        <div className="flex justify-center py-4 text-xs text-muted-foreground">
+        <div className="flex justify-center py-4 text-xs text-tertiary">
           {isFetchingNextPage ? "loading…" : ""}
         </div>
       )}
@@ -355,7 +355,7 @@ function ContainerNotificationsList({
       </div>
       <div ref={sentinelRef} aria-hidden className="h-px" />
       {hasNextPage && (
-        <div className="flex justify-center py-4 text-xs text-muted-foreground">
+        <div className="flex justify-center py-4 text-xs text-tertiary">
           {isFetchingNextPage ? "loading…" : ""}
         </div>
       )}
@@ -378,15 +378,15 @@ function NotificationRow({ item }: { item: NotificationItem }) {
 
   return (
     <div
-      className={`border-b border-border px-4 py-3 transition-colors hover:bg-muted/20 ${
-        !item.readAt ? "bg-primary/5" : ""
+      className={`border-b border-neutral px-4 py-3 transition-colors hover:bg-base-2/20 ${
+        !item.readAt ? "bg-subtle" : ""
       }`}
     >
       <div className="flex items-start gap-3">
         <div
           className={`mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full ${iconClass}`}
         >
-          <Icon size={18} />
+          <Icon className="size-[18px]" />
         </div>
         <div className="min-w-0 flex-1 text-sm">
           {actorHandle ? (
@@ -398,14 +398,14 @@ function NotificationRow({ item }: { item: NotificationItem }) {
               <Avatar
                 initial={actorInitial}
                 src={item.actor?.avatarUrl}
-                className="size-8 ring-1 ring-border"
+                className="size-8 ring-1 ring-neutral"
               />
             </Link>
           ) : (
             <Avatar
               initial={actorInitial}
               src={item.actor?.avatarUrl}
-              className="size-8 ring-1 ring-border"
+              className="size-8 ring-1 ring-neutral"
             />
           )}
           <p className="mt-2">
@@ -428,11 +428,11 @@ function NotificationRow({ item }: { item: NotificationItem }) {
                 )}
               </span>
             )}{" "}
-            <span className="text-muted-foreground">{verb}</span>
+            <span className="text-tertiary">{verb}</span>
           </p>
           {item.target && <TargetCard post={item.target} />}
           <time
-            className="mt-1 block text-xs text-muted-foreground"
+            className="mt-1 block text-xs text-tertiary"
             dateTime={item.createdAt}
           >
             {new Date(item.createdAt).toLocaleString()}
@@ -457,7 +457,7 @@ function TargetCard({ post }: { post: Post }) {
     thumb?.variants[0]
 
   const body = (
-    <div className="mt-2 overflow-hidden rounded-md border border-border transition hover:bg-muted/40">
+    <div className="mt-2 overflow-hidden rounded-md border border-neutral transition hover:bg-base-2/40">
       <div className="flex gap-3 p-3">
         <div className="min-w-0 flex-1">
           {post.text ? (
@@ -468,14 +468,14 @@ function TargetCard({ post }: { post: Post }) {
             <p className="line-clamp-2 text-sm">
               <span className="font-semibold">{post.articleCard.title}</span>
               {post.articleCard.subtitle && (
-                <span className="text-muted-foreground">
+                <span className="text-tertiary">
                   {" "}
                   — {post.articleCard.subtitle}
                 </span>
               )}
             </p>
           ) : (
-            <p className="text-sm text-muted-foreground italic">[media post]</p>
+            <p className="text-sm text-tertiary italic">[media post]</p>
           )}
         </div>
         {variant && (
@@ -510,16 +510,16 @@ function iconForKind(kind: NotificationItem["kind"]) {
     case "like":
       return HeartIcon
     case "repost":
-      return RepeatIcon
+      return ArrowPathIcon
     case "reply":
     case "article_reply":
-      return ChatCircleIcon
+      return ChatBubbleOvalLeftIcon
     case "quote":
-      return QuotesIcon
+      return ChatBubbleBottomCenterTextIcon
     case "follow":
       return UserPlusIcon
     case "mention":
-      return AtIcon
+      return AtSymbolIcon
     default:
       return HeartIcon
   }
@@ -539,7 +539,7 @@ function iconClassForKind(kind: NotificationItem["kind"]): string {
     case "reply":
     case "article_reply":
     default:
-      return "bg-muted text-foreground/80"
+      return "bg-base-2 text-foreground/80"
   }
 }
 

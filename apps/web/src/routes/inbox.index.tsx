@@ -1,6 +1,6 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
 import { useEffect, useMemo, useState } from "react"
-import { NotePencilIcon } from "@phosphor-icons/react"
+import { PencilSquareIcon } from "@heroicons/react/24/solid"
 import { Button } from "@workspace/ui/components/button"
 import { Badge } from "@workspace/ui/components/badge"
 import { Skeleton } from "@workspace/ui/components/skeleton"
@@ -35,7 +35,7 @@ function InboxList() {
           nativeButton={false}
           render={<Link to="/inbox/new" />}
         >
-          <NotePencilIcon size={14} />
+          <PencilSquareIcon className="size-3.5" />
           New
         </Button>
       ),
@@ -119,7 +119,7 @@ function ConversationList({
         {Array.from({ length: 6 }).map((_, i) => (
           <li
             key={i}
-            className="flex items-start gap-3 border-b border-border px-4 py-3"
+            className="flex items-start gap-3 border-b border-neutral px-4 py-3"
           >
             <Skeleton className="size-10 shrink-0 rounded-full" />
             <div className="flex-1 space-y-2">
@@ -174,24 +174,24 @@ function ConversationRow({ conversation }: { conversation: DmConversation }) {
       <Link
         to="/inbox/$conversationId"
         params={{ conversationId: conversation.id }}
-        className="flex items-start gap-3 border-b border-border px-4 py-3 transition-colors hover:bg-muted/20"
+        className="flex items-start gap-3 border-b border-neutral px-4 py-3 transition-colors hover:bg-base-2/20"
       >
         <ConversationAvatar conversation={conversation} />
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-2">
             <span className="flex min-w-0 items-center gap-1 text-sm font-semibold">
               <span className="truncate">{title}</span>
-              {peer?.isVerified && <VerifiedBadge size={14} role={peer.role} />}
+              {peer?.isVerified && <VerifiedBadge className="size-3.5" role={peer.role} />}
             </span>
-            <time className="shrink-0 text-xs text-muted-foreground">{ts}</time>
+            <time className="shrink-0 text-xs text-tertiary">{ts}</time>
           </div>
-          <p className="truncate text-sm text-muted-foreground">
+          <p className="truncate text-sm text-tertiary">
             {isGroup && `${conversation.members.length + 1} members · `}
             {preview ?? "No messages yet."}
           </p>
         </div>
         {conversation.unreadCount > 0 && (
-          <span className="ml-2 self-center rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground">
+          <span className="ml-2 self-center rounded-full bg-accent px-2 py-0.5 text-[10px] font-semibold text-white">
             {conversation.unreadCount}
           </span>
         )}
@@ -215,14 +215,14 @@ function ConversationAvatar({
           <Avatar
             initial={initialFor(a)}
             src={a.avatarUrl}
-            className="absolute top-0 left-0 size-7 ring-2 ring-background"
+            className="absolute top-0 left-0 size-7 ring-2 ring-base-1"
           />
         )}
         {b && (
           <Avatar
             initial={initialFor(b)}
             src={b.avatarUrl}
-            className="absolute right-0 bottom-0 size-7 ring-2 ring-background"
+            className="absolute right-0 bottom-0 size-7 ring-2 ring-base-1"
           />
         )}
       </div>

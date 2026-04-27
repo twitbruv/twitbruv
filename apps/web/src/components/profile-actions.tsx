@@ -1,12 +1,12 @@
 import { useState } from "react"
 import { useRouter } from "@tanstack/react-router"
 import {
-  DotsThreeIcon,
+  EllipsisHorizontalIcon,
   EnvelopeIcon,
   FlagIcon,
-  ProhibitIcon,
-  SpeakerSlashIcon,
-} from "@phosphor-icons/react"
+  NoSymbolIcon,
+  SpeakerXMarkIcon,
+} from "@heroicons/react/24/solid"
 import { Button } from "@workspace/ui/components/button"
 import { DropdownMenu } from "@workspace/ui/components/dropdown-menu"
 import { api } from "../lib/api"
@@ -81,7 +81,7 @@ export function ProfileActions({
         disabled={busy !== null || v.blocking}
         onClick={startConversation}
       >
-        <EnvelopeIcon size={16} />
+        <EnvelopeIcon className="size-4" />
       </Button>
       <Button
         size="sm"
@@ -103,7 +103,7 @@ export function ProfileActions({
         <DropdownMenu.Trigger
           render={
             <Button size="sm" variant="transparent" aria-label="more actions">
-              <DotsThreeIcon size={16} />
+              <EllipsisHorizontalIcon className="size-4" />
             </Button>
           }
         />
@@ -118,11 +118,11 @@ export function ProfileActions({
               )
             }
           >
-            <SpeakerSlashIcon size={14} />
+            <SpeakerXMarkIcon className="size-3.5" />
             <span>{v.muting ? "Unmute" : "Mute feed"}</span>
           </DropdownMenu.Item>
           <DropdownMenu.Item onClick={() => setReportOpen(true)}>
-            <FlagIcon size={14} />
+            <FlagIcon className="size-3.5" />
             <span>Report</span>
           </DropdownMenu.Item>
           <DropdownMenu.Item
@@ -137,7 +137,7 @@ export function ProfileActions({
               )
             }}
           >
-            <ProhibitIcon size={14} />
+            <NoSymbolIcon className="size-3.5" />
             <span>{v.blocking ? "Unblock" : "Block"}</span>
           </DropdownMenu.Item>
         </DropdownMenu.Content>

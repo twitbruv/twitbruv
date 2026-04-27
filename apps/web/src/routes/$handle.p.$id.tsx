@@ -1,14 +1,15 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useEffect, useRef, useState } from "react"
 import {
-  AtIcon,
+  AtSymbolIcon,
   BookmarkIcon,
   ChartBarIcon,
-  ChatCircleIcon,
-  HashIcon,
-  ImageIcon,
-  RepeatIcon,
-} from "@phosphor-icons/react"
+  ChatBubbleLeftIcon,
+  HashtagIcon,
+  PhotoIcon,
+  ArrowPathIcon,
+} from "@heroicons/react/24/solid"
+import { BookmarkIcon as BookmarkIconOutline } from "@heroicons/react/24/outline"
 import { Textarea } from "@workspace/ui/components/textarea"
 import { cn } from "@workspace/ui/lib/utils"
 import {
@@ -141,7 +142,7 @@ function PostMediaGrid({
         const isReady = m.processingState === "ready"
         const galleryIndex = gallery.findIndex((g) => g.id === m.id)
         return (
-          <div key={m.id} className="aspect-video bg-muted">
+          <div key={m.id} className="aspect-video bg-base-2">
             {isReady && (
               <ImageLightbox
                 images={galleryImages}
@@ -228,7 +229,7 @@ function ThreadView() {
     return (
       <main>
         <div className="px-4 py-16 text-center">
-          <p className="text-sm text-muted-foreground">post not found</p>
+          <p className="text-sm text-tertiary">post not found</p>
           <Link
             to="/$handle"
             params={{ handle }}
@@ -245,7 +246,7 @@ function ThreadView() {
     return (
       <main>
         <div className="px-4 py-16">
-          <p className="text-sm text-muted-foreground">loading…</p>
+          <p className="text-sm text-tertiary">loading…</p>
         </div>
       </main>
     )
@@ -293,7 +294,7 @@ function ThreadView() {
                 <Link
                   to="/$handle/p/$id"
                   params={{ handle: p.author.handle, id: p.id }}
-                  className="block border-b border-border bg-muted/10 px-4 py-2 pl-16 text-xs text-primary hover:underline"
+                  className="block border-b border-neutral bg-base-2/10 px-4 py-2 pl-16 text-xs text-primary hover:underline"
                 >
                   View {p.descendantReplyCount} more{" "}
                   {p.descendantReplyCount === 1 ? "reply" : "replies"}
@@ -432,10 +433,10 @@ function AncestorPost({
               </span>
             )}
             {authorHandle && (
-              <span className="text-muted-foreground">@{authorHandle}</span>
+              <span className="text-tertiary">@{authorHandle}</span>
             )}
-            <span className="text-muted-foreground">·</span>
-            <span className="text-muted-foreground tabular-nums">
+            <span className="text-tertiary">·</span>
+            <span className="text-tertiary tabular-nums">
               {relativeTime(post.createdAt)}
             </span>
             <PostMenu
@@ -456,7 +457,7 @@ function AncestorPost({
           {post.media && post.media.length > 0 && (
             <PostMediaGrid
               media={post.media}
-              className={`mt-2 grid gap-px overflow-hidden rounded-sm border border-border ${post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}
+              className={`mt-2 grid gap-px overflow-hidden rounded-sm border border-neutral ${post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}
             />
           )}
 
@@ -478,14 +479,14 @@ function AncestorPost({
 
           {post.quoteOf && <QuoteEmbed post={post.quoteOf} />}
 
-          <div className="mt-2.5 flex items-center gap-5 text-muted-foreground">
+          <div className="mt-2.5 flex items-center gap-5 text-tertiary">
             {authorHandle && (
               <Link
                 to="/$handle/p/$id"
                 params={{ handle: authorHandle, id: post.id }}
-                className="flex items-center gap-1.5 py-0.5 text-[13px] tabular-nums hover:text-foreground"
+                className="flex items-center gap-1.5 py-0.5 text-[13px] tabular-nums hover:text-primary"
               >
-                <ChatCircleIcon size={16} />
+                <ChatBubbleLeftIcon className="size-4" />
                 <span>{post.counts.replies}</span>
               </Link>
             )}
@@ -493,16 +494,16 @@ function AncestorPost({
               type="button"
               onClick={toggleRepost}
               disabled={busy || !post.viewer}
-              className={`flex items-center gap-1.5 py-0.5 text-[13px] tabular-nums transition-colors hover:text-foreground ${post.viewer?.reposted ? "text-foreground" : ""}`}
+              className={`flex items-center gap-1.5 py-0.5 text-[13px] tabular-nums transition-colors hover:text-primary ${post.viewer?.reposted ? "text-primary" : ""}`}
             >
-              <RepeatIcon size={16} />
+              <ArrowPathIcon className="size-4" />
               <span>{post.counts.reposts}</span>
             </button>
             <button
               type="button"
               onClick={toggleLike}
               disabled={busy || !post.viewer}
-              className={`flex items-center gap-1.5 py-0.5 text-[13px] tabular-nums transition-colors hover:text-foreground ${post.viewer?.liked ? "text-foreground" : ""}`}
+              className={`flex items-center gap-1.5 py-0.5 text-[13px] tabular-nums transition-colors hover:text-primary ${post.viewer?.liked ? "text-primary" : ""}`}
             >
               <LikeIconBurst
                 liked={!!post.viewer?.liked}
@@ -515,12 +516,12 @@ function AncestorPost({
               type="button"
               onClick={toggleBookmark}
               disabled={busy || !post.viewer}
-              className={`flex items-center gap-1.5 py-0.5 transition-colors hover:text-foreground ${post.viewer?.bookmarked ? "text-foreground" : ""}`}
+              className={`flex items-center gap-1.5 py-0.5 transition-colors hover:text-primary ${post.viewer?.bookmarked ? "text-primary" : ""}`}
             >
               {post.viewer?.bookmarked ? (
-                <BookmarkIcon size={16} weight="fill" />
+                <BookmarkIcon className="size-4" />
               ) : (
-                <BookmarkIcon size={16} />
+                <BookmarkIconOutline className="size-4" />
               )}
             </button>
           </div>
@@ -612,7 +613,7 @@ function ParentPost({
   }
 
   return (
-    <article className="relative border-b border-border px-4 py-3.5">
+    <article className="relative border-b border-neutral px-4 py-3.5">
       {hasAncestors && (
         <div
           className="absolute top-0 left-[26px] h-3.5 w-px bg-border"
@@ -645,7 +646,7 @@ function ParentPost({
             </span>
           )}
           {authorHandle && (
-            <span className="block text-[11px] text-muted-foreground">
+            <span className="block text-[11px] text-tertiary">
               @{authorHandle}
             </span>
           )}
@@ -667,7 +668,7 @@ function ParentPost({
       {post.media && post.media.length > 0 && (
         <PostMediaGrid
           media={post.media}
-          className={`mt-2.5 grid gap-px overflow-hidden rounded-sm border border-border ${post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}
+          className={`mt-2.5 grid gap-px overflow-hidden rounded-sm border border-neutral ${post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}
         />
       )}
 
@@ -686,7 +687,7 @@ function ParentPost({
 
       {post.quoteOf && <QuoteEmbed post={post.quoteOf} />}
 
-      {/* <div className="mt-2.5 flex items-center gap-3 text-[11px] tabular-nums text-muted-foreground">
+      {/* <div className="mt-2.5 flex items-center gap-3 text-[11px] tabular-nums text-tertiary">
         {post.counts.reposts > 0 && <span>{post.counts.reposts} reposts</span>}
         {post.counts.likes > 0 && <span>{post.counts.likes} likes</span>}
         {post.counts.bookmarks > 0 && (
@@ -694,28 +695,28 @@ function ParentPost({
         )}
       </div> */}
 
-      <div className="mt-2.5 flex items-center gap-5 text-muted-foreground">
+      <div className="mt-2.5 flex items-center gap-5 text-tertiary">
         <button
           type="button"
-          className="flex items-center gap-1.5 py-0.5 text-[13px] tabular-nums hover:text-foreground"
+          className="flex items-center gap-1.5 py-0.5 text-[13px] tabular-nums hover:text-primary"
         >
-          <ChatCircleIcon size={16} />
+          <ChatBubbleLeftIcon className="size-4" />
           <span>{post.counts.replies}</span>
         </button>
         <button
           type="button"
           onClick={toggleRepost}
           disabled={busy || !post.viewer}
-          className={`flex items-center gap-1.5 py-0.5 text-[13px] tabular-nums transition-colors hover:text-foreground ${post.viewer?.reposted ? "text-foreground" : ""}`}
+          className={`flex items-center gap-1.5 py-0.5 text-[13px] tabular-nums transition-colors hover:text-primary ${post.viewer?.reposted ? "text-primary" : ""}`}
         >
-          <RepeatIcon size={16} />
+          <ArrowPathIcon className="size-4" />
           <span>{post.counts.reposts}</span>
         </button>
         <button
           type="button"
           onClick={toggleLike}
           disabled={busy || !post.viewer}
-          className={`flex items-center gap-1.5 py-0.5 text-[13px] tabular-nums transition-colors hover:text-foreground ${post.viewer?.liked ? "text-foreground" : ""}`}
+          className={`flex items-center gap-1.5 py-0.5 text-[13px] tabular-nums transition-colors hover:text-primary ${post.viewer?.liked ? "text-primary" : ""}`}
         >
           <LikeIconBurst
             liked={!!post.viewer?.liked}
@@ -728,12 +729,12 @@ function ParentPost({
           type="button"
           onClick={toggleBookmark}
           disabled={busy || !post.viewer}
-          className={`flex items-center gap-1.5 py-0.5 transition-colors hover:text-foreground ${post.viewer?.bookmarked ? "text-foreground" : ""}`}
+          className={`flex items-center gap-1.5 py-0.5 transition-colors hover:text-primary ${post.viewer?.bookmarked ? "text-primary" : ""}`}
         >
           {post.viewer?.bookmarked ? (
-            <BookmarkIcon size={16} weight="fill" />
+            <BookmarkIcon className="size-4" />
           ) : (
-            <BookmarkIcon size={16} />
+            <BookmarkIconOutline className="size-4" />
           )}
         </button>
       </div>
@@ -793,7 +794,7 @@ function ReplyComposer({
   return (
     <form
       onSubmit={handleSubmit}
-      className="border-b border-border px-4 py-2.5"
+      className="border-b border-neutral px-4 py-2.5"
     >
       <div className="flex gap-2.5">
         <Avatar initial={avatarInitial} src={me?.avatarUrl} size={20} />
@@ -823,36 +824,36 @@ function ReplyComposer({
               <button
                 type="button"
                 aria-label="add image"
-                className="flex size-[22px] items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="flex size-[22px] items-center justify-center rounded-sm text-tertiary transition-colors hover:bg-base-2 hover:text-primary"
               >
-                <ImageIcon size={13} />
+                <PhotoIcon className="size-[13px]" />
               </button>
               <button
                 type="button"
                 aria-label="add poll"
-                className="flex size-[22px] items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="flex size-[22px] items-center justify-center rounded-sm text-tertiary transition-colors hover:bg-base-2 hover:text-primary"
               >
-                <ChartBarIcon size={13} />
+                <ChartBarIcon className="size-[13px]" />
               </button>
               <button
                 type="button"
                 aria-label="add hashtag"
-                className="flex size-[22px] items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="flex size-[22px] items-center justify-center rounded-sm text-tertiary transition-colors hover:bg-base-2 hover:text-primary"
               >
-                <HashIcon size={13} />
+                <HashtagIcon className="size-[13px]" />
               </button>
               <button
                 type="button"
                 aria-label="mention someone"
-                className="flex size-[22px] items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="flex size-[22px] items-center justify-center rounded-sm text-tertiary transition-colors hover:bg-base-2 hover:text-primary"
               >
-                <AtIcon size={13} />
+                <AtSymbolIcon className="size-[13px]" />
               </button>
             </div>
             <button
               type="submit"
               disabled={!canSubmit}
-              className="h-[22px] rounded-sm bg-foreground px-2.5 text-[11.5px] font-bold text-background transition-opacity disabled:opacity-50"
+              className="h-[22px] rounded-sm bg-primary px-2.5 text-[11.5px] font-bold text-primary-foreground transition-opacity disabled:opacity-50"
             >
               {loading ? "Replying…" : "Reply"}
             </button>
@@ -863,7 +864,7 @@ function ReplyComposer({
               <button
                 type="submit"
                 disabled={!canSubmit}
-                className="h-[22px] rounded-sm bg-foreground px-2.5 text-[11.5px] font-bold text-background transition-opacity disabled:opacity-50"
+                className="h-[22px] rounded-sm bg-primary px-2.5 text-[11.5px] font-bold text-primary-foreground transition-opacity disabled:opacity-50"
               >
                 Reply
               </button>
@@ -903,8 +904,8 @@ function ReplyRow({
     <div
       onClick={openPost}
       className={cn(
-        "block border-b border-border py-3 pr-4 pl-8 transition-colors",
-        authorHandle && "cursor-pointer hover:bg-muted/30"
+        "block border-b border-neutral py-3 pr-4 pl-8 transition-colors",
+        authorHandle && "cursor-pointer hover:bg-base-2/30"
       )}
     >
       <ReplyCard post={post} onChange={onChange} onRemove={onRemove} />
@@ -1013,10 +1014,10 @@ function ReplyCard({
           </span>
         )}
         {authorHandle && (
-          <span className="text-muted-foreground">@{authorHandle}</span>
+          <span className="text-tertiary">@{authorHandle}</span>
         )}
-        <span className="text-muted-foreground">·</span>
-        <span className="text-muted-foreground tabular-nums">
+        <span className="text-tertiary">·</span>
+        <span className="text-tertiary tabular-nums">
           {relativeTime(post.createdAt)}
         </span>
         <PostMenu
@@ -1039,7 +1040,7 @@ function ReplyCard({
         <div onClick={(e) => e.stopPropagation()}>
           <PostMediaGrid
             media={post.media}
-            className={`mt-2 grid gap-px overflow-hidden rounded-sm border border-border ${post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}
+            className={`mt-2 grid gap-px overflow-hidden rounded-sm border border-neutral ${post.media.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}
           />
         </div>
       )}
@@ -1061,30 +1062,30 @@ function ReplyCard({
 
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: action bar wrapper */}
       <div
-        className="mt-2.5 flex items-center gap-5 text-muted-foreground"
+        className="mt-2.5 flex items-center gap-5 text-tertiary"
         onClick={(e) => e.stopPropagation()}
       >
         <button
           type="button"
-          className="flex items-center gap-1.5 py-0.5 text-[13px] tabular-nums hover:text-foreground"
+          className="flex items-center gap-1.5 py-0.5 text-[13px] tabular-nums hover:text-primary"
         >
-          <ChatCircleIcon size={16} />
+          <ChatBubbleLeftIcon className="size-4" />
           <span>{post.counts.replies}</span>
         </button>
         <button
           type="button"
           onClick={toggleRepost}
           disabled={busy || !post.viewer}
-          className={`flex items-center gap-1.5 py-0.5 text-[13px] tabular-nums transition-colors hover:text-foreground ${post.viewer?.reposted ? "text-foreground" : ""}`}
+          className={`flex items-center gap-1.5 py-0.5 text-[13px] tabular-nums transition-colors hover:text-primary ${post.viewer?.reposted ? "text-primary" : ""}`}
         >
-          <RepeatIcon size={16} />
+          <ArrowPathIcon className="size-4" />
           <span>{post.counts.reposts}</span>
         </button>
         <button
           type="button"
           onClick={toggleLike}
           disabled={busy || !post.viewer}
-          className={`flex items-center gap-1.5 py-0.5 text-[13px] tabular-nums transition-colors hover:text-foreground ${post.viewer?.liked ? "text-foreground" : ""}`}
+          className={`flex items-center gap-1.5 py-0.5 text-[13px] tabular-nums transition-colors hover:text-primary ${post.viewer?.liked ? "text-primary" : ""}`}
         >
           <LikeIconBurst
             liked={!!post.viewer?.liked}
@@ -1095,9 +1096,9 @@ function ReplyCard({
         </button>
         <button
           type="button"
-          className="flex items-center gap-1.5 py-0.5 transition-colors hover:text-foreground"
+          className="flex items-center gap-1.5 py-0.5 transition-colors hover:text-primary"
         >
-          <BookmarkIcon size={16} />
+          <BookmarkIconOutline className="size-4" />
         </button>
       </div>
       <EditPostDialog

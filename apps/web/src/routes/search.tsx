@@ -2,10 +2,11 @@ import { Link, createFileRoute } from "@tanstack/react-router"
 import { useEffect, useMemo, useState } from "react"
 import {
   BookmarkIcon,
-  HorseIcon,
   MagnifyingGlassIcon,
-  XIcon,
-} from "@phosphor-icons/react"
+  SparklesIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/solid"
+import { BookmarkIcon as BookmarkIconOutline } from "@heroicons/react/24/outline"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Alert, AlertDescription } from "@workspace/ui/components/alert"
@@ -156,12 +157,11 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
   return (
     <PageFrame>
       <main>
-        <div className="border-b border-border">
+        <div className="border-b border-neutral">
           <form onSubmit={onSubmit} className="px-4 py-3">
             <div className="relative">
               <MagnifyingGlassIcon
-                size={14}
-                className="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-muted-foreground"
+                className="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 size-3.5 text-tertiary"
               />
               <Input
                 value={draft}
@@ -181,17 +181,17 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
                 >
                   {activeSavedId ? (
                     <span className="inline-flex items-center gap-1">
-                      <BookmarkIcon size={14} weight="fill" />
+                      <BookmarkIcon className="size-3.5" />
                       Saved
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1">
-                      <BookmarkIcon size={14} />
+                      <BookmarkIconOutline className="size-3.5" />
                       Save this search
                     </span>
                   )}
                 </button>
-                <details className="text-muted-foreground">
+                <details className="text-tertiary">
                   <summary className="cursor-pointer select-none">
                     Operators
                   </summary>
@@ -217,8 +217,8 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
         </div>
 
         {me && saved.length > 0 && (
-          <section className="border-b border-border px-4 py-2">
-            <h2 className="mb-1 text-xs font-medium text-muted-foreground">
+          <section className="border-b border-neutral px-4 py-2">
+            <h2 className="mb-1 text-xs font-medium text-tertiary">
               Saved searches
             </h2>
             <div className="flex flex-wrap gap-1.5">
@@ -248,7 +248,7 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
                       }
                     }}
                   >
-                    <XIcon size={10} />
+                    <XMarkIcon className="size-2.5" />
                   </Button>
                 </span>
               ))}
@@ -257,14 +257,14 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
         )}
 
         {isChessSearch && (
-          <section className="flex items-center justify-between border-b border-border p-4 hover:bg-muted/40">
+          <section className="flex items-center justify-between border-b border-neutral p-4 hover:bg-base-2/40">
             <div className="flex items-center gap-4">
-              <div className="flex size-12 items-center justify-center rounded bg-muted">
-                <HorseIcon size={24} className="text-foreground" />
+              <div className="flex size-12 items-center justify-center rounded bg-base-2">
+                <SparklesIcon className="size-6 text-foreground" />
               </div>
               <div>
                 <h3 className="font-semibold">Play chess online</h3>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-tertiary">
                   Challenge friends or find a match.
                 </p>
               </div>
@@ -306,7 +306,7 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
         )}
 
         {query.length < 2 ? (
-          <p className="px-4 py-6 text-sm text-muted-foreground">
+          <p className="px-4 py-6 text-sm text-tertiary">
             Enter at least 2 characters. Operators like <code>from:</code>,{" "}
             <code>has:media</code>, and <code>since:</code> are supported.
           </p>
@@ -315,8 +315,8 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
         ) : (
           <>
             {users.length > 0 && (
-              <section className="border-b border-border">
-                <h2 className="px-4 py-2 text-xs font-medium text-muted-foreground">
+              <section className="border-b border-neutral">
+                <h2 className="px-4 py-2 text-xs font-medium text-tertiary">
                   People
                 </h2>
                 {users.map((u) =>
@@ -325,7 +325,7 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
                       key={u.id}
                       to="/$handle"
                       params={{ handle: u.handle }}
-                      className="block border-t border-border px-4 py-3 hover:bg-muted/40"
+                      className="block border-t border-neutral px-4 py-3 hover:bg-base-2/40"
                     >
                       <div className="flex items-center gap-1 text-sm font-medium">
                         <span className="truncate">
@@ -335,11 +335,11 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
                           <VerifiedBadge size={14} role={u.role} />
                         )}
                       </div>
-                      <div className="text-xs text-muted-foreground">
+                      <div className="text-xs text-tertiary">
                         @{u.handle}
                       </div>
                       {u.bio && (
-                        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                        <p className="mt-1 line-clamp-2 text-xs text-tertiary">
                           {u.bio}
                         </p>
                       )}
@@ -350,7 +350,7 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
             )}
             {posts.length > 0 && (
               <section>
-                <h2 className="px-4 py-2 text-xs font-medium text-muted-foreground">
+                <h2 className="px-4 py-2 text-xs font-medium text-tertiary">
                   Posts
                 </h2>
                 {posts.map((p) => (
