@@ -6,6 +6,7 @@ export function selectRankedCandidates(
   candidates: Array<ScoredForYouCandidate>
 ): Array<ScoredForYouCandidate> {
   const targetSize = Math.min(
+    250,
     Math.max(context.limit * 4, 200),
     candidates.length
   )
@@ -47,6 +48,17 @@ export function selectRankedCandidates(
       }
     }
 
+    if (bestIndex === -1) {
+      const fallback = bestRemainingCandidate(
+        remaining,
+        selected.length,
+        authorCounts,
+        sourceCounts
+      )
+      bestIndex = fallback.index
+      bestAdjustedScore = fallback.adjustedScore
+    }
+
     if (bestIndex === -1) break
 
     const [candidate] = remaining.splice(bestIndex, 1)
@@ -71,6 +83,36 @@ export function selectRankedCandidates(
   }
 
   return selected
+}
+
+function bestRemainingCandidate(
+  remaining: Array<ScoredForYouCandidate>,
+  index: number,
+  authorCounts: Map<string, number>,
+  sourceCounts: Map<string, number>
+): { index: number; adjustedScore: number } {
+  let bestIndex = -1
+  let bestAdjustedScore = Number.NEGATIVE_INFINITY
+
+  for (
+    let candidateIndex = 0;
+    candidateIndex < remaining.length;
+    candidateIndex += 1
+  ) {
+    const candidate = remaining[candidateIndex]!
+    const adjustedScore = adjustedRerankScore(
+      candidate,
+      index,
+      authorCounts,
+      sourceCounts
+    )
+    if (adjustedScore > bestAdjustedScore) {
+      bestAdjustedScore = adjustedScore
+      bestIndex = candidateIndex
+    }
+  }
+
+  return { index: bestIndex, adjustedScore: bestAdjustedScore }
 }
 
 function canSelectInTopWindow(
@@ -106,9 +148,11 @@ function adjustedRerankScore(
   const sourcePenalty = index < 20 ? sourceRepeats * 0.08 : sourceRepeats * 0.03
   const replyPenalty = index < 20 && candidate.replyToId ? 0.35 : 0
   const freshnessNudge = index < 10 ? freshnessNudgeFor(candidate) : 0
+  const authorFactor =
+    candidate.score >= 0 ? authorAttenuation : 1 + (1 - authorAttenuation)
 
   return (
-    candidate.score * authorAttenuation -
+    candidate.score * authorFactor -
     sourcePenalty -
     replyPenalty +
     freshnessNudge

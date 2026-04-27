@@ -86,6 +86,15 @@ async function loadRankedSession(
     throw new RankedSessionExpiredError()
   }
 
+  if (
+    parsed.postIds.length === 0 ||
+    !Number.isInteger(payload.offset) ||
+    payload.offset < 0 ||
+    payload.offset >= parsed.postIds.length
+  ) {
+    throw new RankedSessionExpiredError()
+  }
+
   return {
     sessionId: payload.sessionId,
     postIds: parsed.postIds,

@@ -2,6 +2,7 @@ import {
   and,
   desc,
   eligiblePublicFeedPost,
+  eq,
   gte,
   inArray,
   isNotNull,
@@ -99,10 +100,12 @@ async function loadLikeSignals(
   const rows = await runtime.db
     .select({
       postId: schema.likes.postId,
+      originalPostId: schema.posts.repostOfId,
       actorId: schema.likes.userId,
       activityAt: schema.likes.createdAt,
     })
     .from(schema.likes)
+    .innerJoin(schema.posts, eq(schema.posts.id, schema.likes.postId))
     .where(
       and(
         inArray(schema.likes.userId, followeeIds),
@@ -112,7 +115,12 @@ async function loadLikeSignals(
     .orderBy(desc(schema.likes.createdAt))
     .limit(240)
 
-  return rows.map((row) => ({ ...row, kind: "like" }))
+  return rows.map((row) => ({
+    postId: row.originalPostId ?? row.postId,
+    actorId: row.actorId,
+    activityAt: row.activityAt,
+    kind: "like",
+  }))
 }
 
 async function loadRepostSignals(

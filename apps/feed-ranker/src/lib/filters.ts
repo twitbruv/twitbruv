@@ -10,13 +10,13 @@ export function applyPreScoringFilters(
   const now = context.requestedAt.getTime()
 
   for (const candidate of candidates) {
+    const semanticKey = candidate.originalPostId ?? candidate.postId
     if (candidate.authorId === context.userId) continue
-    if (context.servedPostIds.has(candidate.postId)) continue
-    if (context.seenPostIds.has(candidate.postId)) continue
+    if (context.servedPostIds.has(semanticKey)) continue
+    if (context.seenPostIds.has(semanticKey)) continue
     if (now - candidate.createdAt.getTime() > maxAgeMs) continue
     if (isLowSignalReply(candidate)) continue
 
-    const semanticKey = candidate.originalPostId ?? candidate.postId
     const existing = bySemanticPost.get(semanticKey)
     if (!existing || candidateQuality(candidate) > candidateQuality(existing)) {
       bySemanticPost.set(semanticKey, candidate)

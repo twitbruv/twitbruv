@@ -12,9 +12,10 @@ export function mergeCandidateSignals(
   }
 
   for (const candidate of candidates) {
-    const existing = byId.get(candidate.postId)
+    const semanticKey = candidate.originalPostId ?? candidate.postId
+    const existing = byId.get(semanticKey)
     if (!existing) {
-      byId.set(candidate.postId, candidate)
+      byId.set(semanticKey, candidate)
       continue
     }
 
@@ -42,5 +43,5 @@ export function mergeCandidateSignals(
     }
   }
 
-  return [...byId.values()].slice(0, 250)
+  return [...byId.values()]
 }

@@ -4,7 +4,8 @@ import type { RankerRuntime } from "../runtime.ts"
 
 export async function hydrateRecentEngagement(
   candidates: Array<ForYouCandidate>,
-  runtime: RankerRuntime
+  runtime: RankerRuntime,
+  requestedAt: Date
 ): Promise<void> {
   const ids = candidates.map((candidate) => candidate.postId)
   if (ids.length === 0) return
@@ -12,8 +13,9 @@ export async function hydrateRecentEngagement(
   const candidateById = new Map(
     candidates.map((candidate) => [candidate.postId, candidate])
   )
-  const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000)
-  const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000)
+  const now = requestedAt.getTime()
+  const thirtyMinutesAgo = new Date(now - 30 * 60 * 1000)
+  const sixHoursAgo = new Date(now - 6 * 60 * 60 * 1000)
 
   const [
     likes30m,

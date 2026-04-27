@@ -1,5 +1,6 @@
 import {
   and,
+  asc,
   desc,
   eligiblePublicFeedPost,
   eq,
@@ -129,6 +130,7 @@ async function loadDirectInteractionAuthors(
         ne(schema.posts.authorId, context.userId)
       )
     )
+    .orderBy(desc(interactionTable.createdAt), asc(schema.posts.id))
     .limit(500)
 
   return rows.map((row) => row.authorId)
@@ -152,6 +154,7 @@ async function loadViewerRelationTargetIds(
         isNull(schema.posts.deletedAt)
       )
     )
+    .orderBy(desc(schema.posts.createdAt), asc(schema.posts.id))
     .limit(500)
 
   return rows

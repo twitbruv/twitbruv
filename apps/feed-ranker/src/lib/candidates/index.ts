@@ -24,6 +24,6 @@ export async function loadCandidates(
     ...affinity,
     ...freshPublic,
   ])
-  await hydrateRecentEngagement(candidates, runtime)
+  await hydrateRecentEngagement(candidates, runtime, context.requestedAt)
   return candidates
 }
