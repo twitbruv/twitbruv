@@ -13,6 +13,12 @@ export type Moderator = (
 
 const REQUEST_TIMEOUT_MS = 5000
 
+// After a moderation request fails (timeout / network / 5xx), bypass the moderation API
+// entirely for this long so subsequent post submissions don't each pay the timeout. Per-worker
+// state — multi-process deployments will have one breaker per worker, which is fine: the
+// first request after cooldown probes whether OpenAI is back, the rest ride free.
+const CIRCUIT_OPEN_MS = 30_000
+
 // Per-category score thresholds (0–1). Lower = stricter. Tuned for "block hateful or harmful
 // content even when the model isn't fully sure" — hate categories are aggressive (model
 // underscores phrases like 'heil hitler'), violence/sexual are looser (false positives common
@@ -58,12 +64,18 @@ export function createModerator(env: Env, log: Logger): Moderator {
     timeout: REQUEST_TIMEOUT_MS,
   })
 
+  let circuitOpenUntil = 0
+
   return async function moderate(
     text: string,
     imageUrls: ReadonlyArray<string> = []
   ): Promise<ModerationVerdict> {
     const trimmed = text.trim()
     if (trimmed.length === 0 && imageUrls.length === 0) {
+      return { verdict: "clean" }
+    }
+
+    if (Date.now() < circuitOpenUntil) {
       return { verdict: "clean" }
     }
 
@@ -112,7 +124,11 @@ export function createModerator(env: Env, log: Logger): Moderator {
 
       return { verdict: "clean" }
     } catch (err) {
-      modLog.warn({ err }, "moderation_failed_open")
+      circuitOpenUntil = Date.now() + CIRCUIT_OPEN_MS
+      modLog.warn(
+        { err, circuitOpenForMs: CIRCUIT_OPEN_MS },
+        "moderation_failed_open"
+      )
       return { verdict: "clean" }
     }
   }
