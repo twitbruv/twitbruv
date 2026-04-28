@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useMemo, useState } from "react"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
+import { SegmentedControl } from "@workspace/ui/components/segmented-control"
 import { ApiError, api } from "../lib/api"
 import { feedLikePredicate } from "../lib/query-cache"
 import { qk } from "../lib/query-keys"
@@ -10,10 +11,6 @@ import { authClient } from "../lib/auth"
 import { usePageHeader } from "../components/app-page-header"
 import { PageEmpty, PageError, PageLoading } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
-import {
-  UnderlineTabButton,
-  UnderlineTabRow,
-} from "../components/underline-tab-row"
 import type { ScheduledPost } from "../lib/api"
 
 export const Route = createFileRoute("/drafts")({ component: Drafts })
@@ -104,17 +101,18 @@ function Drafts() {
 
   return (
     <PageFrame>
-      <UnderlineTabRow>
-        {(["drafts", "scheduled"] as Array<Tab>).map((t) => (
-          <UnderlineTabButton
-            key={t}
-            active={tab === t}
-            onClick={() => setTab(t)}
-          >
-            {t === "drafts" ? "Drafts" : "Scheduled"}
-          </UnderlineTabButton>
-        ))}
-      </UnderlineTabRow>
+      <header className="sticky top-0 z-40 flex h-12 items-center bg-base-1/80 px-4 backdrop-blur-md">
+        <SegmentedControl<Tab>
+          layout="fit"
+          variant="ghost"
+          value={tab}
+          options={[
+            { value: "drafts", label: "Drafts" },
+            { value: "scheduled", label: "Scheduled" },
+          ]}
+          onValueChange={(value) => setTab(value)}
+        />
+      </header>
 
       {(error || actionError) && (
         <PageError message={(error ?? actionError)!} />

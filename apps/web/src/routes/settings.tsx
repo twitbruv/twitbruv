@@ -8,6 +8,7 @@ import { Switch } from "@workspace/ui/components/switch"
 import { updateProfileSchema } from "@workspace/validators"
 import { Textarea } from "@workspace/ui/components/textarea"
 import { Avatar } from "@workspace/ui/components/avatar"
+import { SegmentedControl } from "@workspace/ui/components/segmented-control"
 import { ApiError, api } from "../lib/api"
 import { authClient } from "../lib/auth"
 import { qk } from "../lib/query-keys"
@@ -19,10 +20,6 @@ import { BannerUpload } from "../components/banner-upload"
 import { usePageHeader } from "../components/app-page-header"
 import { PageLoading } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
-import {
-  UnderlineTabButton,
-  UnderlineTabRow,
-} from "../components/underline-tab-row"
 import { VerifiedBadge } from "../components/verified-badge"
 
 type SettingsTab =
@@ -43,6 +40,16 @@ const SETTINGS_TABS: ReadonlyArray<SettingsTab> = [
   "danger",
   ...(import.meta.env.DEV ? (["dev"] as const) : []),
 ]
+
+const SETTINGS_TAB_LABELS: Record<SettingsTab, string> = {
+  profile: "Profile",
+  account: "Account",
+  sessions: "Sessions",
+  privacy: "Privacy",
+  connections: "Connections",
+  danger: "Danger zone",
+  dev: "Dev Tools",
+}
 
 type SettingsSearch = { tab?: SettingsTab }
 
@@ -105,59 +112,18 @@ function Settings() {
           </div>
         )}
 
-        <UnderlineTabRow className="mt-6 min-w-0 overflow-x-auto">
-          <UnderlineTabButton
-            active={tab === "profile"}
-            onClick={() => setTab("profile")}
-            className="shrink-0 px-3"
-          >
-            Profile
-          </UnderlineTabButton>
-          <UnderlineTabButton
-            active={tab === "account"}
-            onClick={() => setTab("account")}
-            className="shrink-0 px-3"
-          >
-            Account
-          </UnderlineTabButton>
-          <UnderlineTabButton
-            active={tab === "sessions"}
-            onClick={() => setTab("sessions")}
-            className="shrink-0 px-3"
-          >
-            Sessions
-          </UnderlineTabButton>
-          <UnderlineTabButton
-            active={tab === "privacy"}
-            onClick={() => setTab("privacy")}
-            className="shrink-0 px-3"
-          >
-            Privacy
-          </UnderlineTabButton>
-          <UnderlineTabButton
-            active={tab === "connections"}
-            onClick={() => setTab("connections")}
-            className="shrink-0 px-3"
-          >
-            Connections
-          </UnderlineTabButton>
-          <UnderlineTabButton
-            active={tab === "danger"}
-            onClick={() => setTab("danger")}
-            className="shrink-0 px-3"
-          >
-            Danger zone
-          </UnderlineTabButton>
-          {import.meta.env.DEV && (
-            <UnderlineTabButton
-              active={tab === "dev"}
-              onClick={() => setTab("dev")}
-              className="shrink-0 px-3"
-            >
-              Dev Tools
-            </UnderlineTabButton>
-          )}
-        </UnderlineTabRow>
+        <div className="mt-6 min-w-0 overflow-x-auto">
+          <SegmentedControl<SettingsTab>
+            layout="fit"
+            variant="ghost"
+            value={tab}
+            options={SETTINGS_TABS.map((t) => ({
+              value: t,
+              label: SETTINGS_TAB_LABELS[t],
+            }))}
+            onValueChange={(value) => setTab(value)}
+          />
+        </div>
 
         <div className="mt-6">
           {tab === "profile" && <ProfileSection />}

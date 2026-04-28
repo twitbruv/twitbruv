@@ -7,17 +7,13 @@ import {
   PencilSquareIcon,
 } from "@heroicons/react/24/solid"
 import { Button } from "@workspace/ui/components/button"
-import { Badge } from "@workspace/ui/components/badge"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { Avatar } from "@workspace/ui/components/avatar"
+import { SegmentedControl } from "@workspace/ui/components/segmented-control"
 import { api } from "../lib/api"
 import { usePageHeader } from "../components/app-page-header"
 import { PageEmpty, PageError } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
-import {
-  UnderlineTabButton,
-  UnderlineTabRow,
-} from "../components/underline-tab-row"
 import { VerifiedBadge } from "../components/verified-badge"
 import { subscribeToDmStream } from "../lib/dm-stream"
 import { qk } from "../lib/query-keys"
@@ -52,27 +48,22 @@ function InboxList() {
 
   return (
     <PageFrame>
-      <UnderlineTabRow>
-        <UnderlineTabButton
-          active={folder === "inbox"}
-          onClick={() => setFolder("inbox")}
-        >
-          Inbox
-        </UnderlineTabButton>
-        <UnderlineTabButton
-          active={folder === "requests"}
-          onClick={() => setFolder("requests")}
-        >
-          <span className="inline-flex items-center justify-center gap-2">
-            Requests
-            {requestCount > 0 ? (
-              <Badge variant="neutral" className="tabular-nums">
-                {requestCount}
-              </Badge>
-            ) : null}
-          </span>
-        </UnderlineTabButton>
-      </UnderlineTabRow>
+      <header className="sticky top-0 z-40 flex h-12 items-center bg-base-1/80 px-4 backdrop-blur-md">
+        <SegmentedControl<Folder>
+          layout="fit"
+          variant="ghost"
+          value={folder}
+          options={[
+            { value: "inbox", label: "Inbox" },
+            {
+              value: "requests",
+              label:
+                requestCount > 0 ? `Requests (${requestCount})` : "Requests",
+            },
+          ]}
+          onValueChange={(value) => setFolder(value)}
+        />
+      </header>
 
       <ConversationList
         key={folder}

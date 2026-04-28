@@ -5,16 +5,15 @@ import {
   useRouterState,
 } from "@tanstack/react-router"
 import { useEffect, useMemo } from "react"
+import { SegmentedControl } from "@workspace/ui/components/segmented-control"
 import { authClient } from "../lib/auth"
 import { useMe } from "../lib/me"
 import { usePageHeader } from "../components/app-page-header"
 import { PageLoading } from "../components/page-surface"
-import {
-  UnderlineTabLink,
-  UnderlineTabRow,
-} from "../components/underline-tab-row"
 
 export const Route = createFileRoute("/admin")({ component: AdminLayout })
+
+type AdminTab = "stats" | "users" | "posts" | "reports"
 
 function AdminLayout() {
   const router = useRouter()
@@ -48,35 +47,39 @@ function AdminLayout() {
     return <PageLoading className="p-6" label="Loading…" />
   }
 
+  const activeTab: AdminTab = path.startsWith("/admin/users")
+    ? "users"
+    : path.startsWith("/admin/posts")
+      ? "posts"
+      : path.startsWith("/admin/reports")
+        ? "reports"
+        : "stats"
+
   return (
     <div className="mx-auto flex h-[calc(100svh-3rem)] w-full max-w-7xl flex-col overflow-hidden border-x border-b">
       <header className="border-border bg-background/80 shrink-0 border-b px-4 py-3 backdrop-blur-sm">
-        <UnderlineTabRow>
-          <UnderlineTabLink
-            to="/admin/stats"
-            active={path.startsWith("/admin/stats")}
-          >
-            Stats
-          </UnderlineTabLink>
-          <UnderlineTabLink
-            to="/admin/users"
-            active={path.startsWith("/admin/users")}
-          >
-            Users
-          </UnderlineTabLink>
-          <UnderlineTabLink
-            to="/admin/posts"
-            active={path.startsWith("/admin/posts")}
-          >
-            Posts
-          </UnderlineTabLink>
-          <UnderlineTabLink
-            to="/admin/reports"
-            active={path.startsWith("/admin/reports")}
-          >
-            Reports
-          </UnderlineTabLink>
-        </UnderlineTabRow>
+        <SegmentedControl<AdminTab>
+          layout="fit"
+          variant="ghost"
+          value={activeTab}
+          options={[
+            { value: "stats", label: "Stats" },
+            { value: "users", label: "Users" },
+            { value: "posts", label: "Posts" },
+            { value: "reports", label: "Reports" },
+          ]}
+          onValueChange={(value) => {
+            const to =
+              value === "stats"
+                ? "/admin/stats"
+                : value === "users"
+                  ? "/admin/users"
+                  : value === "posts"
+                    ? "/admin/posts"
+                    : "/admin/reports"
+            void router.navigate({ to })
+          }}
+        />
       </header>
       <Outlet />
     </div>
