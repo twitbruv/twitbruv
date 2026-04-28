@@ -91,23 +91,25 @@ export async function attachPostUnfurls(opts: {
       refKey: schema.urlUnfurls.refKey,
       state: schema.urlUnfurls.state,
       expiresAt: schema.urlUnfurls.expiresAt,
+      description: schema.urlUnfurls.description,
     })
     .from(schema.urlUnfurls)
     .where(inArray(schema.urlUnfurls.refKey, refs.map((r) => r.refKey)))
 
-  // Recover URLs that previously failed and whose cooldown has elapsed. Without this, the
-  // first poster who hit a transient 5xx / rate limit poisons the URL for everyone else
-  // until the failure TTL expires — and even then no one re-enqueues it. Flip those rows
-  // back to 'pending' so the enqueue loop below picks them up.
-  const staleFailureIds = allRows
-    .filter((r) => r.state === 'failed' && r.expiresAt.getTime() <= now.getTime())
+  const failedRecoveryIds = allRows
+    .filter((r) => {
+      if (r.state !== 'failed') return false
+      const expired = r.expiresAt.getTime() <= now.getTime()
+      const wasTokenMissing = r.description?.includes('unfurl_token_missing') ?? false
+      return expired || wasTokenMissing
+    })
     .map((r) => r.id)
-  if (staleFailureIds.length > 0) {
+  if (failedRecoveryIds.length > 0) {
     await opts.tx
       .update(schema.urlUnfurls)
       .set({ state: 'pending', fetchedAt: now, expiresAt: placeholderExpiry })
-      .where(inArray(schema.urlUnfurls.id, staleFailureIds))
-    const reset = new Set(staleFailureIds)
+      .where(inArray(schema.urlUnfurls.id, failedRecoveryIds))
+    const reset = new Set(failedRecoveryIds)
     for (const r of allRows) {
       if (reset.has(r.id)) r.state = 'pending'
     }

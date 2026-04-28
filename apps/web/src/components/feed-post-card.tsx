@@ -12,6 +12,9 @@ import {
 import { useLightbox } from "./lightbox-provider"
 import { useCompose } from "./compose-provider"
 import { LightboxSidebar } from "./lightbox-sidebar"
+import { MacfolioCardFromText } from "./macfolio-card"
+import { GithubCardBlock } from "./github-card"
+import { ArticleCardBlock } from "./post-card"
 import type { Post, PostMedia } from "../lib/api"
 
 function relativeTime(iso: string): string {
@@ -158,6 +161,20 @@ export function FeedPostCard({
       truncateText={truncateText}
       disableHover={disableHover}
       threadLine={threadLine}
+      belowText={
+        <>
+          <MacfolioCardFromText text={post.text} />
+          {post.articleCard && (
+            <ArticleCardBlock card={post.articleCard} />
+          )}
+          {post.githubCards?.map((card, i) => (
+            <GithubCardBlock
+              key={`${card.kind}-${card.url}-${i}`}
+              card={card}
+            />
+          ))}
+        </>
+      }
       onClick={() =>
         navigate({
           to: "/$handle/p/$id",

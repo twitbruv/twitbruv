@@ -1,9 +1,9 @@
 import {
-  GitBranchIcon,
-  GitCommitIcon,
-  GitMergeIcon,
-  GitPullRequestIcon,
-} from "@phosphor-icons/react"
+  ArrowsRightLeftIcon,
+  ArrowPathRoundedSquareIcon,
+  CommandLineIcon,
+  PencilSquareIcon,
+} from "@heroicons/react/24/outline"
 import { cn } from "@workspace/ui/lib/utils"
 import type { GithubCard } from "@workspace/github-unfurl/card"
 
@@ -42,7 +42,7 @@ function CardChrome({
       data-post-card-ignore-open
       onClick={(e) => e.stopPropagation()}
       className={cn(
-        "border-border bg-background hover:bg-muted/40 mt-3 block max-w-[560px] overflow-hidden rounded-xl border transition-all hover:shadow-sm",
+        "mt-3 block max-w-[560px] overflow-hidden rounded-lg border border-neutral bg-base-1 transition-all hover:bg-base-2/60 hover:shadow-sm",
         className
       )}
     >
@@ -59,7 +59,7 @@ function GithubChromeHeader({
   ownerAvatarUrl?: string | null
 }) {
   return (
-    <div className="border-border bg-muted/30 text-muted-foreground flex items-center gap-2 border-b px-3 py-1.5 text-[11px]">
+    <div className="flex items-center gap-2 border-b border-neutral bg-base-2/60 px-3 py-1.5 text-[11px] text-tertiary">
       <GithubMark className="size-3.5" />
       {ownerAvatarUrl && (
         <img
@@ -91,7 +91,7 @@ function RepoCard({
       />
       <div className="space-y-2 p-3">
         <div className="flex items-center gap-2">
-          <h3 className="truncate text-sm font-semibold">
+          <h3 className="truncate text-sm font-semibold text-primary">
             {card.nameWithOwner}
           </h3>
           {card.isArchived && <Badge tone="neutral">archived</Badge>}
@@ -99,7 +99,7 @@ function RepoCard({
           {card.isPrivate && <Badge tone="neutral">private</Badge>}
         </div>
         {card.description && (
-          <p className="text-muted-foreground line-clamp-2 text-[13px]">
+          <p className="line-clamp-2 text-[13px] text-tertiary">
             {card.description}
           </p>
         )}
@@ -108,14 +108,14 @@ function RepoCard({
             {card.topics.slice(0, 6).map((t) => (
               <span
                 key={t}
-                className="bg-muted text-muted-foreground rounded-full px-2 py-px text-[10.5px]"
+                className="rounded-full bg-base-2 px-2 py-px text-[10.5px] text-tertiary"
               >
                 {t}
               </span>
             ))}
           </div>
         )}
-        <div className="text-muted-foreground flex items-center gap-3 text-[11.5px]">
+        <div className="flex items-center gap-3 text-[11.5px] text-tertiary">
           {card.primaryLanguage && (
             <span className="flex items-center gap-1">
               <span
@@ -152,12 +152,12 @@ function IssueCard({
       <div className="space-y-2 p-3">
         <div className="flex items-start gap-2">
           <IssueStateBadge state={card.state} stateReason={card.stateReason} />
-          <h3 className="line-clamp-2 text-sm leading-snug font-semibold">
+          <h3 className="line-clamp-2 text-sm leading-snug font-semibold text-primary">
             {card.title}
           </h3>
         </div>
         {card.excerpt && (
-          <p className="text-muted-foreground line-clamp-2 text-[13px]">
+          <p className="line-clamp-2 text-[13px] text-tertiary">
             {card.excerpt}
           </p>
         )}
@@ -178,7 +178,7 @@ function IssueCard({
             ))}
           </div>
         )}
-        <div className="text-muted-foreground flex items-center gap-3 text-[11.5px]">
+        <div className="flex items-center gap-3 text-[11.5px] text-tertiary">
           <span>#{card.number}</span>
           {card.authorLogin && <span>by @{card.authorLogin}</span>}
           {card.comments > 0 && <span>{card.comments} comments</span>}
@@ -204,32 +204,28 @@ function PullCard({
       <div className="space-y-2 p-3">
         <div className="flex items-start gap-2">
           <PullStateBadge state={card.state} draft={card.draft} />
-          <h3 className="line-clamp-2 text-sm leading-snug font-semibold">
+          <h3 className="line-clamp-2 text-sm leading-snug font-semibold text-primary">
             {card.title}
           </h3>
         </div>
         {card.excerpt && (
-          <p className="text-muted-foreground line-clamp-2 text-[13px]">
+          <p className="line-clamp-2 text-[13px] text-tertiary">
             {card.excerpt}
           </p>
         )}
-        <div className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px]">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-tertiary">
           <span>#{card.number}</span>
           {card.authorLogin && <span>by @{card.authorLogin}</span>}
           <span className="flex items-center gap-1 font-mono">
-            <GitBranchIcon className="size-3" />
+            <ArrowsRightLeftIcon className="size-3 shrink-0" />
             <span className="max-w-[110px] truncate">{card.headRef}</span>
             <span className="opacity-60">→</span>
             <span className="max-w-[110px] truncate">{card.baseRef}</span>
           </span>
           {(card.additions > 0 || card.deletions > 0) && (
             <span className="font-mono">
-              <span className="text-emerald-600 dark:text-emerald-400">
-                +{compactNumber(card.additions)}
-              </span>{" "}
-              <span className="text-rose-600 dark:text-rose-400">
-                −{compactNumber(card.deletions)}
-              </span>
+              <span className="text-success">+{compactNumber(card.additions)}</span>{" "}
+              <span className="text-danger">−{compactNumber(card.deletions)}</span>
             </span>
           )}
           {card.changedFiles > 0 && <span>{card.changedFiles} files</span>}
@@ -254,20 +250,20 @@ function CommitCard({
       />
       <div className="space-y-2 p-3">
         <div className="flex items-start gap-2">
-          <span className="bg-muted text-muted-foreground mt-0.5 inline-flex h-5 items-center rounded-md px-1.5 font-mono text-[11px]">
-            <GitCommitIcon className="mr-1 size-3" />
+          <span className="mt-0.5 inline-flex h-5 items-center rounded-md bg-base-2 px-1.5 font-mono text-[11px] text-tertiary">
+            <CommandLineIcon className="mr-1 size-3 shrink-0" />
             {card.shortSha}
           </span>
-          <h3 className="line-clamp-2 text-sm leading-snug font-semibold">
+          <h3 className="line-clamp-2 text-sm leading-snug font-semibold text-primary">
             {card.messageHeadline}
           </h3>
         </div>
         {card.messageBody && (
-          <pre className="text-muted-foreground line-clamp-2 font-mono text-[12px] whitespace-pre-wrap">
+          <pre className="line-clamp-2 font-mono text-[12px] whitespace-pre-wrap text-tertiary">
             {card.messageBody}
           </pre>
         )}
-        <div className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px]">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-tertiary">
           {(card.authorLogin || card.authorName) && (
             <span>
               by {card.authorLogin ? `@${card.authorLogin}` : card.authorName}
@@ -275,12 +271,8 @@ function CommitCard({
           )}
           {(card.additions > 0 || card.deletions > 0) && (
             <span className="font-mono">
-              <span className="text-emerald-600 dark:text-emerald-400">
-                +{compactNumber(card.additions)}
-              </span>{" "}
-              <span className="text-rose-600 dark:text-rose-400">
-                −{compactNumber(card.deletions)}
-              </span>
+              <span className="text-success">+{compactNumber(card.additions)}</span>{" "}
+              <span className="text-danger">−{compactNumber(card.deletions)}</span>
             </span>
           )}
           {card.changedFiles > 0 && <span>{card.changedFiles} files</span>}
@@ -289,8 +281,6 @@ function CommitCard({
     </CardChrome>
   )
 }
-
-// --- bits ---
 
 type BadgeTone = "open" | "closed" | "merged" | "draft" | "neutral"
 
@@ -302,18 +292,16 @@ function Badge({
   children: React.ReactNode
 }) {
   const map: Record<BadgeTone, string> = {
-    open: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/30",
-    closed:
-      "bg-rose-500/15 text-rose-700 dark:text-rose-300 border-rose-500/30",
-    merged:
-      "bg-violet-500/15 text-violet-700 dark:text-violet-300 border-violet-500/30",
-    draft: "bg-zinc-500/15 text-zinc-700 dark:text-zinc-300 border-zinc-500/30",
-    neutral: "bg-muted text-muted-foreground border-border",
+    open: "border border-success bg-success-subtle text-success",
+    closed: "border border-danger bg-danger-subtle text-danger",
+    merged: "border-violet-500/30 bg-violet-500/15 text-violet-700",
+    draft: "border border-neutral bg-base-2 text-tertiary",
+    neutral: "border border-neutral bg-base-2 text-tertiary",
   }
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10.5px] font-medium tracking-wide uppercase",
+        "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-medium tracking-wide uppercase",
         map[tone]
       )}
     >
@@ -347,7 +335,7 @@ function PullStateBadge({
   if (state === "merged") {
     return (
       <Badge tone="merged">
-        <GitMergeIcon className="size-3" />
+        <ArrowPathRoundedSquareIcon className="size-3" />
         merged
       </Badge>
     )
@@ -356,14 +344,14 @@ function PullStateBadge({
   if (draft) {
     return (
       <Badge tone="draft">
-        <GitPullRequestIcon className="size-3" />
+        <PencilSquareIcon className="size-3" />
         draft
       </Badge>
     )
   }
   return (
     <Badge tone="open">
-      <GitPullRequestIcon className="size-3" />
+      <ArrowsRightLeftIcon className="size-3" />
       open
     </Badge>
   )
@@ -377,7 +365,6 @@ function compactNumber(n: number): string {
 }
 
 function GithubMark({ className }: { className?: string }) {
-  // Inline so the card never depends on an external image fetch + decode.
   return (
     <svg
       viewBox="0 0 16 16"

@@ -29,7 +29,7 @@ export function ComposeDropZone({
       >
         <div
           className={cn(
-            "mt-2 flex origin-top flex-col items-center justify-center rounded-xl border-2 border-dashed border-neutral-strong bg-subtle py-10 transition-all duration-200 ease-out-expo",
+            "mt-2 flex origin-top flex-col items-center justify-center rounded-lg border-2 border-dashed border-neutral-strong bg-subtle py-10 transition-all duration-200 ease-out-expo",
             isDragging && attachmentCount < MAX_ATTACHMENTS
               ? "translate-y-0 scale-100 opacity-100"
               : "-translate-y-1 scale-95 opacity-0"

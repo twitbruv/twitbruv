@@ -55,6 +55,8 @@ function estimatePostHeight(post: Post | undefined): number {
   if (target.text && extractMacfolioUrl(target.text)) {
     height += ESTIMATED_MACFOLIO_BUMP
   }
+  const gh = target.githubCards?.length ?? 0
+  if (gh > 0) height += gh * 220
   if (target.articleCard) height += ESTIMATED_ARTICLE_BUMP
   if (target.poll) height += ESTIMATED_POLL_BUMP
   if (target.quoteOf) height += ESTIMATED_QUOTE_BUMP

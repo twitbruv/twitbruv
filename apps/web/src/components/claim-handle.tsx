@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { Button } from "@workspace/ui/components/button"
+import { Card } from "@workspace/ui/components/card"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import { handleSchema } from "@workspace/validators"
@@ -41,35 +42,37 @@ export function ClaimHandle({
   }
 
   return (
-    <section className="border-border bg-muted/40 rounded-md border p-4">
-      <h2 className="text-sm font-semibold">Claim your handle</h2>
-      <p className="text-muted-foreground mt-1 text-xs">
-        Your handle is permanent for v1. Choose something you'll be happy with.
-      </p>
-      <form onSubmit={onSubmit} className="mt-3 space-y-2">
-        <div className="space-y-1">
-          <Label htmlFor="claim-handle">Handle</Label>
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground text-sm">@</span>
-            <Input
-              id="claim-handle"
-              value={handle}
-              onChange={(e) => setHandle(e.target.value.toLowerCase())}
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              required
-            />
+    <Card>
+      <Card.Body>
+        <h2 className="text-sm font-semibold text-primary">Claim your handle</h2>
+        <p className="mt-1 text-xs text-tertiary">
+          Your handle is permanent for v1. Choose something you'll be happy with.
+        </p>
+        <form onSubmit={onSubmit} className="mt-3 space-y-2">
+          <div className="space-y-1">
+            <Label htmlFor="claim-handle">Handle</Label>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-tertiary">@</span>
+              <Input
+                id="claim-handle"
+                value={handle}
+                onChange={(e) => setHandle(e.target.value.toLowerCase())}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                required
+              />
+            </div>
+            <p className="text-xs text-tertiary">
+              3–20 chars · letters, numbers, underscore.
+            </p>
           </div>
-          <p className="text-muted-foreground text-xs">
-            3–20 chars · letters, numbers, underscore.
-          </p>
-        </div>
-        {error && <p className="text-destructive text-xs">{error}</p>}
-        <Button type="submit" disabled={loading}>
-          {loading ? "claiming…" : "Claim handle"}
-        </Button>
-      </form>
-    </section>
+          {error && <p className="text-xs text-danger">{error}</p>}
+          <Button type="submit" disabled={loading}>
+            {loading ? "claiming…" : "Claim handle"}
+          </Button>
+        </form>
+      </Card.Body>
+    </Card>
   )
 }

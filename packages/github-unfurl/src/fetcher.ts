@@ -70,7 +70,6 @@ function excerpt(body: string | null | undefined, max = 280): string | null {
 
 export async function fetchGithubCard(ref: GithubRef): Promise<FetchOutcome> {
   const client = unfurlClient()
-  if (!client) return { ok: false, reason: 'unauthorized', message: 'unfurl_token_missing' }
 
   try {
     if (ref.kind === 'repo') {

@@ -55,15 +55,10 @@ export function MacfolioPill({
       data-post-card-ignore-open
       onClick={(e) => e.stopPropagation()}
       className={cn(
-        "border-border text-foreground inline-flex items-baseline gap-1.5 rounded-md border bg-linear-to-b from-zinc-50 to-zinc-100 px-1.5 py-0.5 align-middle font-semibold tracking-tight no-underline shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] transition hover:scale-[1.03] hover:shadow-sm dark:from-zinc-800 dark:to-zinc-900 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]",
+        "inline-flex items-baseline gap-1.5 rounded-md border border-neutral bg-base-2 px-1.5 py-0.5 align-middle font-semibold tracking-tight text-primary shadow-[var(--inset-shadow-primary)] no-underline transition hover:bg-subtle hover:scale-[1.03]",
         className
       )}
     >
-      {/* <span className="inline-flex items-center gap-[3px] self-center">
-        <span className="size-1.5 rounded-full bg-[#ff5f57] shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.18)]" />
-        <span className="size-1.5 rounded-full bg-[#febc2e] shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.18)]" />
-        <span className="size-1.5 rounded-full bg-[#28c840] shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.18)]" />
-      </span>*/}
       <img
         src={MACFOLIO_FAVICON}
         alt=""
@@ -96,23 +91,23 @@ export function MacfolioCard({
       data-post-card-ignore-open
       onClick={(e) => e.stopPropagation()}
       className={cn(
-        "group border-border relative mt-3 block max-w-[520px] overflow-hidden rounded-xl border bg-linear-to-br from-zinc-50 via-white to-zinc-100 text-left shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.12)] transition-all duration-300 hover:-translate-y-px hover:shadow-[0_2px_4px_rgba(0,0,0,0.06),0_16px_32px_-12px_rgba(0,0,0,0.18)] dark:from-zinc-900 dark:via-zinc-950 dark:to-black",
+        "group relative mt-3 block max-w-[520px] overflow-hidden rounded-lg border border-neutral bg-base-1 text-left shadow-sm transition-all duration-300 hover:shadow-banner",
         className
       )}
     >
-      <div className="border-border/70 relative grid grid-cols-[auto_1fr_auto] items-center gap-3 border-b bg-linear-to-b from-zinc-200/60 to-zinc-100/40 px-3 py-2 dark:from-zinc-800/70 dark:to-zinc-900/40">
+      <div className="relative grid grid-cols-[auto_1fr_auto] items-center gap-3 border-b border-neutral bg-base-2 px-3 py-2">
         <span className="flex items-center gap-1.5">
-          <span className="size-2.5 rounded-full bg-[#ff5f57] shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.2)]" />
-          <span className="size-2.5 rounded-full bg-[#febc2e] shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.2)]" />
-          <span className="size-2.5 rounded-full bg-[#28c840] shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.2)]" />
+          <span className="size-2.5 rounded-full bg-[#ff5f57] shadow-[var(--inset-shadow-primary)]" />
+          <span className="size-2.5 rounded-full bg-[#febc2e] shadow-[var(--inset-shadow-primary)]" />
+          <span className="size-2.5 rounded-full bg-[#28c840] shadow-[var(--inset-shadow-primary)]" />
         </span>
 
-        <span className="absolute right-1/2 translate-x-1/2 truncate text-xs">
+        <span className="absolute right-1/2 translate-x-1/2 truncate text-xs text-tertiary">
           {host}
         </span>
       </div>
 
-      <div className="relative aspect-1024/537 overflow-hidden bg-linear-to-br from-zinc-200 to-zinc-100 dark:from-zinc-800 dark:to-zinc-900">
+      <div className="relative aspect-1024/537 overflow-hidden bg-base-2">
         {heroOk ? (
           <img
             src={MACFOLIO_OG_IMAGE}
@@ -126,21 +121,19 @@ export function MacfolioCard({
             className="absolute inset-0 h-full w-full object-cover transition duration-500 ease-out group-hover:scale-[1.025]"
           />
         ) : (
-          <div className="text-muted-foreground absolute inset-0 flex items-center justify-center font-mono text-[11px] tracking-wider uppercase">
+          <div className="absolute inset-0 flex items-center justify-center font-mono text-[11px] tracking-wider text-tertiary uppercase">
             macfolio.com
           </div>
         )}
         <span
           aria-hidden
-          className="macfolio-shimmer pointer-events-none absolute inset-y-0 left-0 w-1/4 bg-linear-to-r from-transparent via-white/40 to-transparent dark:via-white/15"
+          className="macfolio-shimmer pointer-events-none absolute inset-y-0 left-0 w-1/4 bg-linear-to-r from-transparent via-white/40 to-transparent"
         />
       </div>
 
       <div className="relative space-y-2 p-4">
-        <div className="flex items-center justify-between gap-2"></div>
-
-        <h3 className="text-foreground flex flex-row items-center gap-2 text-[15px] leading-snug font-semibold tracking-tight">
-          <span className="bg-muted block size-4 shrink-0 overflow-hidden rounded-[5px] ring-1 ring-black/5 dark:ring-white/10">
+        <h3 className="flex flex-row items-center gap-2 text-[15px] leading-snug font-semibold tracking-tight text-primary">
+          <span className="block size-4 shrink-0 overflow-hidden rounded-md bg-subtle ring-1 ring-neutral">
             {faviconOk && (
               <img
                 src={MACFOLIO_FAVICON}
@@ -156,22 +149,11 @@ export function MacfolioCard({
           </span>
           {MACFOLIO_TITLE}
         </h3>
-        <p className="text-muted-foreground line-clamp-2 text-[13px] leading-relaxed">
+        <p className="line-clamp-2 text-[13px] leading-relaxed text-tertiary">
           {MACFOLIO_DESCRIPTION}
         </p>
 
-        {/* <div className="flex flex-wrap gap-1 pt-0.5">
-          {MACFOLIO_CATEGORIES.map((c) => (
-            <span
-              key={c}
-              className="rounded-full border border-border bg-background/70 px-2 py-[1px] text-[10.5px] font-medium text-muted-foreground"
-            >
-              {c}
-            </span>
-          ))}
-        </div> */}
-
-        <div className="text-muted-foreground group-hover:text-foreground flex items-center gap-1.5 pt-1.5 text-[11.5px] font-medium transition">
+        <div className="group-hover:text-primary flex items-center gap-1.5 pt-1.5 text-[11.5px] font-medium text-tertiary transition">
           <span>Open {host}</span>
           <span
             aria-hidden

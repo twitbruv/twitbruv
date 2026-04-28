@@ -537,7 +537,7 @@ export function Compose({
 
           {/* Quoted post preview */}
           {quoted && (
-            <div className="mt-2 overflow-hidden rounded-xl border border-neutral">
+            <div className="mt-2 overflow-hidden rounded-lg border border-neutral">
               <div className="flex gap-3 p-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5 text-xs text-tertiary">

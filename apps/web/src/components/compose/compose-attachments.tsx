@@ -1,6 +1,7 @@
 import { XMarkIcon } from "@heroicons/react/24/solid"
-import { cn } from "@workspace/ui/lib/utils"
 import { Button } from "@workspace/ui/components/button"
+import { Spinner } from "@workspace/ui/components/spinner"
+import { cn } from "@workspace/ui/lib/utils"
 import type { PendingAttachment } from "./types"
 
 interface ComposeAttachmentsProps {
@@ -28,7 +29,7 @@ export function ComposeAttachments({
     <div className="mt-2 space-y-2">
       <div
         className={cn(
-          "grid gap-0.5 overflow-hidden rounded-xl",
+          "grid gap-0.5 overflow-hidden rounded-lg",
           attachments.length === 1 && "grid-cols-1",
           attachments.length === 2 && "grid-cols-2",
           attachments.length >= 3 && "grid-cols-2 grid-rows-2"
@@ -65,7 +66,7 @@ export function ComposeAttachments({
                   />
                   {a.status === "uploading" && (
                     <div className="absolute inset-0 flex items-center justify-center bg-base-1/50">
-                      <div className="border-secondary border-t-primary h-5 w-5 animate-spin rounded-full border-2" />
+                      <Spinner className="text-primary" />
                     </div>
                   )}
                   {a.status === "failed" && (
@@ -107,7 +108,7 @@ export function ComposeAttachments({
 
       {/* Alt text panel for editing */}
       {editingAttachment && (
-        <div className="rounded-xl border border-neutral p-3">
+        <div className="rounded-lg border border-neutral p-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-tertiary">Alt text</span>
             <Button

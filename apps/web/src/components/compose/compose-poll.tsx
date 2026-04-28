@@ -37,7 +37,7 @@ export function ComposePoll({
   onSetAllowMultiple,
 }: ComposePollProps) {
   return (
-    <div className="mt-3 flex flex-col gap-2 rounded-xl border border-neutral p-3">
+    <div className="mt-3 flex flex-col gap-2 rounded-lg border border-neutral p-3">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-tertiary">Poll</span>
         <Button

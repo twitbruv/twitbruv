@@ -1,4 +1,10 @@
-import { useState, useCallback, useRef, useEffect } from "react"
+import {
+  useState,
+  useCallback,
+  useRef,
+  useEffect,
+  type ReactNode,
+} from "react"
 import { cn } from "@workspace/ui/lib/utils"
 import { Avatar } from "@workspace/ui/components/avatar"
 import { Button } from "@workspace/ui/components/button"
@@ -71,6 +77,8 @@ export interface PostCardProps {
   onReply?: () => void
   /** Called when an image in the media grid is clicked, with the image index */
   onMediaClick?: (index: number) => void
+  /** Rich embeds below the post body (e.g. link unfurls) — rendered before media */
+  belowText?: ReactNode
 }
 
 export function PostCard({
@@ -96,6 +104,7 @@ export function PostCard({
   onBookmark,
   onReply,
   onMediaClick,
+  belowText,
   disableHover = false,
 }: PostCardProps) {
   const showLineTop = threadLine === "top" || threadLine === "both"
@@ -209,6 +218,8 @@ export function PostCard({
                 Show more
               </button>
             )}
+
+            {belowText ? <div className="mt-2 min-w-0">{belowText}</div> : null}
 
             {/* Media */}
             {media && media.length > 0 && (

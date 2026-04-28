@@ -72,15 +72,13 @@ export function EditPostDialog({
         <div className="mt-2 flex items-center justify-between text-xs">
           <span
             className={
-              text.length > POST_MAX_LEN
-                ? "text-destructive"
-                : "text-muted-foreground"
+              text.length > POST_MAX_LEN ? "text-danger" : "text-tertiary"
             }
           >
             {POST_MAX_LEN - text.length}
           </span>
           <div className="flex items-center gap-2">
-            {error && <span className="text-destructive">{error}</span>}
+            {error && <span className="text-danger">{error}</span>}
             <Button
               variant="transparent"
               size="sm"

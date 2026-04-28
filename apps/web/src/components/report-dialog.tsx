@@ -108,9 +108,7 @@ export function ReportDialog({
           <DialogTitle>
             Report{" "}
             {subjectLabel ? (
-              <span className="text-muted-foreground font-normal">
-                {subjectLabel}
-              </span>
+              <span className="font-normal text-tertiary">{subjectLabel}</span>
             ) : (
               "this"
             )}
@@ -122,16 +120,14 @@ export function ReportDialog({
             onValueChange={(value) => setReason(value)}
             className="contents"
           >
-            <ul className="divide-border border-border divide-y rounded-md border">
+            <ul className="divide-y divide-neutral rounded-md border border-neutral">
               {REASONS.map((r) => (
                 <li key={r.value}>
-                  <label className="hover:bg-muted/30 flex cursor-pointer items-start gap-3 px-3 py-2 text-sm transition">
+                  <label className="flex cursor-pointer items-start gap-3 px-3 py-2 text-sm transition hover:bg-base-2/60">
                     <RadioGroupItem value={r.value} className="mt-0.5" />
                     <div className="min-w-0 flex-1">
                       <div className="font-medium">{r.label}</div>
-                      <div className="text-muted-foreground text-xs">
-                        {r.help}
-                      </div>
+                      <div className="text-xs text-tertiary">{r.help}</div>
                     </div>
                   </label>
                 </li>
@@ -145,7 +141,7 @@ export function ReportDialog({
             maxLength={1000}
             rows={3}
           />
-          {status && <p className="text-muted-foreground text-xs">{status}</p>}
+          {status && <p className="text-xs text-secondary">{status}</p>}
           <div className="flex justify-end gap-2">
             <Button
               size="sm"

@@ -1,26 +1,34 @@
 import { request } from '@octokit/request'
 
-// Token-bound Octokit REST client. Uses the shared GITHUB_UNFURL_TOKEN — never the user's
-// per-account connector token, since these unfurls render to viewers who didn't connect.
-//
-// Authenticated rate limit is 5000/hr per token. Our cache + per-URL dedupe should keep us
-// well under that ceiling in practice.
+let cachedAuth: ReturnType<typeof request.defaults> | null = null
+let cachedAnon: ReturnType<typeof request.defaults> | null = null
+let warnedAnonymous = false
 
-let cached: ReturnType<typeof request.defaults> | null = null
-let warned = false
+function anonClient() {
+  if (!cachedAnon) {
+    cachedAnon = request.defaults({
+      headers: {
+        'user-agent': 'twotter-unfurl',
+        accept: 'application/vnd.github+json',
+      },
+    })
+  }
+  return cachedAnon
+}
 
 export function unfurlClient() {
   const token = process.env.GITHUB_UNFURL_TOKEN
   if (!token) {
-    if (!warned) {
-      // One-shot startup warning so missing config is visible without spamming logs.
-      console.warn('[github-unfurl] GITHUB_UNFURL_TOKEN unset — GitHub post cards disabled')
-      warned = true
+    if (!warnedAnonymous) {
+      console.warn(
+        '[github-unfurl] GITHUB_UNFURL_TOKEN unset — using unauthenticated GitHub API (~60 requests/hour per IP for public repos). Add GITHUB_UNFURL_TOKEN for higher limits and private-repo access.',
+      )
+      warnedAnonymous = true
     }
-    return null
+    return anonClient()
   }
-  if (!cached) {
-    cached = request.defaults({
+  if (!cachedAuth) {
+    cachedAuth = request.defaults({
       headers: {
         authorization: `token ${token}`,
         'user-agent': 'twotter-unfurl',
@@ -28,5 +36,5 @@ export function unfurlClient() {
       },
     })
   }
-  return cached
+  return cachedAuth
 }
