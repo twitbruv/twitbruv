@@ -9,5 +9,5 @@ export default defineConfig({
   styles: './packages/ui/src/styles/globals.css',
   componentLib: '@workspace/ui',
   componentLibDir: './packages/ui/src',
-  staticDirs: ['./apps/playground/public'],
+  staticDirs: ['./docs/public'],
 })
