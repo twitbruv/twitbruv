@@ -38,7 +38,10 @@ import {
   TableHeader,
   TableRow,
 } from "@workspace/ui/components/table"
-import { ChevronDownIcon, EllipsisHorizontalIcon } from "@heroicons/react/24/solid"
+import {
+  ChevronDownIcon,
+  EllipsisVerticalIcon,
+} from "@heroicons/react/24/solid"
 import { Avatar } from "@workspace/ui/components/avatar"
 import { api } from "../../lib/api"
 import { qk } from "../../lib/query-keys"
@@ -62,11 +65,11 @@ type ActionDialogState =
   | null
 
 const COLUMN_WIDTHS: Record<string, string> = {
-  user: "30%",
-  email: "25%",
+  user: "32%",
+  email: "26%",
   role: "10%",
-  status: "20%",
-  actions: "15%",
+  status: "24%",
+  actions: "8%",
 }
 
 export default function AdminUsers() {
@@ -272,6 +275,7 @@ export default function AdminUsers() {
         cell: ({ row }) => {
           const u = row.original
           const isSelf = u.id === me?.id
+          const isOwner = me?.role === "owner"
           return (
             <div
               className="flex justify-end"
@@ -284,75 +288,74 @@ export default function AdminUsers() {
                       size="sm"
                       variant="transparent"
                       disabled={busyId === u.id}
-                      className="size-8 p-0"
+                      className="size-7 p-0"
+                      aria-label="Open user actions"
                     />
                   }
                 >
-                  <EllipsisHorizontalIcon className="size-4" />
+                  <EllipsisVerticalIcon className="size-4" />
                 </DropdownMenu.Trigger>
                 <DropdownMenu.Content align="end">
                   <DropdownMenu.Group>
                     {u.banned ? (
                       <DropdownMenu.Item
-                        disabled={busyId === u.id}
-                        onClick={() => act(u.id, () => api.adminUnban(u.id))}
+                        onClick={() =>
+                          act(u.id, () => api.adminUnban(u.id))
+                        }
                       >
                         Unban
                       </DropdownMenu.Item>
                     ) : (
                       <DropdownMenu.Item
-                        disabled={busyId === u.id || isSelf}
+                        variant="danger"
+                        disabled={isSelf}
                         onClick={() => setDialog({ kind: "ban", user: u })}
-                        className="text-danger"
                       >
-                        Ban
+                        Ban…
                       </DropdownMenu.Item>
                     )}
                     {u.shadowBannedAt ? (
                       <DropdownMenu.Item
-                        disabled={busyId === u.id}
                         onClick={() =>
                           act(u.id, () => api.adminUnshadowban(u.id))
                         }
                       >
-                        Unshadow
+                        Remove shadowban
                       </DropdownMenu.Item>
                     ) : (
                       <DropdownMenu.Item
-                        disabled={busyId === u.id || isSelf}
+                        disabled={isSelf}
                         onClick={() => setDialog({ kind: "shadow", user: u })}
                       >
-                        Shadowban
+                        Shadowban…
                       </DropdownMenu.Item>
                     )}
                     <DropdownMenu.Item
-                      disabled={busyId === u.id}
                       onClick={() => setDialog({ kind: "verify", user: u })}
                     >
-                      {u.isVerified ? "Unverify" : "Verify"}
+                      {u.isVerified ? "Revoke verified" : "Mark verified"}
                     </DropdownMenu.Item>
                   </DropdownMenu.Group>
-                  {me?.role === "owner" && (
+                  {isOwner && (
                     <>
                       <DropdownMenu.Separator />
                       <DropdownMenu.Group>
                         <DropdownMenu.Item
-                          disabled={busyId === u.id}
                           onClick={() =>
                             setDialog({ kind: "handle", user: u })
                           }
                         >
-                          Change handle
+                          Change handle…
                         </DropdownMenu.Item>
                         {!u.deletedAt && (
                           <DropdownMenu.Item
-                            disabled={busyId === u.id || isSelf}
+                            variant="danger"
+                            disabled={isSelf}
                             onClick={() =>
                               setDialog({ kind: "delete", user: u })
                             }
-                            className="text-danger"
                           >
-                            Delete account
+                            Delete account…
                           </DropdownMenu.Item>
                         )}
                       </DropdownMenu.Group>

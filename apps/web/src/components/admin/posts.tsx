@@ -33,14 +33,11 @@ import {
   TableHeader,
   TableRow,
 } from "@workspace/ui/components/table"
+import { DropdownMenu } from "@workspace/ui/components/dropdown-menu"
 import {
-  ArrowPathIcon,
-  BookmarkIcon,
-  ChatBubbleLeftIcon,
   ChevronDownIcon,
   ChevronUpIcon,
-  EyeIcon,
-  HeartIcon,
+  EllipsisVerticalIcon,
 } from "@heroicons/react/24/solid"
 import { Avatar } from "@workspace/ui/components/avatar"
 import { api } from "../../lib/api"
@@ -59,14 +56,15 @@ type StatusFilter = "active" | "deleted" | "sensitive" | "any"
 
 const COLUMN_WIDTHS: Record<string, string> = {
   author: "16%",
-  text: "30%",
+  text: "26%",
   type: "8%",
   likes: "7%",
   reposts: "7%",
   replies: "7%",
   bookmarks: "7%",
   impressions: "8%",
-  created: "10%",
+  created: "8%",
+  actions: "6%",
 }
 
 const SORT_LABELS: Record<AdminPostSort, string> = {
@@ -315,7 +313,6 @@ export default function AdminPosts() {
           <StatHeader
             label="Likes"
             sortKey="likes"
-            icon={<HeartIcon className="size-3" />}
             currentSort={sort}
             currentOrder={order}
             onSort={onHeaderSort}
@@ -333,7 +330,6 @@ export default function AdminPosts() {
           <StatHeader
             label="Reposts"
             sortKey="reposts"
-            icon={<ArrowPathIcon className="size-3" />}
             currentSort={sort}
             currentOrder={order}
             onSort={onHeaderSort}
@@ -351,7 +347,6 @@ export default function AdminPosts() {
           <StatHeader
             label="Replies"
             sortKey="replies"
-            icon={<ChatBubbleLeftIcon className="size-3" />}
             currentSort={sort}
             currentOrder={order}
             onSort={onHeaderSort}
@@ -369,7 +364,6 @@ export default function AdminPosts() {
           <StatHeader
             label="Saves"
             sortKey="bookmarks"
-            icon={<BookmarkIcon className="size-3" />}
             currentSort={sort}
             currentOrder={order}
             onSort={onHeaderSort}
@@ -387,7 +381,6 @@ export default function AdminPosts() {
           <StatHeader
             label="Views"
             sortKey="impressions"
-            icon={<EyeIcon className="size-3" />}
             currentSort={sort}
             currentOrder={order}
             onSort={onHeaderSort}
@@ -413,28 +406,50 @@ export default function AdminPosts() {
         cell: ({ row }) => {
           const p = row.original
           return (
-            <div className="flex items-center justify-between gap-2">
-              <time
-                dateTime={p.createdAt}
-                title={new Date(p.createdAt).toLocaleString()}
-                className="text-xs text-tertiary"
-              >
-                {formatRelative(p.createdAt)}
-              </time>
-              {!p.deletedAt && (
-                <Button
-                  size="sm"
-                  variant="transparent"
-                  className="h-7 px-2 text-xs text-danger hover:text-danger"
-                  disabled={busyId === p.id}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setDeleteTarget(p)
-                  }}
+            <time
+              dateTime={p.createdAt}
+              title={new Date(p.createdAt).toLocaleString()}
+              className="text-xs text-tertiary"
+            >
+              {formatRelative(p.createdAt)}
+            </time>
+          )
+        },
+      },
+      {
+        id: "actions",
+        header: () => <span className="sr-only">Actions</span>,
+        cell: ({ row }) => {
+          const p = row.original
+          if (p.deletedAt) return null
+          return (
+            <div
+              className="flex justify-end"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger
+                  render={
+                    <Button
+                      size="sm"
+                      variant="transparent"
+                      disabled={busyId === p.id}
+                      className="size-7 p-0"
+                      aria-label="Open post actions"
+                    />
+                  }
                 >
-                  Delete
-                </Button>
-              )}
+                  <EllipsisVerticalIcon className="size-4" />
+                </DropdownMenu.Trigger>
+                <DropdownMenu.Content align="end">
+                  <DropdownMenu.Item
+                    variant="danger"
+                    onClick={() => setDeleteTarget(p)}
+                  >
+                    Delete post…
+                  </DropdownMenu.Item>
+                </DropdownMenu.Content>
+              </DropdownMenu.Root>
             </div>
           )
         },
