@@ -2,12 +2,13 @@ import { createFileRoute, useRouter } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
 import { useState } from "react"
 import { Button } from "@workspace/ui/components/button"
+import { Avatar } from "@workspace/ui/components/avatar"
 import { ApiError, api } from "../lib/api"
 import { authClient } from "../lib/auth"
-import { Avatar } from "../components/avatar"
 import { PageFrame } from "../components/page-frame"
 import { VerifiedBadge } from "../components/verified-badge"
 import { qk } from "../lib/query-keys"
+import { PageLoading } from "@/components/page-surface"
 
 export const Route = createFileRoute("/invite/$token")({
   component: InvitePage,
@@ -64,7 +65,7 @@ function InvitePage() {
     }
   }
 
-  if (previewErr && !isPending) {
+  if (previewErr) {
     return (
       <PageFrame>
         <div className="mx-auto max-w-md px-4 py-16 text-center">
@@ -76,12 +77,10 @@ function InvitePage() {
       </PageFrame>
     )
   }
-  if (isPending || !preview) {
+  if (isPending) {
     return (
       <PageFrame>
-        <div className="text-muted-foreground px-4 py-16 text-center text-sm">
-          loading…
-        </div>
+        <PageLoading className="py-8" label="Loading…" />
       </PageFrame>
     )
   }

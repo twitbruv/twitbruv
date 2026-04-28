@@ -9,7 +9,7 @@ import {
   XMarkIcon,
 } from "@heroicons/react/24/solid"
 import { BookmarkIcon as BookmarkIconOutline } from "@heroicons/react/24/outline"
-import { Avatar } from "../components/avatar"
+import { Avatar } from "@workspace/ui/components/avatar"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Alert, AlertDescription } from "@workspace/ui/components/alert"
@@ -307,7 +307,7 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
                     <Avatar
                       src={u.avatarUrl}
                       initial={(u.displayName || u.handle).slice(0, 2)}
-                      size={40}
+                      className="size-10"
                     />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1 text-sm font-medium">

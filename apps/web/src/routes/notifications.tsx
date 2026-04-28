@@ -16,15 +16,14 @@ import {
   ChatBubbleBottomCenterTextIcon,
   ChatBubbleOvalLeftIcon,
   HeartIcon,
-  PencilSquareIcon,
   UserPlusIcon,
 } from "@heroicons/react/24/solid"
 import { Button } from "@workspace/ui/components/button"
 import { Skeleton } from "@workspace/ui/components/skeleton"
+import { Avatar } from "@workspace/ui/components/avatar"
 import { api } from "../lib/api"
 import { qk } from "../lib/query-keys"
 import { authClient } from "../lib/auth"
-import { Avatar } from "../components/avatar"
 import { usePageHeader } from "../components/app-page-header"
 import { useCompose } from "../components/compose-provider"
 import { PageEmpty } from "../components/page-surface"
@@ -482,7 +481,7 @@ function TargetCard({ post }: { post: Post }) {
       <div className="flex gap-3 p-3">
         <div className="min-w-0 flex-1">
           {post.text ? (
-            <p className="line-clamp-4 text-sm leading-relaxed break-words whitespace-pre-wrap">
+            <p className="wrap-break-words line-clamp-4 text-sm leading-relaxed whitespace-pre-wrap">
               {post.text}
             </p>
           ) : post.articleCard ? (

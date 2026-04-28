@@ -42,13 +42,14 @@ import {
   EyeIcon,
   HeartIcon,
 } from "@heroicons/react/24/solid"
+import { Avatar } from "@workspace/ui/components/avatar"
 import { api } from "../lib/api"
-import { qk, type AdminPostFilters } from "../lib/query-keys"
+import { qk } from "../lib/query-keys"
 import { useInfiniteScrollSentinel } from "../lib/use-infinite-scroll-sentinel"
-import { Avatar } from "../components/avatar"
 import { PageError, PageLoading } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
 import { VerifiedBadge } from "../components/verified-badge"
+import type { AdminPostFilters } from "../lib/query-keys"
 import type { ColumnDef } from "@tanstack/react-table"
 import type { AdminPost, AdminPostSort, AdminPostType } from "../lib/api"
 
@@ -192,8 +193,7 @@ function AdminPosts() {
 
   const posts = useMemo(() => data?.pages.flatMap((p) => p.posts) ?? [], [data])
 
-  const loadError =
-    error instanceof Error ? error.message : error ? "failed" : null
+  const loadError = error instanceof Error ? error.message : "failed to load"
 
   const [busyId, setBusyId] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<AdminPost | null>(null)

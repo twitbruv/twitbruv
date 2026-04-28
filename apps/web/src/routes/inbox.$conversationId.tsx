@@ -2,8 +2,8 @@ import { Link, createFileRoute, useRouter } from "@tanstack/react-router"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   ChatBubbleLeftEllipsisIcon,
-  EllipsisHorizontalIcon,
   Cog6ToothIcon,
+  EllipsisHorizontalIcon,
   PaperClipIcon,
   PencilIcon,
   TrashIcon,
@@ -20,10 +20,10 @@ import {
   DialogTitle,
 } from "@workspace/ui/components/dialog"
 import { DropdownMenu } from "@workspace/ui/components/dropdown-menu"
+import { Avatar } from "@workspace/ui/components/avatar"
 import { api } from "../lib/api"
 import { authClient } from "../lib/auth"
 import { getPastedImageFiles } from "../lib/clipboard-images"
-import { Avatar } from "../components/avatar"
 import { ImageLightbox } from "../components/image-lightbox"
 import { PageEmpty, PageError } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
@@ -1082,7 +1082,7 @@ function Bubble({
             <>
               {message.media && <MessageImage media={message.media} />}
               {message.text && (
-                <p className="break-words whitespace-pre-wrap">
+                <p className="wrap-break-words whitespace-pre-wrap">
                   <RichText text={message.text} />
                 </p>
               )}

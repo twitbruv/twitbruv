@@ -3,20 +3,20 @@ import { MotionConfig, motion } from "motion/react"
 import {
   ArrowLeftIcon,
   ChatBubbleLeftIcon,
-  PhotoIcon,
-  PencilSquareIcon,
   PaperAirplaneIcon,
+  PencilSquareIcon,
+  PhotoIcon,
   XMarkIcon,
 } from "@heroicons/react/24/solid"
 import { Link } from "@tanstack/react-router"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
+import { Avatar } from "@workspace/ui/components/avatar"
 import { api } from "../lib/api"
 import { getPastedImageFiles } from "../lib/clipboard-images"
 import { subscribeToDmStream } from "../lib/dm-stream"
 import { uploadImage } from "../lib/media"
 import { useMe } from "../lib/me"
-import { Avatar } from "./avatar"
 import type { DmConversation, DmMember, DmMessage } from "../lib/api"
 
 export function ChatWidget() {
@@ -367,7 +367,7 @@ function ChatView({
 
   return (
     <div
-      className="relative flex h-[32rem] max-h-[calc(100vh-6rem)] flex-col"
+      className="relative flex h-128 max-h-[calc(100vh-6rem)] flex-col"
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
@@ -503,7 +503,7 @@ function MessageBubble({
           />
         )}
         {message.text && (
-          <p className="text-sm break-words whitespace-pre-wrap">
+          <p className="wrap-break-words text-sm whitespace-pre-wrap">
             {message.text}
           </p>
         )}

@@ -11,11 +11,11 @@ import {
 } from "@workspace/ui/components/alert"
 import { Input } from "@workspace/ui/components/input"
 import { FlagIcon, HandRaisedIcon } from "@heroicons/react/24/solid"
+import { Avatar } from "@workspace/ui/components/avatar"
 import { PageError, PageLoading } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
 import { api } from "../lib/api"
 import { useMe } from "../lib/me"
-import { Avatar } from "../components/avatar"
 import { subscribeToDmStream } from "../lib/dm-stream"
 
 export const Route = createFileRoute("/chess/$id")({
@@ -138,7 +138,7 @@ function ChessGamePage() {
           <div className="mx-auto flex w-full min-w-[300px] flex-1 flex-col">
             {/* Top Player Info */}
             <div className="flex items-center gap-2 rounded-t-lg border border-b-0 border-neutral bg-base-2/20 p-2">
-              <Avatar initial={topPlayer[0].toUpperCase()} size={32} />
+              <Avatar initial={topPlayer[0].toUpperCase()} className="size-8" />
               <span className="text-sm font-semibold">{topPlayer}</span>
             </div>
 
@@ -157,7 +157,10 @@ function ChessGamePage() {
 
             {/* Bottom Player Info */}
             <div className="flex items-center gap-2 rounded-b-lg border border-t-0 border-neutral bg-base-2/20 p-2">
-              <Avatar initial={bottomPlayer[0].toUpperCase()} size={32} />
+              <Avatar
+                initial={bottomPlayer[0].toUpperCase()}
+                className="size-8"
+              />
               <span className="text-sm font-semibold">{bottomPlayer}</span>
             </div>
           </div>

@@ -9,9 +9,9 @@ import {
 import { Button } from "@workspace/ui/components/button"
 import { Badge } from "@workspace/ui/components/badge"
 import { Skeleton } from "@workspace/ui/components/skeleton"
+import { Avatar } from "@workspace/ui/components/avatar"
 import { api } from "../lib/api"
 import { usePageHeader } from "../components/app-page-header"
-import { Avatar } from "../components/avatar"
 import { PageEmpty, PageError } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
 import {

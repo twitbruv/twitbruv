@@ -39,11 +39,11 @@ import {
   TableRow,
 } from "@workspace/ui/components/table"
 import { ChevronDownIcon } from "@heroicons/react/24/solid"
+import { Avatar } from "@workspace/ui/components/avatar"
 import { api } from "../lib/api"
 import { qk } from "../lib/query-keys"
 import { useInfiniteScrollSentinel } from "../lib/use-infinite-scroll-sentinel"
 import { useMe } from "../lib/me"
-import { Avatar } from "../components/avatar"
 import { PageError, PageLoading } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
 import { VerifiedBadge } from "../components/verified-badge"
@@ -102,8 +102,7 @@ function AdminUsers() {
 
   const users = useMemo(() => data?.pages.flatMap((p) => p.users) ?? [], [data])
 
-  const loadError =
-    error instanceof Error ? error.message : error ? "failed" : null
+  const loadError = error instanceof Error ? error.message : "failed to load"
 
   const [busyId, setBusyId] = useState<string | null>(null)
   const [dialog, setDialog] = useState<ActionDialogState>(null)
@@ -761,8 +760,7 @@ function UserDetailSheet({
     enabled: !!userId,
   })
 
-  const sheetErr =
-    error instanceof Error ? error.message : error ? "failed" : null
+  const sheetErr = error instanceof Error ? error.message : "failed to load"
 
   const open = !!userId
   const u = detail?.user
@@ -785,11 +783,11 @@ function UserDetailSheet({
               ? `${u.role} · joined ${new Date(u.createdAt).toLocaleDateString()}`
               : loading
                 ? "Loading…"
-                : (sheetErr ?? "")}
+                : sheetErr}
           </SheetDescription>
         </SheetHeader>
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-6 py-4 text-sm">
-          {loading && !detail && <p className="text-tertiary">loading…</p>}
+          {loading && <PageLoading className="py-8" label="Loading…" />}
           {sheetErr && !loading && (
             <p className="text-destructive text-xs">{sheetErr}</p>
           )}

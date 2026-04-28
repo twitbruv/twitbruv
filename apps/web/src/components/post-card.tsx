@@ -1,11 +1,11 @@
 import { Link, useNavigate } from "@tanstack/react-router"
 import { useEffect, useRef, useState } from "react"
 import {
+  ArrowPathIcon,
   BookmarkIcon,
   ChatBubbleLeftIcon,
-  MapPinIcon,
   ChatBubbleLeftRightIcon,
-  ArrowPathIcon,
+  MapPinIcon,
 } from "@heroicons/react/24/solid"
 import { BookmarkIcon as BookmarkIconOutline } from "@heroicons/react/24/outline"
 import { Button } from "@workspace/ui/components/button"
@@ -20,13 +20,13 @@ import {
   DialogTitle,
 } from "@workspace/ui/components/dialog"
 import { POST_MAX_LEN } from "@workspace/validators"
+import { Avatar } from "@workspace/ui/components/avatar"
 import { recordImpression } from "../lib/analytics"
 import { ApiError, api } from "../lib/api"
 import { LikeIconBurst, useLikeAnimation } from "./like-button-heart"
 import { RichText } from "./rich-text"
 import { MacfolioCardFromText } from "./macfolio-card"
 import { GithubCardBlock } from "./github-card"
-import { Avatar } from "./avatar"
 import { ImageLightbox } from "./image-lightbox"
 import { Compose } from "./compose"
 import { PollBlock } from "./poll-block"
@@ -143,7 +143,7 @@ export function ReplyParentEmbed({ post }: { post: Post }) {
           <time dateTime={post.createdAt}>{relativeTime(post.createdAt)}</time>
         </div>
         {post.text && (
-          <p className="mt-1 line-clamp-3 text-sm leading-snug break-words whitespace-pre-wrap text-tertiary">
+          <p className="wrap-break-words mt-1 line-clamp-3 text-sm leading-snug whitespace-pre-wrap text-tertiary">
             {post.text}
           </p>
         )}
@@ -190,7 +190,7 @@ export function QuoteEmbed({ post }: { post: Post }) {
             </time>
           </div>
           {post.text && (
-            <p className="mt-1 line-clamp-4 text-sm leading-relaxed break-words whitespace-pre-wrap">
+            <p className="wrap-break-words mt-1 line-clamp-4 text-sm leading-relaxed whitespace-pre-wrap">
               {post.text}
             </p>
           )}

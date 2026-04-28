@@ -7,6 +7,7 @@ import { Label } from "@workspace/ui/components/label"
 import { Switch } from "@workspace/ui/components/switch"
 import { updateProfileSchema } from "@workspace/validators"
 import { Textarea } from "@workspace/ui/components/textarea"
+import { Avatar } from "@workspace/ui/components/avatar"
 import { ApiError, api } from "../lib/api"
 import { authClient } from "../lib/auth"
 import { qk } from "../lib/query-keys"
@@ -15,7 +16,6 @@ import { useMe } from "../lib/me"
 import { ClaimHandle } from "../components/claim-handle"
 import { AvatarUpload } from "../components/avatar-upload"
 import { BannerUpload } from "../components/banner-upload"
-import { Avatar } from "../components/avatar"
 import { usePageHeader } from "../components/app-page-header"
 import { PageLoading } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
@@ -24,6 +24,7 @@ import {
   UnderlineTabRow,
 } from "../components/underline-tab-row"
 import { VerifiedBadge } from "../components/verified-badge"
+
 type SettingsTab =
   | "profile"
   | "account"
@@ -894,9 +895,7 @@ function ConnectionsSection() {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="text-sm font-semibold">GitHub</div>
-            {isPending && !state && (
-              <p className="text-muted-foreground text-xs">loading…</p>
-            )}
+            {isPending && <PageLoading className="py-8" label="Loading…" />}
             {state && state.configured === false && (
               <p className="text-muted-foreground text-xs">
                 The server isn't configured for GitHub connections yet.

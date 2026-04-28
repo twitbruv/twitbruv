@@ -29,10 +29,10 @@ import {
   TableHeader,
   TableRow,
 } from "@workspace/ui/components/table"
+import { Avatar } from "@workspace/ui/components/avatar"
 import { api } from "../lib/api"
 import { qk } from "../lib/query-keys"
 import { useInfiniteScrollSentinel } from "../lib/use-infinite-scroll-sentinel"
-import { Avatar } from "../components/avatar"
 import { PageEmpty, PageLoading } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
 import {
@@ -316,9 +316,7 @@ function ReportSheet({
           </SheetDescription>
         </SheetHeader>
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-6 py-4 text-sm">
-          {loading && !detail && (
-            <p className="text-muted-foreground">loading…</p>
-          )}
+          {loading && <PageLoading className="py-8" label="Loading…" />}
           {detail && (
             <>
               <Reporter reporter={detail.reporter} />
