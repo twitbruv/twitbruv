@@ -20,6 +20,12 @@
 	--background-color-warn-subtle: var(--color-amber-3);
 	--background-color-success: var(--color-green-9);
 	--background-color-success-subtle: var(--color-green-3);
+	/* GitHub contribution heatmap */
+	--background-color-github-contrib-1: oklch(0.8279 0.2038 143.46);
+	--background-color-github-contrib-2: oklch(0.6672 0.2168 142.66);
+	--background-color-github-contrib-3: oklch(0.5314 0.1706 142.7);
+	--background-color-github-contrib-4: oklch(0.4542 0.1442 142.74);
+	--background-color-github-contrib-5: oklch(0.3285 0.1003 142.87);
 
 	/* ── Text ── */
 	--text-color-primary: var(--color-gray-12);
@@ -50,6 +56,9 @@
 	--shadow-banner: 0 4px 5.5px -4px oklch(0 0 0 / 0.22),
 		0 0.5px 0 oklch(0 0 0 / 0.06);
 	--inset-shadow-primary: inset 0 1px 0 oklch(1 0 0 / 0.4);
+	--shadow-gh-tooltip: 0 0.5px 0 oklch(1 0 0 / 100%) inset,
+		0 -0.5px 0 oklch(1 0 0 / 100%) inset,
+		0 0 25px oklch(1 0 0 / 100%) inset;
 
 	/* ── Like color ── */
 	--text-color-like: var(--color-red-9);
@@ -125,6 +134,11 @@
 	--background-color-warn-subtle: var(--color-amber-3);
 	--background-color-success: var(--color-green-9);
 	--background-color-success-subtle: var(--color-green-3);
+	--background-color-github-contrib-1: oklch(0.3442 0.0730 156.73);
+	--background-color-github-contrib-2: oklch(0.4678 0.1263 150.86);
+	--background-color-github-contrib-3: oklch(0.6365 0.1777 146.24);
+	--background-color-github-contrib-4: oklch(0.7619 0.2121 145.62);
+	--background-color-github-contrib-5: oklch(0.7717 0.1880 145.48);
 
 	--text-color-primary: var(--color-gray-12);
 	--text-color-secondary: var(--color-gray-11);
@@ -152,4 +166,7 @@
 	--shadow-banner: 0 4px 5.5px -4px oklch(0 0 0 / 0.32),
 		0 0.5px 0 oklch(0 0 0 / 0.26);
 	--inset-shadow-primary: inset 0 1px 0 oklch(1 0 0 / 0.12);
+	--shadow-gh-tooltip: 0 0.5px 0 oklch(0.9551 0 0 / 50%) inset,
+		0 -0.5px 0 oklch(0.9551 0 0 / 50%) inset,
+		0 0 15px oklch(1 0 0 / 50%) inset;
 }
