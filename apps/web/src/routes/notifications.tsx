@@ -31,7 +31,7 @@ import { PageFrame } from "../components/page-frame"
 import { VerifiedBadge } from "../components/verified-badge"
 import { useInfiniteScrollSentinel } from "../lib/use-infinite-scroll-sentinel"
 import type { InfiniteData } from "@tanstack/react-query"
-import type { NotificationItem, Post } from "../lib/api"
+import type { ArticleUnfurlCard, NotificationItem, Post } from "../lib/api"
 
 export const Route = createFileRoute("/notifications")({
   component: Notifications,
@@ -484,19 +484,25 @@ function TargetCard({ post }: { post: Post }) {
             <p className="wrap-break-words line-clamp-4 text-sm leading-relaxed whitespace-pre-wrap">
               {post.text}
             </p>
-          ) : post.articleCard ? (
-            <p className="line-clamp-2 text-sm">
-              <span className="font-semibold">{post.articleCard.title}</span>
-              {post.articleCard.subtitle && (
-                <span className="text-tertiary">
-                  {" "}
-                  — {post.articleCard.subtitle}
-                </span>
-              )}
-            </p>
-          ) : (
-            <p className="text-sm text-tertiary italic">[media post]</p>
-          )}
+          ) : (() => {
+              const article = post.cards?.find(
+                (c): c is ArticleUnfurlCard => c.provider === "article",
+              )
+              if (article) {
+                return (
+                  <p className="line-clamp-2 text-sm">
+                    <span className="font-semibold">{article.title}</span>
+                    {article.subtitle && (
+                      <span className="text-tertiary">
+                        {" "}
+                        — {article.subtitle}
+                      </span>
+                    )}
+                  </p>
+                )
+              }
+              return <p className="text-sm text-tertiary italic">[media post]</p>
+            })()}
         </div>
         {variant && (
           <div className="size-16 shrink-0 overflow-hidden rounded">

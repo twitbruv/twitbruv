@@ -2,8 +2,10 @@ import { getTrackingIds } from "@databuddy/sdk"
 import { API_URL, MAINTENANCE_MODE } from "./env"
 import { setRuntimeMaintenance } from "./maintenance"
 import type { GithubCard } from "@workspace/github-unfurl/card"
+import type { YouTubeCard } from "@workspace/youtube-unfurl/card"
 
 export type { GithubCard } from "@workspace/github-unfurl/card"
+export type { YouTubeCard } from "@workspace/youtube-unfurl/card"
 
 export class ApiError extends Error {
   constructor(
@@ -619,6 +621,30 @@ export interface PostEdit {
   editedAt: string
 }
 
+export interface PostArticleCard {
+  id: string
+  slug: string
+  title: string
+  subtitle: string | null
+  readingMinutes: number
+  publishedAt: string | null
+  authorHandle: string | null
+}
+
+export type ArticleUnfurlCard = PostArticleCard & {
+  provider: "article"
+  kind: "article"
+}
+
+export type GithubUnfurlCard = GithubCard & { provider: "github" }
+
+export type YoutubeUnfurlCard = YouTubeCard & { provider: "youtube" }
+
+export type UnfurlCard =
+  | ArticleUnfurlCard
+  | GithubUnfurlCard
+  | YoutubeUnfurlCard
+
 export interface Post {
   id: string
   text: string
@@ -656,10 +682,9 @@ export interface Post {
     reposted: boolean
   }
   media?: Array<PostMedia>
-  articleCard?: PostArticleCard
+  cards?: Array<UnfurlCard>
   /** Populated on repost rows: the original post to render with a "reposted by" banner. */
   repostOf?: Post
-  /** Populated on quote rows: the post being quoted, rendered as a bordered embed below the text. */
   quoteOf?: Post
   /** Populated on reply rows: the parent post this row is replying to, rendered as a small
    *  embed above the post so feed readers have conversation context. Not recursive. */
@@ -668,9 +693,6 @@ export interface Post {
   pinned?: boolean
   /** Optional poll attached to this post. */
   poll?: PollDto
-  /** Typed GitHub cards for any GitHub URLs in the post text. Populated async by the
-   *  worker; absent on freshly-created posts until the next refresh. */
-  githubCards?: Array<GithubCard>
 }
 
 export interface PollOption {
@@ -747,16 +769,6 @@ export interface UserListMember {
   isVerified: boolean
   role: "user" | "admin" | "owner"
   addedAt: string
-}
-
-export interface PostArticleCard {
-  id: string
-  slug: string
-  title: string
-  subtitle: string | null
-  readingMinutes: number
-  publishedAt: string | null
-  authorHandle: string | null
 }
 
 export interface PostMedia {

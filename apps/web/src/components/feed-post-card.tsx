@@ -10,12 +10,39 @@ import { useCompose } from "./compose-provider"
 import { LightboxSidebar } from "./lightbox-sidebar"
 import { MacfolioCardFromText } from "./macfolio-card"
 import { GithubCardBlock } from "./github-card"
+import { YoutubeCardBlock } from "./youtube-card"
 import { ArticleCardBlock } from "./post-card"
 import type {
   PostQuoteOf,
   PostMedia as UIPostMedia,
 } from "@workspace/ui/components/post-card"
-import type { Post, PostMedia } from "../lib/api"
+import type { Post, PostMedia, UnfurlCard } from "../lib/api"
+
+function unfurlCardKey(card: UnfurlCard, i: number): string {
+  const base =
+    card.provider === "article"
+      ? `article-${card.id}`
+      : card.provider === "github"
+        ? `${card.kind}-${card.url}`
+        : `${card.kind}-${card.url}`
+  return `${base}-${i}`
+}
+
+function UnfurlBelow({
+  card,
+  post,
+}: {
+  card: UnfurlCard
+  post: Post
+}) {
+  if (card.provider === "article") {
+    return <ArticleCardBlock card={card} />
+  }
+  if (card.provider === "github") {
+    return <GithubCardBlock card={card} />
+  }
+  return <YoutubeCardBlock card={card} post={post} />
+}
 
 function relativeTime(iso: string): string {
   const d = new Date(iso).getTime()
@@ -162,12 +189,8 @@ export function FeedPostCard({
       belowText={
         <>
           <MacfolioCardFromText text={post.text} />
-          {post.articleCard && <ArticleCardBlock card={post.articleCard} />}
-          {post.githubCards?.map((card, i) => (
-            <GithubCardBlock
-              key={`${card.kind}-${card.url}-${i}`}
-              card={card}
-            />
+          {post.cards?.map((card, i) => (
+            <UnfurlBelow key={unfurlCardKey(card, i)} card={card} post={outerPost} />
           ))}
         </>
       }

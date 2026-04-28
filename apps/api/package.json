@@ -17,6 +17,8 @@
     "@workspace/db": "workspace:*",
     "@workspace/email": "workspace:*",
     "@workspace/github-unfurl": "workspace:*",
+    "@workspace/url-unfurl-core": "workspace:*",
+    "@workspace/youtube-unfurl": "workspace:*",
     "@workspace/media": "workspace:*",
     "@workspace/rate-limit": "workspace:*",
     "@workspace/types": "workspace:*",

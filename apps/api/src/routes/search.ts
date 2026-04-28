@@ -12,7 +12,7 @@ import { loadRepostTargets } from '../lib/repost-targets.ts'
 import { loadQuoteTargets } from '../lib/quote-targets.ts'
 import { attachReplyParents } from '../lib/reply-parents.ts'
 import { loadPolls } from '../lib/polls.ts'
-import { loadGithubCards } from '../lib/github-cards.ts'
+import { loadUnfurlCards } from '../lib/unfurl-cards.ts'
 
 export const searchRoute = new Hono<HonoEnv>()
 
@@ -265,7 +265,7 @@ searchRoute.get('/', async (c) => {
         .limit(40)
 
   const ids = postRows.map((r) => r.post.id)
-  const [flags, mediaMap, articleMap, repostMap, quoteMap, pollMap, githubMap] = await Promise.all([
+  const [flags, mediaMap, articleMap, repostMap, quoteMap, pollMap] = await Promise.all([
     loadViewerFlags(db, viewerId, ids),
     loadPostMedia(db, ids),
     loadArticleCards(db, ids),
@@ -282,8 +282,8 @@ searchRoute.get('/', async (c) => {
       quoteRows: postRows.map((r) => ({ id: r.post.id, quoteOfId: r.post.quoteOfId })),
     }),
     loadPolls(db, viewerId, ids),
-    loadGithubCards(db, ids),
   ])
+  const unfurlCardsMap = await loadUnfurlCards(db, ids, articleMap)
   const posts = postRows.map((r) =>
     toPostDto(
       r.post,
@@ -291,11 +291,10 @@ searchRoute.get('/', async (c) => {
       flags.get(r.post.id),
       mediaMap.get(r.post.id),
       mediaEnv,
-      articleMap.get(r.post.id),
+      unfurlCardsMap.get(r.post.id),
       repostMap.get(r.post.id),
       quoteMap.get(r.post.id),
       pollMap.get(r.post.id),
-      githubMap.get(r.post.id),
     ),
   )
   await attachReplyParents({ db, viewerId, env: mediaEnv, posts })

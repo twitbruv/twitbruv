@@ -6,6 +6,7 @@ import { toPostDto, type PostDto } from './post-dto.ts'
 import { loadViewerFlags } from './viewer-flags.ts'
 import { loadPostMedia } from './post-media.ts'
 import { loadArticleCards } from './article-cards.ts'
+import { loadUnfurlCards } from './unfurl-cards.ts'
 
 /**
  * For a list of posts that may be replies, batch-load the parent post each one is replying to
@@ -42,6 +43,7 @@ export async function attachReplyParents(args: {
     loadPostMedia(db, parentIds),
     loadArticleCards(db, parentIds),
   ])
+  const unfurlCardsMap = await loadUnfurlCards(db, parentIds, articleMap)
 
   const dtoById = new Map<string, PostDto>()
   for (const r of joined) {
@@ -53,7 +55,7 @@ export async function attachReplyParents(args: {
         flags.get(r.post.id),
         mediaMap.get(r.post.id),
         env,
-        articleMap.get(r.post.id),
+        unfurlCardsMap.get(r.post.id),
       ),
     )
   }

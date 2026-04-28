@@ -1,5 +1,4 @@
-// Pure parser for GitHub URLs. No IO. Recognizes the four kinds we render typed cards for:
-// repo, issue, PR, commit.
+import { URL_PATTERN, trimTrailingPunct } from '@workspace/url-unfurl-core/text'
 
 export type GithubRef =
   | { kind: 'repo'; owner: string; repo: string }
@@ -9,16 +8,10 @@ export type GithubRef =
 
 export type GithubRefWithUrl = GithubRef & { url: string; refKey: string }
 
-const URL_PATTERN = /https?:\/\/\S+/g
 const HOSTS = new Set(['github.com', 'www.github.com'])
 const NAME_RE = /^[A-Za-z0-9._-]+$/
 const NUMBER_RE = /^\d+$/
 const SHA_RE = /^[a-f0-9]{7,40}$/i
-
-function trimTrailingPunct(s: string): string {
-  // Twitter-style "check this out https://github.com/foo/bar." — drop the punctuation.
-  return s.replace(/[),.;:!?]+$/, '')
-}
 
 function isSafeName(s: string): boolean {
   return NAME_RE.test(s) && s !== '..' && s !== '.'
@@ -45,7 +38,6 @@ export function parseGithubUrl(raw: string): GithubRef | null {
   }
   const [section, third] = rest
   if (!third) {
-    // /owner/repo/<section> — only "repo" with a tab-ish suffix counts; bail.
     return { kind: 'repo', owner, repo }
   }
   if (section === 'issues' && NUMBER_RE.test(third)) {
@@ -57,7 +49,6 @@ export function parseGithubUrl(raw: string): GithubRef | null {
   if (section === 'commit' && SHA_RE.test(third)) {
     return { kind: 'commit', owner, repo, sha: third.toLowerCase() }
   }
-  // Unknown subsection (releases, discussions, blob, …) — surface as plain repo for now.
   return { kind: 'repo', owner, repo }
 }
 
@@ -74,11 +65,6 @@ export function refKeyFor(ref: GithubRef): string {
   }
 }
 
-/**
- * Walk a post's text, find every recognized GitHub URL, dedupe by refKey, return them in
- * appearance order with both the original URL (for click-through) and the canonical refKey
- * (for cache lookup).
- */
 export function extractGithubRefs(text: string): Array<GithubRefWithUrl> {
   const seen = new Set<string>()
   const out: Array<GithubRefWithUrl> = []
@@ -94,7 +80,6 @@ export function extractGithubRefs(text: string): Array<GithubRefWithUrl> {
   return out
 }
 
-/** Canonicalize the URL for the urlHash column — strip query + fragment + trailing slash. */
 export function canonicalizeGithubUrl(ref: GithubRef): string {
   switch (ref.kind) {
     case 'repo':

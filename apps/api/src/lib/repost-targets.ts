@@ -6,6 +6,7 @@ import { toPostDto, type PostDto } from './post-dto.ts'
 import { loadViewerFlags } from './viewer-flags.ts'
 import { loadPostMedia } from './post-media.ts'
 import { loadArticleCards } from './article-cards.ts'
+import { loadUnfurlCards } from './unfurl-cards.ts'
 
 /**
  * For a set of repost row ids, load the *original* posts each one points at and shape them as
@@ -39,6 +40,7 @@ export async function loadRepostTargets(args: {
     loadPostMedia(db, targetIds),
     loadArticleCards(db, targetIds),
   ])
+  const unfurlCardsMap = await loadUnfurlCards(db, targetIds, articleMap)
 
   const dtoById = new Map<string, PostDto>()
   for (const r of joined) {
@@ -50,7 +52,7 @@ export async function loadRepostTargets(args: {
         flags.get(r.post.id),
         mediaMap.get(r.post.id),
         env,
-        articleMap.get(r.post.id),
+        unfurlCardsMap.get(r.post.id),
       ),
     )
   }

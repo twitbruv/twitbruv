@@ -38,6 +38,7 @@
     "@workspace/github-unfurl": "workspace:*",
     "@workspace/ui": "workspace:*",
     "@workspace/validators": "workspace:*",
+    "@workspace/youtube-unfurl": "workspace:*",
     "agentation": "^3.0.2",
     "better-auth": "^1.4.6",
     "chess.js": "^1.4.0",

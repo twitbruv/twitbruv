@@ -1,5 +1,10 @@
 import type { Database } from '@workspace/db'
-import { eq, schema } from '@workspace/db'
+import {
+  applyUnfurlSuccess,
+  classifyHttpError,
+  persistFailureOnly,
+  type FetchOutcome as CoreFetchOutcome,
+} from '@workspace/url-unfurl-core'
 import { unfurlClient } from './octokit.ts'
 import type {
   GithubCard,
@@ -10,54 +15,17 @@ import type {
 } from './card.ts'
 import type { GithubRef } from './urls.ts'
 
-// TTLs control how long a row is considered fresh. We don't actively revalidate today; this
-// is here to make it cheap to add later. The worker job persists `expiresAt = now + TTL`.
-const TTL_BY_KIND: Record<GithubRef['kind'], number> = {
-  repo: 60 * 60 * 24, // 1 day — repos drift slowly
-  issue: 60 * 10, // 10 min — open issues get comments
-  pull: 60 * 10, // 10 min — diff stats / state can change
-  commit: 60 * 60 * 24 * 30, // 30 days — commits are immutable
-}
+export type FetchOutcome<TCard extends GithubCard = GithubCard> = CoreFetchOutcome<TCard>
 
-// Failure TTLs: when GitHub returns 404 we don't want to keep slamming it. Long expiry on
-// "not found" because deleted repos rarely come back; short on "rate limited" so we self-heal.
-const FAILURE_TTL_BY_REASON = {
-  not_found: 60 * 60 * 24, // 24h
-  rate_limited: 60 * 60, // 1h
-  unauthorized: 60 * 60 * 24, // 24h — bad token, will just keep failing until config fix
-  unknown: 60 * 10, // 10min
+const TTL_BY_KIND: Record<GithubRef['kind'], number> = {
+  repo: 60 * 60 * 24,
+  issue: 60 * 10,
+  pull: 60 * 10,
+  commit: 60 * 60 * 24 * 30,
 }
 
 function ttlSecForRef(ref: GithubRef): number {
   return TTL_BY_KIND[ref.kind]
-}
-
-interface FetchResult {
-  card: GithubCard
-  title: string
-  description: string | null
-  imageUrl: string | null
-}
-
-export type FetchOutcome =
-  | { ok: true; result: FetchResult }
-  | {
-      ok: false
-      reason: keyof typeof FAILURE_TTL_BY_REASON
-      message: string
-    }
-
-function classifyError(err: unknown): { reason: keyof typeof FAILURE_TTL_BY_REASON; message: string } {
-  const e = err as { status?: number; message?: string; response?: { headers?: Record<string, string> } }
-  if (e?.status === 404) return { reason: 'not_found', message: e.message ?? 'not_found' }
-  if (e?.status === 401 || e?.status === 403) {
-    // 403 with rate-limit headers is rate limit; 403 without is auth/abuse.
-    const remaining = e.response?.headers?.['x-ratelimit-remaining']
-    if (remaining === '0') return { reason: 'rate_limited', message: 'rate_limited' }
-    return { reason: 'unauthorized', message: e.message ?? 'unauthorized' }
-  }
-  if (e?.status === 429) return { reason: 'rate_limited', message: 'rate_limited' }
-  return { reason: 'unknown', message: e?.message ?? 'unknown_error' }
 }
 
 function excerpt(body: string | null | undefined, max = 280): string | null {
@@ -68,7 +36,7 @@ function excerpt(body: string | null | undefined, max = 280): string | null {
   return `${trimmed.slice(0, max - 1).trimEnd()}…`
 }
 
-export async function fetchGithubCard(ref: GithubRef): Promise<FetchOutcome> {
+export async function fetchGithubCard(ref: GithubRef): Promise<FetchOutcome<GithubCard>> {
   const client = unfurlClient()
 
   try {
@@ -105,9 +73,6 @@ export async function fetchGithubCard(ref: GithubRef): Promise<FetchOutcome> {
     }
 
     if (ref.kind === 'issue' || ref.kind === 'pull') {
-      // GitHub's issues endpoint also returns PRs (with `pull_request` field). If the user
-      // pasted /issues/123 but 123 is actually a PR, swap to the PR fetcher to get diff
-      // stats. Mirror behavior is what GitHub itself does.
       if (ref.kind === 'issue') {
         const r = await client('GET /repos/{owner}/{repo}/issues/{issue_number}', {
           owner: ref.owner,
@@ -148,7 +113,6 @@ export async function fetchGithubCard(ref: GithubRef): Promise<FetchOutcome> {
           },
         }
       }
-      // PR
       const r = await client('GET /repos/{owner}/{repo}/pulls/{pull_number}', {
         owner: ref.owner,
         repo: ref.repo,
@@ -189,7 +153,6 @@ export async function fetchGithubCard(ref: GithubRef): Promise<FetchOutcome> {
       }
     }
 
-    // commit
     const r = await client('GET /repos/{owner}/{repo}/commits/{ref}', {
       owner: ref.owner,
       repo: ref.repo,
@@ -227,63 +190,25 @@ export async function fetchGithubCard(ref: GithubRef): Promise<FetchOutcome> {
       },
     }
   } catch (err) {
-    return { ok: false, ...classifyError(err) }
+    return { ok: false, ...classifyHttpError(err) }
   }
 }
 
-/** Update an existing url_unfurls row with the fetched card payload, or persist failure. */
 export async function persistCardOutcome(
   db: Database,
   rowId: string,
   ref: GithubRef,
-  outcome: FetchOutcome,
+  outcome: FetchOutcome<GithubCard>,
 ): Promise<void> {
-  const now = new Date()
-  if (outcome.ok) {
-    const ttlSec = ttlSecForRef(ref)
-    await db
-      .update(schema.urlUnfurls)
-      .set({
-        state: 'ready',
-        // Sync kind from the actual card payload — covers issue→PR redirect where the row
-        // was opened as 'github_issue' but the fetcher resolved it to a pull request.
-        kind: outcome.result.card.kind,
-        card: outcome.result.card,
-        title: outcome.result.title,
-        description: outcome.result.description,
-        imageUrl: outcome.result.imageUrl,
-        siteName: 'GitHub',
-        providerName: 'GitHub',
-        fetchedAt: now,
-        expiresAt: new Date(now.getTime() + ttlSec * 1000),
-      })
-      .where(eq(schema.urlUnfurls.id, rowId))
+  if (!outcome.ok) {
+    await persistFailureOnly(db, rowId, outcome.reason, outcome.message)
     return
   }
-  await persistFailureOnly(db, rowId, outcome.reason, outcome.message)
+  const ttlSec = ttlSecForRef(ref)
+  await applyUnfurlSuccess(db, rowId, ttlSec, outcome.result, {
+    siteName: 'GitHub',
+    providerName: 'GitHub',
+  })
 }
 
-/**
- * Mark a url_unfurls row as failed without needing a `GithubRef`. Used by the worker when
- * the URL can't even be reparsed (so we have no kind/owner/repo to construct a ref).
- */
-export async function persistFailureOnly(
-  db: Database,
-  rowId: string,
-  reason: keyof typeof FAILURE_TTL_BY_REASON,
-  message: string,
-): Promise<void> {
-  const now = new Date()
-  const ttlSec = FAILURE_TTL_BY_REASON[reason]
-  await db
-    .update(schema.urlUnfurls)
-    .set({
-      state: 'failed',
-      fetchedAt: now,
-      expiresAt: new Date(now.getTime() + ttlSec * 1000),
-      // Stash the failure reason in `description` so we can debug from a SQL prompt without
-      // a dedicated column. Cleared on next successful fetch.
-      description: `unfurl_failed:${reason}:${message}`.slice(0, 500),
-    })
-    .where(eq(schema.urlUnfurls.id, rowId))
-}
+export { persistFailureOnly } from '@workspace/url-unfurl-core'

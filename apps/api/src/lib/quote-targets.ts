@@ -6,6 +6,7 @@ import { toPostDto, type PostDto } from './post-dto.ts'
 import { loadViewerFlags } from './viewer-flags.ts'
 import { loadPostMedia } from './post-media.ts'
 import { loadArticleCards } from './article-cards.ts'
+import { loadUnfurlCards } from './unfurl-cards.ts'
 
 /**
  * For posts that have `quoteOfId` set, load the original post they quote and shape it as a
@@ -41,6 +42,8 @@ export async function loadQuoteTargets(args: {
     loadArticleCards(db, targetIds),
   ])
 
+  const unfurlCardsMap = await loadUnfurlCards(db, targetIds, articleMap)
+
   const dtoById = new Map<string, PostDto>()
   for (const r of joined) {
     dtoById.set(
@@ -51,7 +54,7 @@ export async function loadQuoteTargets(args: {
         flags.get(r.post.id),
         mediaMap.get(r.post.id),
         env,
-        articleMap.get(r.post.id),
+        unfurlCardsMap.get(r.post.id),
       ),
     )
   }

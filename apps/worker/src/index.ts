@@ -9,6 +9,7 @@ import { handleEmailJob } from './jobs/email.ts'
 import { handleMediaJob } from './jobs/media-process.ts'
 import { publishDueScheduledPosts } from './jobs/publish-scheduled.ts'
 import { handleGithubUnfurlJob } from './jobs/github-unfurl.ts'
+import { handleYoutubeUnfurlJob } from './jobs/youtube-unfurl.ts'
 
 const env = loadEnv()
 
@@ -56,6 +57,7 @@ await boss.start()
 await boss.createQueue('email.send')
 await boss.createQueue('media.process')
 await boss.createQueue('github.unfurl')
+await boss.createQueue('youtube.unfurl')
 
 await boss.work('email.send', { batchSize: 5 }, async (jobs) => {
   await Promise.all(jobs.map((job) => handleEmailJob(mailer, job.data)))
@@ -98,6 +100,22 @@ await boss.work('github.unfurl', { batchSize: 4 }, async (jobs) => {
   }
 })
 
+await boss.work('youtube.unfurl', { batchSize: 4 }, async (jobs) => {
+  for (const job of jobs) {
+    try {
+      const result = await handleYoutubeUnfurlJob(db, job.data, env.YOUTUBE_API_KEY)
+      if (!result.ok) {
+        log.warn({ payload: job.data, reason: result.reason }, 'youtube_unfurl_failed')
+      }
+    } catch (err) {
+      log.error(
+        { err: err instanceof Error ? err.stack ?? err.message : err, payload: job.data },
+        'youtube_unfurl_handler_error',
+      )
+    }
+  }
+})
+
 // Polls every 30s for scheduled posts whose publish time has arrived. Cheap query, indexed.
 // Runs in-process rather than via pg-boss because it doesn't need durability or fan-out — it
 // just walks the table.
@@ -117,7 +135,7 @@ const scheduledTimer = setInterval(async () => {
 }, SCHEDULED_INTERVAL_MS)
 
 log.info(
-  { queues: ['email.send', 'media.process', 'github.unfurl'], scheduledIntervalMs: SCHEDULED_INTERVAL_MS },
+  { queues: ['email.send', 'media.process', 'github.unfurl', 'youtube.unfurl'], scheduledIntervalMs: SCHEDULED_INTERVAL_MS },
   'worker_ready',
 )
 

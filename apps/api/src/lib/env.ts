@@ -67,6 +67,8 @@ const envSchema = z.object({
   // actually work. If unset, posts containing GitHub URLs render fine but without the card.
   GITHUB_UNFURL_TOKEN: z.string().optional(),
 
+  YOUTUBE_API_KEY: z.string().optional(),
+
   // Symmetric key for at-rest encryption of connector OAuth tokens (oauth_connections table).
   // Must be 32 raw bytes encoded as base64 — anything shorter is rejected at boot. Rotation
   // story is versioned by the ciphertext prefix `v1:` (see lib/connector-crypto.ts).

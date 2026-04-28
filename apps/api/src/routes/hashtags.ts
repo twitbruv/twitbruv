@@ -10,7 +10,7 @@ import { loadRepostTargets } from '../lib/repost-targets.ts'
 import { loadQuoteTargets } from '../lib/quote-targets.ts'
 import { attachReplyParents } from '../lib/reply-parents.ts'
 import { loadPolls } from '../lib/polls.ts'
-import { loadGithubCards } from '../lib/github-cards.ts'
+import { loadUnfurlCards } from '../lib/unfurl-cards.ts'
 import { parseCursor } from '../lib/cursor.ts'
 
 export const hashtagsRoute = new Hono<HonoEnv>()
@@ -87,7 +87,7 @@ hashtagsRoute.get('/:tag/posts', async (c) => {
     .limit(limit)
 
   const ids = rows.map((r) => r.post.id)
-  const [flags, mediaMap, articleMap, repostMap, quoteMap, pollMap, githubMap] = await Promise.all([
+  const [flags, mediaMap, articleMap, repostMap, quoteMap, pollMap] = await Promise.all([
     loadViewerFlags(db, viewerId, ids),
     loadPostMedia(db, ids),
     loadArticleCards(db, ids),
@@ -104,8 +104,8 @@ hashtagsRoute.get('/:tag/posts', async (c) => {
       quoteRows: rows.map((r) => ({ id: r.post.id, quoteOfId: r.post.quoteOfId })),
     }),
     loadPolls(db, viewerId, ids),
-    loadGithubCards(db, ids),
   ])
+  const unfurlCardsMap = await loadUnfurlCards(db, ids, articleMap)
   const posts = rows.map((r) =>
     toPostDto(
       r.post,
@@ -113,11 +113,10 @@ hashtagsRoute.get('/:tag/posts', async (c) => {
       flags.get(r.post.id),
       mediaMap.get(r.post.id),
       mediaEnv,
-      articleMap.get(r.post.id),
+      unfurlCardsMap.get(r.post.id),
       repostMap.get(r.post.id),
       quoteMap.get(r.post.id),
       pollMap.get(r.post.id),
-      githubMap.get(r.post.id),
     ),
   )
   await attachReplyParents({ db, viewerId, env: mediaEnv, posts })

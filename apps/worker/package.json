@@ -12,6 +12,7 @@
     "@workspace/db": "workspace:*",
     "@workspace/email": "workspace:*",
     "@workspace/github-unfurl": "workspace:*",
+    "@workspace/youtube-unfurl": "workspace:*",
     "@workspace/media": "workspace:*",
     "pg-boss": "^10.3.2",
     "pino": "^9.6.0",

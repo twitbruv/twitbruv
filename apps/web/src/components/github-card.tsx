@@ -7,6 +7,8 @@ import {
 import { cn } from "@workspace/ui/lib/utils"
 import type { GithubCard } from "@workspace/github-unfurl/card"
 
+import { UnfurlCardChrome } from "./unfurl-card-chrome"
+
 interface Props {
   card: GithubCard
   className?: string
@@ -24,33 +26,6 @@ export function GithubCardBlock({ card, className }: Props) {
       return <CommitCard card={card} className={className} />
   }
 }
-
-function CardChrome({
-  href,
-  className,
-  children,
-}: {
-  href: string
-  className?: string
-  children: React.ReactNode
-}) {
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noreferrer"
-      data-post-card-ignore-open
-      onClick={(e) => e.stopPropagation()}
-      className={cn(
-        "mt-3 block max-w-[560px] overflow-hidden rounded-lg border border-neutral bg-base-1 transition-all hover:bg-base-2/60 hover:shadow-sm",
-        className
-      )}
-    >
-      {children}
-    </a>
-  )
-}
-
 function GithubChromeHeader({
   repoLabel,
   ownerAvatarUrl,
@@ -84,7 +59,7 @@ function RepoCard({
   className?: string
 }) {
   return (
-    <CardChrome href={card.url} className={className}>
+    <UnfurlCardChrome href={card.url} className={className}>
       <GithubChromeHeader
         repoLabel={card.nameWithOwner}
         ownerAvatarUrl={card.ownerAvatarUrl}
@@ -132,7 +107,7 @@ function RepoCard({
           {card.forks > 0 && <span>⑂ {compactNumber(card.forks)}</span>}
         </div>
       </div>
-    </CardChrome>
+    </UnfurlCardChrome>
   )
 }
 
@@ -144,7 +119,7 @@ function IssueCard({
   className?: string
 }) {
   return (
-    <CardChrome href={card.url} className={className}>
+    <UnfurlCardChrome href={card.url} className={className}>
       <GithubChromeHeader
         repoLabel={`${card.owner}/${card.repo}`}
         ownerAvatarUrl={card.authorAvatarUrl}
@@ -184,7 +159,7 @@ function IssueCard({
           {card.comments > 0 && <span>{card.comments} comments</span>}
         </div>
       </div>
-    </CardChrome>
+    </UnfurlCardChrome>
   )
 }
 
@@ -196,7 +171,7 @@ function PullCard({
   className?: string
 }) {
   return (
-    <CardChrome href={card.url} className={className}>
+    <UnfurlCardChrome href={card.url} className={className}>
       <GithubChromeHeader
         repoLabel={`${card.owner}/${card.repo}`}
         ownerAvatarUrl={card.authorAvatarUrl}
@@ -235,7 +210,7 @@ function PullCard({
           {card.changedFiles > 0 && <span>{card.changedFiles} files</span>}
         </div>
       </div>
-    </CardChrome>
+    </UnfurlCardChrome>
   )
 }
 
@@ -247,7 +222,7 @@ function CommitCard({
   className?: string
 }) {
   return (
-    <CardChrome href={card.url} className={className}>
+    <UnfurlCardChrome href={card.url} className={className}>
       <GithubChromeHeader
         repoLabel={`${card.owner}/${card.repo}`}
         ownerAvatarUrl={card.authorAvatarUrl}
@@ -286,7 +261,7 @@ function CommitCard({
           {card.changedFiles > 0 && <span>{card.changedFiles} files</span>}
         </div>
       </div>
-    </CardChrome>
+    </UnfurlCardChrome>
   )
 }
 

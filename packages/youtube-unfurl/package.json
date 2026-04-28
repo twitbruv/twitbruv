@@ -1,5 +1,5 @@
 {
-  "name": "@workspace/github-unfurl",
+  "name": "@workspace/youtube-unfurl",
   "version": "0.0.0",
   "type": "module",
   "private": true,
@@ -12,7 +12,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@octokit/request": "^10.0.8",
     "@workspace/db": "workspace:*",
     "@workspace/url-unfurl-core": "workspace:*"
   },

@@ -10,7 +10,7 @@ import { loadRepostTargets } from '../lib/repost-targets.ts'
 import { loadQuoteTargets } from '../lib/quote-targets.ts'
 import { attachReplyParents } from '../lib/reply-parents.ts'
 import { loadPolls } from '../lib/polls.ts'
-import { loadGithubCards } from '../lib/github-cards.ts'
+import { loadUnfurlCards } from '../lib/unfurl-cards.ts'
 import { parseCursor } from '../lib/cursor.ts'
 
 export const feedRoute = new Hono<HonoEnv>()
@@ -18,7 +18,7 @@ export const feedRoute = new Hono<HonoEnv>()
 const HOME_FEED_TTL_SEC = 30
 
 export function homeFeedCacheKey(userId: string) {
-  return `feed:home:${userId}:v1`
+  return `feed:home:${userId}:v2`
 }
 
 /**
@@ -28,7 +28,7 @@ export function homeFeedCacheKey(userId: string) {
  * are layered on after the cache lookup.
  */
 export function profileFeedCacheKey(authorId: string) {
-  return `feed:profile:${authorId}:v1`
+  return `feed:profile:${authorId}:v2`
 }
 
 // Home feed: reverse-chrono from follows, excluding blocks and muted-feed users.
@@ -69,7 +69,7 @@ feedRoute.get('/', requireHandle(), async (c) => {
     .limit(limit)
 
   const ids = rows.map((r) => r.post.id)
-  const [flags, mediaMap, articleMap, repostMap, quoteMap, pollMap, githubMap] = await Promise.all([
+  const [flags, mediaMap, articleMap, repostMap, quoteMap, pollMap] = await Promise.all([
     loadViewerFlags(db, me, ids),
     loadPostMedia(db, ids),
     loadArticleCards(db, ids),
@@ -86,8 +86,8 @@ feedRoute.get('/', requireHandle(), async (c) => {
       quoteRows: rows.map((r) => ({ id: r.post.id, quoteOfId: r.post.quoteOfId })),
     }),
     loadPolls(db, me, ids),
-    loadGithubCards(db, ids),
   ])
+  const unfurlCardsMap = await loadUnfurlCards(db, ids, articleMap)
   const posts = rows.map((r) =>
     toPostDto(
       r.post,
@@ -95,11 +95,10 @@ feedRoute.get('/', requireHandle(), async (c) => {
       flags.get(r.post.id),
       mediaMap.get(r.post.id),
       mediaEnv,
-      articleMap.get(r.post.id),
+      unfurlCardsMap.get(r.post.id),
       repostMap.get(r.post.id),
       quoteMap.get(r.post.id),
       pollMap.get(r.post.id),
-      githubMap.get(r.post.id),
     ),
   )
   await attachReplyParents({ db, viewerId: me, env: mediaEnv, posts })
@@ -246,7 +245,7 @@ feedRoute.get('/network', requireHandle(), async (c) => {
     .slice(0, limit)
 
   const ids = merged.map((r) => r.post.id)
-  const [flags, mediaMap, articleMap, repostMapPost, quoteMapPost, pollMap, githubMap] = await Promise.all([
+  const [flags, mediaMap, articleMap, repostMapPost, quoteMapPost, pollMap] = await Promise.all([
     loadViewerFlags(db, me, ids),
     loadPostMedia(db, ids),
     loadArticleCards(db, ids),
@@ -263,8 +262,8 @@ feedRoute.get('/network', requireHandle(), async (c) => {
       quoteRows: merged.map((r) => ({ id: r.post.id, quoteOfId: r.post.quoteOfId })),
     }),
     loadPolls(db, me, ids),
-    loadGithubCards(db, ids),
   ])
+  const unfurlCardsMapNetwork = await loadUnfurlCards(db, ids, articleMap)
   // Pull the triggering actors' handles for the "Lucas + 2 others liked this"
   // banner. We cap at 3 ids per post; the count beyond that is shown as
   // "+N others" in the UI.
@@ -298,11 +297,10 @@ feedRoute.get('/network', requireHandle(), async (c) => {
       flags.get(r.post.id),
       mediaMap.get(r.post.id),
       mediaEnv,
-      articleMap.get(r.post.id),
+      unfurlCardsMapNetwork.get(r.post.id),
       repostMapPost.get(r.post.id),
       quoteMapPost.get(r.post.id),
       pollMap.get(r.post.id),
-      githubMap.get(r.post.id),
     ),
     networkActors: r.actorIds
       .slice(0, 3)

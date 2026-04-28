@@ -105,6 +105,7 @@ export async function buildContext(): Promise<AppContext> {
   await boss.createQueue('email.send')
   await boss.createQueue('media.process')
   await boss.createQueue('github.unfurl')
+  await boss.createQueue('youtube.unfurl')
 
   const cache = createCache(env.REDIS_URL)
   const pubsub = createPubSub(env.REDIS_URL)

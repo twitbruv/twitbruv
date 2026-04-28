@@ -13,7 +13,7 @@ import { loadRepostTargets } from '../lib/repost-targets.ts'
 import { loadQuoteTargets } from '../lib/quote-targets.ts'
 import { attachReplyParents } from '../lib/reply-parents.ts'
 import { loadPolls } from '../lib/polls.ts'
-import { loadGithubCards } from '../lib/github-cards.ts'
+import { loadUnfurlCards } from '../lib/unfurl-cards.ts'
 import { parseCursor } from '../lib/cursor.ts'
 import { markOnline } from '../lib/presence.ts'
 
@@ -192,7 +192,7 @@ meRoute.get('/bookmarks', async (c) => {
     .limit(limit)
 
   const ids = rows.map((r) => r.post.id)
-  const [flags, mediaMap, articleMap, repostMap, quoteMap, pollMap, githubMap] = await Promise.all([
+  const [flags, mediaMap, articleMap, repostMap, quoteMap, pollMap] = await Promise.all([
     loadViewerFlags(db, session.user.id, ids),
     loadPostMedia(db, ids),
     loadArticleCards(db, ids),
@@ -209,8 +209,8 @@ meRoute.get('/bookmarks', async (c) => {
       quoteRows: rows.map((r) => ({ id: r.post.id, quoteOfId: r.post.quoteOfId })),
     }),
     loadPolls(db, session.user.id, ids),
-    loadGithubCards(db, ids),
   ])
+  const unfurlCardsMap = await loadUnfurlCards(db, ids, articleMap)
   const posts = rows.map((r) =>
     toPostDto(
       r.post,
@@ -218,11 +218,10 @@ meRoute.get('/bookmarks', async (c) => {
       flags.get(r.post.id),
       mediaMap.get(r.post.id),
       mediaEnv,
-      articleMap.get(r.post.id),
+      unfurlCardsMap.get(r.post.id),
       repostMap.get(r.post.id),
       quoteMap.get(r.post.id),
       pollMap.get(r.post.id),
-      githubMap.get(r.post.id),
     ),
   )
   await attachReplyParents({ db, viewerId: session.user.id, env: mediaEnv, posts })

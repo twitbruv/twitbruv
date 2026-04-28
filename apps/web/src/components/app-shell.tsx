@@ -14,6 +14,7 @@ import { api } from "../lib/api"
 import { qk } from "../lib/query-keys"
 import { AppSidebar } from "./app-sidebar"
 import { LightboxProvider } from "./lightbox-provider"
+import { YouTubePlayerProvider } from "./youtube-player-dialog"
 import { ComposeProvider, useCompose } from "./compose-provider"
 import type { ReactNode } from "react"
 
@@ -24,6 +25,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <ComposeProvider>
       <LightboxProvider>
+        <YouTubePlayerProvider>
         {authed && <ChessChallengePoller enabled />}
 
         {/* Fixed sidebar - never scrolls, always visible at left edge of centered layout */}
@@ -42,6 +44,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           {/* Right gutter */}
           <div className="hidden w-[68px] shrink-0 lg:block xl:w-[240px]" />
         </div>
+        </YouTubePlayerProvider>
       </LightboxProvider>
     </ComposeProvider>
   )

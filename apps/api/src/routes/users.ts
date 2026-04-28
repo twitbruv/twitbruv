@@ -16,7 +16,7 @@ import { loadPolls } from '../lib/polls.ts'
 import { parseCursor } from '../lib/cursor.ts'
 import { homeFeedCacheKey, profileFeedCacheKey } from './feed.ts'
 import { getGithubSnapshot } from '../lib/github-snapshot.ts'
-import { loadGithubCards } from '../lib/github-cards.ts'
+import { loadUnfurlCards } from '../lib/unfurl-cards.ts'
 
 export const usersRoute = new Hono<HonoEnv>()
 
@@ -304,11 +304,11 @@ usersRoute.get('/:handle/posts', async (c) => {
     // Build viewer-independent DTOs (no viewer flags, no repost/quote embeds — those are
     // layered on after, since they vary per viewer).
     const ids = allRows.map((r) => r.post.id)
-    const [mediaMap, articleMap, githubMap] = await Promise.all([
+    const [mediaMap, articleMap] = await Promise.all([
       loadPostMedia(db, ids),
       loadArticleCards(db, ids),
-      loadGithubCards(db, ids),
     ])
+    const unfurlCardsMap = await loadUnfurlCards(db, ids, articleMap)
     const cachedPosts: Array<PostDto> = allRows.map((r) => {
       const dto = toPostDto(
         r.post,
@@ -316,11 +316,11 @@ usersRoute.get('/:handle/posts', async (c) => {
         undefined,
         mediaMap.get(r.post.id),
         mediaEnv,
-        articleMap.get(r.post.id),
+        unfurlCardsMap.get(r.post.id),
         undefined,
         undefined,
         undefined,
-        githubMap.get(r.post.id),
+
       )
       if (pinnedRow && r.post.id === pinnedRow.post.id) {
         ;(dto as { pinned?: boolean }).pinned = true

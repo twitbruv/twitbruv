@@ -9,6 +9,7 @@ import { loadPostMedia } from '../lib/post-media.ts'
 import { loadArticleCards } from '../lib/article-cards.ts'
 import { loadQuoteTargets } from '../lib/quote-targets.ts'
 import { loadRepostTargets } from '../lib/repost-targets.ts'
+import { loadUnfurlCards } from '../lib/unfurl-cards.ts'
 
 export const analyticsRoute = new Hono<HonoEnv>()
 
@@ -255,6 +256,7 @@ analyticsRoute.get('/overview', requireHandle(), async (c) => {
       quoteRows: topPostsRows.map((r) => ({ id: r.post.id, quoteOfId: r.post.quoteOfId })),
     }),
   ])
+  const unfurlCardsMap = await loadUnfurlCards(db, ids, articleMap)
   const topPosts = topPostsRows.map((r) =>
     toPostDto(
       r.post,
@@ -262,7 +264,7 @@ analyticsRoute.get('/overview', requireHandle(), async (c) => {
       flags.get(r.post.id),
       mediaMap.get(r.post.id),
       env,
-      articleMap.get(r.post.id),
+      unfurlCardsMap.get(r.post.id),
       repostMap.get(r.post.id),
       quoteMap.get(r.post.id),
     ),

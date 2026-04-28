@@ -28,7 +28,9 @@
         "@workspace/media": "workspace:*",
         "@workspace/rate-limit": "workspace:*",
         "@workspace/types": "workspace:*",
+        "@workspace/url-unfurl-core": "workspace:*",
         "@workspace/validators": "workspace:*",
+        "@workspace/youtube-unfurl": "workspace:*",
         "better-auth": "^1.4.6",
         "chess.js": "^1.4.0",
         "hono": "^4.7.11",
@@ -73,6 +75,7 @@
         "@workspace/github-unfurl": "workspace:*",
         "@workspace/ui": "workspace:*",
         "@workspace/validators": "workspace:*",
+        "@workspace/youtube-unfurl": "workspace:*",
         "agentation": "^3.0.2",
         "better-auth": "^1.4.6",
         "chess.js": "^1.4.0",
@@ -112,6 +115,7 @@
         "@workspace/email": "workspace:*",
         "@workspace/github-unfurl": "workspace:*",
         "@workspace/media": "workspace:*",
+        "@workspace/youtube-unfurl": "workspace:*",
         "pg-boss": "^10.3.2",
         "pino": "^9.6.0",
         "zod": "^3.25.76",
@@ -187,6 +191,7 @@
       "dependencies": {
         "@octokit/request": "^10.0.8",
         "@workspace/db": "workspace:*",
+        "@workspace/url-unfurl-core": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^25.1.0",
@@ -268,6 +273,18 @@
         "typescript": "^5.9.3",
       },
     },
+    "packages/url-unfurl-core": {
+      "name": "@workspace/url-unfurl-core",
+      "version": "0.0.0",
+      "dependencies": {
+        "@workspace/db": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/node": "^25.1.0",
+        "@workspace/config-tsconfig": "workspace:*",
+        "typescript": "^5.9.3",
+      },
+    },
     "packages/validators": {
       "name": "@workspace/validators",
       "version": "0.0.0",
@@ -275,6 +292,19 @@
         "zod": "^3.25.76",
       },
       "devDependencies": {
+        "@workspace/config-tsconfig": "workspace:*",
+        "typescript": "^5.9.3",
+      },
+    },
+    "packages/youtube-unfurl": {
+      "name": "@workspace/youtube-unfurl",
+      "version": "0.0.0",
+      "dependencies": {
+        "@workspace/db": "workspace:*",
+        "@workspace/url-unfurl-core": "workspace:*",
+      },
+      "devDependencies": {
+        "@types/node": "^25.1.0",
         "@workspace/config-tsconfig": "workspace:*",
         "typescript": "^5.9.3",
       },
@@ -1299,7 +1329,11 @@
 
     "@workspace/ui": ["@workspace/ui@workspace:packages/ui"],
 
+    "@workspace/url-unfurl-core": ["@workspace/url-unfurl-core@workspace:packages/url-unfurl-core"],
+
     "@workspace/validators": ["@workspace/validators@workspace:packages/validators"],
+
+    "@workspace/youtube-unfurl": ["@workspace/youtube-unfurl@workspace:packages/youtube-unfurl"],
 
     "acorn": ["acorn@8.16.0", "", { "bin": { "acorn": "bin/acorn" } }, "sha512-UVJyE9MttOsBQIDKw1skb9nAwQuR5wuGD3+82K6JgJlm/Y+KI92oNsMNGZCYdDsVtRHSak0pcV5Dno5+4jh9sw=="],
 

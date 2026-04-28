@@ -27,12 +27,13 @@ import { LikeIconBurst, useLikeAnimation } from "./like-button-heart"
 import { RichText } from "./rich-text"
 import { MacfolioCardFromText } from "./macfolio-card"
 import { GithubCardBlock } from "./github-card"
+import { YoutubeCardBlock } from "./youtube-card"
 import { ImageLightbox } from "./image-lightbox"
 import { Compose } from "./compose"
 import { PollBlock } from "./poll-block"
 import { PostMenu } from "./post-menu"
 import { VerifiedBadge } from "./verified-badge"
-import type { Post, PostEdit } from "../lib/api"
+import type { ArticleUnfurlCard, Post, PostEdit, PostArticleCard } from "../lib/api"
 
 function relativeTime(iso: string): string {
   const d = new Date(iso).getTime()
@@ -77,10 +78,18 @@ export function clickedInteractiveElement(target: EventTarget | null) {
   )
 }
 
+function postHasArticleCard(cards: Post["cards"]): boolean {
+  return Boolean(cards?.some((c) => c.provider === "article"))
+}
+
+function postCardArticle(cards: Post["cards"]): ArticleUnfurlCard | undefined {
+  return cards?.find((c): c is ArticleUnfurlCard => c.provider === "article")
+}
+
 export function ArticleCardBlock({
   card,
 }: {
-  card: NonNullable<Post["articleCard"]>
+  card: PostArticleCard
 }) {
   if (!card.authorHandle) {
     return (
@@ -610,7 +619,7 @@ export function PostCard({
                 </div>
               </div>
             </div>
-          ) : post.articleCard ? null : (
+          ) : postHasArticleCard(post.cards) ? null : (
             <>
               {post.replyParent && <ReplyParentEmbed post={post.replyParent} />}
               <p className="wrap-break-words mt-1 text-[15px] leading-relaxed whitespace-pre-wrap">
@@ -619,13 +628,27 @@ export function PostCard({
             </>
           )}
           {!editing && <MacfolioCardFromText text={post.text} />}
-          {post.articleCard && <ArticleCardBlock card={post.articleCard} />}
-          {post.githubCards?.map((card, i) => (
-            <GithubCardBlock
-              key={`${card.kind}-${card.url}-${i}`}
-              card={card}
-            />
-          ))}
+          {!editing &&
+            (() => {
+              const ac = postCardArticle(post.cards)
+              return ac ? <ArticleCardBlock card={ac} /> : null
+            })()}
+          {post.cards
+            ?.filter((c) => c.provider !== "article")
+            .map((card, i) =>
+              card.provider === "github" ? (
+                <GithubCardBlock
+                  key={`${card.kind}-${card.url}-${i}`}
+                  card={card}
+                />
+              ) : (
+                <YoutubeCardBlock
+                  key={`${card.kind}-${card.url}-${i}`}
+                  card={card}
+                  post={post}
+                />
+              ),
+            )}
           {post.media && post.media.length > 0 && (
             <MediaGrid media={post.media} />
           )}
