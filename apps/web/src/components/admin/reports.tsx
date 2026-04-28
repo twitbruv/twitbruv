@@ -167,7 +167,7 @@ export default function AdminReports() {
   })
 
   return (
-    <PageFrame className="flex min-h-0 flex-1 flex-col">
+    <PageFrame className="flex flex-col">
       <div className="shrink-0 px-4 py-3">
         <SegmentedControl<ReportStatus>
           layout="fit"
@@ -182,7 +182,7 @@ export default function AdminReports() {
       </div>
       <div
         ref={setScrollRoot}
-        className="flex-1 overflow-auto overscroll-contain"
+        className="flex-1"
       >
         {isPending && reports.length === 0 && (
           <PageLoading className="py-8" label="Loading…" />

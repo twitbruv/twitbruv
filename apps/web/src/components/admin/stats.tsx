@@ -205,7 +205,7 @@ export default function AdminStats() {
   }
 
   return (
-    <PageFrame className="flex min-h-0 flex-1 flex-col overflow-auto overscroll-contain">
+    <PageFrame className="flex flex-col">
       <div className="space-y-4 p-4">
         <HeroCard
           icon={UsersIcon}
@@ -247,7 +247,7 @@ export default function AdminStats() {
           />
         </div>
 
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3">
           <Section title="Users" icon={UsersIcon} accent="sky">
             <MiniStat label="Total" value={stats?.users.total} />
             <MiniStat label="Active" value={stats?.users.active} />

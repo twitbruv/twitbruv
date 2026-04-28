@@ -476,7 +476,7 @@ export default function AdminPosts() {
   )
 
   return (
-    <PageFrame className="flex min-h-0 flex-1 flex-col">
+    <PageFrame className="flex flex-col">
       <div className="shrink-0 space-y-3 border-b border-neutral p-4">
         <Input
           value={q}
@@ -578,7 +578,7 @@ export default function AdminPosts() {
       {posts.length > 0 && (
         <div
           ref={setScrollRoot}
-          className="flex-1 overflow-auto overscroll-contain"
+          className="flex-1"
         >
           <Table className="table-fixed">
             <colgroup>

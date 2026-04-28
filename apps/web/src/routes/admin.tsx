@@ -5,6 +5,7 @@ import { authClient } from "../lib/auth"
 import { useMe } from "../lib/me"
 import { usePageHeader } from "../components/app-page-header"
 import { PageLoading } from "../components/page-surface"
+import { PageFrame } from "../components/page-frame"
 
 const ADMIN_TABS = ["stats", "users", "posts", "reports"] as const
 type AdminTab = (typeof ADMIN_TABS)[number]
@@ -67,8 +68,8 @@ function AdminLayout() {
   }
 
   return (
-    <div className="mx-auto flex h-[calc(100svh-3rem)] w-full max-w-7xl flex-col overflow-hidden">
-      <header className="bg-background/80 shrink-0 px-4 py-3 backdrop-blur-sm">
+    <PageFrame>
+      <header className="sticky top-0 z-40 flex h-12 items-center bg-base-1/80 px-4 backdrop-blur-md">
         <SegmentedControl<AdminTab>
           layout="fit"
           variant="ghost"
@@ -91,6 +92,6 @@ function AdminLayout() {
         {tab === "posts" && <AdminPosts />}
         {tab === "reports" && <AdminReports />}
       </Suspense>
-    </div>
+    </PageFrame>
   )
 }

@@ -38,7 +38,7 @@ import {
   TableHeader,
   TableRow,
 } from "@workspace/ui/components/table"
-import { ChevronDownIcon } from "@heroicons/react/24/solid"
+import { ChevronDownIcon, EllipsisHorizontalIcon } from "@heroicons/react/24/solid"
 import { Avatar } from "@workspace/ui/components/avatar"
 import { api } from "../../lib/api"
 import { qk } from "../../lib/query-keys"
@@ -62,11 +62,11 @@ type ActionDialogState =
   | null
 
 const COLUMN_WIDTHS: Record<string, string> = {
-  user: "25%",
-  email: "20%",
+  user: "30%",
+  email: "25%",
   role: "10%",
-  status: "17%",
-  actions: "28%",
+  status: "20%",
+  actions: "15%",
 }
 
 export default function AdminUsers() {
@@ -151,14 +151,14 @@ export default function AdminUsers() {
                   >
                     {u.displayName ?? u.handle}
                     {u.isVerified && (
-                      <VerifiedBadge className="size-14" role={u.role} />
+                      <VerifiedBadge className="size-3.5" role={u.role} />
                     )}
                   </Link>
                 ) : (
                   <span className="flex items-center gap-1 text-sm font-semibold">
                     {u.displayName ?? u.email}
                     {u.isVerified && (
-                      <VerifiedBadge className="size-14" role={u.role} />
+                      <VerifiedBadge className="size-3.5" role={u.role} />
                     )}
                   </span>
                 )}
@@ -271,77 +271,95 @@ export default function AdminUsers() {
         header: () => <span className="sr-only">Actions</span>,
         cell: ({ row }) => {
           const u = row.original
+          const isSelf = u.id === me?.id
           return (
             <div
-              className="flex flex-wrap justify-end gap-1"
+              className="flex justify-end"
               onClick={(e) => e.stopPropagation()}
             >
-              {u.banned ? (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={busyId === u.id}
-                  onClick={() => act(u.id, () => api.adminUnban(u.id))}
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger
+                  render={
+                    <Button
+                      size="sm"
+                      variant="transparent"
+                      disabled={busyId === u.id}
+                      className="size-8 p-0"
+                    />
+                  }
                 >
-                  Unban
-                </Button>
-              ) : (
-                <Button
-                  size="sm"
-                  variant="danger"
-                  disabled={busyId === u.id || u.id === me?.id}
-                  onClick={() => setDialog({ kind: "ban", user: u })}
-                >
-                  Ban
-                </Button>
-              )}
-              {u.shadowBannedAt ? (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={busyId === u.id}
-                  onClick={() => act(u.id, () => api.adminUnshadowban(u.id))}
-                >
-                  Unshadow
-                </Button>
-              ) : (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={busyId === u.id || u.id === me?.id}
-                  onClick={() => setDialog({ kind: "shadow", user: u })}
-                >
-                  Shadow
-                </Button>
-              )}
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={busyId === u.id}
-                onClick={() => setDialog({ kind: "verify", user: u })}
-              >
-                {u.isVerified ? "Unverify" : "Verify"}
-              </Button>
-              {me?.role === "owner" && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={busyId === u.id}
-                  onClick={() => setDialog({ kind: "handle", user: u })}
-                >
-                  Handle
-                </Button>
-              )}
-              {me?.role === "owner" && !u.deletedAt && (
-                <Button
-                  size="sm"
-                  variant="danger"
-                  disabled={busyId === u.id || u.id === me.id}
-                  onClick={() => setDialog({ kind: "delete", user: u })}
-                >
-                  Delete
-                </Button>
-              )}
+                  <EllipsisHorizontalIcon className="size-4" />
+                </DropdownMenu.Trigger>
+                <DropdownMenu.Content align="end">
+                  <DropdownMenu.Group>
+                    {u.banned ? (
+                      <DropdownMenu.Item
+                        disabled={busyId === u.id}
+                        onClick={() => act(u.id, () => api.adminUnban(u.id))}
+                      >
+                        Unban
+                      </DropdownMenu.Item>
+                    ) : (
+                      <DropdownMenu.Item
+                        disabled={busyId === u.id || isSelf}
+                        onClick={() => setDialog({ kind: "ban", user: u })}
+                        className="text-danger"
+                      >
+                        Ban
+                      </DropdownMenu.Item>
+                    )}
+                    {u.shadowBannedAt ? (
+                      <DropdownMenu.Item
+                        disabled={busyId === u.id}
+                        onClick={() =>
+                          act(u.id, () => api.adminUnshadowban(u.id))
+                        }
+                      >
+                        Unshadow
+                      </DropdownMenu.Item>
+                    ) : (
+                      <DropdownMenu.Item
+                        disabled={busyId === u.id || isSelf}
+                        onClick={() => setDialog({ kind: "shadow", user: u })}
+                      >
+                        Shadowban
+                      </DropdownMenu.Item>
+                    )}
+                    <DropdownMenu.Item
+                      disabled={busyId === u.id}
+                      onClick={() => setDialog({ kind: "verify", user: u })}
+                    >
+                      {u.isVerified ? "Unverify" : "Verify"}
+                    </DropdownMenu.Item>
+                  </DropdownMenu.Group>
+                  {me?.role === "owner" && (
+                    <>
+                      <DropdownMenu.Separator />
+                      <DropdownMenu.Group>
+                        <DropdownMenu.Item
+                          disabled={busyId === u.id}
+                          onClick={() =>
+                            setDialog({ kind: "handle", user: u })
+                          }
+                        >
+                          Change handle
+                        </DropdownMenu.Item>
+                        {!u.deletedAt && (
+                          <DropdownMenu.Item
+                            disabled={busyId === u.id || isSelf}
+                            onClick={() =>
+                              setDialog({ kind: "delete", user: u })
+                            }
+                            className="text-danger"
+                          >
+                            Delete account
+                          </DropdownMenu.Item>
+                        )}
+                      </DropdownMenu.Group>
+                    </>
+                  )}
+                </DropdownMenu.Content>
+              </DropdownMenu.Root>
             </div>
           )
         },
@@ -383,7 +401,7 @@ export default function AdminUsers() {
   )
 
   return (
-    <PageFrame className="flex min-h-0 flex-1 flex-col">
+    <PageFrame className="flex flex-col">
       <div className="shrink-0 border-b border-neutral p-4">
         <Input
           value={q}
@@ -398,7 +416,7 @@ export default function AdminUsers() {
       {users.length > 0 && (
         <div
           ref={setScrollRoot}
-          className="flex-1 overflow-auto overscroll-contain"
+          className="flex-1"
         >
           <Table className="table-fixed">
             <colgroup>
@@ -803,7 +821,7 @@ function UserDetailSheet({
                   <div className="flex items-center gap-1 text-sm font-semibold">
                     {u.displayName ?? u.handle ?? u.email}
                     {u.isVerified && (
-                      <VerifiedBadge className="size-14" role={u.role} />
+                      <VerifiedBadge className="size-3.5" role={u.role} />
                     )}
                   </div>
                   {u.handle && (
