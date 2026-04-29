@@ -2,6 +2,7 @@ import { ChartBarIcon, PhotoIcon } from "@heroicons/react/24/solid"
 import { cn } from "@workspace/ui/lib/utils"
 import { Button } from "@workspace/ui/components/button"
 import { DropdownMenu } from "@workspace/ui/components/dropdown-menu"
+import { Tooltip } from "@workspace/ui/components/tooltip"
 import { POST_MAX_LEN } from "@workspace/validators"
 import { CharacterRing } from "./character-ring"
 import { MAX_ATTACHMENTS, REPLY_OPTIONS } from "./types"
@@ -72,32 +73,38 @@ export function ComposeActionBar({
               }}
             />
 
-            {/* Photo button */}
-            <Button
-              type="button"
-              variant="transparent"
-              size="sm"
-              disabled={attachmentsCount >= MAX_ATTACHMENTS || hasPoll}
-              onClick={() => fileInputRef.current?.click()}
-              aria-label="Add image"
-              iconLeft={<PhotoIcon className="size-4" />}
-            />
+            <Tooltip.Group delay={200} side="bottom">
+              {/* Photo button */}
+              <Tooltip label="Add image">
+                <Button
+                  type="button"
+                  variant="transparent"
+                  size="sm"
+                  disabled={attachmentsCount >= MAX_ATTACHMENTS || hasPoll}
+                  onClick={() => fileInputRef.current?.click()}
+                  aria-label="Add image"
+                  iconLeft={<PhotoIcon className="size-4" />}
+                />
+              </Tooltip>
 
-            {/* Poll button */}
-            <Button
-              type="button"
-              variant="transparent"
-              size="sm"
-              disabled={
-                hasPoll ||
-                attachmentsCount > 0 ||
-                Boolean(replyToId) ||
-                Boolean(quoteOfId)
-              }
-              onClick={onStartPoll}
-              aria-label="Add poll"
-              iconLeft={<ChartBarIcon className="size-4" />}
-            />
+              {/* Poll button */}
+              <Tooltip label="Add poll">
+                <Button
+                  type="button"
+                  variant="transparent"
+                  size="sm"
+                  disabled={
+                    hasPoll ||
+                    attachmentsCount > 0 ||
+                    Boolean(replyToId) ||
+                    Boolean(quoteOfId)
+                  }
+                  onClick={onStartPoll}
+                  aria-label="Add poll"
+                  iconLeft={<ChartBarIcon className="size-4" />}
+                />
+              </Tooltip>
+            </Tooltip.Group>
 
             {/* Reply restriction */}
             {showReplyControl && (

@@ -1,0 +1,54 @@
+---
+title: Tooltip
+description: A popup label that appears on hover or focus. Built on Base UI Tooltip primitives.
+order: 4
+props:
+  - name: label
+    type: ReactNode
+    description: The content shown inside the tooltip popup.
+  - name: side
+    type: '"top" | "bottom" | "left" | "right"'
+    default: '"top"'
+    description: Side relative to the trigger.
+  - name: align
+    type: '"start" | "center" | "end"'
+    default: '"center"'
+    description: Alignment relative to the trigger.
+  - name: sideOffset
+    type: number
+    default: "6"
+    description: Offset from the trigger in pixels.
+  - name: delay
+    type: number
+    default: "0"
+    description: Delay in ms before the tooltip appears.
+  - name: Tooltip.Group
+    type: compound
+    description: Wraps multiple tooltips so that once one is visible, hovering adjacent triggers opens instantly.
+  - name: delay
+    type: number
+    default: "0"
+    description: Shared delay for all tooltips in the group.
+  - name: closeDelay
+    type: number
+    default: "100"
+    description: Shared close delay for all tooltips in the group. Keeps the tooltip open briefly while the cursor crosses gaps between triggers.
+  - name: timeout
+    type: number
+    default: "400"
+    description: Window in ms after closing where the next tooltip opens instantly.
+---
+
+<ComponentPreview src="tooltip/default" />
+
+## Placement
+
+<ComponentPreview src="tooltip/placement" />
+
+## Tooltip Group
+
+Wrap multiple tooltips in `Tooltip.Group` to enable instant hover between them. Once a tooltip is shown, moving to an adjacent trigger opens its tooltip without delay.
+
+<ComponentPreview src="tooltip/group" />
+
+<PropsTable />

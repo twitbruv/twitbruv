@@ -475,12 +475,9 @@ export function Compose({
             }}
             onPaste={handlePaste}
             placeholder={placeholder}
-            rows={expanded ? 2 : 1}
+            rows={1}
             maxLength={POST_MAX_LEN * 2}
-            className={cn(
-              "w-full resize-none bg-transparent pt-2 text-[15px] leading-relaxed text-primary outline-none placeholder:text-tertiary",
-              !expanded && "h-[24px]"
-            )}
+            className="w-full resize-none bg-transparent pt-2 text-[15px] leading-relaxed text-primary outline-none placeholder:text-tertiary"
           />
 
           {/* Poll */}
