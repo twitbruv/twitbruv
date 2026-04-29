@@ -127,6 +127,12 @@ export const BUCKETS = {
     { windowMs: HOUR, max: 20 },
     { windowMs: DAY, max: 100 },
   ],
+  // Compose URL preview — debounced client-side to one per URL; cap prevents
+  // abuse via rapid URL cycling.
+  'unfurl.preview': [
+    { windowMs: MIN, max: 30 },
+    { windowMs: HOUR, max: 200 },
+  ],
   // Read-side caps. These are loose by design — legitimate users on a hot feed can scroll
   // fast — but they cap the upside for a misbehaving client / scraper / runaway loop. Page-0
   // hits are cached, so the per-minute cap mostly bounds back-end work for cursor-paginated

@@ -28,6 +28,7 @@ import { scheduledPostsRoute } from './routes/scheduled-posts.ts'
 import { listsRoute } from './routes/lists.ts'
 import { githubConnectorRoute } from './routes/connectors/github.ts'
 import { chessRoute } from './routes/chess.ts'
+import { unfurlRoute } from './routes/unfurl.ts'
 import { devRoute } from './routes/dev.ts'
 
 const ctx = await buildContext()
@@ -222,6 +223,7 @@ app.route('/api/scheduled-posts', scheduledPostsRoute)
 app.route('/api/lists', listsRoute)
 app.route('/api/connectors/github', githubConnectorRoute)
 app.route('/api/chess', chessRoute)
+app.route('/api/unfurl', unfurlRoute)
 app.route('/api/dev', devRoute)
 
 app.notFound((c) => c.json({ error: 'not_found' }, 404))

@@ -723,23 +723,71 @@ function AuthorHoverContent({
 
 // ── Text with @mention highlighting ───────────────────
 
+const POST_TEXT_PATTERN = /(#[a-z0-9_]+|@[a-z0-9_]+|https?:\/\/\S+)/gi
+
 function PostText({ text }: { text: string }) {
-  const parts = text.split(/(@\w+)/g)
+  const parts: Array<{
+    type: "text" | "mention" | "hashtag" | "url"
+    value: string
+  }> = []
+  let last = 0
+  for (const match of text.matchAll(POST_TEXT_PATTERN)) {
+    const idx = match.index
+    if (idx > last) parts.push({ type: "text", value: text.slice(last, idx) })
+    const value = match[0]
+    if (value.startsWith("#")) parts.push({ type: "hashtag", value })
+    else if (value.startsWith("@")) parts.push({ type: "mention", value })
+    else parts.push({ type: "url", value })
+    last = idx + value.length
+  }
+  if (last < text.length) parts.push({ type: "text", value: text.slice(last) })
+
   return (
     <>
-      {parts.map((part, i) =>
-        part.startsWith("@") ? (
-          <span
-            key={i}
-            className="font-medium text-primary"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {part}
-          </span>
-        ) : (
-          <span key={i}>{part}</span>
-        )
-      )}
+      {parts.map((part, i) => {
+        if (part.type === "url") {
+          const trimmed = part.value.replace(/[),.;:!?]+$/, "")
+          const trailing = part.value.slice(trimmed.length)
+          return (
+            <span key={i}>
+              <a
+                href={trimmed}
+                target="_blank"
+                rel="noreferrer"
+                data-post-card-ignore-open
+                onClick={(e) => e.stopPropagation()}
+                className="text-blue-500 underline decoration-blue-500/40 underline-offset-2 hover:decoration-blue-500"
+              >
+                {trimmed}
+              </a>
+              {trailing}
+            </span>
+          )
+        }
+        if (part.type === "mention") {
+          return (
+            <span
+              key={i}
+              className="text-blue-500"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {part.value}
+            </span>
+          )
+        }
+        if (part.type === "hashtag") {
+          return (
+            <span
+              key={i}
+              className="text-blue-500"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {part.value}
+            </span>
+          )
+        }
+        return <span key={i}>{part.value}</span>
+      })}
     </>
   )
 }

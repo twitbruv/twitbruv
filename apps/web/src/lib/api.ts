@@ -606,6 +606,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ move }),
     }),
+
+  unfurlPreview: (url: string) =>
+    request<UnfurlPreview>(
+      `/api/unfurl/preview?url=${encodeURIComponent(url)}`
+    ),
 }
 
 export type ReportReason =
@@ -652,6 +657,14 @@ export type UnfurlCard =
   | YoutubeUnfurlCard
   | GenericUnfurlCard
   | XUnfurlCard
+
+export interface UnfurlPreview {
+  url: string
+  title: string
+  description: string | null
+  imageUrl: string | null
+  siteName: string | null
+}
 
 export interface Post {
   id: string

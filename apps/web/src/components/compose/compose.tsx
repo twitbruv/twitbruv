@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import { cn } from "@workspace/ui/lib/utils"
 import { Avatar } from "@workspace/ui/components/avatar"
+import { LinkCard } from "@workspace/ui/components/link-card"
+import { Spinner } from "@workspace/ui/components/spinner"
 import { POST_MAX_LEN } from "@workspace/validators"
 import { api } from "../../lib/api"
 import { setAltText, uploadImage } from "../../lib/media"
@@ -12,6 +14,7 @@ import { ComposePoll } from "./compose-poll"
 import { ComposeAttachments } from "./compose-attachments"
 import { ComposeDropZone } from "./compose-drop-zone"
 import { ComposeActionBar } from "./compose-action-bar"
+import { useLinkPreview } from "./use-link-preview"
 import {
   MAX_ATTACHMENTS,
   createId,
@@ -55,6 +58,8 @@ export function Compose({
   )
   const [isDragging, setIsDragging] = useState(false)
   const showReplyControl = !replyToId
+  const { preview: linkPreview, loading: linkPreviewLoading } =
+    useLinkPreview(text)
 
   useEffect(() => {
     saveDraft(dKey, text)
@@ -531,6 +536,24 @@ export function Compose({
             isDragging={isDragging}
             attachmentCount={attachments.length}
           />
+
+          {/* Link preview */}
+          {linkPreviewLoading && (
+            <div className="mt-2 flex items-center gap-2 text-xs text-tertiary">
+              <Spinner size="xs" />
+              <span>Loading preview…</span>
+            </div>
+          )}
+          {linkPreview && !linkPreviewLoading && (
+            <LinkCard
+              url={linkPreview.url}
+              title={linkPreview.title}
+              description={linkPreview.description}
+              imageUrl={linkPreview.imageUrl}
+              siteName={linkPreview.siteName}
+              className="mt-0"
+            />
+          )}
 
           {/* Quoted post preview */}
           {quoted && (
