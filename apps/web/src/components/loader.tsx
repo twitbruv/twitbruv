@@ -138,28 +138,26 @@ export function Loader({ autoplay = false, className, label }: LoaderProps) {
 
   const getStyle = (id: string): CSSProperties => {
     const phase = ANIMATION_PHASES[id]
-    if (!phase) return {}
-
     const { start, end, originX, originY } = phase
     const rawP = (progress - start) / (end - start)
     const p = Math.max(0, Math.min(1, rawP))
 
     let scale: number
-    let opacity: number
+    let phaseOpacity: number
     if (id.startsWith("c-")) {
       scale = 1 - Math.pow(1 - p, 3)
-      opacity = p > 0 ? Math.min(1, p * 4) : 0
+      phaseOpacity = p > 0 ? Math.min(1, p * 4) : 0
     } else {
       const c1 = 2.5
       const c3 = c1 + 1
       scale = 1 + c3 * Math.pow(p - 1, 3) + c1 * Math.pow(p - 1, 2)
-      opacity = p > 0 ? 1 : 0
+      phaseOpacity = p > 0 ? 1 : 0
     }
 
     return {
       transformOrigin: `${originX}px ${originY}px`,
       transform: `scale(${scale})`,
-      opacity,
+      opacity: phaseOpacity,
       willChange: "transform, opacity",
     }
   }

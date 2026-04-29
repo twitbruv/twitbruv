@@ -33,7 +33,12 @@ import { Compose } from "./compose"
 import { PollBlock } from "./poll-block"
 import { PostMenu } from "./post-menu"
 import { VerifiedBadge } from "./verified-badge"
-import type { ArticleUnfurlCard, Post, PostEdit, PostArticleCard } from "../lib/api"
+import type {
+  ArticleUnfurlCard,
+  Post,
+  PostArticleCard,
+  PostEdit,
+} from "../lib/api"
 
 function relativeTime(iso: string): string {
   const d = new Date(iso).getTime()
@@ -86,11 +91,7 @@ function postCardArticle(cards: Post["cards"]): ArticleUnfurlCard | undefined {
   return cards?.find((c): c is ArticleUnfurlCard => c.provider === "article")
 }
 
-export function ArticleCardBlock({
-  card,
-}: {
-  card: PostArticleCard
-}) {
+export function ArticleCardBlock({ card }: { card: PostArticleCard }) {
   if (!card.authorHandle) {
     return (
       <div className="mt-2 rounded-md border border-neutral p-3 text-sm">
@@ -647,7 +648,7 @@ export function PostCard({
                   card={card}
                   post={post}
                 />
-              ),
+              )
             )}
           {post.media && post.media.length > 0 && (
             <MediaGrid media={post.media} />

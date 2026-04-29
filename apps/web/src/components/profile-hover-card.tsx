@@ -41,7 +41,7 @@ function ProfileCardInner({ handle }: { handle: string }) {
   if (isPending) {
     return (
       <div className="flex items-center justify-center p-6">
-        <div className="size-5 animate-spin rounded-full border-2 border-neutral border-t-primary" />
+        <div className="border-t-primary size-5 animate-spin rounded-full border-2 border-neutral" />
       </div>
     )
   }
@@ -65,10 +65,7 @@ function ProfileCardInner({ handle }: { handle: string }) {
           />
         </Link>
         {!isSelf && profile.viewer && (
-          <FollowButton
-            handle={handle}
-            following={profile.viewer.following}
-          />
+          <FollowButton handle={handle} following={profile.viewer.following} />
         )}
       </div>
 
@@ -149,6 +146,7 @@ function FollowButton({
 
 function formatCount(n: number): string {
   if (n < 1000) return String(n)
-  if (n < 1_000_000) return `${(n / 1000).toFixed(n < 10_000 ? 1 : 0).replace(/\.0$/, "")}K`
+  if (n < 1_000_000)
+    return `${(n / 1000).toFixed(n < 10_000 ? 1 : 0).replace(/\.0$/, "")}K`
   return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`
 }

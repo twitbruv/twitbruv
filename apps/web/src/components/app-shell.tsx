@@ -26,24 +26,24 @@ export function AppShell({ children }: { children: ReactNode }) {
     <ComposeProvider>
       <LightboxProvider>
         <YouTubePlayerProvider>
-        {authed && <ChessChallengePoller enabled />}
+          {authed && <ChessChallengePoller enabled />}
 
-        {/* Fixed sidebar - never scrolls, always visible at left edge of centered layout */}
-        <div
-          className="fixed top-0 z-40 h-svh w-[68px] xl:w-[240px]"
-          style={{ left: "max(0px, calc((100vw - 1080px) / 2))" }}
-        >
-          <SidebarWithCompose />
-        </div>
+          {/* Fixed sidebar - never scrolls, always visible at left edge of centered layout */}
+          <div
+            className="fixed top-0 z-40 h-svh w-[68px] xl:w-[240px]"
+            style={{ left: "max(0px, calc((100vw - 1080px) / 2))" }}
+          >
+            <SidebarWithCompose />
+          </div>
 
-        {/* Main content - scrolls with body, scrollbar hugs right edge of viewport */}
-        <div className="mx-auto flex min-h-svh max-w-[1080px]">
-          {/* Spacer matching sidebar width so content isn't hidden behind it */}
-          <div className="w-[68px] shrink-0 xl:w-[240px]" />
-          <main className="flex min-h-svh flex-1 flex-col">{children}</main>
-          {/* Right gutter */}
-          <div className="hidden w-[68px] shrink-0 lg:block xl:w-[240px]" />
-        </div>
+          {/* Main content - scrolls with body, scrollbar hugs right edge of viewport */}
+          <div className="mx-auto flex min-h-svh max-w-[1080px]">
+            {/* Spacer matching sidebar width so content isn't hidden behind it */}
+            <div className="w-[68px] shrink-0 xl:w-[240px]" />
+            <main className="flex min-h-svh flex-1 flex-col">{children}</main>
+            {/* Right gutter */}
+            <div className="hidden w-[68px] shrink-0 lg:block xl:w-[240px]" />
+          </div>
         </YouTubePlayerProvider>
       </LightboxProvider>
     </ComposeProvider>

@@ -1,11 +1,11 @@
 import { useNavigate } from "@tanstack/react-router"
 import { PostCard } from "@workspace/ui/components/post-card"
-import type { AuthorProfile } from "@workspace/ui/components/post-card"
 import {
   useTogglePostBookmark,
   useTogglePostLike,
   useTogglePostRepost,
 } from "../lib/mutations/posts"
+import { api } from "../lib/api"
 import { useLightbox } from "./lightbox-provider"
 import { useCompose } from "./compose-provider"
 import { LightboxSidebar } from "./lightbox-sidebar"
@@ -14,10 +14,10 @@ import { GithubCardBlock } from "./github-card"
 import { YoutubeCardBlock } from "./youtube-card"
 import { ArticleCardBlock } from "./post-card"
 import type {
+  AuthorProfile,
   PostQuoteOf,
   PostMedia as UIPostMedia,
 } from "@workspace/ui/components/post-card"
-import { api } from "../lib/api"
 import type { Post, PostMedia, UnfurlCard } from "../lib/api"
 
 function unfurlCardKey(card: UnfurlCard, i: number): string {
@@ -30,13 +30,7 @@ function unfurlCardKey(card: UnfurlCard, i: number): string {
   return `${base}-${i}`
 }
 
-function UnfurlBelow({
-  card,
-  post,
-}: {
-  card: UnfurlCard
-  post: Post
-}) {
+function UnfurlBelow({ card, post }: { card: UnfurlCard; post: Post }) {
   if (card.provider === "article") {
     return <ArticleCardBlock card={card} />
   }
@@ -192,7 +186,11 @@ export function FeedPostCard({
         <>
           <MacfolioCardFromText text={post.text} />
           {post.cards?.map((card, i) => (
-            <UnfurlBelow key={unfurlCardKey(card, i)} card={card} post={outerPost} />
+            <UnfurlBelow
+              key={unfurlCardKey(card, i)}
+              card={card}
+              post={outerPost}
+            />
           ))}
         </>
       }

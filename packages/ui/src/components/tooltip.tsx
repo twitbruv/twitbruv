@@ -1,6 +1,6 @@
 import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip"
-import { cn } from "@workspace/ui/lib/utils"
 import { createContext, useContext, useMemo } from "react"
+import { cn } from "@workspace/ui/lib/utils"
 import type { ReactNode } from "react"
 
 // ---------------------------------------------------------------------------
@@ -117,10 +117,7 @@ function TooltipGroup({
   sideOffset = 6,
   children,
 }: TooltipGroupProps) {
-  const handle = useMemo(
-    () => TooltipPrimitive.createHandle<ReactNode>(),
-    []
-  )
+  const handle = useMemo(() => TooltipPrimitive.createHandle<ReactNode>(), [])
 
   return (
     <TooltipPrimitive.Provider
@@ -128,9 +125,7 @@ function TooltipGroup({
       closeDelay={closeDelay}
       timeout={timeout}
     >
-      <GroupCtx.Provider value={{ handle }}>
-        {children}
-      </GroupCtx.Provider>
+      <GroupCtx.Provider value={{ handle }}>{children}</GroupCtx.Provider>
 
       <TooltipPrimitive.Root handle={handle}>
         {({ payload }) => (

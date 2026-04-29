@@ -6,14 +6,13 @@ import type { ComponentProps, ReactNode } from "react"
 // PreviewCard.Root
 // ---------------------------------------------------------------------------
 
-export interface PreviewCardRootProps
-  extends ComponentProps<typeof PreviewCardPrimitive.Root> {}
+export interface PreviewCardRootProps extends ComponentProps<
+  typeof PreviewCardPrimitive.Root
+> {}
 
 function PreviewCardRoot({ children, ...props }: PreviewCardRootProps) {
   return (
-    <PreviewCardPrimitive.Root {...props}>
-      {children}
-    </PreviewCardPrimitive.Root>
+    <PreviewCardPrimitive.Root {...props}>{children}</PreviewCardPrimitive.Root>
   )
 }
 
@@ -21,8 +20,9 @@ function PreviewCardRoot({ children, ...props }: PreviewCardRootProps) {
 // PreviewCard.Trigger
 // ---------------------------------------------------------------------------
 
-export interface PreviewCardTriggerProps
-  extends ComponentProps<typeof PreviewCardPrimitive.Trigger> {
+export interface PreviewCardTriggerProps extends ComponentProps<
+  typeof PreviewCardPrimitive.Trigger
+> {
   /** Delay in ms before the card appears on hover. Default 600. */
   delay?: number
   /** Delay in ms before the card closes after leaving. Default 300. */
@@ -80,8 +80,8 @@ function PreviewCardContent({
             "w-72 rounded-xl border border-neutral bg-base-1 shadow-lg",
             "origin-(--transform-origin)",
             "transition-[transform,scale,opacity,translate] duration-[250ms] ease-[cubic-bezier(0.22,1,0.36,1)]",
-            "data-starting-style:scale-[0.97] data-starting-style:opacity-0 data-starting-style:translate-y-0.5",
-            "data-ending-style:scale-[0.97] data-ending-style:opacity-0 data-ending-style:translate-y-0.5",
+            "data-starting-style:translate-y-0.5 data-starting-style:scale-[0.97] data-starting-style:opacity-0",
+            "data-ending-style:translate-y-0.5 data-ending-style:scale-[0.97] data-ending-style:opacity-0",
             className
           )}
         >

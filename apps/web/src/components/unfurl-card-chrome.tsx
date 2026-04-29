@@ -19,10 +19,7 @@ export function UnfurlCardChrome({
       rel="noreferrer"
       data-post-card-ignore-open
       onClick={(e) => e.stopPropagation()}
-      className={cn(
-        unfurlCardChromeClasses,
-        className,
-      )}
+      className={cn(unfurlCardChromeClasses, className)}
     >
       {children}
     </a>

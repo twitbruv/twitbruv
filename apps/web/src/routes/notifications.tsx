@@ -484,9 +484,10 @@ function TargetCard({ post }: { post: Post }) {
             <p className="wrap-break-words line-clamp-4 text-sm leading-relaxed whitespace-pre-wrap">
               {post.text}
             </p>
-          ) : (() => {
+          ) : (
+            (() => {
               const article = post.cards?.find(
-                (c): c is ArticleUnfurlCard => c.provider === "article",
+                (c): c is ArticleUnfurlCard => c.provider === "article"
               )
               if (article) {
                 return (
@@ -501,8 +502,11 @@ function TargetCard({ post }: { post: Post }) {
                   </p>
                 )
               }
-              return <p className="text-sm text-tertiary italic">[media post]</p>
-            })()}
+              return (
+                <p className="text-sm text-tertiary italic">[media post]</p>
+              )
+            })()
+          )}
         </div>
         {variant && (
           <div className="size-16 shrink-0 overflow-hidden rounded">

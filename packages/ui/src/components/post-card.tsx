@@ -127,14 +127,18 @@ export function PostCard({
   const showLineBottom = threadLine === "bottom" || threadLine === "both"
 
   // Author profile for hover card (either passed directly or fetched lazily)
-  const [fetchedProfile, setFetchedProfile] = useState<AuthorProfile | null>(null)
+  const [fetchedProfile, setFetchedProfile] = useState<AuthorProfile | null>(
+    null
+  )
   const authorProfile = authorProfileProp ?? fetchedProfile
   const hasHoverCard = Boolean(authorProfile || onFetchAuthorProfile)
 
   const handleHoverCardOpen = useCallback(
     (open: boolean) => {
       if (open && !authorProfile && onFetchAuthorProfile) {
-        onFetchAuthorProfile().then(setFetchedProfile).catch(() => {})
+        onFetchAuthorProfile()
+          .then(setFetchedProfile)
+          .catch(() => {})
       }
     },
     [authorProfile, onFetchAuthorProfile]
@@ -197,7 +201,10 @@ export function PostCard({
               <PreviewCard.Root onOpenChange={handleHoverCardOpen}>
                 <PreviewCard.Trigger
                   render={<div />}
-                  className={cn("outline-none", onAuthorClick && "cursor-pointer")}
+                  className={cn(
+                    "outline-none",
+                    onAuthorClick && "cursor-pointer"
+                  )}
                   onClick={(e) => {
                     e.stopPropagation()
                     onAuthorClick?.()
@@ -209,12 +216,20 @@ export function PostCard({
                     size="lg"
                   />
                 </PreviewCard.Trigger>
-                <PreviewCard.Content side="bottom" align="center" sideOffset={8}>
+                <PreviewCard.Content
+                  side="bottom"
+                  align="center"
+                  sideOffset={8}
+                >
                   {authorProfile ? (
-                    <AuthorHoverContent author={author} profile={authorProfile} onAuthorClick={onAuthorClick} />
+                    <AuthorHoverContent
+                      author={author}
+                      profile={authorProfile}
+                      onAuthorClick={onAuthorClick}
+                    />
                   ) : (
                     <div className="flex items-center justify-center p-6">
-                      <div className="size-5 animate-spin rounded-full border-2 border-neutral border-t-primary" />
+                      <div className="border-t-primary size-5 animate-spin rounded-full border-2 border-neutral" />
                     </div>
                   )}
                 </PreviewCard.Content>
@@ -256,7 +271,10 @@ export function PostCard({
                 <PreviewCard.Root onOpenChange={handleHoverCardOpen}>
                   <PreviewCard.Trigger
                     render={<span />}
-                    className={cn("truncate font-semibold text-primary outline-none", onAuthorClick && "cursor-pointer hover:underline")}
+                    className={cn(
+                      "truncate font-semibold text-primary outline-none",
+                      onAuthorClick && "cursor-pointer hover:underline"
+                    )}
                     onClick={(e) => {
                       e.stopPropagation()
                       onAuthorClick?.()
@@ -264,19 +282,30 @@ export function PostCard({
                   >
                     {author.displayName}
                   </PreviewCard.Trigger>
-                  <PreviewCard.Content side="bottom" align="center" sideOffset={8}>
+                  <PreviewCard.Content
+                    side="bottom"
+                    align="center"
+                    sideOffset={8}
+                  >
                     {authorProfile ? (
-                      <AuthorHoverContent author={author} profile={authorProfile} onAuthorClick={onAuthorClick} />
+                      <AuthorHoverContent
+                        author={author}
+                        profile={authorProfile}
+                        onAuthorClick={onAuthorClick}
+                      />
                     ) : (
                       <div className="flex items-center justify-center p-6">
-                        <div className="size-5 animate-spin rounded-full border-2 border-neutral border-t-primary" />
+                        <div className="border-t-primary size-5 animate-spin rounded-full border-2 border-neutral" />
                       </div>
                     )}
                   </PreviewCard.Content>
                 </PreviewCard.Root>
               ) : (
                 <span
-                  className={cn("truncate font-semibold text-primary", onAuthorClick && "cursor-pointer hover:underline")}
+                  className={cn(
+                    "truncate font-semibold text-primary",
+                    onAuthorClick && "cursor-pointer hover:underline"
+                  )}
                   onClick={(e) => {
                     e.stopPropagation()
                     onAuthorClick?.()

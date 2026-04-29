@@ -5,9 +5,8 @@ import {
   PencilSquareIcon,
 } from "@heroicons/react/24/outline"
 import { cn } from "@workspace/ui/lib/utils"
-import type { GithubCard } from "@workspace/github-unfurl/card"
-
 import { UnfurlCardChrome } from "./unfurl-card-chrome"
+import type { GithubCard } from "@workspace/github-unfurl/card"
 
 interface Props {
   card: GithubCard

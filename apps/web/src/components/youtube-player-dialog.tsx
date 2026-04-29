@@ -4,12 +4,12 @@ import {
   useContext,
   useMemo,
   useState,
-  type ReactNode,
 } from "react"
 import { XMarkIcon } from "@heroicons/react/24/outline"
 import { Dialog, DialogContent } from "@workspace/ui/components/dialog"
 import { cn } from "@workspace/ui/lib/utils"
 import { LightboxSidebar } from "./lightbox-sidebar"
+import type { ReactNode } from "react"
 import type { Post } from "../lib/api"
 
 type PlayerOpenState =
@@ -26,11 +26,15 @@ type PlayerOpenState =
     }
 
 type YouTubePlayerContextValue = {
-  openYoutube: (opts: Omit<Extract<PlayerOpenState, { open: true }>, "open">) => void
+  openYoutube: (
+    opts: Omit<Extract<PlayerOpenState, { open: true }>, "open">
+  ) => void
   close: () => void
 }
 
-const YouTubePlayerContext = createContext<YouTubePlayerContextValue | null>(null)
+const YouTubePlayerContext = createContext<YouTubePlayerContextValue | null>(
+  null
+)
 
 export function useYouTubePlayer() {
   const v = useContext(YouTubePlayerContext)
@@ -45,15 +49,12 @@ export function YouTubePlayerProvider({ children }: { children: ReactNode }) {
     (opts: Omit<Extract<PlayerOpenState, { open: true }>, "open">) => {
       setState({ open: true, ...opts })
     },
-    [],
+    []
   )
 
   const close = useCallback(() => setState({ open: false }), [])
 
-  const value = useMemo(
-    () => ({ openYoutube, close }),
-    [openYoutube, close],
-  )
+  const value = useMemo(() => ({ openYoutube, close }), [openYoutube, close])
 
   return (
     <YouTubePlayerContext.Provider value={value}>
@@ -68,7 +69,7 @@ function embedSrc(state: Extract<PlayerOpenState, { open: true }>): string {
   p.set("autoplay", "1")
   p.set("rel", "0")
   p.set("modestbranding", "1")
-  if (typeof window !== "undefined" && window.location?.origin) {
+  if (typeof window !== "undefined" && window.location.origin) {
     p.set("origin", window.location.origin)
   }
   if (state.startSec != null && state.startSec > 0) {
@@ -98,7 +99,9 @@ function YouTubePlayerDialog({
           <>
             <div className="flex items-center justify-between border-b border-neutral px-3 py-2">
               <div className="flex items-center gap-3">
-                <span className="text-sm font-medium text-primary">YouTube</span>
+                <span className="text-sm font-medium text-primary">
+                  YouTube
+                </span>
                 <a
                   href={state.watchUrl}
                   target="_blank"
@@ -121,7 +124,9 @@ function YouTubePlayerDialog({
               <div
                 className={cn(
                   "relative w-full shrink-0 bg-black md:w-[min(100%,720px)]",
-                  state.isShort ? "aspect-[9/16] max-h-[72vh] md:max-h-none" : "aspect-video",
+                  state.isShort
+                    ? "aspect-[9/16] max-h-[72vh] md:max-h-none"
+                    : "aspect-video"
                 )}
               >
                 {state.embeddable ? (
