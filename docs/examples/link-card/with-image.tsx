@@ -1,11 +1,13 @@
 export default function LinkCardWithImage() {
 	return (
-		<div className="max-w-[560px] overflow-hidden rounded-lg border border-neutral bg-base-1">
+		<div className="w-full max-w-[560px] overflow-hidden rounded-lg border border-neutral bg-base-1">
 			<div className="relative aspect-[1200/630] overflow-hidden bg-base-2">
 				<img
 					src="https://www.mahlke.design/og-image.png"
 					alt=""
 					className="absolute inset-0 h-full w-full object-cover"
+					loading="eager"
+					referrerPolicy="no-referrer"
 				/>
 			</div>
 			<div className="space-y-2 p-3">

@@ -1,6 +1,6 @@
 export default function LinkCardNoImage() {
 	return (
-		<div className="max-w-[560px] overflow-hidden rounded-lg border border-neutral bg-base-1">
+		<div className="w-full max-w-[560px] overflow-hidden rounded-lg border border-neutral bg-base-1">
 			<div className="space-y-2 p-3">
 				<div className="flex gap-3">
 					<span className="mt-0.5 flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-md bg-subtle ring-1 ring-neutral">
