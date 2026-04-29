@@ -3,7 +3,7 @@ export default function LinkCardWithImage() {
 		<div className="max-w-[560px] overflow-hidden rounded-lg border border-neutral bg-base-1">
 			<div className="relative aspect-[1200/630] overflow-hidden bg-base-2">
 				<img
-					src="https://mahlke.design/og-image.png"
+					src="https://www.mahlke.design/og-image.png"
 					alt=""
 					className="absolute inset-0 h-full w-full object-cover"
 				/>
@@ -24,10 +24,10 @@ export default function LinkCardWithImage() {
 							mahlke.design
 						</div>
 						<h3 className="text-[15px] leading-snug font-semibold tracking-tight text-primary">
-							Aaron Mahlke — Design Engineer
+							Aaron Mahlke – Design & Engineering
 						</h3>
 						<p className="line-clamp-3 text-[13px] leading-relaxed text-tertiary">
-							Design engineer crafting thoughtful digital experiences.
+							I craft the surface – the part people see, hear, and interact with.
 						</p>
 					</div>
 				</div>
