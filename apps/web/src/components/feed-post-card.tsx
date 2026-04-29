@@ -1,5 +1,6 @@
 import { useNavigate } from "@tanstack/react-router"
 import { PostCard } from "@workspace/ui/components/post-card"
+import type { AuthorProfile } from "@workspace/ui/components/post-card"
 import {
   useTogglePostBookmark,
   useTogglePostLike,
@@ -16,6 +17,7 @@ import type {
   PostQuoteOf,
   PostMedia as UIPostMedia,
 } from "@workspace/ui/components/post-card"
+import { api } from "../lib/api"
 import type { Post, PostMedia, UnfurlCard } from "../lib/api"
 
 function unfurlCardKey(card: UnfurlCard, i: number): string {
@@ -210,6 +212,30 @@ export function FeedPostCard({
           params: { handle: authorHandle, id: post.id },
         })
       }
+      onAuthorClick={() =>
+        navigate({
+          to: "/$handle",
+          params: { handle: authorHandle },
+        })
+      }
+      onFetchAuthorProfile={async (): Promise<AuthorProfile> => {
+        const { user } = await api.user(authorHandle)
+        return {
+          bio: user.bio,
+          followers: user.counts.followers,
+          following: user.counts.following,
+          isFollowing: user.viewer?.following,
+          onFollowToggle: user.viewer
+            ? async (follow: boolean) => {
+                if (follow) {
+                  await api.follow(authorHandle)
+                } else {
+                  await api.unfollow(authorHandle)
+                }
+              }
+            : undefined,
+        }
+      }}
     />
   )
 }

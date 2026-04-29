@@ -1,0 +1,57 @@
+---
+title: Preview Card
+description: A popup that appears when an element is hovered, showing a preview. Built on Base UI PreviewCard primitives.
+order: 5
+props:
+  - name: PreviewCard.Root
+    type: compound
+    description: Manages open/close state on hover.
+  - name: open
+    type: boolean
+    description: Controlled open state.
+  - name: onOpenChange
+    type: "(open: boolean) => void"
+    description: Called when the card opens or closes.
+  - name: PreviewCard.Trigger
+    type: compound
+    description: The element that activates the card on hover. Renders an anchor by default — use the render prop to change the element.
+  - name: delay
+    type: number
+    default: "600"
+    description: Delay in ms before the card appears.
+  - name: closeDelay
+    type: number
+    default: "300"
+    description: Delay in ms before the card closes after leaving.
+  - name: PreviewCard.Content
+    type: compound
+    description: The popup panel rendered in a portal.
+  - name: side
+    type: '"top" | "bottom" | "left" | "right"'
+    default: '"bottom"'
+    description: Side relative to the trigger.
+  - name: align
+    type: '"start" | "center" | "end"'
+    default: '"start"'
+    description: Alignment relative to the trigger.
+  - name: sideOffset
+    type: number
+    default: "8"
+    description: Offset from the trigger in pixels.
+---
+
+<ComponentPreview src="preview-card/default" />
+
+## Placement
+
+Use the `side` prop on `PreviewCard.Content` to control which side of the trigger the card appears on.
+
+<ComponentPreview src="preview-card/placement" />
+
+## Alignment
+
+Use the `align` prop to control how the card aligns relative to the trigger edge.
+
+<ComponentPreview src="preview-card/alignment" />
+
+<PropsTable />

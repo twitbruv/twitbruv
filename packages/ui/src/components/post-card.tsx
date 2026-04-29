@@ -17,8 +17,20 @@ import { Avatar } from "@workspace/ui/components/avatar"
 import { Button } from "@workspace/ui/components/button"
 import { DropdownMenu } from "@workspace/ui/components/dropdown-menu"
 import { Hover } from "@workspace/ui/components/hover"
+import { PreviewCard } from "@workspace/ui/components/preview-card"
 import { AnimatedNumber } from "@workspace/ui/components/animated-number"
 import type { ReactNode } from "react"
+
+/** Extra profile data for the author hover card */
+export interface AuthorProfile {
+  bio: string | null
+  followers: number
+  following: number
+  /** Whether the current user follows this author. Undefined if not signed in or viewing own profile. */
+  isFollowing?: boolean
+  /** Called when the follow/unfollow button is clicked. Receives the desired follow state (true = follow, false = unfollow). */
+  onFollowToggle?: (follow: boolean) => Promise<void>
+}
 
 export type PostMedia =
   | { type: "image"; url: string; alt?: string }
@@ -74,6 +86,12 @@ export interface PostCardProps {
   onMediaClick?: (index: number) => void
   /** Rich embeds below the post body (e.g. link unfurls) — rendered before media */
   belowText?: ReactNode
+  /** Extra profile data to show an author hover card. When provided, avatar and name become hoverable. */
+  authorProfile?: AuthorProfile
+  /** Fetch profile data lazily — called when hover card opens. Return profile data to populate the card. */
+  onFetchAuthorProfile?: () => Promise<AuthorProfile>
+  /** Called when the author avatar or name is clicked */
+  onAuthorClick?: () => void
 }
 
 export function PostCard({
@@ -101,9 +119,26 @@ export function PostCard({
   onMediaClick,
   belowText,
   disableHover = false,
+  authorProfile: authorProfileProp,
+  onFetchAuthorProfile,
+  onAuthorClick,
 }: PostCardProps) {
   const showLineTop = threadLine === "top" || threadLine === "both"
   const showLineBottom = threadLine === "bottom" || threadLine === "both"
+
+  // Author profile for hover card (either passed directly or fetched lazily)
+  const [fetchedProfile, setFetchedProfile] = useState<AuthorProfile | null>(null)
+  const authorProfile = authorProfileProp ?? fetchedProfile
+  const hasHoverCard = Boolean(authorProfile || onFetchAuthorProfile)
+
+  const handleHoverCardOpen = useCallback(
+    (open: boolean) => {
+      if (open && !authorProfile && onFetchAuthorProfile) {
+        onFetchAuthorProfile().then(setFetchedProfile).catch(() => {})
+      }
+    },
+    [authorProfile, onFetchAuthorProfile]
+  )
 
   // Heart burst animation state
   const [heartBurst, setHeartBurst] = useState(false)
@@ -158,11 +193,47 @@ export function PostCard({
                 style={{ top: "-12px", height: "8px" }}
               />
             )}
-            <Avatar
-              initial={author.displayName[0] ?? "?"}
-              src={author.avatarUrl}
-              size="lg"
-            />
+            {hasHoverCard ? (
+              <PreviewCard.Root onOpenChange={handleHoverCardOpen}>
+                <PreviewCard.Trigger
+                  render={<div />}
+                  className={cn("outline-none", onAuthorClick && "cursor-pointer")}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onAuthorClick?.()
+                  }}
+                >
+                  <Avatar
+                    initial={author.displayName[0] ?? "?"}
+                    src={author.avatarUrl}
+                    size="lg"
+                  />
+                </PreviewCard.Trigger>
+                <PreviewCard.Content side="bottom" align="center" sideOffset={8}>
+                  {authorProfile ? (
+                    <AuthorHoverContent author={author} profile={authorProfile} onAuthorClick={onAuthorClick} />
+                  ) : (
+                    <div className="flex items-center justify-center p-6">
+                      <div className="size-5 animate-spin rounded-full border-2 border-neutral border-t-primary" />
+                    </div>
+                  )}
+                </PreviewCard.Content>
+              </PreviewCard.Root>
+            ) : (
+              <div
+                className={cn(onAuthorClick && "cursor-pointer")}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onAuthorClick?.()
+                }}
+              >
+                <Avatar
+                  initial={author.displayName[0] ?? "?"}
+                  src={author.avatarUrl}
+                  size="lg"
+                />
+              </div>
+            )}
             {showLineBottom && (
               <div className="mt-1 mb-[-12px] w-px flex-1 bg-[var(--border-color-neutral)]" />
             )}
@@ -181,9 +252,39 @@ export function PostCard({
 
             {/* Header: name, handle, time */}
             <div className="flex items-baseline gap-1.5 pr-8 text-sm">
-              <span className="truncate font-semibold text-primary">
-                {author.displayName}
-              </span>
+              {hasHoverCard ? (
+                <PreviewCard.Root onOpenChange={handleHoverCardOpen}>
+                  <PreviewCard.Trigger
+                    render={<span />}
+                    className={cn("truncate font-semibold text-primary outline-none", onAuthorClick && "cursor-pointer hover:underline")}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onAuthorClick?.()
+                    }}
+                  >
+                    {author.displayName}
+                  </PreviewCard.Trigger>
+                  <PreviewCard.Content side="bottom" align="center" sideOffset={8}>
+                    {authorProfile ? (
+                      <AuthorHoverContent author={author} profile={authorProfile} onAuthorClick={onAuthorClick} />
+                    ) : (
+                      <div className="flex items-center justify-center p-6">
+                        <div className="size-5 animate-spin rounded-full border-2 border-neutral border-t-primary" />
+                      </div>
+                    )}
+                  </PreviewCard.Content>
+                </PreviewCard.Root>
+              ) : (
+                <span
+                  className={cn("truncate font-semibold text-primary", onAuthorClick && "cursor-pointer hover:underline")}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onAuthorClick?.()
+                  }}
+                >
+                  {author.displayName}
+                </span>
+              )}
               <span className="truncate text-tertiary">@{author.handle}</span>
               <span className="text-tertiary">&middot;</span>
               <span className="shrink-0 text-tertiary">{time}</span>
@@ -481,6 +582,111 @@ function QuoteEmbed({ quote }: { quote: PostQuoteOf }) {
             />
           </div>
         )}
+      </div>
+    </div>
+  )
+}
+
+// ── Author hover card content ─────────────────────────
+
+function compactCount(n: number): string {
+  if (n < 1000) return String(n)
+  if (n < 1_000_000)
+    return `${(n / 1000).toFixed(n < 10_000 ? 1 : 0).replace(/\.0$/, "")}K`
+  return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`
+}
+
+function AuthorHoverContent({
+  author,
+  profile,
+  onAuthorClick,
+}: {
+  author: PostCardProps["author"]
+  profile: AuthorProfile
+  onAuthorClick?: () => void
+}) {
+  const [isFollowing, setIsFollowing] = useState(profile.isFollowing)
+  const [followerCount, setFollowerCount] = useState(profile.followers)
+  const [busy, setBusy] = useState(false)
+  const busyRef = useRef(false)
+
+  return (
+    <div className="flex flex-col gap-3 p-4">
+      <div className="flex items-start justify-between">
+        <div
+          className={cn(onAuthorClick && "cursor-pointer")}
+          onClick={(e) => {
+            e.stopPropagation()
+            onAuthorClick?.()
+          }}
+        >
+          <Avatar
+            initial={author.displayName[0] ?? "?"}
+            src={author.avatarUrl}
+            size="xl"
+          />
+        </div>
+        {isFollowing !== undefined && profile.onFollowToggle && (
+          <Button
+            size="sm"
+            variant={isFollowing ? "outline" : "primary"}
+            disabled={busy}
+            onClick={async (e) => {
+              e.stopPropagation()
+              if (busyRef.current) return
+              busyRef.current = true
+              setBusy(true)
+              const next = !isFollowing
+              setIsFollowing(next)
+              setFollowerCount((c) => c + (next ? 1 : -1))
+              try {
+                await profile.onFollowToggle?.(next)
+              } catch {
+                setIsFollowing(!next)
+                setFollowerCount((c) => c + (next ? -1 : 1))
+              } finally {
+                busyRef.current = false
+                setBusy(false)
+              }
+            }}
+          >
+            {isFollowing ? "Following" : "Follow"}
+          </Button>
+        )}
+      </div>
+      <div className="min-w-0">
+        <span
+          className={cn(
+            "flex items-center gap-1 text-sm font-semibold text-primary",
+            onAuthorClick && "cursor-pointer hover:underline"
+          )}
+          onClick={(e) => {
+            e.stopPropagation()
+            onAuthorClick?.()
+          }}
+        >
+          {author.displayName}
+        </span>
+        <span className="text-xs text-tertiary">@{author.handle}</span>
+      </div>
+      {profile.bio && (
+        <p className="line-clamp-3 text-sm leading-relaxed text-primary">
+          {profile.bio}
+        </p>
+      )}
+      <div className="flex gap-3 text-xs">
+        <span>
+          <span className="font-semibold text-primary">
+            {compactCount(profile.following)}
+          </span>{" "}
+          <span className="text-tertiary">Following</span>
+        </span>
+        <span>
+          <span className="font-semibold text-primary">
+            {compactCount(followerCount)}
+          </span>{" "}
+          <span className="text-tertiary">Followers</span>
+        </span>
       </div>
     </div>
   )
