@@ -64,7 +64,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         }}
       >
         <DialogContent
-          showCloseButton
+          showCloseButton={false}
           className="flex h-[min(720px,calc(100dvh-2rem))] w-full max-w-[calc(100vw-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl"
         >
           <DialogTitle className="sr-only">Settings</DialogTitle>

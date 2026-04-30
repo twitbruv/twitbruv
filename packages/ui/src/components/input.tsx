@@ -3,19 +3,20 @@ import { cn } from "@workspace/ui/lib/utils"
 import type { ComponentProps, ReactNode } from "react"
 
 const inputStyles = [
-  "rounded-md border border-neutral bg-base-2 px-3 py-1.5 text-sm text-primary",
+  "h-9 rounded-md bg-base-2 px-2.5 text-sm text-primary shadow-[var(--shadow-field)]",
   "outline-none",
   "placeholder:text-tertiary",
-  "ring-neutral ring-0 transition-[box-shadow,color,border-color] duration-150 ease-out",
-  "focus:ring-2 focus:border-neutral-strong",
+  "transition-[box-shadow,color,border-color,background-color] duration-150 ease-out-expo",
+  "focus-visible:border-neutral-strong focus-visible:ring-2 focus-visible:ring-focus/30",
+  "aria-invalid:border-danger aria-invalid:ring-2 aria-invalid:ring-danger/30",
   "motion-reduce:transition-none",
   "disabled:cursor-not-allowed disabled:opacity-50",
 ]
 
 const wrapperStyles = [
-  "rounded-md border border-neutral bg-base-2 py-1.5 text-sm",
-  "ring-neutral ring-0 transition-[box-shadow,color,border-color] duration-150 ease-out",
-  "has-[:focus]:ring-2 has-[:focus]:border-neutral-strong",
+  "h-8 rounded-md border border-neutral bg-base-2 text-sm shadow-xs",
+  "transition-[box-shadow,color,border-color,background-color] duration-150 ease-out-expo",
+  "has-[:focus-visible]:border-neutral-strong has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus/30",
   "motion-reduce:transition-none",
   "has-[*[disabled]]:cursor-not-allowed has-[*[disabled]]:opacity-50",
 ]
@@ -51,19 +52,19 @@ export function Input({
       )}
     >
       {iconLeft && (
-        <span className="flex size-5 shrink-0 items-center justify-center text-tertiary [&>svg]:size-4">
+        <span className="flex size-5 shrink-0 items-center justify-center text-secondary [&>svg]:size-4">
           {iconLeft}
         </span>
       )}
       <input
         className={cn(
-          "h-full min-w-0 flex-1 bg-transparent text-sm text-primary outline-none placeholder:text-tertiary",
+          "h-full min-w-0 flex-1 bg-transparent text-sm text-primary outline-none placeholder:text-tertiary disabled:cursor-not-allowed",
           className
         )}
         {...props}
       />
       {iconRight && (
-        <span className="flex size-5 shrink-0 items-center justify-center text-tertiary [&>svg]:size-4">
+        <span className="flex size-5 shrink-0 items-center justify-center text-secondary [&>svg]:size-4">
           {iconRight}
         </span>
       )}
@@ -105,19 +106,19 @@ export function FormInput({
       )}
     >
       {iconLeft && (
-        <span className="flex size-5 shrink-0 items-center justify-center text-tertiary [&>svg]:size-4">
+        <span className="flex size-5 shrink-0 items-center justify-center text-secondary [&>svg]:size-4">
           {iconLeft}
         </span>
       )}
       <Field.Control
         className={cn(
-          "h-full min-w-0 flex-1 bg-transparent text-sm text-primary outline-none placeholder:text-tertiary",
+          "h-full min-w-0 flex-1 bg-transparent text-sm text-primary outline-none placeholder:text-tertiary disabled:cursor-not-allowed",
           className
         )}
         {...props}
       />
       {iconRight && (
-        <span className="flex size-5 shrink-0 items-center justify-center text-tertiary [&>svg]:size-4">
+        <span className="flex size-5 shrink-0 items-center justify-center text-secondary [&>svg]:size-4">
           {iconRight}
         </span>
       )}

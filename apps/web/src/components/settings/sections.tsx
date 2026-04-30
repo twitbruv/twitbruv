@@ -1,8 +1,16 @@
+import {
+  ArrowPathIcon,
+  PhoneIcon,
+  QuestionMarkCircleIcon,
+  TvIcon,
+  WindowIcon,
+} from "@heroicons/react/24/outline"
 import { Link } from "@tanstack/react-router"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
 import { updateProfileSchema } from "@workspace/validators"
 import { Avatar } from "@workspace/ui/components/avatar"
+import { Badge } from "@workspace/ui/components/badge"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
@@ -29,6 +37,39 @@ interface SessionRow {
   createdAt?: string | Date
   ipAddress?: string | null
   userAgent?: string | null
+}
+
+type SessionDeviceKind = "desktop" | "phone" | "tablet" | "unknown"
+
+function sessionDeviceKindFromUserAgent(
+  ua: string | null | undefined
+): SessionDeviceKind {
+  if (!ua?.trim()) return "unknown"
+  const lower = ua.toLowerCase()
+  if (
+    /ipad|tablet|playbook|silk|kindle|sm-t\d|tab\b|nexus 7|nexus 10/.test(
+      lower
+    ) ||
+    (/android/.test(lower) && !/mobile/.test(lower))
+  ) {
+    return "tablet"
+  }
+  if (
+    /mobile|iphone|ipod|android.*mobile|webos|blackberry|opera mini|opera mobi|iemobile|palm/.test(
+      lower
+    )
+  ) {
+    return "phone"
+  }
+  return "desktop"
+}
+
+function SessionDeviceIcon({ kind }: { kind: SessionDeviceKind }) {
+  const cls = "size-5 shrink-0 text-secondary"
+  if (kind === "phone") return <PhoneIcon className={cls} aria-hidden />
+  if (kind === "tablet") return <PhoneIcon className={cls} aria-hidden />
+  if (kind === "desktop") return <TvIcon className={cls} aria-hidden />
+  return <QuestionMarkCircleIcon className={cls} aria-hidden />
 }
 
 function truncate(s: string, n: number): string {
@@ -111,29 +152,32 @@ export function ProfileSection({
   }
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-2">
       {!me.handle && (
         <ClaimHandle onClaimed={(h) => setMe({ ...me, handle: h })} />
       )}
-      <SettingsSection>
-        <SettingsSectionTitle>Profile media</SettingsSectionTitle>
+      <section className="relative">
         <BannerUpload
           currentUrl={me.bannerUrl}
           onChange={(url) => updateMedia({ bannerUrl: url })}
         />
-        <AvatarUpload
-          currentUrl={me.avatarUrl}
-          displayName={me.displayName ?? me.handle}
-          onChange={(url) => updateMedia({ avatarUrl: url })}
-        />
-      </SettingsSection>
+        <div className="bg-card/75 dark:bg-card/35 relative z-1 -mt-8 w-max rounded-2xl p-5">
+          <div className="-mt-16 flex items-end justify-between gap-4">
+            <AvatarUpload
+              currentUrl={me.avatarUrl}
+              displayName={me.displayName ?? me.handle}
+              onChange={(url) => updateMedia({ avatarUrl: url })}
+            />
+          </div>
+        </div>
+      </section>
 
       <form
         id="settings-profile-details"
         onSubmit={onSave}
-        className="border-border flex scroll-mt-4 flex-col gap-3 border-t pt-6"
+        className="flex scroll-mt-4 flex-col gap-3 border-neutral pt-0"
       >
-        <SettingsSectionTitle>Profile details</SettingsSectionTitle>
+        <h2 className="text-sm font-semibold text-primary">Profile details</h2>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="displayName">Display name</Label>
           <Input
@@ -149,8 +193,8 @@ export function ProfileSection({
             value={bio}
             onChange={(e) => setBio(e.target.value)}
             maxLength={280}
-            rows={3}
-            className="min-h-20"
+            rows={4}
+            className="min-h-20 resize-none"
           />
         </div>
         <div className="flex flex-col gap-1.5">
@@ -171,7 +215,7 @@ export function ProfileSection({
             placeholder="https://"
           />
         </div>
-        {status && <p className="text-muted-foreground text-xs">{status}</p>}
+        {status && <p className="text-xs text-tertiary">{status}</p>}
         <Button type="submit">Save</Button>
       </form>
     </div>
@@ -236,8 +280,10 @@ export function AccountSection({ email }: { email: string }) {
       <SettingsSectionTitle>Account</SettingsSectionTitle>
 
       <form onSubmit={changeEmail} className="flex flex-col gap-2">
-        <Label htmlFor="newEmail">Email</Label>
-        <p className="text-muted-foreground text-xs">Currently {email}.</p>
+        <div className="">
+          <Label htmlFor="newEmail">Email</Label>
+          <p className="text-muted-foreground text-xs">Currently {email}.</p>
+        </div>
         <Input
           id="newEmail"
           type="email"
@@ -252,6 +298,7 @@ export function AccountSection({ email }: { email: string }) {
           type="submit"
           size="sm"
           disabled={emBusy || !newEmail || newEmail === email}
+          className="mt-1"
         >
           Send verification
         </Button>
@@ -282,6 +329,7 @@ export function AccountSection({ email }: { email: string }) {
           type="submit"
           size="sm"
           disabled={pwBusy || !currentPassword || !newPassword}
+          className="mt-1"
         >
           Update password
         </Button>
@@ -337,11 +385,9 @@ export function SessionsSection({
   }
 
   return (
-    <SettingsSection className="gap-3">
-      <div className="flex items-center justify-between gap-3">
-        <SettingsSectionTitle className="mb-0">
-          Active sessions
-        </SettingsSectionTitle>
+    <section className="space-y-2">
+      <div className="flex w-full flex-wrap items-start justify-between gap-2 gap-y-1">
+        <h2 className="text-sm font-semibold text-primary">Active sessions</h2>
         <Button
           size="sm"
           variant="outline"
@@ -351,54 +397,81 @@ export function SessionsSection({
           Sign out other devices
         </Button>
       </div>
-      {error && <p className="text-destructive text-xs">{error}</p>}
-      {!sessions && <p className="text-muted-foreground text-xs">loading…</p>}
-      {sessions && sessions.length === 0 && (
-        <p className="text-muted-foreground text-xs">No sessions found.</p>
-      )}
-      {sessions && sessions.length > 0 && (
-        <ul className="divide-border border-border divide-y rounded-md border">
+      {error ? <p className="text-xs text-danger">{error}</p> : null}
+      {!sessions ? <p className="text-xs text-tertiary">loading…</p> : null}
+      {sessions && sessions.length === 0 ? (
+        <p className="text-xs text-tertiary">No sessions found.</p>
+      ) : null}
+      {sessions && sessions.length > 0 ? (
+        <ul className="flex flex-col gap-2">
           {sessions.map((s) => {
             const isCurrent = s.id === currentSessionId
+            const deviceKind = sessionDeviceKindFromUserAgent(s.userAgent)
+            const uaLabel = s.userAgent?.trim()
+              ? truncate(s.userAgent, 56)
+              : "Unknown device"
             return (
               <li
                 key={s.id}
-                className="flex items-start justify-between gap-3 px-3 py-2 text-xs"
+                className="flex items-center justify-between gap-3 rounded-2xl bg-base-0 px-3 py-2.5 transition-colors hover:bg-base-2/40 sm:px-3.5 sm:py-3 dark:bg-base-2"
               >
-                <div className="min-w-0">
-                  <div className="font-medium">
-                    {s.userAgent ? truncate(s.userAgent, 60) : "Unknown device"}
-                    {isCurrent && (
-                      <span className="text-muted-foreground ml-1 text-[10px] tracking-wider uppercase">
-                        this device
-                      </span>
-                    )}
+                <div className="flex min-w-0 flex-1 items-start gap-3">
+                  <div className="pt-0.5" aria-hidden>
+                    <SessionDeviceIcon kind={deviceKind} />
                   </div>
-                  <div className="text-muted-foreground">
-                    {s.ipAddress && <span>{s.ipAddress} · </span>}
-                    {s.createdAt && (
-                      <span>
-                        started {new Date(s.createdAt).toLocaleString()}
+                  <div className="min-w-0 flex-1 space-y-0.5">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium text-primary">
+                        {uaLabel}
                       </span>
-                    )}
+                      {isCurrent ? (
+                        <Badge
+                          variant="neutral"
+                          className="ml-auto shrink-0 text-[10px] font-medium uppercase"
+                        >
+                          this device
+                        </Badge>
+                      ) : null}
+                    </div>
+                    <p className="text-xs text-tertiary [font-variant-numeric:tabular-nums]">
+                      {s.ipAddress ? <span>{s.ipAddress}</span> : null}
+                      {s.ipAddress && s.createdAt ? (
+                        <span aria-hidden> · </span>
+                      ) : null}
+                      {s.createdAt ? (
+                        <span>
+                          Signed in{" "}
+                          {new Date(s.createdAt).toLocaleString(undefined, {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                            hour: "numeric",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      ) : null}
+                    </p>
                   </div>
                 </div>
-                {!isCurrent && s.token && (
+                {!isCurrent && s.token ? (
                   <Button
                     size="sm"
-                    variant="transparent"
+                    variant="outline"
                     disabled={busy}
-                    onClick={() => revoke(s.token!)}
+                    onClick={() => {
+                      if (s.token) void revoke(s.token)
+                    }}
+                    className="shrink-0"
                   >
                     Revoke
                   </Button>
-                )}
+                ) : null}
               </li>
             )
           })}
         </ul>
-      )}
-    </SettingsSection>
+      ) : null}
+    </section>
   )
 }
 
@@ -726,75 +799,85 @@ export function ConnectionsSection({
   }
 
   return (
-    <SettingsSection className="gap-4">
-      <SettingsSectionTitle>Connections</SettingsSectionTitle>
-      <p className="text-muted-foreground text-xs">
+    <section className="flex flex-col gap-3">
+      <h2 className="text-sm font-semibold text-primary">Connections</h2>
+      <p className="text-xs text-tertiary">
         Link external accounts to enrich your profile. We never post on your
         behalf.
       </p>
 
-      {oauthConnected === "github" && (
-        <div className="border-border bg-muted/40 rounded-md border px-3 py-2 text-xs">
+      {oauthConnected === "github" ? (
+        <div className="rounded-2xl border border-neutral bg-base-0 px-3 py-2.5 text-xs text-secondary sm:px-3.5 sm:py-3 dark:bg-base-2">
           GitHub connected.
         </div>
-      )}
-      {oauthConnectError != null && oauthConnectError !== "" && (
-        <div className="border-destructive/40 bg-destructive/10 text-destructive rounded-md border px-3 py-2 text-xs">
+      ) : null}
+      {oauthConnectError != null && oauthConnectError !== "" ? (
+        <div className="rounded-2xl border border-danger/40 bg-danger-subtle px-3 py-2.5 text-xs text-danger sm:px-3.5 sm:py-3">
           GitHub connection failed: {oauthConnectError}
         </div>
-      )}
+      ) : null}
 
-      <div className="border-border rounded-md border p-3">
+      <div className="rounded-2xl bg-base-0 p-3 sm:p-3.5 dark:bg-base-2">
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="text-sm font-semibold">GitHub</div>
-            {isPending && <PageLoading className="py-8" label="Loading…" />}
-            {state && state.configured === false && (
-              <p className="text-muted-foreground text-xs">
+          <div className="flex min-w-0 flex-1 flex-col gap-3">
+            <div className="text-sm font-semibold text-primary">GitHub</div>
+            {isPending ? (
+              <PageLoading className="py-6" label="Loading…" />
+            ) : null}
+            {state && state.configured === false ? (
+              <p className="text-xs text-tertiary">
                 The server isn&apos;t configured for GitHub connections yet.
               </p>
-            )}
-            {state?.connected === false && state.configured && (
-              <p className="text-muted-foreground text-xs">
+            ) : null}
+            {state?.connected === false && state.configured ? (
+              <p className="text-xs text-tertiary">
                 Show your contributions graph and pinned repos on your profile.
               </p>
-            )}
-            {state?.connected === true && (
-              <div className="text-muted-foreground space-y-1 text-xs">
+            ) : null}
+            {state?.connected === true ? (
+              <div className="space-y-1 text-xs text-tertiary">
                 <div>
                   Connected as{" "}
                   <a
                     href={`https://github.com/${state.login}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-foreground font-medium hover:underline"
+                    className="font-medium text-primary hover:underline"
                   >
                     @{state.login}
                   </a>
                 </div>
-                {state.refreshedAt && (
-                  <div>
-                    Last synced {new Date(state.refreshedAt).toLocaleString()}
+                {state.refreshedAt ? (
+                  <div className="[font-variant-numeric:tabular-nums]">
+                    Last synced{" "}
+                    {new Date(state.refreshedAt).toLocaleString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
                   </div>
-                )}
-                {state.needsReconnect && (
-                  <div className="text-destructive">
+                ) : null}
+                {state.needsReconnect ? (
+                  <div className="text-danger">
                     Token revoked — reconnect to resume.
                   </div>
-                )}
+                ) : null}
               </div>
-            )}
+            ) : null}
           </div>
-          <div className="flex shrink-0 gap-2">
+          <div className="flex shrink-0 flex-wrap justify-end gap-2">
             {state?.connected === true ? (
               <>
                 <Button
                   size="sm"
                   variant="outline"
                   disabled={busy !== null}
+                  iconLeft={<ArrowPathIcon aria-hidden />}
                   onClick={refresh}
                 >
-                  Refresh
+                  
                 </Button>
                 <Button
                   size="sm"
@@ -805,21 +888,19 @@ export function ConnectionsSection({
                   Disconnect
                 </Button>
               </>
-            ) : (
-              state?.configured && (
-                <Button
-                  size="sm"
-                  nativeButton={false}
-                  render={<a href={api.connectorsGithubStartUrl()} />}
-                >
-                  Connect
-                </Button>
-              )
-            )}
+            ) : state?.configured ? (
+              <Button
+                size="sm"
+                nativeButton={false}
+                render={<a href={api.connectorsGithubStartUrl()} />}
+              >
+                Connect
+              </Button>
+            ) : null}
           </div>
         </div>
-        {state?.connected === true && (
-          <label className="mt-3 flex items-center gap-2 text-xs">
+        {state?.connected === true ? (
+          <label className="mt-3 flex cursor-pointer items-center gap-2 text-xs text-primary">
             <Switch
               checked={state.showOnProfile}
               onCheckedChange={(checked) => toggleVisibility(checked)}
@@ -827,12 +908,10 @@ export function ConnectionsSection({
             />
             Show on my profile
           </label>
-        )}
-        {status && (
-          <p className="text-muted-foreground mt-2 text-xs">{status}</p>
-        )}
+        ) : null}
+        {status ? <p className="mt-2 text-xs text-tertiary">{status}</p> : null}
       </div>
-    </SettingsSection>
+    </section>
   )
 }
 
@@ -868,9 +947,9 @@ export function DevToolsSection() {
 
   return (
     <SettingsSection className="gap-6">
-      <div>
-        <h3 className="text-sm font-medium text-primary">Seed Data</h3>
-        <p className="mt-1 text-xs text-tertiary">
+      <div className="flex flex-col gap-3">
+        <h3 className="text-sm font-semibold text-primary">Seed Data</h3>
+        <p className="text-xs text-tertiary">
           Create fake users, posts with images, replies, reposts, and quote
           tweets for testing. Also creates a few posts for your account.
         </p>
@@ -879,11 +958,10 @@ export function DevToolsSection() {
           size="sm"
           onClick={handleSeed}
           loading={loading}
-          className="mt-3"
         >
           Seed posts
         </Button>
-        {status && <p className="mt-2 text-xs text-secondary">{status}</p>}
+        {status ? <p className="text-xs text-secondary">{status}</p> : null}
       </div>
     </SettingsSection>
   )

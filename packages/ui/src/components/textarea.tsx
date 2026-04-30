@@ -2,11 +2,12 @@ import { cn } from "@workspace/ui/lib/utils"
 import type { ComponentProps } from "react"
 
 const textareaStyles = [
-  "rounded-md border border-neutral bg-base-2 px-3 py-2 text-sm text-primary",
-  "outline-none resize-y min-h-20",
+  "min-h-20 resize-y rounded-md bg-base-2 px-3 py-2 text-sm text-primary shadow-[var(--shadow-field)]",
+  "outline-none",
   "placeholder:text-tertiary",
-  "ring-neutral ring-0 transition-[box-shadow,color,border-color] duration-150 ease-out",
-  "focus:ring-2 focus:border-neutral-strong",
+  "transition-[box-shadow,color,border-color,background-color] duration-150 ease-out-expo",
+  "focus-visible:border-neutral-strong focus-visible:ring-2 focus-visible:ring-focus/30",
+  "aria-invalid:border-danger aria-invalid:ring-2 aria-invalid:ring-danger/30",
   "motion-reduce:transition-none",
   "disabled:cursor-not-allowed disabled:opacity-50",
 ]
