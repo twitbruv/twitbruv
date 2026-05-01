@@ -5,7 +5,7 @@ import { Avatar } from "@workspace/ui/components/avatar"
 import { LinkCard } from "@workspace/ui/components/link-card"
 import { Spinner } from "@workspace/ui/components/spinner"
 import { POST_MAX_LEN } from "@workspace/validators"
-import { api } from "../../lib/api"
+import { api, ApiError } from "../../lib/api"
 import { setAltText, uploadImage } from "../../lib/media"
 import { getPastedImageFiles } from "../../lib/clipboard-images"
 import { clearDraft, draftKey, loadDraft, saveDraft } from "../../lib/drafts"
@@ -50,6 +50,7 @@ export function Compose({
   const [attachments, setAttachments] = useState<Array<PendingAttachment>>([])
   const [poll, setPoll] = useState<PollState | null>(null)
   const [loading, setLoading] = useState(false)
+  const [inlineError, setInlineError] = useState<string | null>(null)
   const [replyRestriction, setReplyRestriction] = useState<
     "anyone" | "following" | "mentioned"
   >("anyone")
@@ -143,8 +144,9 @@ export function Compose({
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       setText(e.target.value)
       if (collapsible) setExpanded(true)
+      if (inlineError) setInlineError(null)
     },
-    [collapsible]
+    [collapsible, inlineError]
   )
 
   const addFiles = useCallback(
@@ -278,7 +280,11 @@ export function Compose({
         if (collapsible) setExpanded(false)
         onCreated?.(post)
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : "failed to post")
+        if (err instanceof ApiError && err.code === "content_policy_blocked") {
+          setInlineError(err.message)
+        } else {
+          toast.error(err instanceof Error ? err.message : "failed to post")
+        }
       } finally {
         setLoading(false)
       }
@@ -482,8 +488,16 @@ export function Compose({
             placeholder={placeholder}
             rows={1}
             maxLength={POST_MAX_LEN * 2}
-            className="w-full resize-none bg-transparent pt-2 text-[15px] leading-relaxed text-primary outline-none placeholder:text-tertiary"
+            className={cn(
+              "w-full resize-none bg-transparent pt-2 text-[15px] leading-relaxed text-primary outline-none placeholder:text-tertiary",
+              inlineError && "text-danger"
+            )}
           />
+
+          {/* Inline error */}
+          {inlineError && (
+            <p className="mt-1 text-xs text-danger">{inlineError}</p>
+          )}
 
           {/* Poll */}
           {poll && (
