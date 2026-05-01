@@ -1,16 +1,16 @@
-import PgBoss from 'pg-boss'
-import { createAuth, type AuthInstance } from '@workspace/auth/server'
-import { createDb, type Database } from '@workspace/db'
-import { createMailer, type Mailer } from '@workspace/email'
-import { createS3, ensureBucket, type S3 } from '@workspace/media/s3'
-import type { MediaEnv } from '@workspace/media/env'
-import { loadEnv, type Env } from './env.ts'
-import { createCache, type Cache } from './cache.ts'
-import { createPubSub, type PubSub } from './pubsub.ts'
-import { createLogger, type Logger } from './logger.ts'
-import { makeRateLimit } from '@workspace/rate-limit'
-import { createTracker, type TrackFn } from './analytics.ts'
-import { createModerator, type Moderator } from './moderation.ts'
+import PgBoss from "pg-boss"
+import { createAuth, type AuthInstance } from "@workspace/auth/server"
+import { createDb, type Database } from "@workspace/db"
+import { createMailer, type Mailer } from "@workspace/email"
+import { createS3, ensureBucket, type S3 } from "@workspace/media/s3"
+import type { MediaEnv } from "@workspace/media/env"
+import { loadEnv, type Env } from "./env.ts"
+import { createCache, type Cache } from "./cache.ts"
+import { createPubSub, type PubSub } from "./pubsub.ts"
+import { createLogger, type Logger } from "./logger.ts"
+import { makeRateLimit } from "@workspace/rate-limit"
+import { createTracker, type TrackFn } from "./analytics.ts"
+import { createModerator, type Moderator } from "./moderation.ts"
 
 export interface AppContext {
   env: Env
@@ -35,14 +35,7 @@ export async function buildContext(): Promise<AppContext> {
 
   const mailer = createMailer({
     from: env.EMAIL_FROM,
-    provider: env.EMAIL_PROVIDER,
     resendApiKey: env.RESEND_API_KEY,
-    smtp: {
-      host: env.SMTP_HOST,
-      port: env.SMTP_PORT,
-      user: env.SMTP_USER,
-      pass: env.SMTP_PASS,
-    },
   })
 
   const auth = createAuth({
@@ -53,27 +46,42 @@ export async function buildContext(): Promise<AppContext> {
     cookieDomain: env.AUTH_COOKIE_DOMAIN,
     appName: env.APP_NAME,
     sendEmail: async ({ to, subject, template, data }) => {
-      // Dev: don't hit SMTP/Resend — print the link to the server console so the engineer can
-      // click it without running a local mail catcher. Production still goes through the mailer.
-      // Recipient is masked (`a***@domain`) so dev logs pasted into a bug report or screenshot
-      // don't leak a real address; the URL stays plaintext intentionally — clicking it is the
-      // whole point of this branch, and a redacted token can't be used to verify.
-      if (env.NODE_ENV !== 'production') {
-        const url = typeof data.url === 'string' ? data.url : null
-        const maskedTo = to.replace(/^(.).*(@.*)$/, '$1***$2')
-        log.info({ to: maskedTo, subject, template, url }, 'email_dev_console')
+      if (env.NODE_ENV !== "production") {
+        const url = typeof data.url === "string" ? data.url : null
+        const maskedTo = to.replace(/^(.).*(@.*)$/, "$1***$2")
+        log.info({ to: maskedTo, subject, template, url }, "email_dev_console")
         return
       }
-      await mailer.send({ to, subject, template, data: { ...data, appName: env.APP_NAME } })
+      await mailer.send({
+        to,
+        subject,
+        template,
+        data: { ...data, appName: env.APP_NAME },
+      })
     },
     ...(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET
-      ? { github: { clientId: env.GITHUB_CLIENT_ID, clientSecret: env.GITHUB_CLIENT_SECRET } }
+      ? {
+          github: {
+            clientId: env.GITHUB_CLIENT_ID,
+            clientSecret: env.GITHUB_CLIENT_SECRET,
+          },
+        }
       : {}),
     ...(env.GITLAB_CLIENT_ID && env.GITLAB_CLIENT_SECRET
-      ? { gitlab: { clientId: env.GITLAB_CLIENT_ID, clientSecret: env.GITLAB_CLIENT_SECRET } }
+      ? {
+          gitlab: {
+            clientId: env.GITLAB_CLIENT_ID,
+            clientSecret: env.GITLAB_CLIENT_SECRET,
+          },
+        }
       : {}),
     ...(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
-      ? { google: { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET } }
+      ? {
+          google: {
+            clientId: env.GOOGLE_CLIENT_ID,
+            clientSecret: env.GOOGLE_CLIENT_SECRET,
+          },
+        }
       : {}),
   })
 
@@ -86,34 +94,56 @@ export async function buildContext(): Promise<AppContext> {
     S3_PUBLIC_URL: env.S3_PUBLIC_URL,
     // Route asset URLs through our signing proxy. The browser hits this URL, the API mints a
     // short-lived signed S3 URL, then 302-redirects. Stable URLs on our domain, private bucket.
-    MEDIA_PROXY_BASE: `${env.BETTER_AUTH_URL.replace(/\/$/, '')}/api/m`,
+    MEDIA_PROXY_BASE: `${env.BETTER_AUTH_URL.replace(/\/$/, "")}/api/m`,
   }
   const s3 = createS3(mediaEnv)
 
   // Run on every boot (idempotent): creates the bucket if missing, sets a public-read policy
   // for object GETs, and applies CORS so the browser can upload directly. If you ever migrate
   // to a managed bucket with externally-managed CORS/policy, gate this back to dev.
-  await ensureBucket({ s3, bucket: mediaEnv.S3_BUCKET, allowedOrigins: env.AUTH_TRUSTED_ORIGINS })
+  await ensureBucket({
+    s3,
+    bucket: mediaEnv.S3_BUCKET,
+    allowedOrigins: env.AUTH_TRUSTED_ORIGINS,
+  })
 
   const boss = new PgBoss({ connectionString: env.DATABASE_URL })
-  boss.on('error', (err) => console.error('pg-boss:', err))
+  boss.on("error", (err) => console.error("pg-boss:", err))
   await boss.start()
   // pg-boss v10 requires a queue to exist before send/work succeeds. Declared serially here
   // so the API can `boss.send` even before the worker has booted; the worker also declares
   // them on its side, which is fine — createQueue is idempotent. Concurrent creates across
   // processes used to deadlock; serial within a process does not.
-  await boss.createQueue('email.send')
-  await boss.createQueue('media.process')
-  await boss.createQueue('github.unfurl')
-  await boss.createQueue('youtube.unfurl')
-  await boss.createQueue('generic.unfurl')
-  await boss.createQueue('x.unfurl')
+  await boss.createQueue("email.send")
+  await boss.createQueue("media.process")
+  await boss.createQueue("github.unfurl")
+  await boss.createQueue("youtube.unfurl")
+  await boss.createQueue("generic.unfurl")
+  await boss.createQueue("x.unfurl")
 
   const cache = createCache(env.REDIS_URL)
   const pubsub = createPubSub(env.REDIS_URL)
   const rateLimit = makeRateLimit(env.REDIS_URL, log)
-  const track = createTracker(env.DATABUDDY_API_KEY, env.DATABUDDY_WEBSITE_ID, log)
+  const track = createTracker(
+    env.DATABUDDY_API_KEY,
+    env.DATABUDDY_WEBSITE_ID,
+    log
+  )
   const moderate = createModerator(env, log)
 
-  return { env, db, mailer, auth, s3, mediaEnv, boss, cache, pubsub, log, rateLimit, track, moderate }
+  return {
+    env,
+    db,
+    mailer,
+    auth,
+    s3,
+    mediaEnv,
+    boss,
+    cache,
+    pubsub,
+    log,
+    rateLimit,
+    track,
+    moderate,
+  }
 }

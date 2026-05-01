@@ -42,13 +42,6 @@ services:
     volumes:
       - twotter_minio:/data
 
-  mailpit:
-    image: axllent/mailpit:latest
-    restart: unless-stopped
-    ports:
-      - "1025:1025"   # SMTP
-      - "8025:8025"   # UI
-
 volumes:
   twotter_pg:
   twotter_redis:

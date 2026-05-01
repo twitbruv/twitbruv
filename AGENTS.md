@@ -77,8 +77,6 @@ clearly.
 - Redis on `6379`
 - MinIO API on `9000`
 - MinIO console on `9001`
-- Mailpit SMTP on `1025`
-- Mailpit UI on `8025`
 
 Use `.env.example` as the source of truth for local variable names and defaults.
 

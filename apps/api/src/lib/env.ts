@@ -3,10 +3,7 @@ import { z } from "zod"
 const DEFAULT_AUTH_TRUSTED_ORIGINS =
   "http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001"
 
-function expandLocalDevOrigins(
-  origins: string[],
-  nodeEnv: string
-): string[] {
+function expandLocalDevOrigins(origins: string[], nodeEnv: string): string[] {
   if (nodeEnv !== "development") {
     return origins
   }
@@ -43,12 +40,7 @@ const envSchema = z.object({
   APP_NAME: z.string().default("twotter"),
 
   EMAIL_FROM: z.string().default("twotter <noreply@localhost>"),
-  EMAIL_PROVIDER: z.enum(["smtp", "resend"]).default("smtp"),
   RESEND_API_KEY: z.string().optional(),
-  SMTP_HOST: z.string().default("localhost"),
-  SMTP_PORT: z.coerce.number().default(1025),
-  SMTP_USER: z.string().optional(),
-  SMTP_PASS: z.string().optional(),
 
   GITHUB_CLIENT_ID: z.string().optional(),
   GITHUB_CLIENT_SECRET: z.string().optional(),
@@ -80,12 +72,12 @@ const envSchema = z.object({
       (v) => {
         if (!v) return true
         try {
-          return Buffer.from(v, 'base64').length === 32
+          return Buffer.from(v, "base64").length === 32
         } catch {
           return false
         }
       },
-      { message: 'CONNECTORS_ENCRYPTION_KEY must decode to 32 bytes (base64)' },
+      { message: "CONNECTORS_ENCRYPTION_KEY must decode to 32 bytes (base64)" }
     ),
 
   REDIS_URL: z.string().default("redis://localhost:6379"),
@@ -101,7 +93,12 @@ const envSchema = z.object({
   // damage if a signed URL leaks (e.g. is accidentally pasted into chat or a referer log).
   // Default 15min — long enough to survive a slow page load + image decode, short enough that
   // the URL is dead before most leak vectors find it.
-  MEDIA_SIGNED_URL_TTL_SEC: z.coerce.number().int().min(60).max(3600).default(900),
+  MEDIA_SIGNED_URL_TTL_SEC: z.coerce
+    .number()
+    .int()
+    .min(60)
+    .max(3600)
+    .default(900),
 
   // Add HSTS header in production. Off by default for dev (where requests come over http://localhost).
   // Enabling in prod opts the browser into HTTPS-only for this origin for 1 year, blocking
@@ -137,14 +134,11 @@ const envSchema = z.object({
   // one-time warning at boot). Network errors / timeouts also fail open. Whitespace
   // is trimmed and empty strings are coerced to undefined so a misformatted env var
   // (e.g. `OPENAI_API_KEY= `) is treated as unset rather than a bogus key.
-  OPENAI_API_KEY: z.preprocess(
-    (v) => {
-      if (typeof v !== "string") return v
-      const trimmed = v.trim()
-      return trimmed.length === 0 ? undefined : trimmed
-    },
-    z.string().optional()
-  ),
+  OPENAI_API_KEY: z.preprocess((v) => {
+    if (typeof v !== "string") return v
+    const trimmed = v.trim()
+    return trimmed.length === 0 ? undefined : trimmed
+  }, z.string().optional()),
 })
 
 export type Env = z.infer<typeof envSchema>
@@ -156,6 +150,10 @@ export function loadEnv(): Env {
     process.exit(1)
   }
   const data = parsed.data
+  if (data.NODE_ENV === "production" && !data.RESEND_API_KEY?.trim()) {
+    console.error("Invalid environment:", { RESEND_API_KEY: ["Required"] })
+    process.exit(1)
+  }
   return {
     ...data,
     AUTH_TRUSTED_ORIGINS: expandLocalDevOrigins(

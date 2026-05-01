@@ -6,8 +6,6 @@ import { RESEND_COOLDOWN_SEC } from "@workspace/validators/auth"
 import { authClient } from "../lib/auth"
 import { useMe } from "../lib/me"
 
-// While the verify screen is up, poll /api/me faster than the ambient 30s so that clicking
-// the email link in another tab unlocks the app within ~5s.
 const POLL_INTERVAL_MS = 5_000
 
 export function EmailVerifyScreen({ email }: { email: string }) {
@@ -54,7 +52,6 @@ export function EmailVerifyScreen({ email }: { email: string }) {
         callbackURL: `${window.location.origin}/?verified=1`,
       })
       if (error) {
-        // better-auth surfaces the API status under error.status when the rate limiter fires.
         const status = (error as { status?: number }).status
         if (status === 429) {
           toast.error("Slow down — wait before requesting another email.")
@@ -80,9 +77,7 @@ export function EmailVerifyScreen({ email }: { email: string }) {
     setSigningOut(true)
     try {
       await authClient.signOut()
-    } catch {
-      // best-effort; we still bounce to /login below
-    }
+    } catch {}
     if (typeof window !== "undefined") {
       window.location.assign("/login")
     }
@@ -95,39 +90,43 @@ export function EmailVerifyScreen({ email }: { email: string }) {
       : "Resend email"
 
   return (
-    <div className="bg-background flex min-h-screen items-center justify-center px-4 py-12">
-      <Card className="w-full max-w-md">
-        <Card.Header>
-          <span className="text-sm font-medium text-primary">
+    <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-md items-center px-4 py-10">
+      <Card className="w-full">
+        <Card.Header className="flex flex-col gap-2 px-5 pt-5 pb-4">
+          <h1 className="text-xl font-semibold tracking-tight text-primary">
             Verify your email
-          </span>
-          <span className="text-xs text-tertiary">
-            We sent a verification link to <strong>{email}</strong>. Click it to
-            unlock your account.
-          </span>
+          </h1>
+          <p className="text-sm leading-6 text-tertiary">
+            We sent a verification link to{" "}
+            <span className="font-medium text-primary">{email}</span>.
+          </p>
         </Card.Header>
-        <Card.Content className="flex flex-col gap-4">
-          <p className="text-muted-foreground text-sm">
-            This page will refresh automatically once your email is verified.
-            Check your spam folder if the email doesn't arrive within a minute.
+        <Card.Content className="flex flex-col gap-5 px-5 pb-5">
+          <p className="text-muted-foreground text-sm leading-6">
+            Click the link in your inbox to unlock your account. This page will
+            refresh automatically once your email is verified.
           </p>
           <Button
             type="button"
             size="md"
-            className="w-full"
+            variant="primary"
+            className="h-10 w-full"
             onClick={onResend}
             disabled={sending || secondsLeft > 0}
           >
             {buttonLabel}
           </Button>
-          <button
-            type="button"
-            onClick={onSignOut}
-            disabled={signingOut}
-            className="text-muted-foreground text-center text-xs underline-offset-4 hover:underline disabled:opacity-50"
-          >
-            Use a different account
-          </button>
+          <p className="text-muted-foreground text-center text-sm">
+            Wrong account?{" "}
+            <button
+              type="button"
+              onClick={onSignOut}
+              disabled={signingOut}
+              className="text-foreground underline-offset-4 hover:underline disabled:opacity-50"
+            >
+              Use a different one
+            </button>
+          </p>
         </Card.Content>
       </Card>
     </div>
