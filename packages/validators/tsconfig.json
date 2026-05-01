@@ -1,6 +1,7 @@
 {
   "extends": "@workspace/config-tsconfig/base.json",
   "include": ["src/**/*"],
+  "exclude": ["src/**/*.test.ts"],
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src"

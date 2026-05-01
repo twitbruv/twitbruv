@@ -11,7 +11,8 @@
     "./articles": "./src/articles.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "bun test src/post-text-policy.test.ts"
   },
   "dependencies": {
     "zod": "^4.4.1"

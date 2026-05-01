@@ -1,6 +1,18 @@
-import { and, eq, inArray, isNotNull, isNull, lte, schema } from '@workspace/db'
-import type { Database } from '@workspace/db'
-
+import {
+  and,
+  ensureSystemReport,
+  eq,
+  finalizeScheduledDraftPublishInTx,
+  inArray,
+  isNotNull,
+  isNull,
+  lockScheduledDraftForPublish,
+  lte,
+  schema,
+  SYSTEM_REPORT_BLOCKED_ATTEMPT,
+  type Database,
+} from '@workspace/db'
+import { analyzePostPlaintext } from '@workspace/validators'
 // Scan for due scheduled posts and publish them. Each row is published in its own transaction
 // so a single failure doesn't stall the batch. Failed rows are marked with failedAt so they
 // don't get retried indefinitely; the user can edit/delete them via the drafts page.
@@ -44,56 +56,45 @@ export async function publishDueScheduledPosts(db: Database, batchSize = 25): Pr
 // row is no longer eligible). A return of false is not an error.
 async function publishOne(db: Database, authorId: string, scheduledId: string): Promise<boolean> {
   return await db.transaction(async (tx) => {
-    // SKIP LOCKED: if another worker already holds this row, bail — we'll see it next scan
-    // if it's still due. The eligibility filters are re-checked under the lock to handle the
-    // case where it was published or failed between the outer scan and now.
-    const [draft] = await tx
-      .select()
-      .from(schema.scheduledPosts)
-      .where(
-        and(
-          eq(schema.scheduledPosts.id, scheduledId),
-          eq(schema.scheduledPosts.authorId, authorId),
-          isNull(schema.scheduledPosts.publishedAt),
-          isNull(schema.scheduledPosts.failedAt),
-        ),
-      )
-      .limit(1)
-      .for('update', { skipLocked: true })
+    const draft = await lockScheduledDraftForPublish(tx, {
+      authorId,
+      scheduledId,
+      skipLocked: true,
+    })
     if (!draft) return false
 
-    const [post] = await tx
-      .insert(schema.posts)
-      .values({
-        authorId,
-        text: draft.text,
-        visibility: draft.visibility,
-        replyRestriction: draft.replyRestriction,
-        sensitive: draft.sensitive,
-        contentWarning: draft.contentWarning,
-      })
-      .returning()
-    if (!post) throw new Error('insert_failed')
-
-    if (draft.mediaIds && draft.mediaIds.length > 0) {
+    const mediaIds = draft.mediaIds ?? []
+    if (mediaIds.length > 0) {
       const owned = await tx
         .select({ id: schema.media.id })
         .from(schema.media)
-        .where(
-          and(inArray(schema.media.id, draft.mediaIds), eq(schema.media.ownerId, authorId)),
-        )
-      if (owned.length !== draft.mediaIds.length) {
+        .where(and(inArray(schema.media.id, [...mediaIds]), eq(schema.media.ownerId, authorId)))
+      if (owned.length !== mediaIds.length) {
         throw new Error('invalid_media_ids')
       }
-      await tx.insert(schema.postMedia).values(
-        draft.mediaIds.map((mediaId, position) => ({ postId: post.id, mediaId, position })),
-      )
     }
 
-    await tx
-      .update(schema.scheduledPosts)
-      .set({ publishedAt: new Date(), publishedPostId: post.id })
-      .where(eq(schema.scheduledPosts.id, scheduledId))
+    const policy = analyzePostPlaintext([draft.text])
+    if (policy.action === 'block') {
+      await ensureSystemReport(tx, {
+        subjectType: 'user',
+        subjectId: authorId,
+        reason: 'illegal',
+        details: SYSTEM_REPORT_BLOCKED_ATTEMPT,
+      })
+      await tx
+        .update(schema.scheduledPosts)
+        .set({ failedAt: new Date(), failureReason: 'content_policy_blocked' })
+        .where(eq(schema.scheduledPosts.id, scheduledId))
+      return false
+    }
+
+    const fileSlurReport = policy.action === 'flag'
+    await finalizeScheduledDraftPublishInTx(tx, {
+      authorId,
+      draft,
+      fileSlurSystemReport: fileSlurReport,
+    })
 
     return true
   })

@@ -119,6 +119,7 @@
         "@workspace/github-unfurl": "workspace:*",
         "@workspace/media": "workspace:*",
         "@workspace/url-unfurl-core": "workspace:*",
+        "@workspace/validators": "workspace:*",
         "@workspace/x-unfurl": "workspace:*",
         "@workspace/youtube-unfurl": "workspace:*",
         "pg-boss": "^10.3.2",

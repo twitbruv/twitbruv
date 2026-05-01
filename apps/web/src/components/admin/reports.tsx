@@ -119,7 +119,7 @@ export default function AdminReports() {
           const rep = row.original.reporter
           if (!rep) {
             return (
-              <span className="text-muted-foreground text-xs">(unknown)</span>
+              <span className="text-muted-foreground text-xs">System</span>
             )
           }
           return (
@@ -399,7 +399,7 @@ function Reporter({ reporter }: { reporter: AdminReportDetail["reporter"] }) {
   if (!reporter) {
     return (
       <Section label="Reporter">
-        <span className="text-muted-foreground">(unknown)</span>
+        <span className="text-muted-foreground">System</span>
       </Section>
     )
   }

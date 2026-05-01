@@ -1,12 +1,35 @@
 import { Hono } from 'hono'
-import { and, desc, eq, isNull, lt } from '@workspace/db'
-import { schema } from '@workspace/db'
-import { createArticleSchema, updateArticleSchema } from '@workspace/validators'
+import {
+  and,
+  desc,
+  ensureSystemReport,
+  eq,
+  isNull,
+  lt,
+  schema,
+  SYSTEM_REPORT_SLUR_HIT,
+} from '@workspace/db'
+import {
+  analyzePostPlaintext,
+  CONTENT_POLICY_BLOCKED_MESSAGE,
+  createArticleSchema,
+  updateArticleSchema,
+} from '@workspace/validators'
 import { handleRateLimitError } from '@workspace/rate-limit'
 import { assetUrl } from '@workspace/media/s3'
 import type { MediaEnv } from '@workspace/media/env'
 import { requireHandle, type HonoEnv } from '../middleware/session.ts'
 import { slugify, uniqueSlugForAuthor } from '../lib/slug.ts'
+
+class HttpError extends Error {
+  constructor(
+    public status: number,
+    public code: string,
+    public clientMessage?: string,
+  ) {
+    super(code)
+  }
+}
 
 export const articlesRoute = new Hono<HonoEnv>()
 
@@ -74,6 +97,51 @@ async function loadCover(
   return row ?? null
 }
 
+/** Cross-promo tweet for a newly published article. Returns new post id, or null if no handle. */
+async function insertArticlePublishCrosspost(
+  tx: any,
+  input: {
+    articleId: string
+    authorId: string
+    handle: string
+    slug: string
+    title: string
+  },
+): Promise<string | null> {
+  const articleUrl = `/${input.handle}/a/${input.slug}`
+  const crossText = `new article: "${input.title}" — ${articleUrl}`
+
+  const policy = analyzePostPlaintext([crossText, input.title])
+  if (policy.action === 'block') {
+    throw new HttpError(422, 'content_policy_blocked', CONTENT_POLICY_BLOCKED_MESSAGE)
+  }
+
+  const [post] = await tx
+    .insert(schema.posts)
+    .values({
+      authorId: input.authorId,
+      text: crossText,
+    })
+    .returning()
+  if (!post) return null
+
+  if (policy.action === 'flag') {
+    await ensureSystemReport(tx, {
+      subjectType: 'post',
+      subjectId: post.id,
+      reason: 'harassment',
+      details: SYSTEM_REPORT_SLUR_HIT,
+    })
+  }
+
+  await tx
+    .update(schema.articles)
+    .set({ crosspostPostId: post.id })
+    .where(eq(schema.articles.id, input.articleId))
+
+  return post.id
+}
+
 articlesRoute.post('/', requireHandle(), async (c) => {
   const session = c.get('session')!
   const { db, rateLimit } = c.get('ctx')
@@ -109,21 +177,13 @@ articlesRoute.post('/', requireHandle(), async (c) => {
     if (body.status === 'published') {
       const [author] = await tx.select().from(schema.users).where(eq(schema.users.id, session.user.id)).limit(1)
       if (author?.handle) {
-        const articleUrl = `/${author.handle}/a/${article.slug}`
-        const [post] = await tx
-          .insert(schema.posts)
-          .values({
-            authorId: session.user.id,
-            text: `new article: "${article.title}" — ${articleUrl}`,
-          })
-          .returning()
-        crosspostPostId = post?.id ?? null
-        if (post) {
-          await tx
-            .update(schema.articles)
-            .set({ crosspostPostId: post.id })
-            .where(eq(schema.articles.id, article.id))
-        }
+        crosspostPostId = await insertArticlePublishCrosspost(tx, {
+          articleId: article.id,
+          authorId: session.user.id,
+          handle: author.handle,
+          slug: article.slug,
+          title: article.title,
+        })
       }
     }
 
@@ -192,21 +252,14 @@ articlesRoute.patch('/:id', requireHandle(), async (c) => {
     if (willPublish && !article.crosspostPostId) {
       const [author] = await tx.select().from(schema.users).where(eq(schema.users.id, session.user.id)).limit(1)
       if (author?.handle) {
-        const articleUrl = `/${author.handle}/a/${article.slug}`
-        const [post] = await tx
-          .insert(schema.posts)
-          .values({
-            authorId: session.user.id,
-            text: `new article: "${article.title}" — ${articleUrl}`,
-          })
-          .returning()
-        if (post) {
-          await tx
-            .update(schema.articles)
-            .set({ crosspostPostId: post.id })
-            .where(eq(schema.articles.id, article.id))
-          article.crosspostPostId = post.id
-        }
+        const cid = await insertArticlePublishCrosspost(tx, {
+          articleId: article.id,
+          authorId: session.user.id,
+          handle: author.handle,
+          slug: article.slug,
+          title: article.title,
+        })
+        if (cid) article.crosspostPostId = cid
       }
     }
 
@@ -271,16 +324,18 @@ articlesRoute.get('/:id', requireHandle(), async (c) => {
   })
 })
 
-class HttpError extends Error {
-  constructor(public status: number, public code: string) {
-    super(code)
-  }
-}
-
 articlesRoute.onError((err, c) => {
   const rl = handleRateLimitError(err, c)
   if (rl) return rl
-  if (err instanceof HttpError) return c.json({ error: err.code }, err.status as never)
+  if (err instanceof HttpError) {
+    return c.json(
+      {
+        error: err.code,
+        ...(err.clientMessage !== undefined ? { message: err.clientMessage } : {}),
+      },
+      err.status as never,
+    )
+  }
   console.error(err)
   return c.json({ error: 'internal_error', message: err.message }, 500)
 })

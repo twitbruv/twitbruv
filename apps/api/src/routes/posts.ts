@@ -1,8 +1,27 @@
 import { Hono } from 'hono'
-import { and, asc, desc, eq, inArray, isNull, lt, sql } from '@workspace/db'
-import { schema } from '@workspace/db'
+import {
+  and,
+  asc,
+  desc,
+  ensureSystemReport,
+  eq,
+  inArray,
+  isNull,
+  linkHashtags,
+  linkMentions,
+  lt,
+  sql,
+  SYSTEM_REPORT_BLOCKED_ATTEMPT,
+  SYSTEM_REPORT_SLUR_HIT,
+  schema,
+} from '@workspace/db'
 import { publicUrl } from '@workspace/media/s3'
-import { createPostSchema, editPostSchema } from '@workspace/validators'
+import {
+  analyzePostPlaintext,
+  CONTENT_POLICY_BLOCKED_MESSAGE,
+  createPostSchema,
+  editPostSchema,
+} from '@workspace/validators'
 import { handleRateLimitError } from '@workspace/rate-limit'
 import { requireHandle, type HonoEnv } from '../middleware/session.ts'
 import { toPostDto } from '../lib/post-dto.ts'
@@ -13,8 +32,6 @@ import { loadRepostTargets } from '../lib/repost-targets.ts'
 import { loadQuoteTargets } from '../lib/quote-targets.ts'
 import { attachReplyParents } from '../lib/reply-parents.ts'
 import { loadPolls } from '../lib/polls.ts'
-import { linkHashtags } from '../lib/hashtags.ts'
-import { linkMentions } from '../lib/mentions.ts'
 import { notify, invalidateUnreadCounts } from '../lib/notify.ts'
 import { parseCursor } from '../lib/cursor.ts'
 import { homeFeedCacheKey, profileFeedCacheKey } from './feed.ts'
@@ -31,6 +48,23 @@ postsRoute.post('/', requireHandle(), async (c) => {
   const { db, cache, rateLimit, moderate, log, mediaEnv } = c.get('ctx')
   const body = createPostSchema.parse(await c.req.json())
   await rateLimit(c, body.replyToId ? 'posts.reply' : 'posts.create')
+
+  const textPartsForPolicy = [
+    body.text.trim(),
+    ...(body.poll?.options.map((o) => o.trim()).filter((o) => o.length > 0) ?? []),
+  ]
+  const localPolicy = analyzePostPlaintext(textPartsForPolicy)
+  if (localPolicy.action === 'block') {
+    await ensureSystemReport(db, {
+      subjectType: 'user',
+      subjectId: session.user.id,
+      reason: 'illegal',
+      details: SYSTEM_REPORT_BLOCKED_ATTEMPT,
+    })
+    log.info({ userId: session.user.id, reason: localPolicy.reason }, 'post_blocked_local_policy')
+    return c.json({ error: 'content_policy_blocked', message: CONTENT_POLICY_BLOCKED_MESSAGE }, 422)
+  }
+  const needsSlurReport = localPolicy.action === 'flag'
 
   let imageUrls: string[] = []
   if (body.mediaIds && body.mediaIds.length > 0) {
@@ -248,6 +282,15 @@ postsRoute.post('/', requireHandle(), async (c) => {
       })
     }
     const notified = await notify(tx, toNotify)
+
+    if (needsSlurReport) {
+      await ensureSystemReport(tx, {
+        subjectType: 'post',
+        subjectId: post.id,
+        reason: 'harassment',
+        details: SYSTEM_REPORT_SLUR_HIT,
+      })
+    }
 
     const [author] = await tx.select().from(schema.users).where(eq(schema.users.id, post.authorId)).limit(1)
     if (!author) throw new HttpError(500, 'author_missing')
@@ -717,6 +760,17 @@ postsRoute.patch('/:id', requireHandle(), async (c) => {
   const id = c.req.param('id')
   const body = editPostSchema.parse(await c.req.json())
 
+  const editPolicy = analyzePostPlaintext([body.text])
+  if (editPolicy.action === 'block') {
+    await ensureSystemReport(db, {
+      subjectType: 'user',
+      subjectId: session.user.id,
+      reason: 'illegal',
+      details: SYSTEM_REPORT_BLOCKED_ATTEMPT,
+    })
+    return c.json({ error: 'content_policy_blocked', message: CONTENT_POLICY_BLOCKED_MESSAGE }, 422)
+  }
+
   const result = await db.transaction(async (tx) => {
     const [post] = await tx.select().from(schema.posts).where(eq(schema.posts.id, id)).limit(1)
     if (!post || post.deletedAt) throw new HttpError(404, 'not_found')
@@ -742,6 +796,16 @@ postsRoute.patch('/:id', requireHandle(), async (c) => {
       text: body.text,
       resetExistingLinks: true,
     })
+
+    if (editPolicy.action === 'flag') {
+      await ensureSystemReport(tx, {
+        subjectType: 'post',
+        subjectId: post.id,
+        reason: 'harassment',
+        details: SYSTEM_REPORT_SLUR_HIT,
+      })
+    }
+
     return { post: updated!, unchanged: false as const, unfurlJobs }
   })
 
@@ -1039,7 +1103,11 @@ postsRoute.delete('/:id/hide', requireHandle(), async (c) => {
 })
 
 class HttpError extends Error {
-  constructor(public status: number, public code: string) {
+  constructor(
+    public status: number,
+    public code: string,
+    public clientMessage?: string,
+  ) {
     super(code)
   }
 }
@@ -1047,7 +1115,15 @@ class HttpError extends Error {
 postsRoute.onError((err, c) => {
   const rl = handleRateLimitError(err, c)
   if (rl) return rl
-  if (err instanceof HttpError) return c.json({ error: err.code }, err.status as never)
+  if (err instanceof HttpError) {
+    return c.json(
+      {
+        error: err.code,
+        ...(err.clientMessage !== undefined ? { message: err.clientMessage } : {}),
+      },
+      err.status as never,
+    )
+  }
   console.error(err)
   return c.json({ error: 'internal_error', message: err.message }, 500)
 })

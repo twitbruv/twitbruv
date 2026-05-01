@@ -1,16 +1,30 @@
 import { Hono } from 'hono'
-import { and, asc, desc, eq, inArray, isNull, schema, sql } from '@workspace/db'
 import {
+  and,
+  asc,
+  assertScheduledMediaOwnership,
+  desc,
+  ensureSystemReport,
+  eq,
+  finalizeScheduledDraftPublishInTx,
+  inArray,
+  isNull,
+  lockScheduledDraftForPublish,
+  schema,
+  sql,
+  SYSTEM_REPORT_BLOCKED_ATTEMPT,
+} from '@workspace/db'
+import {
+  analyzePostPlaintext,
+  CONTENT_POLICY_BLOCKED_MESSAGE,
   createScheduledPostSchema,
-  updateScheduledPostSchema,
   SCHEDULE_MIN_LEAD_SEC,
   SCHEDULE_MAX_LEAD_DAYS,
+  updateScheduledPostSchema,
 } from '@workspace/validators'
 import { handleRateLimitError } from '@workspace/rate-limit'
 import { requireHandle, type HonoEnv } from '../middleware/session.ts'
-import { linkHashtags } from '../lib/hashtags.ts'
-import { linkMentions } from '../lib/mentions.ts'
-import { invalidateUnreadCounts, notify } from '../lib/notify.ts'
+import { invalidateUnreadCounts } from '../lib/notify.ts'
 import { homeFeedCacheKey } from './feed.ts'
 
 export const scheduledPostsRoute = new Hono<HonoEnv>()
@@ -48,6 +62,10 @@ scheduledPostsRoute.post('/', async (c) => {
   await rateLimit(c, 'scheduled.write')
   const body = createScheduledPostSchema.parse(await c.req.json())
 
+  if (analyzePostPlaintext([body.text]).action === 'block') {
+    throw new HttpError(422, 'content_policy_blocked', CONTENT_POLICY_BLOCKED_MESSAGE)
+  }
+
   validateSchedule(body.scheduledFor)
 
   if (body.mediaIds && body.mediaIds.length > 0) {
@@ -77,6 +95,10 @@ scheduledPostsRoute.patch('/:id', async (c) => {
   await rateLimit(c, 'scheduled.write')
   const id = c.req.param('id')
   const body = updateScheduledPostSchema.parse(await c.req.json())
+
+  if (body.text !== undefined && analyzePostPlaintext([body.text]).action === 'block') {
+    throw new HttpError(422, 'content_policy_blocked', CONTENT_POLICY_BLOCKED_MESSAGE)
+  }
 
   if (body.scheduledFor !== undefined) validateSchedule(body.scheduledFor)
   if (body.mediaIds && body.mediaIds.length > 0) {
@@ -137,7 +159,14 @@ scheduledPostsRoute.post('/:id/publish', async (c) => {
   const id = c.req.param('id')
 
   const result = await publishScheduled(db, session.user.id, id)
-  if (!result.ok) return c.json({ error: result.error }, result.status as never)
+  if (!result.ok)
+    return c.json(
+      {
+        error: result.error,
+        ...(result.message !== undefined ? { message: result.message } : {}),
+      },
+      result.status as never,
+    )
 
   await invalidateUnreadCounts(cache, result.notifyRecipients)
   await cache.del(homeFeedCacheKey(session.user.id))
@@ -177,6 +206,7 @@ interface PublishError {
   ok: false
   status: number
   error: string
+  message?: string
 }
 
 export async function publishScheduled(
@@ -184,71 +214,50 @@ export async function publishScheduled(
   authorId: string,
   scheduledId: string,
 ): Promise<PublishSuccess | PublishError> {
-  return await db.transaction(async (tx) => {
-    const [draft] = await tx
-      .select()
-      .from(schema.scheduledPosts)
-      .where(
-        and(
-          eq(schema.scheduledPosts.id, scheduledId),
-          eq(schema.scheduledPosts.authorId, authorId),
-          isNull(schema.scheduledPosts.publishedAt),
-        ),
-      )
-      .limit(1)
-    if (!draft) return { ok: false, status: 404, error: 'not_found' as const }
+  const result = await db.transaction(async (tx) => {
+    const draft = await lockScheduledDraftForPublish(tx, {
+      authorId,
+      scheduledId,
+      skipLocked: false,
+    })
+    if (!draft) return { ok: false as const, status: 404, error: 'not_found' as const }
 
-    if (draft.mediaIds && draft.mediaIds.length > 0) {
-      const owned = await tx
-        .select({ id: schema.media.id })
-        .from(schema.media)
-        .where(
-          and(inArray(schema.media.id, draft.mediaIds), eq(schema.media.ownerId, authorId)),
-        )
-      if (owned.length !== draft.mediaIds.length) {
-        return { ok: false, status: 400, error: 'invalid_media_ids' as const }
+    const mediaIds = draft.mediaIds ?? []
+    const ownsMedia = await assertScheduledMediaOwnership(tx, authorId, mediaIds)
+    if (!ownsMedia) return { ok: false as const, status: 400, error: 'invalid_media_ids' as const }
+
+    const policy = analyzePostPlaintext([draft.text])
+    if (policy.action === 'block') {
+      await ensureSystemReport(tx, {
+        subjectType: 'user',
+        subjectId: authorId,
+        reason: 'illegal',
+        details: SYSTEM_REPORT_BLOCKED_ATTEMPT,
+      })
+      await tx
+        .update(schema.scheduledPosts)
+        .set({ failedAt: new Date(), failureReason: 'content_policy_blocked' })
+        .where(eq(schema.scheduledPosts.id, scheduledId))
+
+      return {
+        ok: false as const,
+        status: 422,
+        error: 'content_policy_blocked' as const,
+        message: CONTENT_POLICY_BLOCKED_MESSAGE,
       }
     }
 
-    const [post] = await tx
-      .insert(schema.posts)
-      .values({
-        authorId,
-        text: draft.text,
-        visibility: draft.visibility,
-        replyRestriction: draft.replyRestriction,
-        sensitive: draft.sensitive,
-        contentWarning: draft.contentWarning,
-      })
-      .returning()
-    if (!post) return { ok: false, status: 500, error: 'insert_failed' as const }
+    const fileSlurReport = policy.action === 'flag'
+    const { postId, notifyRecipients } = await finalizeScheduledDraftPublishInTx(tx, {
+      authorId,
+      draft,
+      fileSlurSystemReport: fileSlurReport,
+    })
 
-    if (draft.mediaIds && draft.mediaIds.length > 0) {
-      await tx.insert(schema.postMedia).values(
-        draft.mediaIds.map((mediaId, position) => ({ postId: post.id, mediaId, position })),
-      )
-    }
-
-    await linkHashtags(tx, post.id, post.text)
-    const mentioned = await linkMentions(tx, post.id, authorId, post.text)
-    const notifyRecipients = await notify(
-      tx,
-      mentioned.map((uid) => ({
-        userId: uid,
-        actorId: authorId,
-        kind: 'mention' as const,
-        entityType: 'post',
-        entityId: post.id,
-      })),
-    )
-
-    await tx
-      .update(schema.scheduledPosts)
-      .set({ publishedAt: new Date(), publishedPostId: post.id })
-      .where(eq(schema.scheduledPosts.id, scheduledId))
-
-    return { ok: true as const, postId: post.id, notifyRecipients }
+    return { ok: true as const, postId, notifyRecipients }
   })
+
+  return result as PublishSuccess | PublishError
 }
 
 function toDto(row: typeof schema.scheduledPosts.$inferSelect) {
@@ -271,7 +280,11 @@ function toDto(row: typeof schema.scheduledPosts.$inferSelect) {
 }
 
 class HttpError extends Error {
-  constructor(public status: number, public code: string) {
+  constructor(
+    public status: number,
+    public code: string,
+    public clientMessage?: string,
+  ) {
     super(code)
   }
 }
@@ -279,7 +292,15 @@ class HttpError extends Error {
 scheduledPostsRoute.onError((err, c) => {
   const rl = handleRateLimitError(err, c)
   if (rl) return rl
-  if (err instanceof HttpError) return c.json({ error: err.code }, err.status as never)
+  if (err instanceof HttpError) {
+    return c.json(
+      {
+        error: err.code,
+        ...(err.clientMessage !== undefined ? { message: err.clientMessage } : {}),
+      },
+      err.status as never,
+    )
+  }
   console.error(err)
   return c.json({ error: 'internal_error', message: err.message }, 500)
 })

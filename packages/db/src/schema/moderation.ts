@@ -6,9 +6,8 @@ export const reports = pgTable(
   'reports',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    reporterId: uuid('reporter_id')
-      .notNull()
-      .references(() => users.id, { onDelete: 'cascade' }),
+    // Null for automated (system) reports filed by moderation policy.
+    reporterId: uuid('reporter_id').references(() => users.id, { onDelete: 'cascade' }),
     subjectType: text('subject_type').notNull(),
     subjectId: uuid('subject_id').notNull(),
     reason: reportReasonEnum('reason').notNull(),

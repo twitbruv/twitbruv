@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@workspace/db": "workspace:*",
+    "@workspace/validators": "workspace:*",
     "@workspace/email": "workspace:*",
     "@workspace/github-unfurl": "workspace:*",
     "@workspace/url-unfurl-core": "workspace:*",
