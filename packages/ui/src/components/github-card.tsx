@@ -74,7 +74,9 @@ export function GithubRepoCard({
 }: GithubRepoCardProps) {
   return (
     <LinkCardShell href={url} className={className}>
-      <GithubChromeHeader repoLabel={nameWithOwner.split("/")[0] ?? nameWithOwner} />
+      <GithubChromeHeader
+        repoLabel={nameWithOwner.split("/")[0] ?? nameWithOwner}
+      />
       <div className="space-y-2 p-3">
         <div className="flex items-center gap-2">
           {ownerAvatarUrl && (
@@ -161,13 +163,13 @@ export interface GithubIssueCardProps {
 export function GithubIssueCard({
   url,
   owner,
-  repo,
+  repo: _repo,
   number: num,
   title,
   state,
   stateReason,
   authorLogin,
-  authorAvatarUrl,
+  authorAvatarUrl: _authorAvatarUrl,
   comments,
   excerpt,
   labels,
@@ -175,13 +177,13 @@ export function GithubIssueCard({
 }: GithubIssueCardProps) {
   return (
     <LinkCardShell href={url} className={className}>
-      <GithubChromeHeader
-        repoLabel={owner}
-      />
+      <GithubChromeHeader repoLabel={owner} />
       <div className="space-y-2 p-3">
         <div className="flex items-start gap-2">
           {state === "open" ? (
-            <Badge variant="success" className={badgeClass}>open</Badge>
+            <Badge variant="success" className={badgeClass}>
+              open
+            </Badge>
           ) : (
             <Badge variant="danger" className={badgeClass}>
               {stateReason === "not_planned" ? "not planned" : "closed"}
@@ -197,11 +199,7 @@ export function GithubIssueCard({
         {labels.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {labels.slice(0, 5).map((l) => (
-              <Badge
-                key={l.name}
-                color={l.color}
-                className="rounded-full"
-              >
+              <Badge key={l.name} color={l.color} className="rounded-full">
                 {l.name}
               </Badge>
             ))}
@@ -241,13 +239,13 @@ export interface GithubPullCardProps {
 export function GithubPullCard({
   url,
   owner,
-  repo,
+  repo: _repo,
   number: num,
   title,
   state,
   draft,
   authorLogin,
-  authorAvatarUrl,
+  authorAvatarUrl: _authorAvatarUrl,
   headRef,
   baseRef,
   additions,
@@ -265,7 +263,11 @@ export function GithubPullCard({
       </Badge>
     )
   } else if (state === "closed") {
-    badge = <Badge variant="danger" className={badgeClass}>closed</Badge>
+    badge = (
+      <Badge variant="danger" className={badgeClass}>
+        closed
+      </Badge>
+    )
   } else if (draft) {
     badge = (
       <Badge className={badgeClass}>
@@ -338,12 +340,12 @@ export interface GithubCommitCardProps {
 export function GithubCommitCard({
   url,
   owner,
-  repo,
+  repo: _repo,
   shortSha,
   messageHeadline,
   messageBody,
   authorLogin,
-  authorAvatarUrl,
+  authorAvatarUrl: _authorAvatarUrl,
   authorName,
   additions,
   deletions,

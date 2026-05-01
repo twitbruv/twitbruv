@@ -795,6 +795,7 @@ export interface UserListMember {
 export interface PostMedia {
   id: string
   kind: "image" | "video" | "gif"
+  mimeType?: string | null
   width: number | null
   height: number | null
   blurhash: string | null

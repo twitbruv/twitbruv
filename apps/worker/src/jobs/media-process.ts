@@ -27,7 +27,7 @@ export async function handleMediaJob(args: {
   try {
     const originalBytes = await getObjectBytes(args.s3, args.env.S3_BUCKET, media.originalKey)
 
-    if (media.kind !== 'image') {
+    if (media.kind !== 'image' && media.kind !== 'gif') {
       throw new Error(`unsupported media kind for sharp pipeline: ${media.kind}`)
     }
 
@@ -37,6 +37,7 @@ export async function handleMediaJob(args: {
       ownerId: media.ownerId,
       mediaId: media.id,
       originalBytes,
+      ...(media.kind === 'gif' ? { originalKey: media.originalKey } : {}),
     })
 
     await args.db

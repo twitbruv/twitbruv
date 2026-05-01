@@ -15,7 +15,7 @@ import { Avatar } from "@workspace/ui/components/avatar"
 import { api } from "../lib/api"
 import { getPastedImageFiles } from "../lib/clipboard-images"
 import { subscribeToDmStream } from "../lib/dm-stream"
-import { uploadImage } from "../lib/media"
+import { pickPrimaryMediaUrl, uploadImage } from "../lib/media"
 import { useMe } from "../lib/me"
 import type { DmConversation, DmMember, DmMessage } from "../lib/api"
 
@@ -497,7 +497,7 @@ function MessageBubble({
         )}
         {message.media && (
           <img
-            src={message.media.variants[0]?.url}
+            src={pickPrimaryMediaUrl(message.media, "medium") ?? ""}
             alt=""
             className="mb-1 max-h-40 rounded-lg object-cover"
           />

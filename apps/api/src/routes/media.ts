@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
-import { and, eq, sql } from '@workspace/db'
+import { and, eq } from '@workspace/db'
 import { schema } from '@workspace/db'
 import { headObject, presignPut, publicUrl, type S3 } from '@workspace/media/s3'
 import type { MediaEnv } from '@workspace/media/env'
@@ -47,7 +47,7 @@ export function createMediaRoute(deps: MediaDeps) {
       .insert(schema.media)
       .values({
         ownerId: session.user.id,
-        kind: 'image',
+        kind: body.mime === 'image/gif' ? 'gif' : 'image',
         originalKey: 'pending',
         mimeType: body.mime,
         bytes: body.size,

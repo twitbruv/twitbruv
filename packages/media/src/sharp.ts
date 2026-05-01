@@ -8,7 +8,7 @@ import type { MediaEnv } from './env.ts'
 const IMAGE_MIME_ALLOW = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif', 'image/heic', 'image/heif'])
 
 export interface ProcessedVariant {
-  kind: 'thumb' | 'medium' | 'large'
+  kind: 'thumb' | 'medium' | 'large' | 'original'
   key: string
   width: number
   height: number
@@ -25,7 +25,7 @@ export interface ProcessedImage {
   variants: Array<ProcessedVariant>
 }
 
-const VARIANT_TARGETS: Array<{ kind: ProcessedVariant['kind']; maxEdge: number }> = [
+const VARIANT_TARGETS: Array<{ kind: 'thumb' | 'medium' | 'large'; maxEdge: number }> = [
   { kind: 'thumb', maxEdge: 480 },
   { kind: 'medium', maxEdge: 1080 },
   { kind: 'large', maxEdge: 2048 },
@@ -37,6 +37,7 @@ export async function processImage(args: {
   ownerId: string
   mediaId: string
   originalBytes: Uint8Array
+  originalKey?: string
 }): Promise<ProcessedImage> {
   const { s3, env, ownerId, mediaId, originalBytes } = args
 
@@ -87,6 +88,17 @@ export async function processImage(args: {
       width: out.info.width,
       height: out.info.height,
       bytes: out.info.size,
+    })
+  }
+
+  if (mime === 'image/gif') {
+    if (!args.originalKey) throw new Error('originalKey required for GIF processing')
+    variants.push({
+      kind: 'original',
+      key: args.originalKey,
+      width,
+      height,
+      bytes: originalBytes.byteLength,
     })
   }
 

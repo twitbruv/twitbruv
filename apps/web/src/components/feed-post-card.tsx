@@ -7,20 +7,21 @@ import {
   useTogglePostRepost,
 } from "../lib/mutations/posts"
 import { api } from "../lib/api"
-import { useLightbox } from "./lightbox-provider"
+import { pickPrimaryMediaUrl } from "../lib/media"
 import { useCompose } from "./compose-provider"
-import { LightboxSidebar } from "./lightbox-sidebar"
+import { ArticleCardBlock } from "./post-card"
 import { GithubCardBlock } from "./github-card"
 import { LinkCardBlock } from "./link-card"
+import { useLightbox } from "./lightbox-provider"
+import { LightboxSidebar } from "./lightbox-sidebar"
 import { XStatusCardBlock } from "./x-status-card"
 import { YoutubeCardBlock } from "./youtube-card"
-import { ArticleCardBlock } from "./post-card"
+import type { Post, PostMedia, UnfurlCard } from "../lib/api"
 import type {
   AuthorProfile,
   PostQuoteOf,
   PostMedia as UIPostMedia,
 } from "@workspace/ui/components/post-card"
-import type { Post, PostMedia, UnfurlCard } from "../lib/api"
 
 function unfurlCardKey(card: UnfurlCard, i: number): string {
   const base =
@@ -60,21 +61,17 @@ function relativeTime(iso: string): string {
   return new Date(iso).toLocaleDateString()
 }
 
-function pickVariant(media: PostMedia) {
-  return (
-    media.variants.find((v) => v.kind === "medium") ??
-    media.variants.find((v) => v.kind === "large") ??
-    media.variants.find((v) => v.kind === "thumb") ??
-    media.variants[0]
-  )
-}
-
 function mapMedia(media: Array<PostMedia>): Array<UIPostMedia> {
   return media
     .filter((m) => m.processingState === "ready" && m.variants.length > 0)
     .map((m) => {
-      const variant = pickVariant(m)
-      if (m.kind === "video" || m.kind === "gif") {
+      if (m.kind === "video") {
+        const first = m.variants[0]
+        const variant =
+          m.variants.find((v) => v.kind === "medium") ??
+          m.variants.find((v) => v.kind === "large") ??
+          m.variants.find((v) => v.kind === "thumb") ??
+          first
         const thumb = m.variants.find((v) => v.kind === "thumb") ?? variant
         return {
           type: "video" as const,
@@ -82,9 +79,10 @@ function mapMedia(media: Array<PostMedia>): Array<UIPostMedia> {
           thumbnailUrl: thumb.url,
         }
       }
+      const url = pickPrimaryMediaUrl(m, "medium") ?? ""
       return {
         type: "image" as const,
-        url: variant.url,
+        url,
         alt: m.altText ?? undefined,
       }
     })
@@ -169,14 +167,17 @@ export function FeedPostCard({
         const images = (post.media ?? [])
           .filter(
             (m) =>
-              m.kind === "image" &&
+              (m.kind === "image" || m.kind === "gif") &&
               m.processingState === "ready" &&
               m.variants.length > 0
           )
-          .map((m) => {
-            const variant = pickVariant(m)
-            return { url: variant.url, alt: m.altText ?? undefined }
-          })
+          .map((m) => ({
+            url:
+              pickPrimaryMediaUrl(m, "large") ??
+              pickPrimaryMediaUrl(m, "medium") ??
+              "",
+            alt: m.altText ?? undefined,
+          }))
           .filter((img) => img.url)
         if (images.length > 0) {
           lightbox.open(images, index, <LightboxSidebar post={outerPost} />)

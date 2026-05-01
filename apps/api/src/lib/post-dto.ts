@@ -1,8 +1,8 @@
-import { schema } from '@workspace/db'
-import type { MediaEnv } from '@workspace/media/env'
-import { assetUrl, publicUrl } from '@workspace/media/s3'
-import type { UnfurlCard } from './unfurl-cards.ts'
-import type { PollDto } from './polls.ts'
+import { schema } from "@workspace/db"
+import type { MediaEnv } from "@workspace/media/env"
+import { assetUrl, publicUrl } from "@workspace/media/s3"
+import type { UnfurlCard } from "./unfurl-cards.ts"
+import type { PollDto } from "./polls.ts"
 
 type PostRow = typeof schema.posts.$inferSelect
 type UserRow = typeof schema.users.$inferSelect
@@ -23,12 +23,13 @@ export interface MediaVariantDto {
 
 export interface MediaDto {
   id: string
-  kind: 'image' | 'video' | 'gif'
+  kind: "image" | "video" | "gif"
+  mimeType?: string | null
   width: number | null
   height: number | null
   blurhash: string | null
   altText: string | null
-  processingState: 'pending' | 'processing' | 'ready' | 'failed' | 'flagged'
+  processingState: "pending" | "processing" | "ready" | "failed" | "flagged"
   variants: Array<MediaVariantDto>
 }
 
@@ -37,13 +38,13 @@ export interface PostDto {
   text: string
   createdAt: string
   editedAt: string | null
-  visibility: 'public' | 'followers' | 'unlisted'
+  visibility: "public" | "followers" | "unlisted"
   replyToId: string | null
   quoteOfId: string | null
   repostOfId: string | null
   sensitive: boolean
   contentWarning: string | null
-  replyRestriction: 'anyone' | 'following' | 'mentioned'
+  replyRestriction: "anyone" | "following" | "mentioned"
   /** Set when the conversation root author hid this reply. The thread renderer
    *  collapses these by default behind a "Show hidden replies" affordance. */
   hidden?: boolean
@@ -54,7 +55,7 @@ export interface PostDto {
     avatarUrl: string | null
     isVerified: boolean
     isBot: boolean
-    role: 'user' | 'admin' | 'owner'
+    role: "user" | "admin" | "owner"
   }
   counts: {
     likes: number
@@ -84,18 +85,24 @@ export interface PostDto {
 
 export function toMediaDto(m: MediaRow, env: MediaEnv): MediaDto {
   const variants: Array<MediaVariantDto> = Array.isArray(m.variants)
-    ? (m.variants as Array<{ kind: string; key: string; width: number; height: number }>).map(
-        (v) => ({
-          kind: v.kind,
-          url: publicUrl(env, v.key),
-          width: v.width,
-          height: v.height,
-        }),
-      )
+    ? (
+        m.variants as Array<{
+          kind: string
+          key: string
+          width: number
+          height: number
+        }>
+      ).map((v) => ({
+        kind: v.kind,
+        url: publicUrl(env, v.key),
+        width: v.width,
+        height: v.height,
+      }))
     : []
   return {
     id: m.id,
     kind: m.kind,
+    mimeType: m.mimeType ?? null,
     width: m.width,
     height: m.height,
     blurhash: m.blurhash,
@@ -114,7 +121,7 @@ export function toPostDto(
   cards?: Array<UnfurlCard>,
   repostOf?: PostDto,
   quoteOf?: PostDto,
-  poll?: PollDto,
+  poll?: PollDto
 ): PostDto {
   return {
     id: post.id,

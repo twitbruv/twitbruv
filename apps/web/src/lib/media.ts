@@ -3,6 +3,7 @@ import { API_URL } from "./env"
 export interface UploadedMedia {
   id: string
   kind: "image" | "video" | "gif"
+  mimeType?: string | null
   processingState: "pending" | "processing" | "ready" | "failed" | "flagged"
   width: number | null
   height: number | null
@@ -27,6 +28,20 @@ export function pickVariantUrl(
     if (v) return v.url
   }
   return media.variants[0]?.url ?? null
+}
+
+export type MediaVariantUrlSource = Pick<UploadedMedia, "kind" | "variants"> &
+  Partial<Pick<UploadedMedia, "mimeType">>
+
+export function pickPrimaryMediaUrl(
+  media: MediaVariantUrlSource,
+  prefer: "thumb" | "medium" | "large" = "medium"
+): string | null {
+  const original = media.variants.find((x) => x.kind === "original")?.url
+  if (original && (media.kind === "gif" || media.mimeType === "image/gif")) {
+    return original
+  }
+  return pickVariantUrl(media as UploadedMedia, prefer)
 }
 
 async function json<T>(path: string, init?: RequestInit): Promise<T> {

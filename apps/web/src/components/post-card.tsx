@@ -23,6 +23,7 @@ import { POST_MAX_LEN } from "@workspace/validators"
 import { Avatar } from "@workspace/ui/components/avatar"
 import { recordImpression } from "../lib/analytics"
 import { ApiError, api } from "../lib/api"
+import { pickPrimaryMediaUrl } from "../lib/media"
 import { LikeIconBurst, useLikeAnimation } from "./like-button-heart"
 import { RichText } from "./rich-text"
 import { GithubCardBlock } from "./github-card"
@@ -53,24 +54,6 @@ function relativeTime(iso: string): string {
   const dd = Math.floor(h / 24)
   if (dd < 7) return `${dd}d`
   return new Date(iso).toLocaleDateString()
-}
-
-function pickVariant(media: NonNullable<Post["media"]>[number]) {
-  return (
-    media.variants.find((v) => v.kind === "medium") ??
-    media.variants.find((v) => v.kind === "large") ??
-    media.variants.find((v) => v.kind === "thumb") ??
-    media.variants[0]
-  )
-}
-
-function pickLargest(media: NonNullable<Post["media"]>[number]) {
-  return (
-    media.variants.find((v) => v.kind === "large") ??
-    media.variants.find((v) => v.kind === "medium") ??
-    media.variants.find((v) => v.kind === "thumb") ??
-    media.variants[0]
-  )
 }
 
 export function clickedInteractiveElement(target: EventTarget | null) {
@@ -236,16 +219,20 @@ function MediaGrid({ media }: { media: NonNullable<Post["media"]> }) {
   const cols = media.length === 1 ? "grid-cols-1" : "grid-cols-2"
   const gallery = media.flatMap((m) => {
     if (m.processingState !== "ready") return []
-    const full = pickLargest(m)
-    return [{ id: m.id, src: full.url, alt: m.altText ?? "" }]
+    const src =
+      pickPrimaryMediaUrl(m, "large") ?? pickPrimaryMediaUrl(m, "medium") ?? ""
+    return src ? [{ id: m.id, src, alt: m.altText ?? "" }] : []
   })
   return (
     <div className={`mt-2 grid gap-1 overflow-hidden rounded-md ${cols}`}>
       {media.map((m) => {
-        const thumb = pickVariant(m)
+        const displayUrl =
+          pickPrimaryMediaUrl(m, "medium") ??
+          pickPrimaryMediaUrl(m, "large") ??
+          ""
         const aspect =
           m.width && m.height ? `${m.width} / ${m.height}` : undefined
-        const isReady = m.processingState === "ready" && thumb
+        const isReady = m.processingState === "ready" && Boolean(displayUrl)
         const galleryIndex = gallery.findIndex((g) => g.id === m.id)
         return (
           <ImageLightbox
@@ -261,7 +248,7 @@ function MediaGrid({ media }: { media: NonNullable<Post["media"]> }) {
             >
               {isReady ? (
                 <img
-                  src={thumb.url}
+                  src={displayUrl}
                   alt={m.altText ?? ""}
                   loading="lazy"
                   className="h-full w-full object-cover"

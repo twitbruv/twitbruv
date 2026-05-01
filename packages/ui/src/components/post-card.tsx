@@ -501,7 +501,7 @@ function LikeIcon({
           src={bruvSrc}
           alt=""
           draggable={false}
-          className="absolute inset-0 size-4 object-cover animate-[heartFillIn_350ms_ease-out_forwards]"
+          className="absolute inset-0 size-4 animate-[heartFillIn_350ms_ease-out_forwards] object-cover"
         />
       ) : (
         <HeartSolid

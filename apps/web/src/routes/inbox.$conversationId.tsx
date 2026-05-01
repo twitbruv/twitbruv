@@ -35,7 +35,7 @@ import { subscribeToDmStream } from "../lib/dm-stream"
 import {
   MAX_UPLOAD_BYTES,
   compressImage,
-  pickVariantUrl,
+  pickPrimaryMediaUrl,
   setAltText,
   uploadImage,
 } from "../lib/media"
@@ -1134,8 +1134,9 @@ function Bubble({
 }
 
 function MessageImage({ media }: { media: PostMedia }) {
-  const url = pickVariantUrl(media, "medium")
-  const full = pickVariantUrl(media, "large") ?? url
+  const url = pickPrimaryMediaUrl(media, "medium")
+  const full =
+    pickPrimaryMediaUrl(media, "large") ?? pickPrimaryMediaUrl(media, "medium")
   if (!url) {
     return (
       <div className="bg-base/30 my-1 flex h-32 w-48 items-center justify-center rounded-md text-xs">
