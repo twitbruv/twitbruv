@@ -16,7 +16,7 @@
     "@workspace/youtube-unfurl": "workspace:*",
     "@workspace/x-unfurl": "workspace:*",
     "@workspace/media": "workspace:*",
-    "pg-boss": "^12.18.1",
+    "pg-boss": "^10.3.2",
     "pino": "^10.3.1",
     "zod": "^4.4.1"
   },
