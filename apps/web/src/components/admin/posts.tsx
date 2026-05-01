@@ -55,15 +55,16 @@ type VisibilityFilter = "public" | "followers" | "unlisted" | "any"
 type StatusFilter = "active" | "deleted" | "sensitive" | "any"
 
 const COLUMN_WIDTHS: Record<string, string> = {
-  author: "16%",
-  text: "26%",
-  type: "8%",
-  likes: "7%",
-  reposts: "7%",
-  replies: "7%",
-  bookmarks: "7%",
-  impressions: "8%",
-  created: "8%",
+  author: "14%",
+  text: "21%",
+  type: "7%",
+  likes: "6%",
+  reposts: "6%",
+  replies: "6%",
+  bookmarks: "6%",
+  impressions: "7%",
+  reports: "7%",
+  created: "7%",
   actions: "6%",
 }
 
@@ -393,6 +394,22 @@ export default function AdminPosts() {
         ),
       },
       {
+        id: "reports",
+        header: "Reports",
+        cell: ({ row }) => {
+          const p = row.original
+          const open = p.reportsOpen
+          const total = p.reportsTotal
+          const tone =
+            open > 0 ? "text-amber-600 dark:text-amber-500" : "text-tertiary"
+          return (
+            <span className={`text-xs tabular-nums ${tone}`}>
+              {open}/{total}
+            </span>
+          )
+        },
+      },
+      {
         id: "created",
         header: () => (
           <StatHeader
@@ -491,7 +508,7 @@ export default function AdminPosts() {
   )
 
   return (
-    <PageFrame className="flex flex-col">
+    <PageFrame width="full" className="flex flex-col">
       <div className="shrink-0 space-y-3 border-b border-neutral p-4">
         <Input
           value={q}

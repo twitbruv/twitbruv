@@ -68,7 +68,7 @@ function AdminLayout() {
   }
 
   return (
-    <PageFrame>
+    <PageFrame width="full">
       <header className="sticky top-0 z-40 flex h-12 items-center bg-base-1/80 px-4 backdrop-blur-md">
         <SegmentedControl<AdminTab>
           layout="fit"

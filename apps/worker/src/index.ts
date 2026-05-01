@@ -1,4 +1,4 @@
-import PgBoss from "pg-boss"
+import { Worker } from "bullmq"
 import pino from "pino"
 import { createMailer } from "@workspace/email"
 import { createDbFromEnv } from "@workspace/db"
@@ -12,6 +12,8 @@ import { handleGithubUnfurlJob } from "./jobs/github-unfurl.ts"
 import { handleYoutubeUnfurlJob } from "./jobs/youtube-unfurl.ts"
 import { handleGenericUnfurlJob } from "./jobs/generic-unfurl.ts"
 import { handleXUnfurlJob } from "./jobs/x-unfurl.ts"
+
+const BULLMQ_PREFIX = "twotter:queue"
 
 const env = loadEnv()
 
@@ -47,146 +49,154 @@ const mediaEnv: MediaEnv = {
 }
 const s3 = createS3(mediaEnv)
 
-const boss = new PgBoss({ connectionString: env.DATABASE_URL })
-boss.on("error", (err) => log.error({ err: err.message }, "pg_boss_error"))
+const connection = {
+  url: env.REDIS_URL,
+  maxRetriesPerRequest: null as null,
+}
 
-await boss.start()
-// pg-boss v10 needs queues declared before work/send. Idempotent.
-// Serialize: creating two queues in parallel deadlocks on pgboss.queue row locks.
-await boss.createQueue("email.send")
-await boss.createQueue("media.process")
-await boss.createQueue("github.unfurl")
-await boss.createQueue("youtube.unfurl")
-await boss.createQueue("generic.unfurl")
-await boss.createQueue("x.unfurl")
+const workerOpts = { connection, prefix: BULLMQ_PREFIX }
 
-await boss.work("email.send", { batchSize: 5 }, async (jobs) => {
-  await Promise.all(jobs.map((job) => handleEmailJob(mailer, job.data)))
-})
+const workers: Worker[] = [
+  new Worker(
+    "email.send",
+    async (job) => {
+      await handleEmailJob(mailer, job.data)
+    },
+    { ...workerOpts, concurrency: 5 },
+  ),
 
-await boss.work("media.process", { batchSize: 2 }, async (jobs) => {
-  for (const job of jobs) {
-    log.info({ payload: job.data }, "media_process_start")
-    try {
-      await handleMediaJob({ db, s3, env: mediaEnv, payload: job.data })
-      log.info({ payload: job.data }, "media_process_done")
-    } catch (err) {
-      log.error(
-        {
-          err: err instanceof Error ? (err.stack ?? err.message) : err,
-          payload: job.data,
-        },
-        "media_process_failed"
-      )
-      throw err
-    }
-  }
-})
+  new Worker(
+    "media.process",
+    async (job) => {
+      log.info({ payload: job.data }, "media_process_start")
+      try {
+        await handleMediaJob({ db, s3, env: mediaEnv, payload: job.data })
+        log.info({ payload: job.data }, "media_process_done")
+      } catch (err) {
+        log.error(
+          {
+            err: err instanceof Error ? (err.stack ?? err.message) : err,
+            payload: job.data,
+          },
+          "media_process_failed",
+        )
+        throw err
+      }
+    },
+    { ...workerOpts, concurrency: 2 },
+  ),
 
-// GitHub URL unfurl. batchSize=4 caps concurrent GitHub RTTs at 4 per worker tick — at
-// ~500ms p50, that's ~8 RPS max, far under the 5000/hr authenticated limit. Most jobs are
-// cache hits anyway because url_unfurls.refKey dedupes across posters.
-await boss.work("github.unfurl", { batchSize: 4 }, async (jobs) => {
-  for (const job of jobs) {
-    try {
-      const result = await handleGithubUnfurlJob(db, job.data)
-      if (!result.ok) {
-        log.warn(
-          { payload: job.data, reason: result.reason },
-          "github_unfurl_failed"
+  new Worker(
+    "github.unfurl",
+    async (job) => {
+      try {
+        const result = await handleGithubUnfurlJob(db, job.data)
+        if (!result.ok) {
+          log.warn(
+            { payload: job.data, reason: result.reason },
+            "github_unfurl_failed",
+          )
+        }
+      } catch (err) {
+        log.error(
+          {
+            err: err instanceof Error ? (err.stack ?? err.message) : err,
+            payload: job.data,
+          },
+          "github_unfurl_handler_error",
         )
       }
-    } catch (err) {
-      // The handler persists most failures itself; only programmer errors reach here. Don't
-      // re-throw — pg-boss would retry, and a parse error isn't going to fix itself.
-      log.error(
-        {
-          err: err instanceof Error ? (err.stack ?? err.message) : err,
-          payload: job.data,
-        },
-        "github_unfurl_handler_error"
-      )
-    }
-  }
-})
+    },
+    { ...workerOpts, concurrency: 4 },
+  ),
 
-await boss.work("youtube.unfurl", { batchSize: 4 }, async (jobs) => {
-  for (const job of jobs) {
-    try {
-      const result = await handleYoutubeUnfurlJob(
-        db,
-        job.data,
-        env.YOUTUBE_API_KEY
-      )
-      if (!result.ok) {
-        log.warn(
-          { payload: job.data, reason: result.reason },
-          "youtube_unfurl_failed"
+  new Worker(
+    "youtube.unfurl",
+    async (job) => {
+      try {
+        const result = await handleYoutubeUnfurlJob(
+          db,
+          job.data,
+          env.YOUTUBE_API_KEY,
+        )
+        if (!result.ok) {
+          log.warn(
+            { payload: job.data, reason: result.reason },
+            "youtube_unfurl_failed",
+          )
+        }
+      } catch (err) {
+        log.error(
+          {
+            err: err instanceof Error ? (err.stack ?? err.message) : err,
+            payload: job.data,
+          },
+          "youtube_unfurl_handler_error",
         )
       }
-    } catch (err) {
-      log.error(
-        {
-          err: err instanceof Error ? (err.stack ?? err.message) : err,
-          payload: job.data,
-        },
-        "youtube_unfurl_handler_error"
-      )
-    }
-  }
-})
+    },
+    { ...workerOpts, concurrency: 4 },
+  ),
 
-await boss.work("generic.unfurl", { batchSize: 4 }, async (jobs) => {
-  for (const job of jobs) {
-    try {
-      const result = await handleGenericUnfurlJob(db, job.data)
-      if (!result.ok) {
-        log.warn(
-          { payload: job.data, reason: result.reason },
-          "generic_unfurl_failed"
+  new Worker(
+    "generic.unfurl",
+    async (job) => {
+      try {
+        const result = await handleGenericUnfurlJob(db, job.data)
+        if (!result.ok) {
+          log.warn(
+            { payload: job.data, reason: result.reason },
+            "generic_unfurl_failed",
+          )
+        }
+      } catch (err) {
+        log.error(
+          {
+            err: err instanceof Error ? (err.stack ?? err.message) : err,
+            payload: job.data,
+          },
+          "generic_unfurl_handler_error",
         )
       }
-    } catch (err) {
-      log.error(
-        {
-          err: err instanceof Error ? (err.stack ?? err.message) : err,
-          payload: job.data,
-        },
-        "generic_unfurl_handler_error"
-      )
-    }
-  }
-})
+    },
+    { ...workerOpts, concurrency: 4 },
+  ),
 
-await boss.work("x.unfurl", { batchSize: 4 }, async (jobs) => {
-  for (const job of jobs) {
-    try {
-      const result = await handleXUnfurlJob(
-        db,
-        job.data,
-        env.FXTWITTER_API_BASE_URL
-      )
-      if (!result.ok) {
-        log.warn(
-          { payload: job.data, reason: result.reason },
-          "x_unfurl_failed"
+  new Worker(
+    "x.unfurl",
+    async (job) => {
+      try {
+        const result = await handleXUnfurlJob(
+          db,
+          job.data,
+          env.FXTWITTER_API_BASE_URL,
+        )
+        if (!result.ok) {
+          log.warn(
+            { payload: job.data, reason: result.reason },
+            "x_unfurl_failed",
+          )
+        }
+      } catch (err) {
+        log.error(
+          {
+            err: err instanceof Error ? (err.stack ?? err.message) : err,
+            payload: job.data,
+          },
+          "x_unfurl_handler_error",
         )
       }
-    } catch (err) {
-      log.error(
-        {
-          err: err instanceof Error ? (err.stack ?? err.message) : err,
-          payload: job.data,
-        },
-        "x_unfurl_handler_error"
-      )
-    }
-  }
-})
+    },
+    { ...workerOpts, concurrency: 4 },
+  ),
+]
 
-// Polls every 30s for scheduled posts whose publish time has arrived. Cheap query, indexed.
-// Runs in-process rather than via pg-boss because it doesn't need durability or fan-out — it
-// just walks the table.
+for (const w of workers) {
+  w.on("error", (err) =>
+    log.error({ err: err instanceof Error ? err.message : err }, "bullmq_error"),
+  )
+}
+
 const SCHEDULED_INTERVAL_MS = 30_000
 let scheduledRunning = false
 const scheduledTimer = setInterval(async () => {
@@ -214,13 +224,13 @@ log.info(
     ],
     scheduledIntervalMs: SCHEDULED_INTERVAL_MS,
   },
-  "worker_ready"
+  "worker_ready",
 )
 
 const shutdown = async () => {
   log.info("worker_shutdown")
   clearInterval(scheduledTimer)
-  await boss.stop({ graceful: true })
+  await Promise.all(workers.map((w) => w.close()))
   process.exit(0)
 }
 process.on("SIGINT", shutdown)

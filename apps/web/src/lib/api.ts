@@ -1199,6 +1199,8 @@ export interface AdminPost {
   editedAt: string | null
   deletedAt: string | null
   createdAt: string
+  reportsOpen: number
+  reportsTotal: number
 }
 
 export interface AdminUser {
@@ -1215,6 +1217,11 @@ export interface AdminUser {
   isVerified: boolean
   deletedAt: string | null
   createdAt: string
+  postsCount: number
+  followersCount: number
+  followingCount: number
+  openReportsCount: number
+  reportsTotalCount?: number
 }
 
 export interface AdminUserDetail {
@@ -1261,6 +1268,10 @@ export interface AdminReport {
     displayName: string | null
     avatarUrl: string | null
   } | null
+  subjectPreview:
+    | { kind: "post"; authorHandle: string | null; textPreview: string }
+    | { kind: "user"; handle: string | null; displayName: string | null }
+    | { kind: "other"; subjectType: string }
 }
 
 export type AdminReportSubject =
@@ -1310,6 +1321,15 @@ export interface AdminReportDetail {
     avatarUrl: string | null
   } | null
   subject: AdminReportSubject | null
+  linkedModerationActions: Array<{
+    id: string
+    moderatorId: string | null
+    action: string
+    publicReason: string | null
+    privateNote: string | null
+    durationHours: number | null
+    createdAt: string
+  }>
 }
 
 export interface AnalyticsOverview {

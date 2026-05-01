@@ -1,4 +1,3 @@
-import PgBoss from "pg-boss"
 import { createAuth, type AuthInstance } from "@workspace/auth/server"
 import { createDb, type Database } from "@workspace/db"
 import { createMailer, type Mailer } from "@workspace/email"
@@ -11,6 +10,7 @@ import { createLogger, type Logger } from "./logger.ts"
 import { makeRateLimit } from "@workspace/rate-limit"
 import { createTracker, type TrackFn } from "./analytics.ts"
 import { createModerator, type Moderator } from "./moderation.ts"
+import { createAppJobQueues, type AppJobQueues } from "./job-queues.ts"
 
 export interface AppContext {
   env: Env
@@ -19,7 +19,7 @@ export interface AppContext {
   auth: AuthInstance
   s3: S3
   mediaEnv: MediaEnv
-  boss: PgBoss
+  jobQueues: AppJobQueues
   cache: Cache
   pubsub: PubSub
   log: Logger
@@ -108,19 +108,7 @@ export async function buildContext(): Promise<AppContext> {
     allowedOrigins: env.AUTH_TRUSTED_ORIGINS,
   })
 
-  const boss = new PgBoss({ connectionString: env.DATABASE_URL })
-  boss.on("error", (err) => console.error("pg-boss:", err))
-  await boss.start()
-  // pg-boss v10 requires a queue to exist before send/work succeeds. Declared serially here
-  // so the API can `boss.send` even before the worker has booted; the worker also declares
-  // them on its side, which is fine — createQueue is idempotent. Concurrent creates across
-  // processes used to deadlock; serial within a process does not.
-  await boss.createQueue("email.send")
-  await boss.createQueue("media.process")
-  await boss.createQueue("github.unfurl")
-  await boss.createQueue("youtube.unfurl")
-  await boss.createQueue("generic.unfurl")
-  await boss.createQueue("x.unfurl")
+  const jobQueues = createAppJobQueues(env.REDIS_URL)
 
   const cache = createCache(env.REDIS_URL)
   const pubsub = createPubSub(env.REDIS_URL)
@@ -139,7 +127,7 @@ export async function buildContext(): Promise<AppContext> {
     auth,
     s3,
     mediaEnv,
-    boss,
+    jobQueues,
     cache,
     pubsub,
     log,

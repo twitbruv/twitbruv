@@ -63,6 +63,7 @@ export interface SidebarProps {
   /** Optional logo element. Falls back to the twitbruv logo. */
   logo?: ReactNode
   className?: string
+  compact?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -99,21 +100,33 @@ export function Sidebar({
   onSignOut,
   logo,
   className,
+  compact = false,
 }: SidebarProps) {
   return (
     <aside
       className={cn(
-        "sticky top-0 flex h-svh w-[68px] shrink-0 flex-col items-center justify-between overflow-y-auto py-4 xl:w-[240px] xl:items-start xl:px-3",
+        "sticky top-0 flex h-svh w-[68px] shrink-0 flex-col items-center justify-between overflow-y-auto py-4",
+        !compact && "xl:w-[240px] xl:items-start xl:px-3",
         className
       )}
     >
       {/* Logo */}
-      <div className="flex h-10 w-10 items-center justify-center text-primary xl:ml-1">
+      <div
+        className={cn(
+          "flex h-10 w-10 items-center justify-center text-primary",
+          !compact && "xl:ml-1"
+        )}
+      >
         {logo ?? defaultLogo}
       </div>
 
       {/* Nav links */}
-      <nav className="mt-2 flex flex-1 flex-col items-center gap-1 xl:w-full xl:items-stretch">
+      <nav
+        className={cn(
+          "mt-2 flex flex-1 flex-col items-center gap-1",
+          !compact && "xl:w-full xl:items-stretch"
+        )}
+      >
         {navItems.map((item) => (
           <div key={item.to}>
             {renderLink({
@@ -121,7 +134,8 @@ export function Sidebar({
               end: item.end,
               className: (isActive) =>
                 cn(
-                  "group flex size-11 items-center justify-center rounded-full transition-colors hover:bg-subtle xl:w-full xl:justify-start xl:gap-4 xl:px-3",
+                  "group flex size-11 items-center justify-center rounded-full transition-colors hover:bg-subtle",
+                  !compact && "xl:w-full xl:justify-start xl:gap-4 xl:px-3",
                   isActive && "font-semibold"
                 ),
               children: (isActive) => {
@@ -135,6 +149,9 @@ export function Sidebar({
                   badge != null ? formatNavUnreadBadge(badge) : null
                 return (
                   <>
+                    {compact ? (
+                      <span className="sr-only">{item.label}</span>
+                    ) : null}
                     <span className="relative shrink-0">
                       {isActive ? (
                         <IconActive className="size-6 text-primary" />
@@ -147,7 +164,8 @@ export function Sidebar({
                           <span
                             aria-hidden
                             className={cn(
-                              "absolute -top-0.5 -right-1 flex h-[14px] min-w-[14px] items-center justify-center rounded-full bg-danger px-[3px] text-[9px] leading-none font-semibold text-danger-on xl:hidden"
+                              "absolute -top-0.5 -right-1 flex h-[14px] min-w-[14px] items-center justify-center rounded-full bg-danger px-[3px] text-[9px] leading-none font-semibold text-danger-on",
+                              !compact && "xl:hidden"
                             )}
                           >
                             {badgeLabel}
@@ -155,7 +173,12 @@ export function Sidebar({
                         </>
                       )}
                     </span>
-                    <span className="hidden min-w-0 flex-1 items-center justify-between gap-2 xl:flex">
+                    <span
+                      className={cn(
+                        "hidden min-w-0 flex-1 items-center justify-between gap-2",
+                        !compact && "xl:flex"
+                      )}
+                    >
                       <span className="truncate text-[15px] text-primary transition-all">
                         {item.label}
                       </span>
@@ -163,7 +186,8 @@ export function Sidebar({
                         <span
                           aria-hidden
                           className={cn(
-                            "inline-flex min-h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-danger px-1 text-[10px] leading-none font-semibold text-danger-on"
+                            "inline-flex min-h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-danger px-1 text-[10px] leading-none font-semibold text-danger-on",
+                            compact && "hidden"
                           )}
                         >
                           {badgeLabel}
@@ -178,11 +202,16 @@ export function Sidebar({
         ))}
 
         {/* Compose button */}
-        <div className="mt-4 flex flex-col items-center xl:w-full xl:items-stretch">
+        <div
+          className={cn(
+            "mt-4 flex flex-col items-center",
+            !compact && "xl:w-full xl:items-stretch"
+          )}
+        >
           <Button
             variant="primary"
             size="md"
-            className="hidden h-11 w-full xl:flex"
+            className={cn("hidden h-11 w-full", !compact && "xl:flex")}
             onClick={onCompose}
           >
             Post
@@ -190,8 +219,9 @@ export function Sidebar({
           <Button
             variant="primary"
             size="md"
-            className="flex size-11 xl:hidden"
+            className={cn("flex size-11", !compact && "xl:hidden")}
             onClick={onCompose}
+            aria-label="Compose post"
           >
             <PencilSquareIcon className="size-5" />
           </Button>
@@ -200,7 +230,14 @@ export function Sidebar({
 
       {/* Profile pill / user menu */}
       <DropdownMenu.Root>
-        <DropdownMenu.Trigger className="flex items-center gap-3 rounded-full p-2 transition-colors hover:bg-subtle xl:w-full">
+        <DropdownMenu.Trigger
+          className={cn(
+            "flex items-center gap-3 rounded-full p-2 transition-colors hover:bg-subtle",
+            !compact && "xl:w-full",
+            compact && "justify-center"
+          )}
+          aria-label={`Account menu for ${user.displayName}`}
+        >
           {user.avatarUrl ? (
             <img
               src={user.avatarUrl}
@@ -212,7 +249,9 @@ export function Sidebar({
               {user.displayName[0]}
             </div>
           )}
-          <div className="hidden min-w-0 text-left xl:block">
+          <div
+            className={cn("hidden min-w-0 text-left", !compact && "xl:block")}
+          >
             <div className="truncate text-sm font-semibold text-primary">
               {user.displayName}
             </div>

@@ -1,6 +1,20 @@
 import { Hono, type Context } from 'hono'
 import { z } from 'zod'
-import { and, asc, desc, eq, gt, gte, ilike, isNotNull, isNull, lt, or, sql } from '@workspace/db'
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gt,
+  gte,
+  ilike,
+  inArray,
+  isNotNull,
+  isNull,
+  lt,
+  or,
+  sql,
+} from '@workspace/db'
 import { schema } from '@workspace/db'
 import { assetUrl } from '@workspace/media/s3'
 import { adminSetUserHandleSchema } from '@workspace/validators'
@@ -239,6 +253,58 @@ adminRoute.get('/users', async (c) => {
     .orderBy(desc(schema.users.createdAt))
     .limit(limit)
 
+  const ids = rows.map((u) => u.id)
+  let openReportsByUser = new Map<string, number>()
+  let postsCountByUser = new Map<string, number>()
+  let followersByUser = new Map<string, number>()
+  let followingByUser = new Map<string, number>()
+  if (ids.length > 0) {
+    const [openReportsRows, postsRows, followerRows, followingRows] = await Promise.all([
+      db
+        .select({
+          subjectId: schema.reports.subjectId,
+          c: sql<number>`count(*)::int`,
+        })
+        .from(schema.reports)
+        .where(
+          and(
+            eq(schema.reports.subjectType, 'user'),
+            eq(schema.reports.status, 'open'),
+            inArray(schema.reports.subjectId, ids),
+          ),
+        )
+        .groupBy(schema.reports.subjectId),
+      db
+        .select({
+          authorId: schema.posts.authorId,
+          c: sql<number>`count(*)::int`,
+        })
+        .from(schema.posts)
+        .where(and(isNull(schema.posts.deletedAt), inArray(schema.posts.authorId, ids)))
+        .groupBy(schema.posts.authorId),
+      db
+        .select({
+          followeeId: schema.follows.followeeId,
+          c: sql<number>`count(*)::int`,
+        })
+        .from(schema.follows)
+        .where(inArray(schema.follows.followeeId, ids))
+        .groupBy(schema.follows.followeeId),
+      db
+        .select({
+          followerId: schema.follows.followerId,
+          c: sql<number>`count(*)::int`,
+        })
+        .from(schema.follows)
+        .where(inArray(schema.follows.followerId, ids))
+        .groupBy(schema.follows.followerId),
+    ])
+    openReportsByUser = new Map(openReportsRows.map((r) => [r.subjectId, r.c]))
+    postsCountByUser = new Map(postsRows.map((r) => [r.authorId, r.c]))
+    followersByUser = new Map(followerRows.map((r) => [r.followeeId, r.c]))
+    followingByUser = new Map(followingRows.map((r) => [r.followerId, r.c]))
+  }
+
   const items = rows.map((u) => ({
     id: u.id,
     email: u.email,
@@ -253,6 +319,10 @@ adminRoute.get('/users', async (c) => {
     isVerified: u.isVerified,
     deletedAt: u.deletedAt?.toISOString() ?? null,
     createdAt: u.createdAt.toISOString(),
+    postsCount: postsCountByUser.get(u.id) ?? 0,
+    followersCount: followersByUser.get(u.id) ?? 0,
+    followingCount: followingByUser.get(u.id) ?? 0,
+    openReportsCount: openReportsByUser.get(u.id) ?? 0,
   }))
   const nextCursor =
     rows.length === limit ? rows[rows.length - 1]!.createdAt.toISOString() : null
@@ -267,7 +337,16 @@ adminRoute.get('/users/:id', async (c) => {
   const [user] = await db.select().from(schema.users).where(eq(schema.users.id, id)).limit(1)
   if (!user) return c.json({ error: 'not_found' }, 404)
 
-  const [recentPosts, reports, recentActions] = await Promise.all([
+  const [
+    recentPosts,
+    reports,
+    recentActions,
+    postsCountAgg,
+    followersCountAgg,
+    followingCountAgg,
+    openReportsAgg,
+    reportsTotalAgg,
+  ] = await Promise.all([
     db
       .select()
       .from(schema.posts)
@@ -291,6 +370,32 @@ adminRoute.get('/users/:id', async (c) => {
       )
       .orderBy(desc(schema.moderationActions.createdAt))
       .limit(20),
+    db
+      .select({ c: sql<number>`count(*)::int` })
+      .from(schema.posts)
+      .where(and(eq(schema.posts.authorId, id), isNull(schema.posts.deletedAt))),
+    db
+      .select({ c: sql<number>`count(*)::int` })
+      .from(schema.follows)
+      .where(eq(schema.follows.followeeId, id)),
+    db
+      .select({ c: sql<number>`count(*)::int` })
+      .from(schema.follows)
+      .where(eq(schema.follows.followerId, id)),
+    db
+      .select({ c: sql<number>`count(*)::int` })
+      .from(schema.reports)
+      .where(
+        and(
+          eq(schema.reports.subjectType, 'user'),
+          eq(schema.reports.subjectId, id),
+          eq(schema.reports.status, 'open'),
+        ),
+      ),
+    db
+      .select({ c: sql<number>`count(*)::int` })
+      .from(schema.reports)
+      .where(and(eq(schema.reports.subjectType, 'user'), eq(schema.reports.subjectId, id))),
   ])
 
   return c.json({
@@ -310,6 +415,11 @@ adminRoute.get('/users/:id', async (c) => {
       isVerified: user.isVerified,
       deletedAt: user.deletedAt?.toISOString() ?? null,
       createdAt: user.createdAt.toISOString(),
+      postsCount: postsCountAgg[0]?.c ?? 0,
+      followersCount: followersCountAgg[0]?.c ?? 0,
+      followingCount: followingCountAgg[0]?.c ?? 0,
+      openReportsCount: openReportsAgg[0]?.c ?? 0,
+      reportsTotalCount: reportsTotalAgg[0]?.c ?? 0,
     },
     recentPosts: recentPosts.map((p) => ({
       id: p.id,
@@ -500,24 +610,102 @@ adminRoute.get('/reports', async (c) => {
     .orderBy(desc(schema.reports.createdAt))
     .limit(limit)
 
-  const items = rows.map((r) => ({
-    id: r.report.id,
-    subjectType: r.report.subjectType,
-    subjectId: r.report.subjectId,
-    reason: r.report.reason,
-    details: r.report.details,
-    status: r.report.status,
-    createdAt: r.report.createdAt.toISOString(),
-    resolvedAt: r.report.resolvedAt?.toISOString() ?? null,
-    reporter: r.reporter
-      ? {
-          id: r.reporter.id,
-          handle: r.reporter.handle,
-          displayName: r.reporter.displayName,
-          avatarUrl: assetUrl(mediaEnv, r.reporter.avatarUrl),
-        }
-      : null,
-  }))
+  const postSubjectIds = [
+    ...new Set(rows.filter((r) => r.report.subjectType === 'post').map((r) => r.report.subjectId)),
+  ]
+  const userSubjectIds = [
+    ...new Set(rows.filter((r) => r.report.subjectType === 'user').map((r) => r.report.subjectId)),
+  ]
+
+  const [postPreviewRows, userPreviewRows] = await Promise.all([
+    postSubjectIds.length > 0
+      ? db
+          .select({
+            id: schema.posts.id,
+            text: schema.posts.text,
+            handle: schema.users.handle,
+          })
+          .from(schema.posts)
+          .leftJoin(schema.users, eq(schema.users.id, schema.posts.authorId))
+          .where(inArray(schema.posts.id, postSubjectIds))
+      : Promise.resolve(
+          [] as Array<{ id: string; text: string; handle: string | null }>,
+        ),
+    userSubjectIds.length > 0
+      ? db
+          .select({
+            id: schema.users.id,
+            handle: schema.users.handle,
+            displayName: schema.users.displayName,
+          })
+          .from(schema.users)
+          .where(inArray(schema.users.id, userSubjectIds))
+      : Promise.resolve(
+          [] as Array<{
+            id: string
+            handle: string | null
+            displayName: string | null
+          }>,
+        ),
+  ])
+
+  const postPrevById = new Map(postPreviewRows.map((p) => [p.id, p]))
+  const userPrevById = new Map(userPreviewRows.map((u) => [u.id, u]))
+
+  function previewSlice(text: string | null | undefined, max: number): string {
+    const t = (text ?? "").replace(/\s+/g, " ").trim()
+    if (t.length <= max) return t
+    return `${t.slice(0, max)}…`
+  }
+
+  const items = rows.map((r) => {
+    const rep = r.report
+    let subjectPreview:
+      | { kind: 'post'; authorHandle: string | null; textPreview: string }
+      | { kind: 'user'; handle: string | null; displayName: string | null }
+      | { kind: 'other'; subjectType: string }
+    if (rep.subjectType === 'post') {
+      const pr = postPrevById.get(rep.subjectId)
+      subjectPreview = pr
+        ? {
+            kind: 'post',
+            authorHandle: pr.handle,
+            textPreview: previewSlice(pr.text, 120),
+          }
+        : { kind: 'other', subjectType: rep.subjectType }
+    } else if (rep.subjectType === 'user') {
+      const ur = userPrevById.get(rep.subjectId)
+      subjectPreview = ur
+        ? {
+            kind: 'user',
+            handle: ur.handle,
+            displayName: ur.displayName,
+          }
+        : { kind: 'other', subjectType: rep.subjectType }
+    } else {
+      subjectPreview = { kind: 'other', subjectType: rep.subjectType }
+    }
+
+    return {
+      id: rep.id,
+      subjectType: rep.subjectType,
+      subjectId: rep.subjectId,
+      reason: rep.reason,
+      details: rep.details,
+      status: rep.status,
+      createdAt: rep.createdAt.toISOString(),
+      resolvedAt: rep.resolvedAt?.toISOString() ?? null,
+      reporter: r.reporter
+        ? {
+            id: r.reporter.id,
+            handle: r.reporter.handle,
+            displayName: r.reporter.displayName,
+            avatarUrl: assetUrl(mediaEnv, r.reporter.avatarUrl),
+          }
+        : null,
+      subjectPreview,
+    }
+  })
   const nextCursor =
     rows.length === limit ? rows[rows.length - 1]!.report.createdAt.toISOString() : null
   return c.json({ reports: items, nextCursor })
@@ -620,6 +808,13 @@ adminRoute.get('/reports/:id', async (c) => {
     subject = { type: 'unknown', subjectType: r.subjectType, subjectId: r.subjectId }
   }
 
+  const linkedModerationActionsRows = await db
+    .select()
+    .from(schema.moderationActions)
+    .where(eq(schema.moderationActions.reportId, id))
+    .orderBy(desc(schema.moderationActions.createdAt))
+    .limit(25)
+
   return c.json({
     id: r.id,
     subjectType: r.subjectType,
@@ -639,6 +834,15 @@ adminRoute.get('/reports/:id', async (c) => {
         }
       : null,
     subject,
+    linkedModerationActions: linkedModerationActionsRows.map((a) => ({
+      id: a.id,
+      moderatorId: a.moderatorId,
+      action: a.action,
+      publicReason: a.publicReason,
+      privateNote: a.privateNote,
+      durationHours: a.durationHours,
+      createdAt: a.createdAt.toISOString(),
+    })),
   })
 })
 
@@ -913,6 +1117,25 @@ adminRoute.get('/posts', async (c) => {
     .orderBy(dir(sortCol), dir(schema.posts.id))
     .limit(limit)
 
+  const postIds = rows.map((r) => r.post.id)
+  let reportsByPost = new Map<string, { open: number; total: number }>()
+  if (postIds.length > 0) {
+    const aggRows = await db
+      .select({
+        subjectId: schema.reports.subjectId,
+        open: sql<number>`count(*) filter (where ${schema.reports.status} = 'open')::int`,
+        total: sql<number>`count(*)::int`,
+      })
+      .from(schema.reports)
+      .where(
+        and(eq(schema.reports.subjectType, 'post'), inArray(schema.reports.subjectId, postIds)),
+      )
+      .groupBy(schema.reports.subjectId)
+    reportsByPost = new Map(
+      aggRows.map((x) => [x.subjectId, { open: x.open, total: x.total }]),
+    )
+  }
+
   const items = rows.map((r) => {
     const p = r.post
     const postType: 'original' | 'reply' | 'repost' | 'quote' = p.repostOfId
@@ -922,6 +1145,7 @@ adminRoute.get('/posts', async (c) => {
         : p.replyToId
           ? 'reply'
           : 'original'
+    const repStats = reportsByPost.get(p.id)
     return {
       id: p.id,
       authorId: p.authorId,
@@ -948,6 +1172,8 @@ adminRoute.get('/posts', async (c) => {
       editedAt: p.editedAt?.toISOString() ?? null,
       deletedAt: p.deletedAt?.toISOString() ?? null,
       createdAt: p.createdAt.toISOString(),
+      reportsOpen: repStats?.open ?? 0,
+      reportsTotal: repStats?.total ?? 0,
     }
   })
 

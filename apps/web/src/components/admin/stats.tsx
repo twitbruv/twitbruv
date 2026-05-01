@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query"
 import {
   ArrowPathIcon,
+  BoltIcon,
   BookmarkIcon,
   ChatBubbleLeftIcon,
   EyeIcon,
@@ -9,6 +10,7 @@ import {
   UserGroupIcon,
   UsersIcon,
 } from "@heroicons/react/24/solid"
+import { Avatar } from "@workspace/ui/components/avatar"
 import { api } from "../../lib/api"
 import { qk } from "../../lib/query-keys"
 import { PageError } from "../page-surface"
@@ -53,6 +55,12 @@ const ACCENT = {
     ring: "ring-fuchsia-500/30",
     bar: "bg-fuchsia-500",
   },
+  teal: {
+    text: "text-teal-600 dark:text-teal-400",
+    bg: "bg-teal-500/10",
+    ring: "ring-teal-500/30",
+    bar: "bg-teal-500",
+  },
 } as const
 type AccentKey = keyof typeof ACCENT
 
@@ -90,7 +98,7 @@ function HeroCard({
   const a = ACCENT[accent]
   const isLoading = value === null || value === undefined
   return (
-    <div className="group hover:border-primary/20 relative overflow-hidden rounded-lg border border-neutral bg-base-1 p-4 transition-colors">
+    <div className="group hover:border-primary/20 relative h-full overflow-hidden rounded-lg border border-neutral bg-base-1 p-4 transition-colors">
       <div
         className={`pointer-events-none absolute -top-6 -right-6 size-20 rounded-full opacity-60 blur-2xl ${a.bg}`}
       />
@@ -108,7 +116,7 @@ function HeroCard({
         className={`relative mt-3 text-3xl font-semibold tracking-tight tabular-nums ${
           isLoading ? "text-tertiary" : ""
         }`}
-        title={isLoading ? undefined : fullFormatter.format(value)}
+        title={isLoading ? undefined : fullFormatter.format(Number(value))}
       >
         {formatStat(value, true)}
       </p>
@@ -153,7 +161,7 @@ function MiniStat({
         className={`shrink-0 text-sm font-semibold tabular-nums ${
           isLoading ? "text-tertiary" : toneCls
         }`}
-        title={isLoading ? undefined : fullFormatter.format(value)}
+        title={isLoading ? undefined : fullFormatter.format(Number(value))}
       >
         {formatStat(value, true)}
       </span>
@@ -182,7 +190,66 @@ function Section({
           {title}
         </h3>
       </div>
-      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">{children}</div>
+      <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function OnlineCard({
+  count,
+  sample,
+}: {
+  count: number | undefined
+  sample: Array<{
+    id: string
+    handle: string | null
+    displayName: string | null
+    avatarUrl: string | null
+  }>
+}) {
+  const a = ACCENT.teal
+  const isLoading = count === undefined
+  return (
+    <div className="flex h-full min-h-[140px] flex-col overflow-hidden rounded-lg border border-neutral bg-base-1 p-4">
+      <div className="relative flex shrink-0 items-start justify-between gap-2">
+        <p className="text-[10px] font-medium tracking-[0.12em] text-tertiary uppercase">
+          Online now
+        </p>
+        <span
+          className={`flex size-7 items-center justify-center rounded-md ring-1 ${a.bg} ${a.text} ${a.ring}`}
+        >
+          <BoltIcon className="size-4" />
+        </span>
+      </div>
+      <p
+        className={`relative mt-3 shrink-0 text-3xl font-semibold tracking-tight tabular-nums ${
+          isLoading ? "text-tertiary" : ""
+        }`}
+      >
+        {isLoading ? "…" : fullFormatter.format(count)}
+      </p>
+      <p className="relative mt-1 shrink-0 text-[11px] text-tertiary">
+        Active foreground tabs (heartbeat)
+      </p>
+      <div className="relative mt-4 flex min-h-0 flex-1 flex-wrap items-end gap-1">
+        {sample.slice(0, 12).map((u) => (
+          <span
+            key={u.id}
+            className="inline-flex"
+            title={u.handle ? `@${u.handle}` : (u.displayName ?? undefined)}
+          >
+            <Avatar
+              initial={(u.displayName || u.handle || "?")
+                .slice(0, 1)
+                .toUpperCase()}
+              src={u.avatarUrl}
+              className="ring-base-1 size-8 shrink-0 ring-2"
+            />
+          </span>
+        ))}
+      </div>
     </div>
   )
 }
@@ -194,29 +261,43 @@ export default function AdminStats() {
     staleTime: 60_000,
   })
 
+  const { data: online } = useQuery({
+    queryKey: qk.admin.online(),
+    queryFn: () => api.adminOnline(),
+    staleTime: 10_000,
+    refetchInterval: 15_000,
+  })
+
   const error = statsError instanceof Error ? statsError.message : null
 
   if (error) {
     return (
-      <PageFrame className="flex min-h-0 flex-1 flex-col">
+      <PageFrame width="full" className="flex min-h-0 flex-1 flex-col">
         <PageError message={error} />
       </PageFrame>
     )
   }
 
   return (
-    <PageFrame className="flex flex-col">
+    <PageFrame width="full" className="flex flex-col">
       <div className="space-y-4 p-4">
-        <HeroCard
-          icon={UsersIcon}
-          label="Active users"
-          value={stats?.users.active}
-          accent="sky"
-          delta={stats?.users.newToday}
-          deltaLabel="new today"
-        />
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-12">
+          <div className="flex lg:col-span-4">
+            <HeroCard
+              icon={UsersIcon}
+              label="Active users"
+              value={stats?.users.active}
+              accent="sky"
+              delta={stats?.users.newToday}
+              deltaLabel="new today"
+            />
+          </div>
+          <div className="flex lg:col-span-8">
+            <OnlineCard count={online?.count} sample={online?.sample ?? []} />
+          </div>
+        </div>
 
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4 xl:grid-cols-6">
           <HeroCard
             icon={ChatBubbleLeftIcon}
             label="Posts"
@@ -245,9 +326,21 @@ export default function AdminStats() {
             value={stats?.engagement.bookmarks}
             accent="amber"
           />
+          <HeroCard
+            icon={EyeIcon}
+            label="Impressions"
+            value={stats?.posts.totalImpressions}
+            accent="fuchsia"
+          />
+          <HeroCard
+            icon={FlagIcon}
+            label="Open reports"
+            value={stats?.reports.open}
+            accent="amber"
+          />
         </div>
 
-        <div className="grid grid-cols-1 gap-3">
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-2 2xl:grid-cols-3">
           <Section title="Users" icon={UsersIcon} accent="sky">
             <MiniStat label="Total" value={stats?.users.total} />
             <MiniStat label="Active" value={stats?.users.active} />
@@ -300,6 +393,11 @@ export default function AdminStats() {
             <MiniStat
               label="New 24h"
               value={stats?.posts.newToday}
+              tone="positive"
+            />
+            <MiniStat
+              label="New 7d"
+              value={stats?.posts.newThisWeek}
               tone="positive"
             />
           </Section>

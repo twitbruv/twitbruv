@@ -25,7 +25,7 @@
     "@cabinetdocs/preview-react": "^0.1.0",
     "prettier": "^3.8.3",
     "prettier-plugin-tailwindcss": "^0.8.0",
-    "turbo": "^2.9.6",
+    "turbo": "^2.9.7",
     "typescript": "6.0.3"
   },
   "packageManager": "bun@1.3.13",

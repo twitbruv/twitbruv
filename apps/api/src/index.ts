@@ -187,7 +187,10 @@ app.route('/api/posts', postsRoute)
 app.route('/api/feed', feedRoute)
 app.route('/api/hashtags', hashtagsRoute)
 app.route('/api/search', searchRoute)
-app.route('/api/media', createMediaRoute({ s3: ctx.s3, mediaEnv: ctx.mediaEnv, boss: ctx.boss }))
+app.route(
+  '/api/media',
+  createMediaRoute({ s3: ctx.s3, mediaEnv: ctx.mediaEnv, jobQueues: ctx.jobQueues }),
+)
 
 // Signing proxy: takes a stored object key on the path, mints a short-lived signed URL, and
 // 302s the browser to it. We cache the redirect for a few minutes so repeated `<img>` paints

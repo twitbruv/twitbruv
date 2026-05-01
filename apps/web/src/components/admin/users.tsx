@@ -65,11 +65,24 @@ type ActionDialogState =
   | null
 
 const COLUMN_WIDTHS: Record<string, string> = {
-  user: "32%",
-  email: "26%",
-  role: "10%",
-  status: "24%",
+  user: "20%",
+  email: "17%",
+  posts: "6%",
+  followers: "6%",
+  following: "6%",
+  reports: "6%",
+  joined: "9%",
+  role: "8%",
+  status: "14%",
   actions: "8%",
+}
+
+function compactNum(n: number): string {
+  if (!Number.isFinite(n)) return "0"
+  if (n < 1000) return String(n)
+  if (n < 1_000_000)
+    return `${(n / 1000).toFixed(n < 10_000 ? 1 : 0).replace(/\.0$/, "")}k`
+  return `${(n / 1_000_000).toFixed(1).replace(/\.0$/, "")}M`
 }
 
 export default function AdminUsers() {
@@ -180,6 +193,61 @@ export default function AdminUsers() {
           <span className="block truncate text-xs text-tertiary">
             {row.original.email}
           </span>
+        ),
+      },
+      {
+        id: "posts",
+        header: "Posts",
+        cell: ({ row }) => (
+          <span className="text-xs text-tertiary tabular-nums">
+            {compactNum(row.original.postsCount)}
+          </span>
+        ),
+      },
+      {
+        id: "followers",
+        header: "Followers",
+        cell: ({ row }) => (
+          <span className="text-xs text-tertiary tabular-nums">
+            {compactNum(row.original.followersCount)}
+          </span>
+        ),
+      },
+      {
+        id: "following",
+        header: "Following",
+        cell: ({ row }) => (
+          <span className="text-xs text-tertiary tabular-nums">
+            {compactNum(row.original.followingCount)}
+          </span>
+        ),
+      },
+      {
+        id: "reports",
+        header: "Open R.",
+        cell: ({ row }) => (
+          <span
+            className={`text-xs tabular-nums ${
+              row.original.openReportsCount > 0
+                ? "font-medium text-amber-600 dark:text-amber-500"
+                : "text-tertiary"
+            }`}
+          >
+            {compactNum(row.original.openReportsCount)}
+          </span>
+        ),
+      },
+      {
+        id: "joined",
+        header: "Joined",
+        cell: ({ row }) => (
+          <time
+            dateTime={row.original.createdAt}
+            title={new Date(row.original.createdAt).toLocaleString()}
+            className="text-xs text-tertiary"
+          >
+            {new Date(row.original.createdAt).toLocaleDateString()}
+          </time>
         ),
       },
       {
@@ -400,7 +468,7 @@ export default function AdminUsers() {
   )
 
   return (
-    <PageFrame className="flex flex-col">
+    <PageFrame width="full" className="flex flex-col">
       <div className="shrink-0 border-b border-neutral p-4">
         <Input
           value={q}
@@ -786,7 +854,7 @@ function UserDetailSheet({
     <Sheet open={open} onOpenChange={(next) => !next && onClose()}>
       <SheetContent
         side="right"
-        className="flex w-full flex-col gap-0 sm:max-w-md"
+        className="flex w-full flex-col gap-0 sm:max-w-2xl lg:max-w-3xl"
       >
         <SheetHeader className="border-b border-neutral">
           <SheetTitle>{subject}</SheetTitle>
@@ -838,6 +906,21 @@ function UserDetailSheet({
                   <p className="text-xs whitespace-pre-wrap">{u.bio}</p>
                 </DetailSection>
               )}
+
+              <DetailSection label="Totals">
+                <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+                  <dt className="text-tertiary">Posts</dt>
+                  <dd className="tabular-nums">{u.postsCount}</dd>
+                  <dt className="text-tertiary">Followers</dt>
+                  <dd className="tabular-nums">{u.followersCount}</dd>
+                  <dt className="text-tertiary">Following</dt>
+                  <dd className="tabular-nums">{u.followingCount}</dd>
+                  <dt className="text-tertiary">Open reports</dt>
+                  <dd className="tabular-nums">{u.openReportsCount}</dd>
+                  <dt className="text-tertiary">Reports total</dt>
+                  <dd className="tabular-nums">{u.reportsTotalCount ?? "—"}</dd>
+                </dl>
+              </DetailSection>
 
               <DetailSection label="Status">
                 <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">

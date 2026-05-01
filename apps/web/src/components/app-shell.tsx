@@ -1,4 +1,4 @@
-import { useRouter } from "@tanstack/react-router"
+import { useRouter, useRouterState } from "@tanstack/react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   DialogContent,
@@ -22,6 +22,12 @@ import type { ReactNode } from "react"
 export function AppShell({ children }: { children: ReactNode }) {
   const { data: session } = authClient.useSession()
   const authed = Boolean(session)
+  const pathname = useRouterState({ select: (s) => s.location.pathname })
+  const isAdminShell = pathname.startsWith("/admin")
+
+  const sidebarLeftStyle = {
+    left: "max(0px, calc((100vw - 1080px) / 2))",
+  } as const
 
   return (
     <ComposeProvider>
@@ -30,21 +36,33 @@ export function AppShell({ children }: { children: ReactNode }) {
           <YouTubePlayerProvider>
             {authed && <ChessChallengePoller enabled />}
 
-            {/* Fixed sidebar - never scrolls, always visible at left edge of centered layout */}
             <div
-              className="fixed top-0 z-40 h-svh w-[68px] xl:w-[240px]"
-              style={{ left: "max(0px, calc((100vw - 1080px) / 2))" }}
+              className={
+                isAdminShell
+                  ? "fixed top-0 z-40 h-svh w-[68px]"
+                  : "fixed top-0 z-40 h-svh w-[68px] xl:w-[240px]"
+              }
+              style={sidebarLeftStyle}
             >
-              <SidebarWithCompose />
+              <SidebarWithCompose compact={isAdminShell} />
             </div>
 
-            {/* Main content - scrolls with body, scrollbar hugs right edge of viewport */}
             <div className="mx-auto flex min-h-svh max-w-[1080px]">
-              {/* Spacer matching sidebar width so content isn't hidden behind it */}
-              <div className="w-[68px] shrink-0 xl:w-[240px]" />
+              <div
+                className={
+                  isAdminShell
+                    ? "w-[68px] shrink-0"
+                    : "w-[68px] shrink-0 xl:w-[240px]"
+                }
+              />
               <main className="flex min-h-svh flex-1 flex-col">{children}</main>
-              {/* Right gutter */}
-              <div className="hidden w-[68px] shrink-0 lg:block xl:w-[240px]" />
+              <div
+                className={
+                  isAdminShell
+                    ? "hidden"
+                    : "hidden w-[68px] shrink-0 lg:block xl:w-[240px]"
+                }
+              />
             </div>
           </YouTubePlayerProvider>
         </LightboxProvider>
@@ -53,9 +71,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   )
 }
 
-function SidebarWithCompose() {
+function SidebarWithCompose({ compact }: { compact?: boolean }) {
   const compose = useCompose()
-  return <AppSidebar onCompose={() => compose.open()} />
+  return <AppSidebar compact={compact} onCompose={() => compose.open()} />
 }
 
 function ChessChallengePoller({ enabled }: { enabled: boolean }) {

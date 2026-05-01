@@ -7,6 +7,7 @@ const widthClass = {
   default: "md:max-w-feed",
   wide: "md:max-w-4xl",
   marketing: "md:max-w-3xl",
+  full: "max-w-none",
 } as const
 
 export type PageFrameWidth = keyof typeof widthClass

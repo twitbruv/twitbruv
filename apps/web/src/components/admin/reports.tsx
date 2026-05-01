@@ -58,6 +58,20 @@ const STATUS_LABELS: Record<ReportStatus, string> = {
   dismissed: "Dismissed",
 }
 
+const MOD_LINK_LABELS: Record<string, string> = {
+  warn: "Warning",
+  hide: "Hidden",
+  delete: "Deleted",
+  shadowban: "Shadowban",
+  suspend: "Ban",
+  unban: "Unban",
+  nsfw_flag: "NSFW flag",
+}
+
+function modLinkLabel(action: string) {
+  return MOD_LINK_LABELS[action] ?? action
+}
+
 type Resolution = "triaged" | "actioned" | "dismissed"
 
 export default function AdminReports() {
@@ -106,11 +120,40 @@ export default function AdminReports() {
       {
         id: "subject",
         header: "Subject",
-        cell: ({ row }) => (
-          <span className="text-muted-foreground font-mono text-xs">
-            {row.original.subjectType} {row.original.subjectId.slice(0, 8)}
-          </span>
-        ),
+        cell: ({ row }) => {
+          const sp = row.original.subjectPreview
+          if (sp.kind === "post") {
+            return (
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <span className="text-muted-foreground truncate text-[10px]">
+                  {sp.authorHandle ? `@${sp.authorHandle}` : "(author)"}
+                </span>
+                <span className="text-muted-foreground line-clamp-2 text-xs">
+                  {sp.textPreview || "(empty)"}
+                </span>
+              </div>
+            )
+          }
+          if (sp.kind === "user") {
+            return (
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <span className="truncate text-xs font-semibold">
+                  {sp.handle ? `@${sp.handle}` : "(no handle)"}
+                </span>
+                {sp.displayName ? (
+                  <span className="text-muted-foreground truncate text-[10px]">
+                    {sp.displayName}
+                  </span>
+                ) : null}
+              </div>
+            )
+          }
+          return (
+            <span className="text-muted-foreground font-mono text-[10px]">
+              {row.original.subjectType} {row.original.subjectId.slice(0, 8)}
+            </span>
+          )
+        },
       },
       {
         id: "reporter",
@@ -167,7 +210,7 @@ export default function AdminReports() {
   })
 
   return (
-    <PageFrame className="flex flex-col">
+    <PageFrame width="full" className="flex flex-col">
       <div className="shrink-0 px-4 py-3">
         <SegmentedControl<ReportStatus>
           layout="fit"
@@ -194,7 +237,7 @@ export default function AdminReports() {
         )}
         {reports.length > 0 && (
           <Table>
-            <TableHeader className="bg-background sticky top-0 z-10">
+            <TableHeader className="sticky top-0 z-10 bg-base-1">
               {table.getHeaderGroups().map((hg) => (
                 <TableRow key={hg.id}>
                   {hg.headers.map((header) => (
@@ -303,14 +346,25 @@ function ReportSheet({
     <Sheet open={open} onOpenChange={(next) => !next && onClose()}>
       <SheetContent
         side="right"
-        className="flex w-full flex-col gap-0 sm:max-w-md"
+        className="flex w-full flex-col gap-0 sm:max-w-2xl lg:max-w-3xl"
       >
         <SheetHeader className="border-border border-b">
           <SheetTitle>{detail?.reason ?? "Report"}</SheetTitle>
           <SheetDescription>
-            {detail
-              ? `${detail.subjectType} · ${new Date(detail.createdAt).toLocaleString()} · ${detail.status}`
-              : "Loading…"}
+            {detail ? (
+              <>
+                <span className="block">{detail.subjectType}</span>
+                <span className="text-muted-foreground block font-mono text-[10px] break-all">
+                  {detail.subjectId}
+                </span>
+                <span className="mt-1 block">
+                  {new Date(detail.createdAt).toLocaleString()} ·{" "}
+                  {detail.status}
+                </span>
+              </>
+            ) : (
+              "Loading…"
+            )}
           </SheetDescription>
         </SheetHeader>
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-6 py-4 text-sm">
@@ -324,6 +378,9 @@ function ReportSheet({
                 </Section>
               )}
               <SubjectPreview subject={detail.subject} />
+              <LinkedModerationActions
+                actions={detail.linkedModerationActions}
+              />
               {detail.resolutionNote && !isOpen && (
                 <Section label="Resolution note">
                   <p className="text-muted-foreground whitespace-pre-wrap">
@@ -375,6 +432,51 @@ function ReportSheet({
         )}
       </SheetContent>
     </Sheet>
+  )
+}
+
+function LinkedModerationActions({
+  actions,
+}: {
+  actions: AdminReportDetail["linkedModerationActions"]
+}) {
+  if (!actions.length) return null
+  return (
+    <Section label={`Linked moderation (${actions.length})`}>
+      <ul className="flex flex-col gap-2">
+        {actions.map((a) => (
+          <li
+            key={a.id}
+            className="border-border rounded-md border p-2 text-xs"
+          >
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="font-semibold">{modLinkLabel(a.action)}</span>
+              <time className="text-muted-foreground text-[10px]">
+                {new Date(a.createdAt).toLocaleString()}
+              </time>
+            </div>
+            {a.moderatorId && (
+              <p className="text-muted-foreground mt-0.5 font-mono text-[10px]">
+                moderator {a.moderatorId.slice(0, 8)}…
+              </p>
+            )}
+            {a.durationHours != null && (
+              <p className="text-muted-foreground text-[10px]">
+                duration: {a.durationHours}h
+              </p>
+            )}
+            {a.publicReason && (
+              <p className="mt-1 whitespace-pre-wrap">{a.publicReason}</p>
+            )}
+            {a.privateNote && (
+              <p className="text-muted-foreground mt-1 whitespace-pre-wrap">
+                note: {a.privateNote}
+              </p>
+            )}
+          </li>
+        ))}
+      </ul>
+    </Section>
   )
 }
 
