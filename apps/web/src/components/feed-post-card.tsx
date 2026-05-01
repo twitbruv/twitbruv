@@ -1,4 +1,5 @@
 import { useNavigate } from "@tanstack/react-router"
+import { useCallback } from "react"
 import { PostCard } from "@workspace/ui/components/post-card"
 import {
   useTogglePostBookmark,
@@ -113,6 +114,11 @@ export function FeedPostCard({
   const likeMutation = useTogglePostLike(post)
   const repostMutation = useTogglePostRepost(post)
   const bookmarkMutation = useTogglePostBookmark(post)
+
+  const resolveBruvLikeBurstSrc = useCallback(
+    () => (Math.random() < 0.1 ? "/bruv.png" : undefined),
+    []
+  )
 
   const quoteOf: PostQuoteOf | undefined = post.quoteOf
     ? (() => {
@@ -238,6 +244,7 @@ export function FeedPostCard({
             : undefined,
         }
       }}
+      resolveBruvLikeBurstSrc={resolveBruvLikeBurstSrc}
     />
   )
 }

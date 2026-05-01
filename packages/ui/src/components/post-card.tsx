@@ -19,7 +19,7 @@ import { DropdownMenu } from "@workspace/ui/components/dropdown-menu"
 import { Hover } from "@workspace/ui/components/hover"
 import { PreviewCard } from "@workspace/ui/components/preview-card"
 import { AnimatedNumber } from "@workspace/ui/components/animated-number"
-import type { ReactNode } from "react"
+import type { CSSProperties, ReactNode } from "react"
 
 /** Extra profile data for the author hover card */
 export interface AuthorProfile {
@@ -92,6 +92,7 @@ export interface PostCardProps {
   onFetchAuthorProfile?: () => Promise<AuthorProfile>
   /** Called when the author avatar or name is clicked */
   onAuthorClick?: () => void
+  resolveBruvLikeBurstSrc?: () => string | undefined
 }
 
 export function PostCard({
@@ -122,6 +123,7 @@ export function PostCard({
   authorProfile: authorProfileProp,
   onFetchAuthorProfile,
   onAuthorClick,
+  resolveBruvLikeBurstSrc,
 }: PostCardProps) {
   const showLineTop = threadLine === "top" || threadLine === "both"
   const showLineBottom = threadLine === "bottom" || threadLine === "both"
@@ -146,6 +148,7 @@ export function PostCard({
 
   // Heart burst animation state
   const [heartBurst, setHeartBurst] = useState(false)
+  const [bruvBurstSrc, setBruvBurstSrc] = useState<string | undefined>()
 
   // Truncation detection
   const textRef = useRef<HTMLParagraphElement>(null)
@@ -161,12 +164,13 @@ export function PostCard({
     (e: React.MouseEvent) => {
       e.stopPropagation()
       if (!liked) {
+        setBruvBurstSrc(resolveBruvLikeBurstSrc?.() ?? undefined)
         setHeartBurst(true)
         setTimeout(() => setHeartBurst(false), 500)
       }
       onLike?.()
     },
-    [liked, onLike]
+    [liked, onLike, resolveBruvLikeBurstSrc]
   )
 
   return (
@@ -418,7 +422,13 @@ export function PostCard({
                 <Button
                   variant="transparent"
                   size="sm"
-                  iconLeft={<LikeIcon liked={liked} burst={heartBurst} />}
+                  iconLeft={
+                    <LikeIcon
+                      liked={liked}
+                      burst={heartBurst}
+                      bruvSrc={bruvBurstSrc}
+                    />
+                  }
                   onClick={handleLike}
                   className={cn(
                     "text-tertiary",
@@ -466,26 +476,43 @@ const PARTICLES = [
   { x: "0px", y: "16px" },
 ]
 
-function LikeIcon({ liked, burst }: { liked: boolean; burst: boolean }) {
+function LikeIcon({
+  liked,
+  burst,
+  bruvSrc,
+}: {
+  liked: boolean
+  burst: boolean
+  bruvSrc?: string
+}) {
+  const showBruvBurst = Boolean(bruvSrc && burst)
   return (
-    <span className="relative flex items-center justify-center">
+    <span className="relative flex size-4 items-center justify-center">
       {/* Outline heart (fades out when liked) */}
       <HeartOutline
         className={cn(
           "size-4 transition-opacity duration-150",
-          liked ? "opacity-0" : "opacity-100"
+          liked || burst ? "opacity-0" : "opacity-100"
         )}
       />
 
-      {/* Filled red heart (scales up from 0.5 + fades in) */}
-      <HeartSolid
-        className={cn(
-          "absolute inset-0 size-4 text-like",
-          liked && !burst && "opacity-100",
-          !liked && "opacity-0",
-          burst && "animate-[heartFillIn_350ms_ease-out_forwards]"
-        )}
-      />
+      {showBruvBurst ? (
+        <img
+          src={bruvSrc}
+          alt=""
+          draggable={false}
+          className="absolute inset-0 size-4 object-cover animate-[heartFillIn_350ms_ease-out_forwards]"
+        />
+      ) : (
+        <HeartSolid
+          className={cn(
+            "absolute inset-0 size-4 text-like",
+            liked && !burst && "opacity-100",
+            !liked && "opacity-0",
+            burst && "animate-[heartFillIn_350ms_ease-out_forwards]"
+          )}
+        />
+      )}
 
       {/* Particles anchored to icon center */}
       {burst && (
@@ -494,7 +521,7 @@ function LikeIcon({ liked, burst }: { liked: boolean; burst: boolean }) {
             <span
               key={i}
               className="absolute top-1/2 left-1/2 size-1.5 animate-[particleBurst_500ms_ease-out_forwards] rounded-full bg-like"
-              style={{ "--x": x, "--y": y } as React.CSSProperties}
+              style={{ "--x": x, "--y": y } as CSSProperties}
             />
           ))}
         </span>
