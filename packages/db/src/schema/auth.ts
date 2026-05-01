@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { boolean, customType, date, index, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
+import { boolean, bigint, customType, date, index, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
 import { userRoleEnum } from './enums.ts'
 
 const citext = customType<{ data: string; driverData: string }>({
@@ -147,15 +147,16 @@ export const passkeys = pgTable(
       .references(() => users.id, { onDelete: 'cascade' }),
     name: text('name'),
     publicKey: text('public_key').notNull(),
-    credentialId: text('credential_id').notNull(),
-    counter: text('counter').notNull().default('0'),
-    deviceType: text('device_type'),
-    backedUp: boolean('backed_up'),
+    credentialID: text('credential_id').notNull(),
+    counter: bigint('counter', { mode: 'number' }).notNull().default(0),
+    deviceType: text('device_type').notNull().default('unknown'),
+    backedUp: boolean('backed_up').notNull().default(false),
     transports: text('transports'),
+    aaguid: text('aaguid'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    uniqueIndex('passkeys_credential_uq').on(t.credentialId),
+    uniqueIndex('passkeys_credential_uq').on(t.credentialID),
     index('passkeys_user_idx').on(t.userId),
   ],
 )

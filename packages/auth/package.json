@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@better-auth/passkey": "^1.6.9",
     "@workspace/db": "workspace:*",
     "better-auth": "^1.6.9"
   },

@@ -7,6 +7,7 @@ import {
   ConnectionsSection,
   DangerZone,
   DevToolsSection,
+  PasskeysSection,
   PrivacySection,
   ProfileSection,
   SessionsSection,
@@ -95,7 +96,14 @@ export function SettingsContent({
         {tab === "profile" && (
           <ProfileSection focusProfileFields={focusProfile} />
         )}
-        {tab === "account" && <AccountSection email={me.email} />}
+        {tab === "account" && (
+          <>
+            <AccountSection email={me.email} />
+            <div className="mt-10">
+              <PasskeysSection />
+            </div>
+          </>
+        )}
         {tab === "sessions" && (
           <SessionsSection currentSessionId={currentSessionId} />
         )}

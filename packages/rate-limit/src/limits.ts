@@ -93,6 +93,18 @@ export const BUCKETS = {
   ],
   // OAuth callback — IP-keyed cap against bot-driven account creation via OAuth providers.
   "auth.oauth-callback": [{ windowMs: MIN, max: 60 }],
+  "auth.passkey-authenticate": [
+    { windowMs: MIN, max: 30 },
+    { windowMs: HOUR, max: 120 },
+  ],
+  "auth.passkey-register": [
+    { windowMs: MIN, max: 20 },
+    { windowMs: HOUR, max: 80 },
+  ],
+  "auth.passkey-manage": [
+    { windowMs: MIN, max: 30 },
+    { windowMs: HOUR, max: 120 },
+  ],
   // Handle claim — irreversible. Tight cap to make handle-squatting scripts expensive.
   "me.handle-claim": [{ windowMs: HOUR, max: 5 }],
   // Profile updates — bounded to limit bio-spam churn.

@@ -118,6 +118,13 @@ function errMsg(err: unknown): string {
 // delegating to better-auth — it doesn't enforce any.
 app.on(['POST', 'GET'], '/api/auth/*', async (c) => {
   const path = c.req.path
+  if (c.req.method === 'GET') {
+    if (path.endsWith('/passkey/generate-authenticate-options')) {
+      await ctx.rateLimit(c, 'auth.passkey-authenticate')
+    } else if (path.endsWith('/passkey/generate-register-options')) {
+      await ctx.rateLimit(c, 'auth.passkey-register')
+    }
+  }
   if (c.req.method === 'POST') {
     if (path.endsWith('/sign-up/email')) await ctx.rateLimit(c, 'auth.signup')
     else if (path.endsWith('/sign-in/email')) await ctx.rateLimit(c, 'auth.signin')
@@ -132,6 +139,16 @@ app.on(['POST', 'GET'], '/api/auth/*', async (c) => {
     else if (path.endsWith('/two-factor/send-otp')) await ctx.rateLimit(c, 'auth.email-verify-resend')
     else if (path.endsWith('/send-verification-email')) await ctx.rateLimit(c, 'auth.email-verify-resend')
     else if (path.endsWith('/change-email')) await ctx.rateLimit(c, 'auth.email-verify-resend')
+    else if (path.endsWith('/passkey/verify-authentication')) {
+      await ctx.rateLimit(c, 'auth.passkey-authenticate')
+    } else if (path.endsWith('/passkey/verify-registration')) {
+      await ctx.rateLimit(c, 'auth.passkey-register')
+    } else if (
+      path.endsWith('/passkey/delete-passkey') ||
+      path.endsWith('/passkey/update-passkey')
+    ) {
+      await ctx.rateLimit(c, 'auth.passkey-manage')
+    }
   }
   if (path.includes('/callback/')) await ctx.rateLimit(c, 'auth.oauth-callback')
   return ctx.auth.handler(c.req.raw)

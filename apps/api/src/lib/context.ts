@@ -45,6 +45,7 @@ export async function buildContext(): Promise<AppContext> {
     trustedOrigins: env.AUTH_TRUSTED_ORIGINS,
     cookieDomain: env.AUTH_COOKIE_DOMAIN,
     appName: env.APP_NAME,
+    passkeyRpId: env.PASSKEY_RP_ID,
     sendEmail: async ({ to, subject, template, data }) => {
       if (env.NODE_ENV !== "production") {
         const url = typeof data.url === "string" ? data.url : null

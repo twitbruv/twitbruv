@@ -1,3 +1,4 @@
+import { passkey } from "@better-auth/passkey"
 import { betterAuth } from "better-auth"
 import { drizzleAdapter } from "better-auth/adapters/drizzle"
 import { magicLink } from "better-auth/plugins/magic-link"
@@ -6,8 +7,15 @@ import { admin as adminPlugin } from "better-auth/plugins/admin"
 import type { Database } from "@workspace/db"
 import { COOKIE_PREFIX } from "./constants.ts"
 
-// Passkey support is a follow-up: better-auth ships passkeys as a separate plugin package.
-// Wire it in at M2 once the signup flow lands.
+function resolvePasskeyRpId(authBaseURL: string, explicit?: string) {
+  const trimmed = explicit?.trim()
+  if (trimmed) return trimmed
+  try {
+    return new URL(authBaseURL).hostname
+  } catch {
+    return "localhost"
+  }
+}
 
 export interface AuthConfig {
   db: Database
@@ -16,6 +24,7 @@ export interface AuthConfig {
   trustedOrigins: Array<string>
   cookieDomain?: string
   appName: string
+  passkeyRpId?: string
   sendEmail: (args: {
     to: string
     subject: string
@@ -128,6 +137,10 @@ export function createAuth(config: AuthConfig) {
         : {}),
     },
     plugins: [
+      passkey({
+        rpName: config.appName,
+        rpID: resolvePasskeyRpId(config.baseURL, config.passkeyRpId),
+      }),
       magicLink({
         sendMagicLink: async ({ email, url }) => {
           await config.sendEmail({

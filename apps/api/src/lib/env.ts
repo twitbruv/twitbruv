@@ -29,6 +29,11 @@ const envSchema = z.object({
         .filter(Boolean)
     ),
   AUTH_COOKIE_DOMAIN: z.string().optional(),
+  PASSKEY_RP_ID: z.preprocess((v) => {
+    if (typeof v !== "string") return undefined
+    const t = v.trim()
+    return t.length === 0 ? undefined : t
+  }, z.string().optional()),
 
   PORT: z.coerce.number().default(3001),
   NODE_ENV: z

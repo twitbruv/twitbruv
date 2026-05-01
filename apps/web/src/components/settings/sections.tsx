@@ -7,6 +7,7 @@ import {
 import { Link } from "@tanstack/react-router"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useEffect, useState } from "react"
+import { toast } from "sonner"
 import { updateProfileSchema } from "@workspace/validators"
 import { Avatar } from "@workspace/ui/components/avatar"
 import { Badge } from "@workspace/ui/components/badge"
@@ -331,6 +332,253 @@ export function AccountSection({ email }: { email: string }) {
           className="mt-1"
         >
           Update password
+        </Button>
+      </form>
+    </SettingsSection>
+  )
+}
+
+type UserPasskeyRow = {
+  id: string
+  name?: string | null
+  createdAt?: string | Date | null
+}
+
+export function PasskeysSection() {
+  const [keys, setKeys] = useState<Array<UserPasskeyRow> | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [pkName, setPkName] = useState("")
+  const [renameId, setRenameId] = useState<string | null>(null)
+  const [renameValue, setRenameValue] = useState("")
+  const [supportsPk, setSupportsPk] = useState(false)
+
+  useEffect(() => {
+    setSupportsPk(
+      typeof window !== "undefined" &&
+        typeof PublicKeyCredential !== "undefined"
+    )
+  }, [])
+
+  async function refresh() {
+    try {
+      setError(null)
+      const res = await authClient.passkey.listUserPasskeys({})
+      if (res.error) {
+        throw new Error(res.error.message ?? "couldn't load passkeys")
+      }
+      const raw = res.data
+      const rows = Array.isArray(raw) ? (raw as Array<UserPasskeyRow>) : []
+      setKeys(rows)
+    } catch (e) {
+      setKeys([])
+      setError(e instanceof Error ? e.message : "couldn't load passkeys")
+    }
+  }
+
+  useEffect(() => {
+    refresh().catch(() => {})
+  }, [])
+
+  async function addPasskey(e: React.FormEvent) {
+    e.preventDefault()
+    if (busy || typeof window === "undefined") return
+    setBusy(true)
+    try {
+      const res = await authClient.passkey.addPasskey({
+        name: pkName.trim() || undefined,
+      })
+      if (res.error)
+        throw new Error(res.error.message ?? "couldn't register passkey")
+      setPkName("")
+      toast.success("Passkey added.")
+      await refresh()
+    } catch (caught) {
+      toast.error(
+        caught instanceof Error ? caught.message : "couldn't register passkey"
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function removePasskey(id: string) {
+    if (
+      busy ||
+      typeof window === "undefined" ||
+      !window.confirm("Remove this passkey from your account?")
+    ) {
+      return
+    }
+    setBusy(true)
+    try {
+      const res = await authClient.passkey.deletePasskey({ id })
+      if (res.error) throw new Error(res.error.message ?? "couldn't remove")
+      toast.success("Passkey removed.")
+      await refresh()
+    } catch (caught) {
+      toast.error(caught instanceof Error ? caught.message : "couldn't remove")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function saveRename(id: string) {
+    const name = renameValue.trim()
+    if (!name || busy) return
+    setBusy(true)
+    try {
+      const res = await authClient.passkey.updatePasskey({
+        id,
+        name,
+      })
+      if (res.error) throw new Error(res.error.message ?? "couldn't update")
+      toast.success("Passkey renamed.")
+      setRenameId(null)
+      setRenameValue("")
+      await refresh()
+    } catch (caught) {
+      toast.error(caught instanceof Error ? caught.message : "couldn't update")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <SettingsSection>
+      <SettingsSectionTitle>Passkeys</SettingsSectionTitle>
+      <p className="text-xs text-tertiary">
+        Sign in without a password on supported devices using Touch ID, Face ID,
+        Windows Hello, or a security key.
+      </p>
+      {!supportsPk ? (
+        <p className="text-muted-foreground text-xs">
+          Your browser doesn't support WebAuthn passkeys.
+        </p>
+      ) : null}
+      {error ? <p className="text-xs text-danger">{error}</p> : null}
+
+      {!keys ? (
+        <p className="text-muted-foreground text-xs">loading…</p>
+      ) : keys.length === 0 ? (
+        <p className="text-muted-foreground text-xs">
+          No passkeys yet. Register one below.
+        </p>
+      ) : (
+        <ul className="flex flex-col gap-2">
+          {keys.map((p) => {
+            const title =
+              (p.name && p.name.trim()) || `Passkey (${p.id.slice(0, 8)})`
+            const created =
+              p.createdAt != null
+                ? new Date(p.createdAt).toLocaleDateString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })
+                : null
+            const editing = renameId === p.id
+            return (
+              <li
+                key={p.id}
+                className="flex flex-col gap-2 rounded-2xl bg-base-0 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3 dark:bg-base-2"
+              >
+                <div className="min-w-0 flex-1">
+                  {editing ? (
+                    <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center">
+                      <Label htmlFor={`pk-rename-${p.id}`} className="sr-only">
+                        Passkey name
+                      </Label>
+                      <Input
+                        id={`pk-rename-${p.id}`}
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        className="sm:max-w-xs"
+                        placeholder="Name"
+                      />
+                      <div className="flex flex-wrap gap-1.5">
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={busy || !renameValue.trim()}
+                          onClick={() => void saveRename(p.id)}
+                        >
+                          Save
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={busy}
+                          onClick={() => {
+                            setRenameId(null)
+                            setRenameValue("")
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="truncate text-sm font-medium text-primary">
+                        {title}
+                      </p>
+                      {created ? (
+                        <p className="text-xs text-tertiary [font-variant-numeric:tabular-nums]">
+                          Added {created}
+                        </p>
+                      ) : null}
+                    </>
+                  )}
+                </div>
+                {!editing ? (
+                  <div className="flex shrink-0 flex-wrap gap-1.5">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() => {
+                        setRenameId(p.id)
+                        setRenameValue(p.name ?? "")
+                      }}
+                    >
+                      Rename
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() => void removePasskey(p.id)}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                ) : null}
+              </li>
+            )
+          })}
+        </ul>
+      )}
+
+      <form onSubmit={addPasskey} className="flex flex-col gap-2">
+        <Label htmlFor="newPasskeyName">Add a passkey</Label>
+        <Input
+          id="newPasskeyName"
+          value={pkName}
+          onChange={(e) => setPkName(e.target.value)}
+          placeholder="Label (optional)"
+          autoComplete="off"
+        />
+        <Button
+          type="submit"
+          size="sm"
+          disabled={busy || !supportsPk}
+          className="mt-1 w-fit"
+        >
+          {busy ? "Registering…" : "Register new passkey"}
         </Button>
       </form>
     </SettingsSection>

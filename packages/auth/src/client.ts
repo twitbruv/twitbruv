@@ -1,9 +1,8 @@
-import { createAuthClient } from 'better-auth/react'
-import { magicLinkClient } from 'better-auth/client/plugins'
+import { passkeyClient } from "@better-auth/passkey/client"
+import { magicLinkClient } from "better-auth/client/plugins"
+import { createAuthClient } from "better-auth/react"
 
 export interface CreateClientOptions {
-  /** Forwarded to better-fetch as a response observer. Lets the consumer hook into every
-   *  auth response (e.g. to detect a server-side maintenance 503). */
   onResponse?: (res: Response) => void | Promise<void>
 }
 
@@ -11,9 +10,9 @@ export function createClient(baseURL: string, options: CreateClientOptions = {})
   const onResponse = options.onResponse
   return createAuthClient({
     baseURL,
-    plugins: [magicLinkClient()],
+    plugins: [magicLinkClient(), passkeyClient()],
     fetchOptions: {
-      credentials: 'include',
+      credentials: "include",
       onResponse: onResponse
         ? async (ctx) => {
             await onResponse(ctx.response)
