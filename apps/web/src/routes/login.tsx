@@ -66,6 +66,14 @@ function Login() {
                 className="h-10"
                 required
               />
+              <div className="flex justify-end">
+                <Link
+                  to="/forgot-password"
+                  className="text-muted-foreground hover:text-foreground text-xs underline-offset-4 hover:underline"
+                >
+                  Forgot password?
+                </Link>
+              </div>
             </div>
             <Button
               type="submit"

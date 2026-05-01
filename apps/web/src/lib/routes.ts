@@ -6,6 +6,10 @@ export interface RouteInfo {
 
 export function getRouteInfo(pathname: string): RouteInfo {
   if (pathname === "/") return { title: "Home", sub: "for you" }
+  if (pathname === "/login") return { title: "Sign in" }
+  if (pathname === "/signup") return { title: "Sign up" }
+  if (pathname === "/forgot-password") return { title: "Forgot password" }
+  if (pathname === "/reset-password") return { title: "Reset password" }
   if (pathname === "/search") return { title: "Search" }
   if (pathname === "/notifications") return { title: "Notifications" }
   if (pathname === "/inbox") return { title: "Messages" }
@@ -28,7 +32,9 @@ export function getRouteInfo(pathname: string): RouteInfo {
   if (
     pathname.match(/^\/[^/]+$/) &&
     !pathname.startsWith("/login") &&
-    !pathname.startsWith("/signup")
+    !pathname.startsWith("/signup") &&
+    !pathname.startsWith("/forgot-password") &&
+    !pathname.startsWith("/reset-password")
   ) {
     return { title: "Profile", back: true }
   }

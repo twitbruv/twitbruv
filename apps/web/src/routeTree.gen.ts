@@ -13,11 +13,13 @@ import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as SearchRouteImport } from './routes/search'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as OgRouteImport } from './routes/og'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as ManifestDotjsonRouteImport } from './routes/manifest[.]json'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as InboxRouteImport } from './routes/inbox'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DraftsRouteImport } from './routes/drafts'
 import { Route as BookmarksRouteImport } from './routes/bookmarks'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
@@ -63,6 +65,11 @@ const SearchRoute = SearchRouteImport.update({
   path: '/search',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OgRoute = OgRouteImport.update({
   id: '/og',
   path: '/og',
@@ -86,6 +93,11 @@ const LoginRoute = LoginRouteImport.update({
 const InboxRoute = InboxRouteImport.update({
   id: '/inbox',
   path: '/inbox',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DraftsRoute = DraftsRouteImport.update({
@@ -216,11 +228,13 @@ export interface FileRoutesByFullPath {
   '/analytics': typeof AnalyticsRoute
   '/bookmarks': typeof BookmarksRoute
   '/drafts': typeof DraftsRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/inbox': typeof InboxRouteWithChildren
   '/login': typeof LoginRoute
   '/manifest.json': typeof ManifestDotjsonRoute
   '/notifications': typeof NotificationsRoute
   '/og': typeof OgRouteWithChildren
+  '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -250,10 +264,12 @@ export interface FileRoutesByTo {
   '/analytics': typeof AnalyticsRoute
   '/bookmarks': typeof BookmarksRoute
   '/drafts': typeof DraftsRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/manifest.json': typeof ManifestDotjsonRoute
   '/notifications': typeof NotificationsRoute
   '/og': typeof OgRouteWithChildren
+  '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -285,11 +301,13 @@ export interface FileRoutesById {
   '/analytics': typeof AnalyticsRoute
   '/bookmarks': typeof BookmarksRoute
   '/drafts': typeof DraftsRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/inbox': typeof InboxRouteWithChildren
   '/login': typeof LoginRoute
   '/manifest.json': typeof ManifestDotjsonRoute
   '/notifications': typeof NotificationsRoute
   '/og': typeof OgRouteWithChildren
+  '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
   '/signup': typeof SignupRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -322,11 +340,13 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/bookmarks'
     | '/drafts'
+    | '/forgot-password'
     | '/inbox'
     | '/login'
     | '/manifest.json'
     | '/notifications'
     | '/og'
+    | '/reset-password'
     | '/search'
     | '/signup'
     | '/sitemap.xml'
@@ -356,10 +376,12 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/bookmarks'
     | '/drafts'
+    | '/forgot-password'
     | '/login'
     | '/manifest.json'
     | '/notifications'
     | '/og'
+    | '/reset-password'
     | '/search'
     | '/signup'
     | '/sitemap.xml'
@@ -390,11 +412,13 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/bookmarks'
     | '/drafts'
+    | '/forgot-password'
     | '/inbox'
     | '/login'
     | '/manifest.json'
     | '/notifications'
     | '/og'
+    | '/reset-password'
     | '/search'
     | '/signup'
     | '/sitemap.xml'
@@ -426,11 +450,13 @@ export interface RootRouteChildren {
   AnalyticsRoute: typeof AnalyticsRoute
   BookmarksRoute: typeof BookmarksRoute
   DraftsRoute: typeof DraftsRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   InboxRoute: typeof InboxRouteWithChildren
   LoginRoute: typeof LoginRoute
   ManifestDotjsonRoute: typeof ManifestDotjsonRoute
   NotificationsRoute: typeof NotificationsRoute
   OgRoute: typeof OgRouteWithChildren
+  ResetPasswordRoute: typeof ResetPasswordRoute
   SearchRoute: typeof SearchRoute
   SignupRoute: typeof SignupRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
@@ -474,6 +500,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SearchRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/og': {
       id: '/og'
       path: '/og'
@@ -507,6 +540,13 @@ declare module '@tanstack/react-router' {
       path: '/inbox'
       fullPath: '/inbox'
       preLoaderRoute: typeof InboxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/drafts': {
@@ -734,11 +774,13 @@ const rootRouteChildren: RootRouteChildren = {
   AnalyticsRoute: AnalyticsRoute,
   BookmarksRoute: BookmarksRoute,
   DraftsRoute: DraftsRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   InboxRoute: InboxRouteWithChildren,
   LoginRoute: LoginRoute,
   ManifestDotjsonRoute: ManifestDotjsonRoute,
   NotificationsRoute: NotificationsRoute,
   OgRoute: OgRouteWithChildren,
+  ResetPasswordRoute: ResetPasswordRoute,
   SearchRoute: SearchRoute,
   SignupRoute: SignupRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,

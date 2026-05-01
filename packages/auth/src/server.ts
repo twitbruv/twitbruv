@@ -76,6 +76,7 @@ export function createAuth(config: AuthConfig) {
       requireEmailVerification: false,
       minPasswordLength: 10,
       autoSignIn: true,
+      revokeSessionsOnPasswordReset: true,
       sendResetPassword: async ({ user, url }) => {
         await config.sendEmail({
           to: user.email,

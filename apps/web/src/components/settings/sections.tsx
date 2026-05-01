@@ -3,7 +3,6 @@ import {
   PhoneIcon,
   QuestionMarkCircleIcon,
   TvIcon,
-  WindowIcon,
 } from "@heroicons/react/24/outline"
 import { Link } from "@tanstack/react-router"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
@@ -876,9 +875,7 @@ export function ConnectionsSection({
                   disabled={busy !== null}
                   iconLeft={<ArrowPathIcon aria-hidden />}
                   onClick={refresh}
-                >
-                  
-                </Button>
+                ></Button>
                 <Button
                   size="sm"
                   variant="outline"
