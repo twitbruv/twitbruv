@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: twotter
       POSTGRES_DB: twotter
     ports:
-      - "5432:5432"
+      - "5432:5433"
     volumes:
       - twotter_pg:/var/lib/postgresql/data
       - ./packages/db/init:/docker-entrypoint-initdb.d:ro
