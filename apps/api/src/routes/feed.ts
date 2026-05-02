@@ -1,22 +1,18 @@
-import { Hono } from "hono"
-import { and, desc, eq, inArray, isNull, lt, sql } from "@workspace/db"
-import { schema } from "@workspace/db"
-import { requireHandle, type HonoEnv } from "../middleware/session.ts"
-import { toPostDto } from "../lib/post-dto.ts"
-import { loadViewerFlags } from "../lib/viewer-flags.ts"
-import { loadPostMedia } from "../lib/post-media.ts"
-import { loadArticleCards } from "../lib/article-cards.ts"
-import { loadRepostTargets } from "../lib/repost-targets.ts"
-import { loadQuoteTargets } from "../lib/quote-targets.ts"
-import {
-  attachFeedChainPreviews,
-  linkSamePageReplies,
-  filterRedundantChainPosts,
-} from "../lib/feed-chain-preview.ts"
-import { attachReplyParents } from "../lib/reply-parents.ts"
-import { loadPolls } from "../lib/polls.ts"
-import { loadUnfurlCards } from "../lib/unfurl-cards.ts"
-import { parseCursor } from "../lib/cursor.ts"
+import { Hono } from 'hono'
+import { and, desc, eq, inArray, isNull, lt, sql } from '@workspace/db'
+import { schema } from '@workspace/db'
+import { requireHandle, type HonoEnv } from '../middleware/session.ts'
+import { toPostDto } from '../lib/post-dto.ts'
+import { loadViewerFlags } from '../lib/viewer-flags.ts'
+import { loadPostMedia } from '../lib/post-media.ts'
+import { loadArticleCards } from '../lib/article-cards.ts'
+import { loadRepostTargets } from '../lib/repost-targets.ts'
+import { loadQuoteTargets } from '../lib/quote-targets.ts'
+import { attachFeedChainPreviews, linkSamePageReplies, filterRedundantChainPosts } from '../lib/feed-chain-preview.ts'
+import { attachReplyParents } from '../lib/reply-parents.ts'
+import { loadPolls } from '../lib/polls.ts'
+import { loadUnfurlCards } from '../lib/unfurl-cards.ts'
+import { parseCursor } from '../lib/cursor.ts'
 
 export const feedRoute = new Hono<HonoEnv>()
 
@@ -37,23 +33,21 @@ export function profileFeedCacheKey(authorId: string) {
 }
 
 // Home feed: reverse-chrono from follows, excluding blocks and muted-feed users.
-feedRoute.get("/", requireHandle(), async (c) => {
-  const session = c.get("session")!
-  const { db, mediaEnv, cache, rateLimit } = c.get("ctx")
-  await rateLimit(c, "reads.feed")
-  const limit = Math.min(Number(c.req.query("limit") ?? 40), 100)
-  const cursor = parseCursor(c.req.query("cursor"))
+feedRoute.get('/', requireHandle(), async (c) => {
+  const session = c.get('session')!
+  const { db, mediaEnv, cache, rateLimit } = c.get('ctx')
+  await rateLimit(c, 'reads.feed')
+  const limit = Math.min(Number(c.req.query('limit') ?? 40), 100)
+  const cursor = parseCursor(c.req.query('cursor'))
   const me = session.user.id
 
   // Cache only page 0 (no cursor) with default limit. Deeper pages are rarely fetched and
   // caching every (cursor, limit) combo isn't worth the keyspace.
   const cacheable = !cursor && limit === 40
   if (cacheable) {
-    const hit = await cache.get<{ posts: unknown; nextCursor: string | null }>(
-      homeFeedCacheKey(me)
-    )
+    const hit = await cache.get<{ posts: unknown; nextCursor: string | null }>(homeFeedCacheKey(me))
     if (hit) {
-      c.header("x-cache", "hit")
+      c.header('x-cache', 'hit')
       return c.json(hit)
     }
   }
@@ -62,48 +56,38 @@ feedRoute.get("/", requireHandle(), async (c) => {
     .select({ post: schema.posts, author: schema.users })
     .from(schema.posts)
     .innerJoin(schema.users, eq(schema.users.id, schema.posts.authorId))
-    .innerJoin(
-      schema.follows,
-      eq(schema.follows.followeeId, schema.posts.authorId)
-    )
+    .innerJoin(schema.follows, eq(schema.follows.followeeId, schema.posts.authorId))
     .where(
       and(
         eq(schema.follows.followerId, me),
         isNull(schema.posts.deletedAt),
         cursor ? lt(schema.posts.createdAt, cursor) : undefined,
         sql`NOT EXISTS (SELECT 1 FROM ${schema.blocks} b WHERE (b.blocker_id = ${me} AND b.blocked_id = ${schema.posts.authorId}) OR (b.blocker_id = ${schema.posts.authorId} AND b.blocked_id = ${me}))`,
-        sql`NOT EXISTS (SELECT 1 FROM ${schema.mutes} m WHERE m.muter_id = ${me} AND m.muted_id = ${schema.posts.authorId} AND (m.scope = 'feed' OR m.scope = 'both'))`
-      )
+        sql`NOT EXISTS (SELECT 1 FROM ${schema.mutes} m WHERE m.muter_id = ${me} AND m.muted_id = ${schema.posts.authorId} AND (m.scope = 'feed' OR m.scope = 'both'))`,
+      ),
     )
     .orderBy(desc(schema.posts.createdAt))
     .limit(limit)
 
   const ids = rows.map((r) => r.post.id)
-  const [flags, mediaMap, articleMap, repostMap, quoteMap, pollMap] =
-    await Promise.all([
-      loadViewerFlags(db, me, ids),
-      loadPostMedia(db, ids),
-      loadArticleCards(db, ids),
-      loadRepostTargets({
-        db,
-        viewerId: me,
-        env: mediaEnv,
-        repostRows: rows.map((r) => ({
-          id: r.post.id,
-          repostOfId: r.post.repostOfId,
-        })),
-      }),
-      loadQuoteTargets({
-        db,
-        viewerId: me,
-        env: mediaEnv,
-        quoteRows: rows.map((r) => ({
-          id: r.post.id,
-          quoteOfId: r.post.quoteOfId,
-        })),
-      }),
-      loadPolls(db, me, ids),
-    ])
+  const [flags, mediaMap, articleMap, repostMap, quoteMap, pollMap] = await Promise.all([
+    loadViewerFlags(db, me, ids),
+    loadPostMedia(db, ids),
+    loadArticleCards(db, ids),
+    loadRepostTargets({
+      db,
+      viewerId: me,
+      env: mediaEnv,
+      repostRows: rows.map((r) => ({ id: r.post.id, repostOfId: r.post.repostOfId })),
+    }),
+    loadQuoteTargets({
+      db,
+      viewerId: me,
+      env: mediaEnv,
+      quoteRows: rows.map((r) => ({ id: r.post.id, quoteOfId: r.post.quoteOfId })),
+    }),
+    loadPolls(db, me, ids),
+  ])
   const unfurlCardsMap = await loadUnfurlCards(db, ids, articleMap)
   const posts = rows.map((r) =>
     toPostDto(
@@ -115,22 +99,20 @@ feedRoute.get("/", requireHandle(), async (c) => {
       unfurlCardsMap.get(r.post.id),
       repostMap.get(r.post.id),
       quoteMap.get(r.post.id),
-      pollMap.get(r.post.id)
-    )
+      pollMap.get(r.post.id),
+    ),
   )
   await attachReplyParents({ db, viewerId: me, env: mediaEnv, posts })
   await attachFeedChainPreviews({ db, viewerId: me, env: mediaEnv, posts })
   linkSamePageReplies(posts)
   const filtered = filterRedundantChainPosts(posts)
   const hasMore = rows.length === limit
-  const nextCursor = hasMore
-    ? rows[rows.length - 1]!.post.createdAt.toISOString()
-    : null
+  const nextCursor = hasMore ? rows[rows.length - 1]!.post.createdAt.toISOString() : null
   const response = { posts: filtered, nextCursor }
 
   if (cacheable) {
     await cache.set(homeFeedCacheKey(me), response, HOME_FEED_TTL_SEC)
-    c.header("x-cache", "miss")
+    c.header('x-cache', 'miss')
   }
   return c.json(response)
 })
@@ -141,12 +123,12 @@ feedRoute.get("/", requireHandle(), async (c) => {
 // viewer's blocks/mutes and any post by a blocked author.
 const NETWORK_FEED_TTL_SEC = 60
 
-feedRoute.get("/network", requireHandle(), async (c) => {
-  const session = c.get("session")!
-  const { db, mediaEnv, rateLimit } = c.get("ctx")
-  await rateLimit(c, "reads.feed")
-  const limit = Math.min(Number(c.req.query("limit") ?? 40), 100)
-  const cursor = parseCursor(c.req.query("cursor"))
+feedRoute.get('/network', requireHandle(), async (c) => {
+  const session = c.get('session')!
+  const { db, mediaEnv, rateLimit } = c.get('ctx')
+  await rateLimit(c, 'reads.feed')
+  const limit = Math.min(Number(c.req.query('limit') ?? 40), 100)
+  const cursor = parseCursor(c.req.query('cursor'))
   const me = session.user.id
 
   // The activity that surfaced the post is one of: a like by a follow,
@@ -173,23 +155,23 @@ feedRoute.get("/network", requireHandle(), async (c) => {
       schema.follows,
       and(
         eq(schema.follows.followerId, me),
-        eq(schema.follows.followeeId, schema.likes.userId)
-      )
+        eq(schema.follows.followeeId, schema.likes.userId),
+      ),
     )
     .innerJoin(schema.posts, eq(schema.posts.id, schema.likes.postId))
     .innerJoin(schema.users, eq(schema.users.id, schema.posts.authorId))
     .where(
       and(
         isNull(schema.posts.deletedAt),
-        eq(schema.posts.visibility, "public"),
+        eq(schema.posts.visibility, 'public'),
         // Skip posts by people the viewer already follows; those belong on
         // the home feed. Skip viewer's own posts too.
         sql`NOT EXISTS (SELECT 1 FROM ${schema.follows} ff WHERE ff.follower_id = ${me} AND ff.followee_id = ${schema.posts.authorId})`,
         sql`${schema.posts.authorId} <> ${me}`,
         sql`NOT EXISTS (SELECT 1 FROM ${schema.blocks} b WHERE (b.blocker_id = ${me} AND b.blocked_id = ${schema.posts.authorId}) OR (b.blocker_id = ${schema.posts.authorId} AND b.blocked_id = ${me}))`,
         sql`NOT EXISTS (SELECT 1 FROM ${schema.mutes} m WHERE m.muter_id = ${me} AND m.muted_id = ${schema.posts.authorId} AND (m.scope = 'feed' OR m.scope = 'both'))`,
-        cursor ? lt(schema.likes.createdAt, cursor) : undefined
-      )
+        cursor ? lt(schema.likes.createdAt, cursor) : undefined,
+      ),
     )
     .orderBy(desc(schema.likes.createdAt))
     .limit(limit * 2)
@@ -200,8 +182,8 @@ feedRoute.get("/network", requireHandle(), async (c) => {
     .select({
       post: schema.posts,
       author: schema.users,
-      activityAt: sql<Date>`reposters.created_at`.as("activity_at"),
-      actorId: sql<string>`reposters.author_id`.as("actor_id"),
+      activityAt: sql<Date>`reposters.created_at`.as('activity_at'),
+      actorId: sql<string>`reposters.author_id`.as('actor_id'),
     })
     .from(
       sql`(
@@ -214,19 +196,19 @@ feedRoute.get("/network", requireHandle(), async (c) => {
           ${cursor ? sql`AND r.created_at < ${cursor}` : sql``}
         ORDER BY r.created_at DESC
         LIMIT ${limit * 2}
-      ) reposters`
+      ) reposters`,
     )
     .innerJoin(schema.posts, sql`${schema.posts.id} = reposters.post_id`)
     .innerJoin(schema.users, eq(schema.users.id, schema.posts.authorId))
     .where(
       and(
         isNull(schema.posts.deletedAt),
-        eq(schema.posts.visibility, "public"),
+        eq(schema.posts.visibility, 'public'),
         sql`NOT EXISTS (SELECT 1 FROM ${schema.follows} ff WHERE ff.follower_id = ${me} AND ff.followee_id = ${schema.posts.authorId})`,
         sql`${schema.posts.authorId} <> ${me}`,
         sql`NOT EXISTS (SELECT 1 FROM ${schema.blocks} b WHERE (b.blocker_id = ${me} AND b.blocked_id = ${schema.posts.authorId}) OR (b.blocker_id = ${schema.posts.authorId} AND b.blocked_id = ${me}))`,
-        sql`NOT EXISTS (SELECT 1 FROM ${schema.mutes} m WHERE m.muter_id = ${me} AND m.muted_id = ${schema.posts.authorId} AND (m.scope = 'feed' OR m.scope = 'both'))`
-      )
+        sql`NOT EXISTS (SELECT 1 FROM ${schema.mutes} m WHERE m.muter_id = ${me} AND m.muted_id = ${schema.posts.authorId} AND (m.scope = 'feed' OR m.scope = 'both'))`,
+      ),
     )
 
   // Merge by post id, keeping the most recent activity for ordering and
@@ -243,16 +225,13 @@ feedRoute.get("/network", requireHandle(), async (c) => {
         actorIds: [row.actorId],
       })
     } else {
-      if (row.activityAt > existing.activityAt)
-        existing.activityAt = row.activityAt
-      if (!existing.actorIds.includes(row.actorId))
-        existing.actorIds.push(row.actorId)
+      if (row.activityAt > existing.activityAt) existing.activityAt = row.activityAt
+      if (!existing.actorIds.includes(row.actorId)) existing.actorIds.push(row.actorId)
     }
   }
   for (const row of repostRows) {
     const existing = byId.get(row.post.id)
-    const at =
-      row.activityAt instanceof Date ? row.activityAt : new Date(row.activityAt)
+    const at = row.activityAt instanceof Date ? row.activityAt : new Date(row.activityAt)
     if (!existing) {
       byId.set(row.post.id, {
         post: row.post,
@@ -262,8 +241,7 @@ feedRoute.get("/network", requireHandle(), async (c) => {
       })
     } else {
       if (at > existing.activityAt) existing.activityAt = at
-      if (!existing.actorIds.includes(row.actorId))
-        existing.actorIds.push(row.actorId)
+      if (!existing.actorIds.includes(row.actorId)) existing.actorIds.push(row.actorId)
     }
   }
 
@@ -272,38 +250,30 @@ feedRoute.get("/network", requireHandle(), async (c) => {
     .slice(0, limit)
 
   const ids = merged.map((r) => r.post.id)
-  const [flags, mediaMap, articleMap, repostMapPost, quoteMapPost, pollMap] =
-    await Promise.all([
-      loadViewerFlags(db, me, ids),
-      loadPostMedia(db, ids),
-      loadArticleCards(db, ids),
-      loadRepostTargets({
-        db,
-        viewerId: me,
-        env: mediaEnv,
-        repostRows: merged.map((r) => ({
-          id: r.post.id,
-          repostOfId: r.post.repostOfId,
-        })),
-      }),
-      loadQuoteTargets({
-        db,
-        viewerId: me,
-        env: mediaEnv,
-        quoteRows: merged.map((r) => ({
-          id: r.post.id,
-          quoteOfId: r.post.quoteOfId,
-        })),
-      }),
-      loadPolls(db, me, ids),
-    ])
+  const [flags, mediaMap, articleMap, repostMapPost, quoteMapPost, pollMap] = await Promise.all([
+    loadViewerFlags(db, me, ids),
+    loadPostMedia(db, ids),
+    loadArticleCards(db, ids),
+    loadRepostTargets({
+      db,
+      viewerId: me,
+      env: mediaEnv,
+      repostRows: merged.map((r) => ({ id: r.post.id, repostOfId: r.post.repostOfId })),
+    }),
+    loadQuoteTargets({
+      db,
+      viewerId: me,
+      env: mediaEnv,
+      quoteRows: merged.map((r) => ({ id: r.post.id, quoteOfId: r.post.quoteOfId })),
+    }),
+    loadPolls(db, me, ids),
+  ])
   const unfurlCardsMapNetwork = await loadUnfurlCards(db, ids, articleMap)
   // Pull the triggering actors' handles for the "Lucas + 2 others liked this"
   // banner. We cap at 3 ids per post; the count beyond that is shown as
   // "+N others" in the UI.
   const allActorIds = new Set<string>()
-  for (const r of merged)
-    for (const id of r.actorIds.slice(0, 3)) allActorIds.add(id)
+  for (const r of merged) for (const id of r.actorIds.slice(0, 3)) allActorIds.add(id)
   const actorMap = new Map<
     string,
     { id: string; handle: string | null; displayName: string | null }
@@ -335,7 +305,7 @@ feedRoute.get("/network", requireHandle(), async (c) => {
       unfurlCardsMapNetwork.get(r.post.id),
       repostMapPost.get(r.post.id),
       quoteMapPost.get(r.post.id),
-      pollMap.get(r.post.id)
+      pollMap.get(r.post.id),
     ),
     networkActors: r.actorIds
       .slice(0, 3)
@@ -346,9 +316,7 @@ feedRoute.get("/network", requireHandle(), async (c) => {
   }))
   await attachReplyParents({ db, viewerId: me, env: mediaEnv, posts })
   const nextCursor =
-    posts.length === limit
-      ? merged[merged.length - 1]!.activityAt.toISOString()
-      : null
+    posts.length === limit ? merged[merged.length - 1]!.activityAt.toISOString() : null
   // Suppress unused TTL constant warning (kept for future caching hooks).
   void NETWORK_FEED_TTL_SEC
   return c.json({ posts, nextCursor })
