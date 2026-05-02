@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query"
+import { useElementScrollRestoration } from "@tanstack/react-router"
 import { useVirtualizer, useWindowVirtualizer } from "@tanstack/react-virtual"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { PageEmpty, PageError } from "./page-surface"
@@ -267,6 +268,9 @@ function WindowFeedList({
   const wrapperRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
   const [scrollMargin, setScrollMargin] = useState(0)
+  const scrollEntry = useElementScrollRestoration({
+    getElement: () => window,
+  })
 
   useIsoLayoutEffect(() => {
     const node = wrapperRef.current
@@ -280,6 +284,7 @@ function WindowFeedList({
   const virtualizer = useWindowVirtualizer({
     count: posts.length,
     estimateSize: (i) => estimatePostHeight(posts[i]),
+    initialOffset: scrollEntry?.scrollY,
     overscan: 6,
     scrollMargin,
     getItemKey: (i) => posts[i].id,
@@ -346,11 +351,15 @@ function ContainerFeedList({
 }: FeedListProps & { scrollEl: HTMLElement }) {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
+  const scrollEntry = useElementScrollRestoration({
+    getElement: () => scrollEl,
+  })
 
   const virtualizer = useVirtualizer({
     count: posts.length,
     getScrollElement: () => scrollEl,
     estimateSize: (i) => estimatePostHeight(posts[i]),
+    initialOffset: scrollEntry?.scrollY,
     overscan: 6,
     getItemKey: (i) => posts[i].id,
   })

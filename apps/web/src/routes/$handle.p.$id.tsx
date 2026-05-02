@@ -1,4 +1,10 @@
-import { Link, createFileRoute, useNavigate } from "@tanstack/react-router"
+import {
+  Link,
+  createFileRoute,
+  useCanGoBack,
+  useNavigate,
+  useRouter,
+} from "@tanstack/react-router"
 import { useCallback, useEffect, useRef } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { ArrowLeftIcon } from "@heroicons/react/24/solid"
@@ -103,6 +109,8 @@ export const Route = createFileRoute("/$handle/p/$id")({
 function ThreadView() {
   const { handle, id } = Route.useParams()
   const navigate = useNavigate()
+  const router = useRouter()
+  const canGoBack = useCanGoBack()
   const queryClient = useQueryClient()
   const focalRef = useRef<HTMLDivElement>(null)
   const didScrollRef = useRef(false)
@@ -195,7 +203,13 @@ function ThreadView() {
           variant="transparent"
           size="sm"
           iconLeft={<ArrowLeftIcon className="size-4" />}
-          onClick={() => navigate({ to: "/" })}
+          onClick={() => {
+            if (canGoBack) {
+              router.history.back()
+            } else {
+              navigate({ to: "/" })
+            }
+          }}
           aria-label="Back"
         />
         <span className="text-sm font-semibold text-primary">Post</span>
