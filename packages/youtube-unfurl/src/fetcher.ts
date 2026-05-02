@@ -68,6 +68,118 @@ function videoWatchUrl(ref: Extract<YouTubeRef, { kind: 'video' }>): string {
   return base
 }
 
+type OEmbedVideoPayload = {
+  title?: string
+  author_name?: string
+  author_url?: string
+  thumbnail_url?: string
+  thumbnail_width?: number
+  thumbnail_height?: number
+}
+
+function channelMetaFromAuthorUrl(authorUrl: string | undefined): {
+  channelId: string
+  channelHandle: string | null
+} {
+  if (!authorUrl) return { channelId: '', channelHandle: null }
+  try {
+    const u = new URL(authorUrl)
+    const ch = u.pathname.match(/\/channel\/(UC[A-Za-z0-9_-]{10,})/i)
+    if (ch?.[1]) return { channelId: ch[1], channelHandle: null }
+    const h = u.pathname.match(/^\/@([^/?#]+)/)
+    if (h?.[1]) return { channelId: '', channelHandle: decodeURIComponent(h[1]) }
+  } catch {}
+  return { channelId: '', channelHandle: null }
+}
+
+async function fetchVideoOEmbed(
+  ref: Extract<YouTubeRef, { kind: 'video' }>,
+): Promise<FetchOutcome<YouTubeVideoCard>> {
+  const cardUrl = videoWatchUrl(ref)
+  const oembedUrl = new URL('https://www.youtube.com/oembed')
+  oembedUrl.searchParams.set('url', cardUrl)
+  oembedUrl.searchParams.set('format', 'json')
+
+  let res: Response
+  try {
+    res = await fetch(oembedUrl.toString(), { redirect: 'follow' })
+  } catch (err) {
+    return { ok: false, ...classifyHttpError(err) }
+  }
+
+  if (res.status === 404) {
+    return { ok: false, reason: 'not_found', message: 'video_not_found' }
+  }
+  if (!res.ok) {
+    return {
+      ok: false,
+      reason: res.status === 401 || res.status === 403 ? 'unauthorized' : 'unknown',
+      message: `oembed_http_${res.status}`,
+    }
+  }
+
+  let body: unknown
+  try {
+    body = await res.json()
+  } catch {
+    return { ok: false, reason: 'unknown', message: 'oembed_json_invalid' }
+  }
+
+  const j = body as OEmbedVideoPayload
+  const thumb = j.thumbnail_url?.trim() ?? ''
+  if (!thumb) return { ok: false, reason: 'not_found', message: 'oembed_no_thumbnail' }
+
+  const { channelId, channelHandle } = channelMetaFromAuthorUrl(j.author_url)
+  const title = (j.title ?? '').trim() || cardUrl
+  const channelTitle = (j.author_name ?? '').trim()
+  const tw = typeof j.thumbnail_width === 'number' ? j.thumbnail_width : null
+  const th = typeof j.thumbnail_height === 'number' ? j.thumbnail_height : null
+  const isShortGuess =
+    Boolean(ref.inferredShort) ||
+    (typeof tw === 'number' &&
+      typeof th === 'number' &&
+      th > 0 &&
+      tw > 0 &&
+      th > tw)
+
+  const startSec: number | null = ref.startSec !== undefined ? ref.startSec : null
+
+  const card: YouTubeVideoCard = {
+    kind: 'youtube_video',
+    url: cardUrl,
+    videoId: ref.videoId,
+    title,
+    description: null,
+    channelId,
+    channelTitle,
+    channelHandle,
+    channelAvatarUrl: null,
+    thumbnailUrl: thumb,
+    thumbnailWidth: tw,
+    thumbnailHeight: th,
+    durationSec: null,
+    viewCount: null,
+    likeCount: null,
+    commentCount: null,
+    publishedAt: null,
+    isShort: isShortGuess,
+    isLive: false,
+    embeddable: true,
+    startSec,
+    playlistId: ref.playlistId ?? null,
+  }
+
+  return {
+    ok: true,
+    result: {
+      card,
+      title,
+      description: null,
+      imageUrl: thumb,
+    },
+  }
+}
+
 async function fetchVideo(
   ref: Extract<YouTubeRef, { kind: 'video' }>,
   apiKey: string,
@@ -271,6 +383,7 @@ export async function fetchYouTubeCard(
   apiKey: string | undefined,
 ): Promise<FetchOutcome<YouTubeCard>> {
   if (!apiKey || apiKey.length === 0) {
+    if (ref.kind === 'video') return await fetchVideoOEmbed(ref)
     return { ok: false, reason: 'unauthorized', message: 'unfurl_token_missing' }
   }
 

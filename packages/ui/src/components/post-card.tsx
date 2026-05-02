@@ -13,6 +13,7 @@ import {
   HeartIcon as HeartSolid,
 } from "@heroicons/react/24/solid"
 import { cn } from "@workspace/ui/lib/utils"
+import { LinkPill, trimTrailingPunct } from "@workspace/ui/components/link-card"
 import { Avatar } from "@workspace/ui/components/avatar"
 import { Button } from "@workspace/ui/components/button"
 import { DropdownMenu } from "@workspace/ui/components/dropdown-menu"
@@ -625,7 +626,7 @@ function QuoteEmbed({ quote }: { quote: PostQuoteOf }) {
           </div>
           {quote.text && (
             <p className="mt-1 line-clamp-3 text-sm leading-relaxed whitespace-pre-wrap text-primary">
-              {quote.text}
+              <PostText text={quote.text} />
             </p>
           )}
         </div>
@@ -773,20 +774,11 @@ function PostText({ text }: { text: string }) {
     <>
       {parts.map((part, i) => {
         if (part.type === "url") {
-          const trimmed = part.value.replace(/[),.;:!?]+$/, "")
+          const trimmed = trimTrailingPunct(part.value)
           const trailing = part.value.slice(trimmed.length)
           return (
             <span key={i}>
-              <a
-                href={trimmed}
-                target="_blank"
-                rel="noreferrer"
-                data-post-card-ignore-open
-                onClick={(e) => e.stopPropagation()}
-                className="text-blue-500 underline decoration-blue-500/40 underline-offset-2 hover:decoration-blue-500"
-              >
-                {trimmed}
-              </a>
+              <LinkPill url={trimmed} />
               {trailing}
             </span>
           )
