@@ -980,10 +980,9 @@ postsRoute.get('/', async (c) => {
   linkSamePageReplies(posts)
   const filtered = filterRedundantChainPosts(posts)
   const hasMore = limit > 0 && rows.length === limit
-  const nextCursor =
-    hasMore && rows.length > 0
-      ? rows[rows.length - 1].post.createdAt.toISOString()
-      : null
+  const nextCursor = hasMore
+    ? (rows.at(-1)?.post.createdAt.toISOString() ?? null)
+    : null
   return c.json({ posts: filtered, nextCursor })
 })
 
