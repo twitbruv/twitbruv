@@ -47,7 +47,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <SidebarWithCompose compact={isAdminShell} />
             </div>
 
-            <div className="mx-auto flex min-h-svh w-full min-w-0 max-w-[1080px]">
+            <div className="mx-auto flex min-h-svh w-full max-w-[1080px] min-w-0">
               <div
                 className={
                   isAdminShell
