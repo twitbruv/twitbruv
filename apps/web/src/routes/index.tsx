@@ -290,6 +290,7 @@ function Home() {
             prependItem={newPost}
             quietPending={!feedReady}
             onReady={() => setFeedReady(true)}
+            chainPreview={tab === "following" || tab === "all"}
             renderActivityBanner={
               tab === "network"
                 ? (p) => {

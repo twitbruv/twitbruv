@@ -39,6 +39,10 @@ export interface PostDto {
   createdAt: string
   editedAt: string | null
   visibility: "public" | "followers" | "unlisted"
+  /** Conversation root post id; null for top-level posts. */
+  rootId: string | null
+  /** Depth from the conversation root (root = 0, immediate reply = 1). */
+  conversationDepth: number
   replyToId: string | null
   quoteOfId: string | null
   repostOfId: string | null
@@ -81,6 +85,8 @@ export interface PostDto {
   pinned?: boolean
   /** Attached poll, if any. Renders below the post text. */
   poll?: PollDto
+  /** Home/public feed only: when set, render root + leaf with a collapsed gap label. */
+  chainPreview?: { root: PostDto; omittedCount: number }
 }
 
 export function toMediaDto(m: MediaRow, env: MediaEnv): MediaDto {
@@ -129,6 +135,8 @@ export function toPostDto(
     createdAt: post.createdAt.toISOString(),
     editedAt: post.editedAt?.toISOString() ?? null,
     visibility: post.visibility,
+    rootId: post.rootId,
+    conversationDepth: post.conversationDepth,
     replyToId: post.replyToId,
     quoteOfId: post.quoteOfId,
     repostOfId: post.repostOfId,

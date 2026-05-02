@@ -8,6 +8,7 @@ import { loadPostMedia } from '../lib/post-media.ts'
 import { loadArticleCards } from '../lib/article-cards.ts'
 import { loadRepostTargets } from '../lib/repost-targets.ts'
 import { loadQuoteTargets } from '../lib/quote-targets.ts'
+import { attachFeedChainPreviews } from '../lib/feed-chain-preview.ts'
 import { attachReplyParents } from '../lib/reply-parents.ts'
 import { loadPolls } from '../lib/polls.ts'
 import { loadUnfurlCards } from '../lib/unfurl-cards.ts'
@@ -18,7 +19,7 @@ export const feedRoute = new Hono<HonoEnv>()
 const HOME_FEED_TTL_SEC = 30
 
 export function homeFeedCacheKey(userId: string) {
-  return `feed:home:${userId}:v2`
+  return `feed:home:${userId}:v3`
 }
 
 /**
@@ -102,6 +103,7 @@ feedRoute.get('/', requireHandle(), async (c) => {
     ),
   )
   await attachReplyParents({ db, viewerId: me, env: mediaEnv, posts })
+  await attachFeedChainPreviews({ db, viewerId: me, env: mediaEnv, posts })
   const nextCursor = posts.length === limit ? posts[posts.length - 1]!.createdAt : null
   const response = { posts, nextCursor }
 

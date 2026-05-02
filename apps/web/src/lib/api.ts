@@ -672,6 +672,8 @@ export interface Post {
   createdAt: string
   editedAt: string | null
   visibility: "public" | "followers" | "unlisted"
+  rootId: string | null
+  conversationDepth: number
   replyToId: string | null
   quoteOfId: string | null
   repostOfId: string | null
@@ -714,6 +716,8 @@ export interface Post {
   pinned?: boolean
   /** Optional poll attached to this post. */
   poll?: PollDto
+  /** Home/public feed: root + collapsed gap + leaf for deep reply threads. */
+  chainPreview?: { root: Post; omittedCount: number }
 }
 
 export interface PollOption {
