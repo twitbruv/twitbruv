@@ -247,7 +247,7 @@ export function FeedPostCard({
         }
       }}
       resolveBruvLikeBurstSrc={resolveBruvLikeBurstSrc}
-      renderPostText={(t) => <RichText text={t} stopLinkPropagation />}
+      renderPostText={(t) => <RichText text={t} />}
     />
   )
 }

@@ -858,50 +858,61 @@ function NotificationRow({ item }: { item: NotificationItem }) {
     .slice(0, 1)
     .toUpperCase()
 
-  const postLink =
-    item.target?.author.handle && item.target.id
-      ? `/${item.target.author.handle}/p/${item.target.id}`
-      : null
+  // For follow notifications, link to the actor's profile
+  // For other notifications with a target post, link to the post
+  const destination =
+    item.kind === "follow" && actorHandle
+      ? `/${actorHandle}`
+      : item.target?.author.handle && item.target.id
+        ? `/${item.target.author.handle}/p/${item.target.id}`
+        : null
 
-  return (
-    <Link
-      to={postLink ?? "#"}
-      className={`block border-b border-neutral px-4 py-3.5 transition-colors hover:bg-base-2/20 ${!item.readAt ? "bg-subtle" : ""}`}
-    >
-      <div className="flex items-start gap-3">
-        <div className="flex size-10 shrink-0 items-center justify-center">
-          <Icon className={`size-5.5 ${iconClass}`} />
-        </div>
-        <Avatar
-          initial={actorInitial}
-          src={item.actor?.avatarUrl}
-          className="size-10 shrink-0"
-        />
-        <div className="min-w-0 flex-1 text-sm">
-          <p>
-            <span className="inline-flex items-center gap-1 align-middle font-semibold text-primary">
-              {actorDisplayName || actorHandle || "someone"}
-              {item.actor?.isVerified && (
-                <VerifiedBadge size={14} role={item.actor.role} />
-              )}
-            </span>
-            {actorHandle && (
-              <span className="text-tertiary"> @{actorHandle}</span>
-            )}
-            <span className="text-secondary"> {verb}</span>
-            <span className="ml-1.5 text-xs text-tertiary">
-              · {formatShortTime(item.createdAt)}
-            </span>
-          </p>
-          {item.target?.text && (
-            <p className="mt-1 line-clamp-1 text-sm text-tertiary">
-              {item.target.text}
-            </p>
-          )}
-        </div>
+  const containerClass = `block border-b border-neutral px-4 py-3.5 transition-colors hover:bg-base-2/20 ${!item.readAt ? "bg-subtle" : ""}`
+
+  const content = (
+    <div className="flex items-start gap-3">
+      <div className="flex size-10 shrink-0 items-center justify-center">
+        <Icon className={`size-5.5 ${iconClass}`} />
       </div>
-    </Link>
+      <Avatar
+        initial={actorInitial}
+        src={item.actor?.avatarUrl}
+        className="size-10 shrink-0"
+      />
+      <div className="min-w-0 flex-1 text-sm">
+        <p>
+          <span className="inline-flex items-center gap-1 align-middle font-semibold text-primary">
+            {actorDisplayName || actorHandle || "someone"}
+            {item.actor?.isVerified && (
+              <VerifiedBadge size={14} role={item.actor.role} />
+            )}
+          </span>
+          {actorHandle && (
+            <span className="text-tertiary"> @{actorHandle}</span>
+          )}
+          <span className="text-secondary"> {verb}</span>
+          <span className="ml-1.5 text-xs text-tertiary">
+            · {formatShortTime(item.createdAt)}
+          </span>
+        </p>
+        {item.target?.text && (
+          <p className="mt-1 line-clamp-1 text-sm text-tertiary">
+            {item.target.text}
+          </p>
+        )}
+      </div>
+    </div>
   )
+
+  if (destination) {
+    return (
+      <Link to={destination} className={containerClass}>
+        {content}
+      </Link>
+    )
+  }
+
+  return <div className={containerClass}>{content}</div>
 }
 
 function iconForKind(kind: NotificationItem["kind"]) {
