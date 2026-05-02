@@ -9,6 +9,7 @@ import {
 import { api } from "../lib/api"
 import { pickPrimaryMediaUrl } from "../lib/media"
 import { useCompose } from "./compose-provider"
+import { RichText } from "./rich-text"
 import { ArticleCardBlock } from "./post-card"
 import { GithubCardBlock } from "./github-card"
 import { LinkCardBlock } from "./link-card"
@@ -246,6 +247,7 @@ export function FeedPostCard({
         }
       }}
       resolveBruvLikeBurstSrc={resolveBruvLikeBurstSrc}
+      renderPostText={(t) => <RichText text={t} stopLinkPropagation />}
     />
   )
 }

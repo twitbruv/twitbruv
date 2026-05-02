@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router"
 import { LinkPill } from "./link-card"
-import type { ReactNode } from "react"
+import type { MouseEvent, ReactNode } from "react"
 
 type Part =
   | { type: "text"; value: string }
@@ -9,6 +9,8 @@ type Part =
   | { type: "url"; value: string }
 
 const PATTERN = /(#[a-z0-9_]+|@[a-z0-9_]+|https?:\/\/\S+)/gi
+
+const entityLinkClassName = "text-blue-500"
 
 export function linkifyText(text: string): Array<Part> {
   const parts: Array<Part> = []
@@ -26,8 +28,24 @@ export function linkifyText(text: string): Array<Part> {
   return parts
 }
 
-export function RichText({ text }: { text: string }): ReactNode {
+function stopCardSurfaceClick(e: MouseEvent) {
+  e.stopPropagation()
+}
+
+export function RichText({
+  text,
+  stopLinkPropagation = false,
+}: {
+  text: string
+  stopLinkPropagation?: boolean
+}): ReactNode {
   const parts = linkifyText(text)
+  const linkSurfaceProps = stopLinkPropagation
+    ? {
+        "data-post-card-ignore-open": true as const,
+        onClick: stopCardSurfaceClick,
+      }
+    : {}
   return (
     <>
       {parts.map((p, i) => {
@@ -38,7 +56,8 @@ export function RichText({ text }: { text: string }): ReactNode {
               key={i}
               to="/hashtag/$tag"
               params={{ tag: p.value.slice(1) }}
-              className="text-primary hover:underline"
+              className={entityLinkClassName}
+              {...linkSurfaceProps}
             >
               {p.value}
             </Link>
@@ -50,7 +69,8 @@ export function RichText({ text }: { text: string }): ReactNode {
               key={i}
               to="/$handle"
               params={{ handle: p.value.slice(1) }}
-              className="text-primary hover:underline"
+              className={entityLinkClassName}
+              {...linkSurfaceProps}
             >
               {p.value}
             </Link>

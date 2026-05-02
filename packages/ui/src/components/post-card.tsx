@@ -93,6 +93,7 @@ export interface PostCardProps {
   /** Called when the author avatar or name is clicked */
   onAuthorClick?: () => void
   resolveBruvLikeBurstSrc?: () => string | undefined
+  renderPostText?: (text: string) => ReactNode
 }
 
 export function PostCard({
@@ -124,6 +125,7 @@ export function PostCard({
   onFetchAuthorProfile,
   onAuthorClick,
   resolveBruvLikeBurstSrc,
+  renderPostText,
 }: PostCardProps) {
   const showLineTop = threadLine === "top" || threadLine === "both"
   const showLineBottom = threadLine === "bottom" || threadLine === "both"
@@ -331,7 +333,7 @@ export function PostCard({
                 truncateText && "line-clamp-5"
               )}
             >
-              <PostText text={text} />
+              {renderPostText ? renderPostText(text) : <PostText text={text} />}
             </p>
 
             {/* Show more */}
