@@ -13,13 +13,13 @@ import {
   HeartIcon as HeartSolid,
 } from "@heroicons/react/24/solid"
 import { cn } from "@workspace/ui/lib/utils"
+import { LinkPill, trimTrailingPunct } from "@workspace/ui/components/link-card"
 import { Avatar } from "@workspace/ui/components/avatar"
 import { Button } from "@workspace/ui/components/button"
 import { DropdownMenu } from "@workspace/ui/components/dropdown-menu"
 import { Hover } from "@workspace/ui/components/hover"
 import { PreviewCard } from "@workspace/ui/components/preview-card"
 import { AnimatedNumber } from "@workspace/ui/components/animated-number"
-import { LinkPill, trimTrailingPunct } from "./link-card"
 import type { CSSProperties, ReactNode } from "react"
 
 /** Extra profile data for the author hover card */
