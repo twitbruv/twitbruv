@@ -43,6 +43,14 @@ const SEED_USERS = [
 	{ email: "eve@seed.local", handle: "eve", displayName: "Eve Martinez", bio: "open source maintainer. coffee enthusiast. she/her" },
 ]
 
+function devHandleFromEmail(email: string) {
+	return email
+		.split("@")[0]!
+		.toLowerCase()
+		.replace(/[^a-z0-9_]/g, "_")
+		.slice(0, 20)
+}
+
 // ---------------------------------------------------------------------------
 // Route
 // ---------------------------------------------------------------------------
@@ -55,6 +63,25 @@ devRoute.post("/seed", requireAuth(), async (c) => {
 	const currentUserId = session.user.id
 	const db = ctx.db
 	const ago = (minutes: number) => new Date(Date.now() - minutes * 60 * 1000)
+	const [currentUser] = await db
+		.select({
+			email: schema.users.email,
+			handle: schema.users.handle,
+			emailVerified: schema.users.emailVerified,
+		})
+		.from(schema.users)
+		.where(eq(schema.users.id, currentUserId))
+		.limit(1)
+	if (currentUser) {
+		await db
+			.update(schema.users)
+			.set({
+				emailVerified: true,
+				handle: currentUser.handle ?? devHandleFromEmail(currentUser.email),
+				updatedAt: new Date(),
+			})
+			.where(eq(schema.users.id, currentUserId))
+	}
 
 	// ─── 1. Upsert seed users ────────────────────────────────────────────
 

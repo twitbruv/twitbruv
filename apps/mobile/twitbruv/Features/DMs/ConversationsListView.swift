@@ -1,0 +1,170 @@
+import SwiftUI
+import Observation
+
+@Observable
+@MainActor
+final class ConversationsListViewModel {
+    let api: APIClient
+    var folder: String = "inbox"
+    var conversations: [Conversation] = []
+    var requestCount: Int = 0
+    var isLoading = false
+    var error: APIError?
+    var didLoadOnce = false
+
+    init(api: APIClient) { self.api = api }
+
+    func reload() async {
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            let response: ConversationsResponse = try await api.get(
+                API.DMs.conversations(folder: folder)
+            )
+            conversations = response.conversations
+            requestCount = response.requestCount ?? 0
+            didLoadOnce = true
+        } catch let e as APIError {
+            self.error = e
+        } catch {
+            self.error = .invalidResponse
+        }
+    }
+}
+
+struct ConversationsListView: View {
+    @Environment(AppEnvironment.self) private var env
+    @State private var vm: ConversationsListViewModel?
+    @State private var path = NavigationPath()
+    @State private var showNew = false
+
+    var body: some View {
+        NavigationStack(path: $path) {
+            Group {
+                if let vm {
+                    VStack(spacing: 0) {
+                        Picker("Folder", selection: Binding(
+                            get: { vm.folder },
+                            set: { new in
+                                vm.folder = new
+                                Task { await vm.reload() }
+                            }
+                        )) {
+                            Text("Inbox").tag("inbox")
+                            Text("Requests (\(vm.requestCount))").tag("requests")
+                        }
+                        .pickerStyle(.segmented)
+                        .padding(.horizontal)
+                        .padding(.vertical, 8)
+
+                        List {
+                            if vm.conversations.isEmpty && vm.didLoadOnce {
+                                EmptyStateView(
+                                    icon: "envelope",
+                                    title: vm.folder == "requests"
+                                        ? "No pending requests"
+                                        : "No conversations yet"
+                                )
+                                .listRowSeparator(.hidden)
+                            }
+                            ForEach(vm.conversations) { conv in
+                                Button {
+                                    path.append(DMRoute.conversation(id: conv.id))
+                                } label: {
+                                    ConversationRow(conv: conv)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .listStyle(.plain)
+                        .refreshable { await vm.reload() }
+                    }
+                } else {
+                    ProgressView()
+                }
+            }
+            .navigationTitle("Messages")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showNew = true
+                    } label: {
+                        Image(systemName: "square.and.pencil")
+                    }
+                }
+            }
+            .sheet(isPresented: $showNew) {
+                NewConversationView { conv in
+                    showNew = false
+                    if let conv {
+                        Task { await vm?.reload() }
+                        path.append(DMRoute.conversation(id: conv.id))
+                    }
+                }
+            }
+            .navigationDestination(for: DMRoute.self) { route in
+                switch route {
+                case .conversation(let id): ConversationView(conversationId: id)
+                case .invite(let token): InviteAcceptView(token: token)
+                }
+            }
+            .task {
+                if vm == nil {
+                    let new = ConversationsListViewModel(api: env.api)
+                    vm = new
+                    await new.reload()
+                }
+            }
+        }
+    }
+}
+
+enum DMRoute: Hashable {
+    case conversation(id: String)
+    case invite(token: String)
+}
+
+private struct ConversationRow: View {
+    let conv: Conversation
+
+    private var displayName: String {
+        if let name = conv.name, !name.isEmpty { return name }
+        if let m = conv.members?.first {
+            return m.displayName ?? m.handle ?? "Conversation"
+        }
+        return "Conversation"
+    }
+
+    private var avatarURL: String? {
+        conv.avatarUrl ?? conv.members?.first?.avatarUrl
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            AvatarView(urlString: avatarURL, size: 44, fallbackInitial: displayName)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack {
+                    Text(displayName).font(.callout.weight(.semibold))
+                    Spacer()
+                    if let date = conv.lastMessageAt {
+                        Text(date.relativeShort)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                if let last = conv.lastMessage?.text {
+                    Text(last).font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+                if (conv.unreadCount ?? 0) > 0 {
+                    Text("\(conv.unreadCount ?? 0) unread")
+                        .font(.caption2)
+                        .foregroundStyle(.tint)
+                }
+            }
+        }
+        .padding(.vertical, 6)
+    }
+}

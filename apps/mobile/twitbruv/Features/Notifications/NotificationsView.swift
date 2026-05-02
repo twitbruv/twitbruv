@@ -1,0 +1,209 @@
+import SwiftUI
+import Observation
+
+@Observable
+@MainActor
+final class NotificationsViewModel {
+    let api: APIClient
+    var items: [NotificationItem] = []
+    var nextCursor: String?
+    var unreadCount: Int = 0
+    var isLoading = false
+    var error: APIError?
+    var didLoadOnce = false
+
+    init(api: APIClient) { self.api = api }
+
+    func reload() async {
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            let response: NotificationsResponse = try await api.get(
+                API.Notifications.list(cursor: nil, unreadOnly: false)
+            )
+            items = response.notifications
+            nextCursor = response.nextCursor
+            didLoadOnce = true
+            await refreshUnread()
+        } catch let e as APIError { self.error = e } catch { self.error = .invalidResponse }
+    }
+
+    func loadMore() async {
+        guard let cursor = nextCursor, !isLoading else { return }
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            let response: NotificationsResponse = try await api.get(
+                API.Notifications.list(cursor: cursor, unreadOnly: false)
+            )
+            items.append(contentsOf: response.notifications)
+            nextCursor = response.nextCursor
+        } catch {}
+    }
+
+    func refreshUnread() async {
+        do {
+            let response: NotificationsUnreadCountResponse = try await api.get(
+                API.Notifications.unreadCount()
+            )
+            unreadCount = response.value
+        } catch {}
+    }
+
+    func markAllRead() async {
+        do {
+            try await api.sendVoid(
+                API.Notifications.markRead(),
+                body: MarkReadBody(ids: nil, all: true)
+            )
+            for idx in items.indices where items[idx].readAt == nil {
+                items[idx].readAt = .now
+            }
+            unreadCount = 0
+        } catch {}
+    }
+}
+
+struct NotificationsView: View {
+    @Environment(AppEnvironment.self) private var env
+
+    @State private var vm: NotificationsViewModel?
+    @State private var path = NavigationPath()
+
+    var body: some View {
+        NavigationStack(path: $path) {
+            Group {
+                if let vm {
+                    List {
+                        if vm.items.isEmpty && vm.didLoadOnce {
+                            EmptyStateView(
+                                icon: "bell",
+                                title: "No notifications yet"
+                            )
+                            .listRowSeparator(.hidden)
+                        }
+                        ForEach(vm.items) { item in
+                            NotificationRow(item: item)
+                                .listRowBackground(
+                                    item.readAt == nil
+                                        ? Color.accentColor.opacity(0.06)
+                                        : Color.clear
+                                )
+                                .contentShape(.rect)
+                                .onTapGesture {
+                                    if let id = item.post?.id {
+                                        path.append(FeedRoute.thread(id: id))
+                                    } else if let actor = item.actor?.handle {
+                                        path.append(FeedRoute.profile(handle: actor))
+                                    }
+                                }
+                        }
+                        LoadMoreFooter(
+                            hasMore: vm.nextCursor != nil,
+                            isLoading: vm.isLoading
+                        ) { await vm.loadMore() }
+                    }
+                    .listStyle(.plain)
+                    .refreshable { await vm.reload() }
+                } else {
+                    ProgressView()
+                }
+            }
+            .navigationTitle(
+                (vm?.unreadCount ?? 0) > 0
+                    ? "Alerts (\(vm?.unreadCount ?? 0))"
+                    : "Alerts"
+            )
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    if (vm?.unreadCount ?? 0) > 0 {
+                        Button("Mark read") {
+                            Task { await vm?.markAllRead() }
+                        }
+                    }
+                }
+            }
+            .navigationDestination(for: FeedRoute.self) { route in
+                switch route {
+                case .thread(let id): ThreadView(postId: id)
+                case .profile(let h): ProfileView(handle: h)
+                case .compose(let p): ComposerView(mode: .reply(p))
+                case .hashtag(let t): HashtagView(tag: t)
+                }
+            }
+            .task {
+                if vm == nil {
+                    let new = NotificationsViewModel(api: env.api)
+                    vm = new
+                    await new.reload()
+                }
+            }
+        }
+    }
+}
+
+private struct NotificationRow: View {
+    let item: NotificationItem
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: icon)
+                .foregroundStyle(.tint)
+                .frame(width: 28, height: 28)
+            VStack(alignment: .leading, spacing: 4) {
+                if let actor = item.actor {
+                    HStack(spacing: 6) {
+                        AvatarView(
+                            urlString: actor.avatarUrl, size: 20,
+                            fallbackInitial: actor.displayName ?? actor.handle
+                        )
+                        Text(actor.displayName ?? actor.handle ?? "—")
+                            .font(.callout.weight(.semibold))
+                        Text(verb)
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    Text(verb).font(.callout)
+                }
+                if let post = item.post, !post.text.isEmpty {
+                    Text(post.text)
+                        .font(.footnote)
+                        .lineLimit(2)
+                        .foregroundStyle(.secondary)
+                }
+                Text(item.createdAt.relativeShort)
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var icon: String {
+        switch item.type {
+        case "like": return "heart.fill"
+        case "repost": return "arrow.2.squarepath"
+        case "follow": return "person.crop.circle.badge.plus"
+        case "reply": return "bubble.left.fill"
+        case "quote": return "quote.bubble.fill"
+        case "mention": return "at"
+        case "dm", "message": return "envelope.fill"
+        default: return "bell.fill"
+        }
+    }
+
+    private var verb: String {
+        switch item.type {
+        case "like": return "liked your post"
+        case "repost": return "reposted you"
+        case "follow": return "followed you"
+        case "reply": return "replied"
+        case "quote": return "quoted you"
+        case "mention": return "mentioned you"
+        case "dm", "message": return "sent a message"
+        default: return item.type
+        }
+    }
+}

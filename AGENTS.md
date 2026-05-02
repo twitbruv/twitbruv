@@ -26,6 +26,9 @@ This is a Bun + Turbo monorepo.
   helpers in `apps/api/src/lib`, session/origin middleware in
   `apps/api/src/middleware`.
 - `apps/worker`: Bun worker process for background jobs.
+- `apps/mobile`: Native iOS SwiftUI client (`twitbruv` Xcode project). Cookie sessions via
+  Better Auth, talks to `apps/api` over HTTPS. Built with Xcode 26+, iOS 26.4 deployment
+  target. Not part of the Bun/Turbo build graph.
 - `apps/docs`: Cabinet docs playground/content.
 - `packages/db`: Drizzle schema, database client, seed/studio scripts.
 - `packages/auth`: Better Auth server/client integration.

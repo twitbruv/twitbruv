@@ -1,7 +1,9 @@
 import { z } from "zod"
 
+const MOBILE_IOS_ORIGIN = "twitbruv-ios://app"
+
 const DEFAULT_AUTH_TRUSTED_ORIGINS =
-  "http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001"
+  `http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001,${MOBILE_IOS_ORIGIN}`
 
 function expandLocalDevOrigins(origins: string[], nodeEnv: string): string[] {
   if (nodeEnv !== "development") {
@@ -12,7 +14,22 @@ function expandLocalDevOrigins(origins: string[], nodeEnv: string): string[] {
   for (const p of ports) {
     extra.push(`http://localhost:${p}`, `http://127.0.0.1:${p}`)
   }
-  return [...new Set([...origins, ...extra])]
+  return [...new Set([...origins, MOBILE_IOS_ORIGIN, ...extra])]
+}
+
+function normalizeCookieDomain(domain: string | undefined): string | undefined {
+  const trimmed = domain?.trim()
+  if (!trimmed) return undefined
+  // Domain=localhost is not a valid RFC cookie domain and native URLSession
+  // drops it. Omit the domain locally so Better Auth emits a host-only cookie.
+  if (
+    trimmed === "localhost" ||
+    trimmed === "127.0.0.1" ||
+    trimmed === "::1"
+  ) {
+    return undefined
+  }
+  return trimmed
 }
 
 const envSchema = z.object({
@@ -161,6 +178,7 @@ export function loadEnv(): Env {
   }
   return {
     ...data,
+    AUTH_COOKIE_DOMAIN: normalizeCookieDomain(data.AUTH_COOKIE_DOMAIN),
     AUTH_TRUSTED_ORIGINS: expandLocalDevOrigins(
       data.AUTH_TRUSTED_ORIGINS,
       data.NODE_ENV
