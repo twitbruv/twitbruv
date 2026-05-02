@@ -109,6 +109,8 @@ type OEmbedVideoPayload = {
   thumbnail_height?: number
 }
 
+const OEMBED_FETCH_TIMEOUT_MS = 5000
+
 function channelMetaFromAuthorUrl(authorUrl: string | undefined): {
   channelId: string
   channelHandle: string | null
@@ -133,11 +135,24 @@ async function fetchVideoOEmbed(
   oembedUrl.searchParams.set("url", cardUrl)
   oembedUrl.searchParams.set("format", "json")
 
+  const controller = new AbortController()
+  const timeoutId = setTimeout(
+    () => controller.abort(),
+    OEMBED_FETCH_TIMEOUT_MS
+  )
   let res: Response
   try {
-    res = await fetch(oembedUrl.toString(), { redirect: "follow" })
+    res = await fetch(oembedUrl.toString(), {
+      redirect: "follow",
+      signal: controller.signal,
+    })
   } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      return { ok: false, reason: "unknown", message: "oembed_timeout" }
+    }
     return { ok: false, ...classifyHttpError(err) }
+  } finally {
+    clearTimeout(timeoutId)
   }
 
   if (res.status === 404) {
@@ -447,16 +462,16 @@ export async function fetchYouTubeCard(
   ref: YouTubeRef,
   apiKey: string | undefined
 ): Promise<FetchOutcome<YouTubeCard>> {
-  if (!apiKey || apiKey.length === 0) {
-    if (ref.kind === "video") return await fetchVideoOEmbed(ref)
-    return {
-      ok: false,
-      reason: "unauthorized",
-      message: "unfurl_token_missing",
-    }
-  }
-
   try {
+    if (!apiKey || apiKey.length === 0) {
+      if (ref.kind === "video") return await fetchVideoOEmbed(ref)
+      return {
+        ok: false,
+        reason: "unauthorized",
+        message: "unfurl_token_missing",
+      }
+    }
+
     if (ref.kind === "video") return await fetchVideo(ref, apiKey)
     if (ref.kind === "playlist") return await fetchPlaylist(ref, apiKey)
     return await fetchChannel(ref, apiKey)
