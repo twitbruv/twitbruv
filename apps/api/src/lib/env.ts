@@ -29,11 +29,16 @@ const envSchema = z.object({
         .filter(Boolean)
     ),
   AUTH_COOKIE_DOMAIN: z.string().optional(),
-  PASSKEY_RP_ID: z.preprocess((v) => {
-    if (typeof v !== "string") return undefined
-    const t = v.trim()
-    return t.length === 0 ? undefined : t
-  }, z.string().optional()),
+  PASSKEY_RP_ID: z.optional(
+    z.preprocess(
+      (v) => {
+        if (typeof v !== "string") return undefined
+        const t = v.trim()
+        return t.length === 0 ? undefined : t
+      },
+      z.union([z.string(), z.undefined()])
+    )
+  ),
 
   PORT: z.coerce.number().default(3001),
   NODE_ENV: z
@@ -139,11 +144,16 @@ const envSchema = z.object({
   // one-time warning at boot). Network errors / timeouts also fail open. Whitespace
   // is trimmed and empty strings are coerced to undefined so a misformatted env var
   // (e.g. `OPENAI_API_KEY= `) is treated as unset rather than a bogus key.
-  OPENAI_API_KEY: z.preprocess((v) => {
-    if (typeof v !== "string") return v
-    const trimmed = v.trim()
-    return trimmed.length === 0 ? undefined : trimmed
-  }, z.string().optional()),
+  OPENAI_API_KEY: z.optional(
+    z.preprocess(
+      (v) => {
+        if (typeof v !== "string") return v
+        const trimmed = v.trim()
+        return trimmed.length === 0 ? undefined : trimmed
+      },
+      z.union([z.string(), z.undefined()])
+    )
+  ),
 })
 
 export type Env = z.infer<typeof envSchema>
