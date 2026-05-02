@@ -31,10 +31,10 @@ export function FeedChainPreview({ post }: { post: Post }) {
           e.stopPropagation()
           openLeaf()
         }}
-        className="text-muted-foreground hover:text-primary flex items-center gap-3 py-1.5 pr-4 pl-[68px] text-left text-xs"
+        className="text-muted-foreground flex items-center gap-3 py-1.5 pr-4 pl-[68px] text-left text-xs hover:text-primary"
       >
         <span
-          className="bg-[var(--border-color-neutral)] h-8 w-px shrink-0"
+          className="h-8 w-px shrink-0 bg-[var(--border-color-neutral)]"
           aria-hidden
         />
         <span className="underline-offset-2 hover:underline">

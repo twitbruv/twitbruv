@@ -1,8 +1,9 @@
 {
-  "extends": "@workspace/config-tsconfig/base.json",
+  "extends": "@workspace/config-tsconfig/node.json",
   "include": ["src/**/*"],
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    "lib": ["ES2023", "DOM"]
   }
 }
