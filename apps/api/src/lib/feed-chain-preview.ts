@@ -168,7 +168,7 @@ export function linkSamePageReplies(posts: Array<PostDto>): void {
   }
 }
 
-export function filterChainIntermediates(
+export function filterRedundantChainPosts(
   posts: Array<PostDto>
 ): Array<PostDto> {
   const hasChildInFeed = new Set<string>()
