@@ -147,3 +147,16 @@ export async function attachFeedChainPreviews(args: {
     delete t.displayed.replyParent
   }
 }
+
+export function filterChainIntermediates(posts: Array<PostDto>): Array<PostDto> {
+  const hasChildInFeed = new Set<string>()
+  for (const p of posts) {
+    const displayed = p.repostOf ?? p
+    if (displayed.replyToId) hasChildInFeed.add(displayed.replyToId)
+  }
+  return posts.filter((p) => {
+    const displayed = p.repostOf ?? p
+    if (!displayed.replyToId) return true
+    return !hasChildInFeed.has(displayed.id)
+  })
+}
