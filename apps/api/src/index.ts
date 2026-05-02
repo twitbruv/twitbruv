@@ -221,9 +221,14 @@ app.get('/api/m/*', async (c) => {
     key,
     expiresInSeconds: ctx.env.MEDIA_SIGNED_URL_TTL_SEC,
   })
-  // Signing is microseconds; keep the redirect cache short so a bad deploy doesn't poison
-  // browser caches for ages, but long enough to skip re-signing during a single page paint.
-  c.header('Cache-Control', 'public, max-age=30')
+  // Cache the redirect for nearly the full signed-URL lifetime. Each redirect points to a
+  // freshly-signed URL valid for MEDIA_SIGNED_URL_TTL_SEC. Without a matching cache, the
+  // browser re-asks the proxy on every page paint, gets a different signature, and treats
+  // the result as a new resource — re-downloading the same image bytes. Caching for the
+  // URL's validity (minus a buffer to avoid mid-fetch expiry) lets the browser reuse one
+  // signed URL until it's genuinely close to expiring.
+  const cacheSeconds = Math.max(60, ctx.env.MEDIA_SIGNED_URL_TTL_SEC - 60)
+  c.header('Cache-Control', `public, max-age=${cacheSeconds}`)
   return c.redirect(signed, 302)
 })
 app.route('/api/articles', articlesRoute)

@@ -49,22 +49,30 @@ function parseQuery(raw: string): ParsedQuery {
     if (!w) continue
     const m = /^([a-z_]+):(.+)$/i.exec(w)
     if (!m) {
-      free.push(w)
+      // Strip leading @ from bare words: handles are stored without @, so
+      // "@alice" must search as "alice". Mirrors the @-strip already done
+      // for from:/to: handle operators below.
+      const stripped = w.startsWith('@') ? w.slice(1) : w
+      if (stripped) free.push(stripped)
       continue
     }
     const key = m[1]!.toLowerCase()
     const val = m[2]!
     switch (key) {
-      case 'from':
-        if (handleWord.test(val)) out.fromHandle = val.replace(/^@/, '').toLowerCase()
+      case 'from': {
+        const v = val.replace(/^@/, '')
+        if (handleWord.test(v)) out.fromHandle = v.toLowerCase()
         else free.push(w)
         break
+      }
       case 'to':
       case 'mention':
-      case 'mentions':
-        if (handleWord.test(val)) out.toHandle = val.replace(/^@/, '').toLowerCase()
+      case 'mentions': {
+        const v = val.replace(/^@/, '')
+        if (handleWord.test(v)) out.toHandle = v.toLowerCase()
         else free.push(w)
         break
+      }
       case 'has':
         if (val === 'media' || val === 'image' || val === 'images') out.hasMedia = true
         else if (val === 'link' || val === 'links') out.hasLink = true

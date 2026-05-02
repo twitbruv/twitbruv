@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { cn } from "@workspace/ui/lib/utils"
 
 const sizeStyles = {
@@ -21,7 +22,9 @@ export interface AvatarProps {
 }
 
 export function Avatar({ initial, src, size = "md", className }: AvatarProps) {
-  if (src) {
+  const [errored, setErrored] = useState(false)
+
+  if (src && !errored) {
     return (
       <img
         src={src}
@@ -31,6 +34,7 @@ export function Avatar({ initial, src, size = "md", className }: AvatarProps) {
           sizeStyles[size],
           className
         )}
+        onError={() => setErrored(true)}
       />
     )
   }
