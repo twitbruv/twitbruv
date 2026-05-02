@@ -1,4 +1,9 @@
-import { Link, createFileRoute, useRouter } from "@tanstack/react-router"
+import {
+  Link,
+  createFileRoute,
+  useNavigate,
+  useRouter,
+} from "@tanstack/react-router"
 import {
   useCallback,
   useEffect,
@@ -35,6 +40,7 @@ import { useCompose } from "../components/compose-provider"
 import { PageEmpty } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
 import { VerifiedBadge } from "../components/verified-badge"
+import { RichText } from "../components/rich-text"
 import { useInfiniteScrollSentinel } from "../lib/use-infinite-scroll-sentinel"
 import type { InfiniteData } from "@tanstack/react-query"
 import type { NotificationItem, Post } from "../lib/api"
@@ -536,9 +542,8 @@ function GroupedLikeRow({
   target: Post
 }) {
   const lead = items[0]
-  const leadName =
-    lead.actor?.displayName ??
-    (lead.actor?.handle ? `@${lead.actor.handle}` : "someone")
+  const leadDisplayName = lead.actor?.displayName ?? null
+  const leadHandle = lead.actor?.handle ?? null
   const isUnread = items.some((n) => !n.readAt)
 
   const postLink =
@@ -559,7 +564,12 @@ function GroupedLikeRow({
       </div>
       <div className="mt-2 pl-[52px]">
         <p className="text-sm">
-          <span className="font-semibold text-primary">{leadName}</span>
+          <span className="font-semibold text-primary">
+            {leadDisplayName || leadHandle || "someone"}
+          </span>
+          {leadHandle && (
+            <span className="text-tertiary"> @{leadHandle}</span>
+          )}
           <span className="text-secondary">
             {" "}and {items.length - 1} other{items.length - 1 !== 1 ? "s" : ""}{" "}
             liked your post
@@ -575,9 +585,7 @@ function GroupedLikeRow({
 
 function GroupedFollowRow({ items }: { items: NotificationItem[] }) {
   const lead = items[0]
-  const leadName =
-    lead.actor?.displayName ??
-    (lead.actor?.handle ? `@${lead.actor.handle}` : "someone")
+  const leadDisplayName = lead.actor?.displayName ?? null
   const leadHandle = lead.actor?.handle ?? null
   const isUnread = items.some((n) => !n.readAt)
 
@@ -599,10 +607,15 @@ function GroupedFollowRow({ items }: { items: NotificationItem[] }) {
               params={{ handle: leadHandle }}
               className="font-semibold text-primary hover:underline"
             >
-              {leadName}
+              {leadDisplayName || leadHandle}
             </Link>
           ) : (
-            <span className="font-semibold text-primary">{leadName}</span>
+            <span className="font-semibold text-primary">
+              {leadDisplayName || "someone"}
+            </span>
+          )}
+          {leadHandle && (
+            <span className="text-tertiary"> @{leadHandle}</span>
           )}
           <span className="text-secondary">
             {" "}and {items.length - 1} other{items.length - 1 !== 1 ? "s" : ""}{" "}
@@ -615,10 +628,9 @@ function GroupedFollowRow({ items }: { items: NotificationItem[] }) {
 }
 
 function ReplyRow({ item }: { item: NotificationItem }) {
+  const navigate = useNavigate()
   const actor = item.actor
-  const actorLabel = actor
-    ? actor.displayName || (actor.handle ? `@${actor.handle}` : "someone")
-    : "someone"
+  const actorDisplayName = actor?.displayName ?? null
   const actorHandle = actor?.handle ?? null
   const actorInitial = (actor?.displayName ?? actorHandle ?? "·")
     .slice(0, 1)
@@ -633,15 +645,18 @@ function ReplyRow({ item }: { item: NotificationItem }) {
   const replyToHandles =
     chainHandles.length > 0 ? chainHandles : fallbackHandle ? [fallbackHandle] : []
 
-  const postLink =
-    replyTarget?.author.handle && replyTarget?.id
-      ? `/${replyTarget.author.handle}/p/${replyTarget.id}`
-      : null
+  function openPost() {
+    if (!replyTarget?.author.handle || !replyTarget?.id) return
+    navigate({
+      to: "/$handle/p/$id",
+      params: { handle: replyTarget.author.handle, id: replyTarget.id },
+    })
+  }
 
   return (
-    <Link
-      to={postLink ?? "#"}
-      className={`block border-b border-neutral px-4 py-3.5 transition-colors hover:bg-base-2/20 ${!item.readAt ? "bg-subtle" : ""}`}
+    <div
+      onClick={openPost}
+      className={`cursor-pointer border-b border-neutral px-4 py-3.5 transition-colors hover:bg-base-2/20 ${!item.readAt ? "bg-subtle" : ""}`}
     >
       <div className="flex items-start gap-3">
         <Avatar
@@ -652,11 +667,14 @@ function ReplyRow({ item }: { item: NotificationItem }) {
         <div className="min-w-0 flex-1 text-sm">
           <div className="flex items-center gap-1.5">
             <span className="inline-flex items-center gap-1 font-semibold text-primary">
-              {actorLabel}
+              {actorDisplayName || actorHandle || "someone"}
               {actor?.isVerified && (
                 <VerifiedBadge size={14} role={actor.role} />
               )}
             </span>
+            {actorHandle && (
+              <span className="text-tertiary">@{actorHandle}</span>
+            )}
             <span className="text-xs text-tertiary">
               · {formatShortTime(item.createdAt)}
             </span>
@@ -680,10 +698,13 @@ function ReplyRow({ item }: { item: NotificationItem }) {
           )}
           {replyTarget?.text && (
             <p className="mt-0.5 text-primary leading-relaxed whitespace-pre-wrap">
-              {replyTarget.text}
+              <RichText text={replyTarget.text} />
             </p>
           )}
-          <div className="mt-2 flex items-center">
+          <div
+            className="mt-2 flex items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex-1">
               <span className="inline-flex size-7 items-center justify-center rounded-full text-tertiary">
                 <ChatBubbleOutline className="size-4" />
@@ -707,30 +728,32 @@ function ReplyRow({ item }: { item: NotificationItem }) {
           </div>
         </div>
       </div>
-    </Link>
+    </div>
   )
 }
 
 function MentionRow({ item }: { item: NotificationItem }) {
+  const navigate = useNavigate()
   const actor = item.actor
-  const actorLabel = actor
-    ? actor.displayName || (actor.handle ? `@${actor.handle}` : "someone")
-    : "someone"
+  const actorDisplayName = actor?.displayName ?? null
   const actorHandle = actor?.handle ?? null
-  const actorInitial = (actor?.displayName ?? actorHandle ?? "·")
+  const actorInitial = (actorDisplayName ?? actorHandle ?? "·")
     .slice(0, 1)
     .toUpperCase()
   const mentionTarget = item.target
 
-  const postLink =
-    mentionTarget?.author.handle && mentionTarget?.id
-      ? `/${mentionTarget.author.handle}/p/${mentionTarget.id}`
-      : null
+  function openPost() {
+    if (!mentionTarget?.author.handle || !mentionTarget?.id) return
+    navigate({
+      to: "/$handle/p/$id",
+      params: { handle: mentionTarget.author.handle, id: mentionTarget.id },
+    })
+  }
 
   return (
-    <Link
-      to={postLink ?? "#"}
-      className={`block border-b border-neutral px-4 py-3.5 transition-colors hover:bg-base-2/20 ${!item.readAt ? "bg-subtle" : ""}`}
+    <div
+      onClick={openPost}
+      className={`cursor-pointer border-b border-neutral px-4 py-3.5 transition-colors hover:bg-base-2/20 ${!item.readAt ? "bg-subtle" : ""}`}
     >
       <div className="flex items-start gap-3">
         <Avatar
@@ -741,22 +764,27 @@ function MentionRow({ item }: { item: NotificationItem }) {
         <div className="min-w-0 flex-1 text-sm">
           <div className="flex items-center gap-1.5">
             <span className="inline-flex items-center gap-1 font-semibold text-primary">
-              {actorLabel}
+              {actorDisplayName || actorHandle || "someone"}
               {actor?.isVerified && (
                 <VerifiedBadge size={14} role={actor.role} />
               )}
             </span>
+            {actorHandle && (
+              <span className="text-tertiary">@{actorHandle}</span>
+            )}
             <span className="text-xs text-tertiary">
               · {formatShortTime(item.createdAt)}
             </span>
           </div>
-          <p className="mt-0.5 text-secondary">Mentioned you</p>
           {mentionTarget?.text && (
             <p className="mt-0.5 text-primary leading-relaxed whitespace-pre-wrap">
-              {mentionTarget.text}
+              <RichText text={mentionTarget.text} />
             </p>
           )}
-          <div className="mt-2 flex items-center">
+          <div
+            className="mt-2 flex items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex-1">
               <span className="inline-flex size-7 items-center justify-center rounded-full text-tertiary">
                 <ChatBubbleOutline className="size-4" />
@@ -780,7 +808,7 @@ function MentionRow({ item }: { item: NotificationItem }) {
           </div>
         </div>
       </div>
-    </Link>
+    </div>
   )
 }
 
@@ -802,12 +830,9 @@ function NotificationRow({ item }: { item: NotificationItem }) {
   const Icon = iconForKind(item.kind)
   const iconClass = iconClassForKind(item.kind)
   const verb = verbForKind(item.kind)
-  const actorLabel = item.actor
-    ? item.actor.displayName ||
-      (item.actor.handle ? `@${item.actor.handle}` : "someone")
-    : "someone"
+  const actorDisplayName = item.actor?.displayName ?? null
   const actorHandle = item.actor?.handle ?? null
-  const actorInitial = (item.actor?.displayName ?? actorHandle ?? "·")
+  const actorInitial = (actorDisplayName ?? actorHandle ?? "·")
     .slice(0, 1)
     .toUpperCase()
 
@@ -833,11 +858,14 @@ function NotificationRow({ item }: { item: NotificationItem }) {
         <div className="min-w-0 flex-1 text-sm">
           <p>
             <span className="inline-flex items-center gap-1 align-middle font-semibold text-primary">
-              {actorLabel}
+              {actorDisplayName || actorHandle || "someone"}
               {item.actor?.isVerified && (
                 <VerifiedBadge size={14} role={item.actor.role} />
               )}
             </span>
+            {actorHandle && (
+              <span className="text-tertiary"> @{actorHandle}</span>
+            )}
             <span className="text-secondary"> {verb}</span>
             <span className="ml-1.5 text-xs text-tertiary">
               · {formatShortTime(item.createdAt)}
