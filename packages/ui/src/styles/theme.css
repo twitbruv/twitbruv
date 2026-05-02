@@ -1,7 +1,7 @@
 /*
  * Semantic tokens — maps raw scale steps to meaningful names.
  * Registered inside @theme so Tailwind v4 auto-generates utilities
- * (bg-base-1, text-primary, border-neutral, ring-focus, etc.)
+ * (bg-base-1, text-primary, text-link, border-neutral, ring-focus, etc.)
  */
 
 @theme {
@@ -32,6 +32,8 @@
   --text-color-secondary: var(--color-gray-11);
   --text-color-tertiary: var(--color-gray-9);
   --text-color-inverse: var(--color-gray-1);
+
+  --color-link: oklch(0.52 0.19 264);
 
   /* Status text */
   --text-color-danger: var(--color-red-11);
@@ -198,6 +200,8 @@
   --text-color-secondary: var(--color-gray-11);
   --text-color-tertiary: var(--color-gray-9);
   --text-color-inverse: var(--color-gray-1);
+
+  --color-link: oklch(0.76 0.12 264);
 
   --text-color-danger: var(--color-red-11);
   --text-color-danger-on: white;

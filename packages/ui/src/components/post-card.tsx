@@ -785,7 +785,7 @@ function PostText({ text }: { text: string }) {
                 rel="noreferrer"
                 data-post-card-ignore-open
                 onClick={(e) => e.stopPropagation()}
-                className="text-blue-500 underline decoration-blue-500/0 decoration-from-font underline-offset-2 transition-[text-decoration-color] duration-200 ease-out hover:decoration-blue-500/55"
+                className="text-link underline decoration-link/0 decoration-from-font underline-offset-2 transition-[text-decoration-color] duration-200 ease-out hover:decoration-link/55"
               >
                 {trimmed}
               </a>
@@ -797,7 +797,7 @@ function PostText({ text }: { text: string }) {
           return (
             <span
               key={i}
-              className="text-blue-500"
+              className="text-link"
               onClick={(e) => e.stopPropagation()}
             >
               {part.value}
@@ -808,7 +808,7 @@ function PostText({ text }: { text: string }) {
           return (
             <span
               key={i}
-              className="text-blue-500"
+              className="text-link"
               onClick={(e) => e.stopPropagation()}
             >
               {part.value}

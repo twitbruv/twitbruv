@@ -11,7 +11,7 @@ type Part =
 const PATTERN = /(#[a-z0-9_]+|@[a-z0-9_]+|https?:\/\/\S+)/gi
 
 const entityLinkClassName =
-  "text-blue-500 underline underline-offset-2 decoration-from-font decoration-blue-500/0 transition-[text-decoration-color] duration-200 ease-out hover:decoration-blue-500/55"
+  "text-link underline underline-offset-2 decoration-from-font decoration-link/0 transition-[text-decoration-color] duration-200 ease-out hover:decoration-link/55"
 
 export function linkifyText(text: string): Array<Part> {
   const parts: Array<Part> = []
