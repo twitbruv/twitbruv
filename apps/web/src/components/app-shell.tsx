@@ -62,9 +62,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     : "shrink-0 md:w-[68px] xl:w-[240px]"
                 }
               />
-              <main className="flex min-h-svh flex-1 flex-col">
-                {children}
-              </main>
+              <main className="flex min-h-svh flex-1 flex-col">{children}</main>
               <div
                 className={
                   isAdminShell
