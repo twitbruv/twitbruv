@@ -87,6 +87,9 @@ export interface PostDto {
   poll?: PollDto
   /** Home/public feed only: when set, render root + leaf with a collapsed gap label. */
   chainPreview?: { root: PostDto; omittedCount: number }
+  /** For replies: the handles of users in the reply chain (from root to immediate parent).
+   *  Used to show "Replying to @user1, @user2, ..." in notifications. */
+  replyChainHandles?: string[]
 }
 
 export function toMediaDto(m: MediaRow, env: MediaEnv): MediaDto {

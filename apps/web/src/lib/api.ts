@@ -718,6 +718,9 @@ export interface Post {
   poll?: PollDto
   /** Home/public feed: root + collapsed gap + leaf for deep reply threads. */
   chainPreview?: { root: Post; omittedCount: number }
+  /** For replies: the handles of users in the reply chain (from root to immediate parent).
+   *  Used to show "Replying to @user1, @user2, ..." in notifications. */
+  replyChainHandles?: string[]
 }
 
 export interface PollOption {
