@@ -68,13 +68,15 @@ export function LinkPill({
 }) {
   const trimmed = trimTrailingPunct(url)
   const hostForFavicon = safeHost(trimmed)
-  const fav = faviconServiceUrl(hostForFavicon || "example.com")
+  const fav = hostForFavicon ? faviconServiceUrl(hostForFavicon) : null
   const label = linkPillDisplayLabel(trimmed)
   const [faviconFailed, setFaviconFailed] = useState(false)
 
   useEffect(() => {
     setFaviconFailed(false)
   }, [trimmed])
+
+  const showFaviconImg = Boolean(fav && !faviconFailed)
 
   return (
     <a
@@ -89,9 +91,7 @@ export function LinkPill({
         className
       )}
     >
-      {faviconFailed ? (
-        <LinkIcon aria-hidden className="size-3 shrink-0 text-tertiary" />
-      ) : (
+      {showFaviconImg && fav ? (
         <img
           src={fav}
           alt=""
@@ -101,6 +101,8 @@ export function LinkPill({
           loading="lazy"
           onError={() => setFaviconFailed(true)}
         />
+      ) : (
+        <LinkIcon aria-hidden className="size-3 shrink-0 text-tertiary" />
       )}
       <span className="min-w-0 truncate">{label}</span>
     </a>

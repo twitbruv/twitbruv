@@ -100,15 +100,6 @@ function guessIsYoutubeShortVideo(
   return meta.durationSec !== null && meta.durationSec <= 62
 }
 
-type OEmbedVideoPayload = {
-  title?: string
-  author_name?: string
-  author_url?: string
-  thumbnail_url?: string
-  thumbnail_width?: number
-  thumbnail_height?: number
-}
-
 const OEMBED_FETCH_TIMEOUT_MS = 5000
 
 function channelMetaFromAuthorUrl(authorUrl: string | undefined): {
@@ -174,16 +165,33 @@ async function fetchVideoOEmbed(
     return { ok: false, reason: "unknown", message: "oembed_json_invalid" }
   }
 
-  const j = body as OEmbedVideoPayload
-  const thumb = j.thumbnail_url?.trim() ?? ""
-  if (!thumb)
-    return { ok: false, reason: "not_found", message: "oembed_no_thumbnail" }
+  if (typeof body !== "object" || body === null) {
+    return { ok: false, reason: "unknown", message: "oembed_json_invalid" }
+  }
 
-  const { channelId, channelHandle } = channelMetaFromAuthorUrl(j.author_url)
-  const title = (j.title ?? "").trim() || cardUrl
-  const channelTitle = (j.author_name ?? "").trim()
-  const tw = typeof j.thumbnail_width === "number" ? j.thumbnail_width : null
-  const th = typeof j.thumbnail_height === "number" ? j.thumbnail_height : null
+  const j = body as Record<string, unknown>
+  const rawThumb = j["thumbnail_url"]
+  if (typeof rawThumb !== "string" || rawThumb.trim().length === 0) {
+    return { ok: false, reason: "unknown", message: "oembed_json_invalid" }
+  }
+  const thumb = rawThumb.trim()
+
+  const rawAuthorUrl = j["author_url"]
+  const authorUrlStr =
+    typeof rawAuthorUrl === "string" ? rawAuthorUrl : undefined
+  const { channelId, channelHandle } = channelMetaFromAuthorUrl(authorUrlStr)
+
+  const rawTitle = j["title"]
+  const title = (typeof rawTitle === "string" ? rawTitle.trim() : "") || cardUrl
+
+  const rawAuthorName = j["author_name"]
+  const channelTitle =
+    typeof rawAuthorName === "string" ? rawAuthorName.trim() : ""
+
+  const rawTw = j["thumbnail_width"]
+  const rawTh = j["thumbnail_height"]
+  const tw = typeof rawTw === "number" ? rawTw : null
+  const th = typeof rawTh === "number" ? rawTh : null
   const isShortGuess = guessIsYoutubeShortVideo(ref, {
     thumbnailWidth: tw,
     thumbnailHeight: th,
