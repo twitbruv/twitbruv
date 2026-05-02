@@ -31,12 +31,11 @@ export function FeedChainPreview({ post }: { post: Post }) {
           e.stopPropagation()
           openLeaf()
         }}
-        className="text-muted-foreground flex items-center gap-3 py-1.5 pr-4 pl-[68px] text-left text-xs hover:text-primary"
+        className="text-muted-foreground flex items-center gap-3 px-4 py-1.5 text-left text-xs hover:text-primary"
       >
-        <span
-          className="h-8 w-px shrink-0 bg-[var(--border-color-neutral)]"
-          aria-hidden
-        />
+        <div className="-my-1.5 flex w-10 shrink-0 items-stretch justify-center self-stretch">
+          <span className="w-px bg-[var(--border-color-neutral)]" aria-hidden />
+        </div>
         <span className="underline-offset-2 hover:underline">
           {omittedCount} more {replyWord}
         </span>

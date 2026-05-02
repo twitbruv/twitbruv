@@ -51,7 +51,9 @@ export async function attachFeedChainPreviews(args: {
     .select({ post: schema.posts, author: schema.users })
     .from(schema.posts)
     .innerJoin(schema.users, eq(schema.users.id, schema.posts.authorId))
-    .where(and(inArray(schema.posts.id, rootIds), isNull(schema.posts.deletedAt)))
+    .where(
+      and(inArray(schema.posts.id, rootIds), isNull(schema.posts.deletedAt))
+    )
 
   const rootById = new Map(rootRows.map((r) => [r.post.id, r]))
 
@@ -61,8 +63,8 @@ export async function attachFeedChainPreviews(args: {
       rootIds
         .map((id) => rootById.get(id))
         .filter((r) => r?.post.visibility === "followers")
-        .map((r) => r!.post.authorId),
-    ),
+        .map((r) => r!.post.authorId)
+    )
   )
 
   if (followersOnlyAuthorIds.length > 0 && viewerId) {
@@ -72,8 +74,8 @@ export async function attachFeedChainPreviews(args: {
       .where(
         and(
           eq(schema.follows.followerId, viewerId),
-          inArray(schema.follows.followeeId, followersOnlyAuthorIds),
-        ),
+          inArray(schema.follows.followeeId, followersOnlyAuthorIds)
+        )
       )
     for (const fr of followRows) visibleRootAuthorIds.add(fr.followeeId)
   }
@@ -95,30 +97,31 @@ export async function attachFeedChainPreviews(args: {
   if (rootsToLoad.length === 0) return
 
   const loadIds = rootsToLoad.map((r) => r.post.id)
-  const [flags, mediaMap, articleMap, repostMap, quoteMap, pollMap] = await Promise.all([
-    loadViewerFlags(db, viewerId, loadIds),
-    loadPostMedia(db, loadIds),
-    loadArticleCards(db, loadIds),
-    loadRepostTargets({
-      db,
-      viewerId,
-      env,
-      repostRows: rootsToLoad.map((r) => ({
-        id: r.post.id,
-        repostOfId: r.post.repostOfId,
-      })),
-    }),
-    loadQuoteTargets({
-      db,
-      viewerId,
-      env,
-      quoteRows: rootsToLoad.map((r) => ({
-        id: r.post.id,
-        quoteOfId: r.post.quoteOfId,
-      })),
-    }),
-    loadPolls(db, viewerId, loadIds),
-  ])
+  const [flags, mediaMap, articleMap, repostMap, quoteMap, pollMap] =
+    await Promise.all([
+      loadViewerFlags(db, viewerId, loadIds),
+      loadPostMedia(db, loadIds),
+      loadArticleCards(db, loadIds),
+      loadRepostTargets({
+        db,
+        viewerId,
+        env,
+        repostRows: rootsToLoad.map((r) => ({
+          id: r.post.id,
+          repostOfId: r.post.repostOfId,
+        })),
+      }),
+      loadQuoteTargets({
+        db,
+        viewerId,
+        env,
+        quoteRows: rootsToLoad.map((r) => ({
+          id: r.post.id,
+          quoteOfId: r.post.quoteOfId,
+        })),
+      }),
+      loadPolls(db, viewerId, loadIds),
+    ])
   const unfurlCardsMap = await loadUnfurlCards(db, loadIds, articleMap)
 
   const rootDtoById = new Map<string, PostDto>()
@@ -134,8 +137,8 @@ export async function attachFeedChainPreviews(args: {
         unfurlCardsMap.get(r.post.id),
         repostMap.get(r.post.id),
         quoteMap.get(r.post.id),
-        pollMap.get(r.post.id),
-      ),
+        pollMap.get(r.post.id)
+      )
     )
   }
 
@@ -143,20 +146,27 @@ export async function attachFeedChainPreviews(args: {
     const rootDto = rootDtoById.get(t.rootId)
     if (!rootDto) continue
     const omitted = Math.max(0, t.depth - 1)
-    ;(t.outer as PostDto).chainPreview = { root: rootDto, omittedCount: omitted }
+    ;(t.outer as PostDto).chainPreview = {
+      root: rootDto,
+      omittedCount: omitted,
+    }
     delete t.displayed.replyParent
   }
 }
 
-export function filterChainIntermediates(posts: Array<PostDto>): Array<PostDto> {
+export function filterChainIntermediates(
+  posts: Array<PostDto>
+): Array<PostDto> {
   const hasChildInFeed = new Set<string>()
+  const shownAsChainRoot = new Set<string>()
   for (const p of posts) {
     const displayed = p.repostOf ?? p
     if (displayed.replyToId) hasChildInFeed.add(displayed.replyToId)
+    if (p.chainPreview) shownAsChainRoot.add(p.chainPreview.root.id)
   }
   return posts.filter((p) => {
     const displayed = p.repostOf ?? p
-    if (!displayed.replyToId) return true
-    return !hasChildInFeed.has(displayed.id)
+    if (displayed.replyToId) return !hasChildInFeed.has(displayed.id)
+    return !shownAsChainRoot.has(displayed.id)
   })
 }
