@@ -720,7 +720,7 @@ export interface Post {
   chainPreview?: { root: Post; omittedCount: number }
   /** For replies: the handles of users in the reply chain (from root to immediate parent).
    *  Used to show "Replying to @user1, @user2, ..." in notifications. */
-  replyChainHandles?: string[]
+  replyChainHandles?: Array<string>
 }
 
 export interface PollOption {

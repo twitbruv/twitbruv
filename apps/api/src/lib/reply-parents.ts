@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull } from '@workspace/db'
+import { and, eq, inArray, isNull, or } from '@workspace/db'
 import type { Database } from '@workspace/db'
 import { schema } from '@workspace/db'
 import type { MediaEnv } from '@workspace/media/env'
@@ -90,85 +90,65 @@ export async function attachReplyChainHandles(args: {
   }
   if (repliesWithRoot.length === 0) return
 
-  // Group by rootId to batch load conversation posts
-  const byRoot = new Map<string, PostDto[]>()
-  for (const { post, rootId } of repliesWithRoot) {
-    if (!byRoot.has(rootId)) byRoot.set(rootId, [])
-    byRoot.get(rootId)!.push(post)
+  // Collect all unique rootIds
+  const allRootIds = Array.from(new Set(repliesWithRoot.map((r) => r.rootId)))
+
+  // Single batched query: fetch root posts (id IN rootIds) and conversation posts (rootId IN rootIds)
+  const allRows = await db
+    .select({
+      id: schema.posts.id,
+      replyToId: schema.posts.replyToId,
+      rootId: schema.posts.rootId,
+      authorHandle: schema.users.handle,
+    })
+    .from(schema.posts)
+    .innerJoin(schema.users, eq(schema.users.id, schema.posts.authorId))
+    .where(
+      and(
+        isNull(schema.posts.deletedAt),
+        or(
+          inArray(schema.posts.id, allRootIds),
+          inArray(schema.posts.rootId, allRootIds),
+        ),
+      ),
+    )
+
+  // Build a single map of postId -> { replyToId, authorHandle }
+  const postMap = new Map<string, { replyToId: string | null; authorHandle: string | null }>()
+  for (const row of allRows) {
+    postMap.set(row.id, { replyToId: row.replyToId, authorHandle: row.authorHandle })
   }
 
-  // For each conversation, load all posts from root to the reply and build chain handles
-  for (const [rootId, postsInConvo] of byRoot) {
-    // Load all posts in this conversation that could be ancestors
-    // (posts with same rootId, or the root itself)
-    const ancestorRows = await db
-      .select({
-        id: schema.posts.id,
-        replyToId: schema.posts.replyToId,
-        authorHandle: schema.users.handle,
-      })
-      .from(schema.posts)
-      .innerJoin(schema.users, eq(schema.users.id, schema.posts.authorId))
-      .where(
-        and(
-          isNull(schema.posts.deletedAt),
-          // Posts that are either the root or have this rootId
-          inArray(
-            schema.posts.id,
-            db
-              .select({ id: schema.posts.id })
-              .from(schema.posts)
-              .where(
-                and(
-                  isNull(schema.posts.deletedAt),
-                  // Either the root post itself or posts in this conversation
-                  eq(schema.posts.rootId, rootId),
-                ),
-              ),
-          ),
-        ),
-      )
+  // For each reply post, walk up the chain and collect handles
+  for (const { post } of repliesWithRoot) {
+    const handles: string[] = []
+    let currentId: string | null = post.replyToId
 
-    // Also load the root post itself (which has rootId = null)
-    const rootRows = await db
-      .select({
-        id: schema.posts.id,
-        replyToId: schema.posts.replyToId,
-        authorHandle: schema.users.handle,
-      })
-      .from(schema.posts)
-      .innerJoin(schema.users, eq(schema.users.id, schema.posts.authorId))
-      .where(and(eq(schema.posts.id, rootId), isNull(schema.posts.deletedAt)))
+    // Walk up to 10 levels to prevent infinite loops
+    let depth = 0
+    while (currentId && depth < 10) {
+      const ancestor = postMap.get(currentId)
+      if (!ancestor) break
 
-    // Build a map of postId -> { replyToId, authorHandle }
-    const postMap = new Map<string, { replyToId: string | null; authorHandle: string | null }>()
-    for (const row of [...ancestorRows, ...rootRows]) {
-      postMap.set(row.id, { replyToId: row.replyToId, authorHandle: row.authorHandle })
-    }
-
-    // For each reply post, walk up the chain and collect handles
-    for (const post of postsInConvo) {
-      const handles: string[] = []
-      const seen = new Set<string>()
-      let currentId: string | null = post.replyToId
-
-      // Walk up to 10 levels to prevent infinite loops
-      let depth = 0
-      while (currentId && depth < 10) {
-        const ancestor = postMap.get(currentId)
-        if (!ancestor) break
-
-        if (ancestor.authorHandle && !seen.has(ancestor.authorHandle)) {
-          seen.add(ancestor.authorHandle)
-          handles.push(ancestor.authorHandle)
-        }
-
-        currentId = ancestor.replyToId
-        depth++
+      if (ancestor.authorHandle) {
+        handles.push(ancestor.authorHandle)
       }
 
-      // Reverse so handles are in order from root to immediate parent
-      post.replyChainHandles = handles.reverse()
+      currentId = ancestor.replyToId
+      depth++
     }
+
+    // Reverse so handles are in order from root to immediate parent,
+    // then dedupe keeping the first (root-most) occurrence of each handle
+    const reversed = handles.reverse()
+    const seen = new Set<string>()
+    const deduped: string[] = []
+    for (const h of reversed) {
+      if (!seen.has(h)) {
+        seen.add(h)
+        deduped.push(h)
+      }
+    }
+    post.replyChainHandles = deduped
   }
 }

@@ -24,9 +24,9 @@ import {
   UserPlusIcon,
 } from "@heroicons/react/24/solid"
 import {
+  ArrowPathIcon as ArrowPathOutline,
   BookmarkIcon as BookmarkIconOutline,
   ChatBubbleOvalLeftIcon as ChatBubbleOutline,
-  ArrowPathIcon as ArrowPathOutline,
   HeartIcon as HeartOutline,
 } from "@heroicons/react/24/outline"
 import { Button } from "@workspace/ui/components/button"
@@ -62,16 +62,16 @@ const GROUPING_THRESHOLD = 3
 
 type GroupedNotification =
   | { type: "single"; item: NotificationItem }
-  | { type: "grouped-likes"; items: NotificationItem[]; target: Post }
-  | { type: "grouped-follows"; items: NotificationItem[] }
+  | { type: "grouped-likes"; items: Array<NotificationItem>; target: Post }
+  | { type: "grouped-follows"; items: Array<NotificationItem> }
   | { type: "reply"; item: NotificationItem }
   | { type: "mention"; item: NotificationItem }
 
 function groupNotifications(
-  items: NotificationItem[]
-): GroupedNotification[] {
-  const likesByEntity = new Map<string, NotificationItem[]>()
-  const follows: NotificationItem[] = []
+  items: Array<NotificationItem>
+): Array<GroupedNotification> {
+  const likesByEntity = new Map<string, Array<NotificationItem>>()
+  const follows: Array<NotificationItem> = []
   const others: Array<{ index: number; entry: GroupedNotification }> = []
 
   for (let i = 0; i < items.length; i++) {
@@ -206,7 +206,7 @@ function Notifications() {
         queryClient.setQueryData(qk.notifications.unread(), { count: 0 })
         queryClient.invalidateQueries({ queryKey: qk.notifications.unread() })
       })
-      .catch(() => { })
+      .catch(() => {})
   }, [session, queryClient])
 
   const items = useMemo(
@@ -319,10 +319,7 @@ function NotificationsList(props: NotificationsListProps) {
     undefined
   )
 
-  const grouped = useMemo(
-    () => groupNotifications(props.items),
-    [props.items]
-  )
+  const grouped = useMemo(() => groupNotifications(props.items), [props.items])
 
   useIsoLayoutEffect(() => {
     setScrollEl(findScrollParent(probeRef.current))
@@ -360,7 +357,7 @@ function WindowNotificationsList({
   hasNextPage,
   isFetchingNextPage,
   fetchNextPage,
-}: NotificationsListProps & { grouped: GroupedNotification[] }) {
+}: NotificationsListProps & { grouped: Array<GroupedNotification> }) {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
   const [scrollMargin, setScrollMargin] = useState(0)
@@ -438,7 +435,7 @@ function ContainerNotificationsList({
   fetchNextPage,
   scrollEl,
 }: NotificationsListProps & {
-  grouped: GroupedNotification[]
+  grouped: Array<GroupedNotification>
   scrollEl: HTMLElement
 }) {
   const sentinelRef = useRef<HTMLDivElement>(null)
@@ -510,15 +507,11 @@ function GroupedNotificationRow({ group }: { group: GroupedNotification }) {
   }
 }
 
-function AvatarRow({ items }: { items: NotificationItem[] }) {
+function AvatarRow({ items }: { items: Array<NotificationItem> }) {
   return (
     <div className="flex items-center gap-1.5">
       {items.slice(0, 8).map((item) => {
-        const initial = (
-          item.actor?.displayName ??
-          item.actor?.handle ??
-          "·"
-        )
+        const initial = (item.actor?.displayName ?? item.actor?.handle ?? "·")
           .slice(0, 1)
           .toUpperCase()
         return (
@@ -538,7 +531,7 @@ function GroupedLikeRow({
   items,
   target,
 }: {
-  items: NotificationItem[]
+  items: Array<NotificationItem>
   target: Post
 }) {
   const lead = items[0]
@@ -567,23 +560,24 @@ function GroupedLikeRow({
           <span className="font-semibold text-primary">
             {leadDisplayName || leadHandle || "someone"}
           </span>
-          {leadHandle && (
-            <span className="text-tertiary"> @{leadHandle}</span>
-          )}
+          {leadHandle && <span className="text-tertiary"> @{leadHandle}</span>}
           <span className="text-secondary">
-            {" "}and {items.length - 1} other{items.length - 1 !== 1 ? "s" : ""}{" "}
+            {" "}
+            and {items.length - 1} other{items.length - 1 !== 1 ? "s" : ""}{" "}
             liked your post
           </span>
         </p>
         {target.text && (
-          <p className="mt-1 text-sm text-tertiary line-clamp-1">{target.text}</p>
+          <p className="mt-1 line-clamp-1 text-sm text-tertiary">
+            {target.text}
+          </p>
         )}
       </div>
     </Link>
   )
 }
 
-function GroupedFollowRow({ items }: { items: NotificationItem[] }) {
+function GroupedFollowRow({ items }: { items: Array<NotificationItem> }) {
   const lead = items[0]
   const leadDisplayName = lead.actor?.displayName ?? null
   const leadHandle = lead.actor?.handle ?? null
@@ -614,11 +608,10 @@ function GroupedFollowRow({ items }: { items: NotificationItem[] }) {
               {leadDisplayName || "someone"}
             </span>
           )}
-          {leadHandle && (
-            <span className="text-tertiary"> @{leadHandle}</span>
-          )}
+          {leadHandle && <span className="text-tertiary"> @{leadHandle}</span>}
           <span className="text-secondary">
-            {" "}and {items.length - 1} other{items.length - 1 !== 1 ? "s" : ""}{" "}
+            {" "}
+            and {items.length - 1} other{items.length - 1 !== 1 ? "s" : ""}{" "}
             followed you
           </span>
         </p>
@@ -640,23 +633,39 @@ function ReplyRow({ item }: { item: NotificationItem }) {
   // Use chain handles if available, otherwise fall back to single parent handle
   const chainHandles = replyTarget?.replyChainHandles ?? []
   const fallbackHandle = replyTarget?.replyToId
-    ? replyTarget?.replyParent?.author.handle ?? null
+    ? (replyTarget.replyParent?.author.handle ?? null)
     : null
   const replyToHandles =
-    chainHandles.length > 0 ? chainHandles : fallbackHandle ? [fallbackHandle] : []
+    chainHandles.length > 0
+      ? chainHandles
+      : fallbackHandle
+        ? [fallbackHandle]
+        : []
 
-  function openPost() {
-    if (!replyTarget?.author.handle || !replyTarget?.id) return
+  function openPost(e: React.MouseEvent | React.KeyboardEvent) {
+    // Don't navigate if click originated from a link (e.g., @mention in RichText)
+    if ("target" in e && (e.target as HTMLElement).closest("a")) return
+    if (!replyTarget?.author.handle || !replyTarget.id) return
     navigate({
       to: "/$handle/p/$id",
       params: { handle: replyTarget.author.handle, id: replyTarget.id },
     })
   }
 
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault()
+      openPost(e)
+    }
+  }
+
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={openPost}
-      className={`cursor-pointer border-b border-neutral px-4 py-3.5 transition-colors hover:bg-base-2/20 ${!item.readAt ? "bg-subtle" : ""}`}
+      onKeyDown={handleKeyDown}
+      className={`focus-visible:ring-primary cursor-pointer border-b border-neutral px-4 py-3.5 transition-colors hover:bg-base-2/20 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset ${!item.readAt ? "bg-subtle" : ""}`}
     >
       <div className="flex items-start gap-3">
         <Avatar
@@ -690,14 +699,15 @@ function ReplyRow({ item }: { item: NotificationItem }) {
               ))}
               {replyToHandles.length > 2 && (
                 <span className="text-secondary">
-                  {" "}and {replyToHandles.length - 2} other
+                  {" "}
+                  and {replyToHandles.length - 2} other
                   {replyToHandles.length - 2 !== 1 ? "s" : ""}
                 </span>
               )}
             </p>
           )}
           {replyTarget?.text && (
-            <p className="mt-0.5 text-primary leading-relaxed whitespace-pre-wrap">
+            <p className="mt-0.5 leading-relaxed whitespace-pre-wrap text-primary">
               <RichText text={replyTarget.text} />
             </p>
           )}
@@ -742,18 +752,30 @@ function MentionRow({ item }: { item: NotificationItem }) {
     .toUpperCase()
   const mentionTarget = item.target
 
-  function openPost() {
-    if (!mentionTarget?.author.handle || !mentionTarget?.id) return
+  function openPost(e: React.MouseEvent | React.KeyboardEvent) {
+    // Don't navigate if click originated from a link (e.g., @mention in RichText)
+    if ("target" in e && (e.target as HTMLElement).closest("a")) return
+    if (!mentionTarget?.author.handle || !mentionTarget.id) return
     navigate({
       to: "/$handle/p/$id",
       params: { handle: mentionTarget.author.handle, id: mentionTarget.id },
     })
   }
 
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault()
+      openPost(e)
+    }
+  }
+
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={openPost}
-      className={`cursor-pointer border-b border-neutral px-4 py-3.5 transition-colors hover:bg-base-2/20 ${!item.readAt ? "bg-subtle" : ""}`}
+      onKeyDown={handleKeyDown}
+      className={`focus-visible:ring-primary cursor-pointer border-b border-neutral px-4 py-3.5 transition-colors hover:bg-base-2/20 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset ${!item.readAt ? "bg-subtle" : ""}`}
     >
       <div className="flex items-start gap-3">
         <Avatar
@@ -777,7 +799,7 @@ function MentionRow({ item }: { item: NotificationItem }) {
             </span>
           </div>
           {mentionTarget?.text && (
-            <p className="mt-0.5 text-primary leading-relaxed whitespace-pre-wrap">
+            <p className="mt-0.5 leading-relaxed whitespace-pre-wrap text-primary">
               <RichText text={mentionTarget.text} />
             </p>
           )}
@@ -837,7 +859,7 @@ function NotificationRow({ item }: { item: NotificationItem }) {
     .toUpperCase()
 
   const postLink =
-    item.target?.author.handle && item.target?.id
+    item.target?.author.handle && item.target.id
       ? `/${item.target.author.handle}/p/${item.target.id}`
       : null
 
@@ -872,7 +894,9 @@ function NotificationRow({ item }: { item: NotificationItem }) {
             </span>
           </p>
           {item.target?.text && (
-            <p className="mt-1 text-sm text-tertiary line-clamp-1">{item.target.text}</p>
+            <p className="mt-1 line-clamp-1 text-sm text-tertiary">
+              {item.target.text}
+            </p>
           )}
         </div>
       </div>
