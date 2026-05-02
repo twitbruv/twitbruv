@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 
-const base = "mx-auto w-full min-w-0"
+const base = "mx-auto w-full min-w-0 mt-4"
 
 const widthClass = {
   narrow: "md:max-w-md",
