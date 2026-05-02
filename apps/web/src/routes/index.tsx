@@ -225,7 +225,7 @@ function Home() {
 
   return (
     <PageFrame>
-      <header className="sticky top-0 z-40 flex h-12 items-center bg-base-1/80 px-4 backdrop-blur-md">
+      <header className="sticky top-0 z-40 flex items-center bg-base-1/80 px-4 backdrop-blur-md">
         <SegmentedControl
           layout="fit"
           variant="ghost"
@@ -242,25 +242,27 @@ function Home() {
           }}
         />
       </header>
-      {needsHandle ? (
-        <PageEmpty
-          icon={<IdentificationIcon />}
-          title="Finish setting up your account"
-          description="Pick a handle so others can find and mention you. Handles are permanent in v1, so choose wisely."
-          actions={
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={() => openSettings({ tab: "profile" })}
-            >
-              Claim your handle
-            </Button>
-          }
-          className="px-4"
-        />
-      ) : (
-        <Compose onCreated={(p) => setNewPost(p)} collapsible />
-      )}
+      <div className="mt-4">
+        {needsHandle ? (
+          <PageEmpty
+            icon={<IdentificationIcon />}
+            title="Finish setting up your account"
+            description="Pick a handle so others can find and mention you. Handles are permanent in v1, so choose wisely."
+            actions={
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={() => openSettings({ tab: "profile" })}
+              >
+                Claim your handle
+              </Button>
+            }
+            className="px-4"
+          />
+        ) : (
+          <Compose onCreated={(p) => setNewPost(p)} collapsible />
+        )}
+      </div>
       {showLoader && (
         <div className="flex items-center justify-center py-16">
           <Loader

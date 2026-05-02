@@ -34,21 +34,28 @@ function InboxList() {
             <h1 className="text-base leading-tight font-semibold text-primary">
               Messages
             </h1>
-            <p className="mt-0.5 text-xs text-tertiary">
-              Inbox and message requests
-            </p>
           </div>
           <Button
             size="sm"
             variant="outline"
             nativeButton={false}
+            aria-label="New message"
+            iconLeft={<PencilSquareIcon className="size-3.5" />}
+            className="sm:hidden"
+            render={<Link to="/inbox/new" />}
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            nativeButton={false}
+            iconLeft={<PencilSquareIcon className="size-3.5" />}
+            className="hidden sm:inline-flex"
             render={<Link to="/inbox/new" />}
           >
-            <PencilSquareIcon className="size-3.5" />
             New
           </Button>
         </div>
-        <div className="max-w-xs">
+        <div className="w-full sm:max-w-xs">
           <SegmentedControl<Folder>
             layout="fit"
             variant="ghost"

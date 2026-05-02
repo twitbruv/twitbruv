@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react"
 import { useRouter, useRouterState } from "@tanstack/react-router"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import {
@@ -29,6 +30,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     left: "max(0px, calc((100vw - 1080px) / 2))",
   } as const
 
+  const drawerEnabled = authed && !isAdminShell
+  const drawer = useEdgeDrawer(drawerEnabled)
+
   return (
     <ComposeProvider>
       <SettingsProvider>
@@ -40,22 +44,27 @@ export function AppShell({ children }: { children: ReactNode }) {
               className={
                 isAdminShell
                   ? "fixed top-0 z-40 h-svh w-[68px]"
-                  : "fixed top-0 z-40 h-svh w-[68px] xl:w-[240px]"
+                  : "fixed top-0 z-40 h-svh w-[68px] max-md:z-10 xl:w-[240px]"
               }
               style={sidebarLeftStyle}
             >
               <SidebarWithCompose compact={isAdminShell} />
             </div>
 
-            <div className="mx-auto flex min-h-svh max-w-[1080px]">
+            <div
+              className="relative z-20 mx-auto flex min-h-svh max-w-[1080px] touch-pan-y bg-base-1 pt-4 max-md:transition-transform max-md:duration-200 max-md:ease-out md:bg-transparent"
+              style={drawer.contentStyle}
+            >
               <div
                 className={
                   isAdminShell
                     ? "w-[68px] shrink-0"
-                    : "w-[68px] shrink-0 xl:w-[240px]"
+                    : "shrink-0 md:w-[68px] xl:w-[240px]"
                 }
               />
-              <main className="flex min-h-svh flex-1 flex-col">{children}</main>
+              <main className="flex min-h-svh flex-1 flex-col">
+                {children}
+              </main>
               <div
                 className={
                   isAdminShell
@@ -69,6 +78,59 @@ export function AppShell({ children }: { children: ReactNode }) {
       </SettingsProvider>
     </ComposeProvider>
   )
+}
+
+const DRAWER_WIDTH = 68
+const SWIPE_DISTANCE_PX = 40
+
+function useEdgeDrawer(enabled: boolean) {
+  const [open, setOpen] = useState(false)
+  const openRef = useRef(open)
+  useEffect(() => {
+    openRef.current = open
+  }, [open])
+
+  useEffect(() => {
+    if (!enabled) return
+    const isMobile = () => window.matchMedia("(max-width: 767px)").matches
+    let start: { x: number; y: number; openAtStart: boolean } | null = null
+
+    const onDown = (e: PointerEvent) => {
+      if (!isMobile()) return
+      start = { x: e.clientX, y: e.clientY, openAtStart: openRef.current }
+    }
+    const onUp = (e: PointerEvent) => {
+      const s = start
+      start = null
+      if (!s) return
+      const dx = e.clientX - s.x
+      const dy = e.clientY - s.y
+      if (Math.abs(dx) <= Math.abs(dy)) return
+      if (Math.abs(dx) < SWIPE_DISTANCE_PX) return
+      if (s.openAtStart && dx < 0) setOpen(false)
+      else if (!s.openAtStart && dx > 0) setOpen(true)
+    }
+    const onCancel = () => {
+      start = null
+    }
+
+    window.addEventListener("pointerdown", onDown)
+    window.addEventListener("pointerup", onUp)
+    window.addEventListener("pointercancel", onCancel)
+    return () => {
+      window.removeEventListener("pointerdown", onDown)
+      window.removeEventListener("pointerup", onUp)
+      window.removeEventListener("pointercancel", onCancel)
+    }
+  }, [enabled])
+
+  const tx = enabled && open ? DRAWER_WIDTH : 0
+
+  return {
+    open,
+    close: () => setOpen(false),
+    contentStyle: { transform: `translateX(${tx}px)` } as const,
+  }
 }
 
 function SidebarWithCompose({ compact }: { compact?: boolean }) {
