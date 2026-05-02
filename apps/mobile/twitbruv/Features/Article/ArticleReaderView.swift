@@ -71,7 +71,7 @@ struct ArticleReaderView: View {
                     .padding(.top, 80)
             }
         }
-        .background(TBColor.base1)
+        .background(Color.clear)
         .navigationTitle(article?.title ?? "Article")
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }

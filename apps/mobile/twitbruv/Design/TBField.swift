@@ -14,10 +14,6 @@ struct TBTextField: View {
                 .font(TBTypography.label)
                 .foregroundStyle(TBColor.textPrimary)
             ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
-                    .fill(TBColor.base2)
-                RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
-                    .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
                 TextField("", text: $text)
                     .font(TBTypography.body)
                     .foregroundStyle(TBColor.textPrimary)
@@ -28,6 +24,12 @@ struct TBTextField: View {
                     .textContentType(contentType)
             }
             .frame(minHeight: 40)
+            .tbGlass(
+                .field,
+                in: RoundedRectangle(cornerRadius: TBLayout.radiusGlassCard, style: .continuous),
+                interactive: true,
+                shadow: false
+            )
         }
     }
 }
@@ -42,10 +44,6 @@ struct TBSecureField: View {
                 .font(TBTypography.label)
                 .foregroundStyle(TBColor.textPrimary)
             ZStack(alignment: .leading) {
-                RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
-                    .fill(TBColor.base2)
-                RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
-                    .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
                 SecureField("", text: $text)
                     .font(TBTypography.body)
                     .foregroundStyle(TBColor.textPrimary)
@@ -54,6 +52,12 @@ struct TBSecureField: View {
                     .padding(.vertical, 10)
             }
             .frame(minHeight: 40)
+            .tbGlass(
+                .field,
+                in: RoundedRectangle(cornerRadius: TBLayout.radiusGlassCard, style: .continuous),
+                interactive: true,
+                shadow: false
+            )
         }
     }
 }

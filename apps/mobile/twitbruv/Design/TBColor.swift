@@ -22,6 +22,15 @@ enum TBColor {
     static let like = Color(uiColor: UIColor.tbLike)
     static let accent = Color(uiColor: UIColor.tbAccent)
 
+    static let glassChromeTint = Color(uiColor: UIColor.tbGlassChromeTint)
+    static let glassPanelTint = Color(uiColor: UIColor.tbGlassPanelTint)
+    static let glassCardTint = Color(uiColor: UIColor.tbGlassCardTint)
+    static let glassFieldTint = Color(uiColor: UIColor.tbGlassFieldTint)
+    static let glassProminentTint = Color(uiColor: UIColor.tbGlassProminentTint)
+    static let glassStroke = Color(uiColor: UIColor.tbGlassStroke)
+    static let glassHighlight = Color(uiColor: UIColor.tbGlassHighlight)
+    static let glassShadow = Color(uiColor: UIColor.tbGlassShadow)
+
     static let shadowFieldOuter = Color(uiColor: UIColor.tbShadowFieldOuter)
     static let shadowFieldInsetTop = Color(uiColor: UIColor.tbShadowFieldInsetTop)
     static let shadowFieldInsetBottom = Color(uiColor: UIColor.tbShadowFieldInsetBottom)
@@ -126,6 +135,62 @@ extension UIColor {
     static let tbLike: UIColor = tbDanger
 
     static var tbAccent: UIColor { tbGray12 }
+
+    static let tbGlassChromeTint: UIColor = UIColor { tc in
+        if tc.userInterfaceStyle == .dark {
+            return UIColor(white: 0.03, alpha: 0.24)
+        }
+        return UIColor(white: 1, alpha: 0.28)
+    }
+
+    static let tbGlassPanelTint: UIColor = UIColor { tc in
+        if tc.userInterfaceStyle == .dark {
+            return UIColor(white: 0.08, alpha: 0.28)
+        }
+        return UIColor(white: 1, alpha: 0.34)
+    }
+
+    static let tbGlassCardTint: UIColor = UIColor { tc in
+        if tc.userInterfaceStyle == .dark {
+            return UIColor(white: 0.10, alpha: 0.18)
+        }
+        return UIColor(white: 1, alpha: 0.20)
+    }
+
+    static let tbGlassFieldTint: UIColor = UIColor { tc in
+        if tc.userInterfaceStyle == .dark {
+            return UIColor(white: 0.12, alpha: 0.30)
+        }
+        return UIColor(white: 1, alpha: 0.38)
+    }
+
+    static let tbGlassProminentTint: UIColor = UIColor { tc in
+        if tc.userInterfaceStyle == .dark {
+            return UIColor(white: 0.88, alpha: 0.18)
+        }
+        return UIColor(white: 0.05, alpha: 0.14)
+    }
+
+    static let tbGlassStroke: UIColor = UIColor { tc in
+        if tc.userInterfaceStyle == .dark {
+            return UIColor(white: 1, alpha: 0.16)
+        }
+        return UIColor(white: 1, alpha: 0.70)
+    }
+
+    static let tbGlassHighlight: UIColor = UIColor { tc in
+        if tc.userInterfaceStyle == .dark {
+            return UIColor(white: 1, alpha: 0.20)
+        }
+        return UIColor(white: 1, alpha: 0.92)
+    }
+
+    static let tbGlassShadow: UIColor = UIColor { tc in
+        if tc.userInterfaceStyle == .dark {
+            return UIColor(white: 0, alpha: 1)
+        }
+        return UIColor(white: 0.35, alpha: 1)
+    }
 
     static let tbShadowFieldOuter: UIColor = UIColor { tc in
         if tc.userInterfaceStyle == .dark {

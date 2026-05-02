@@ -37,19 +37,26 @@ struct MainTabView: View {
                 .tag(AppTab.me)
         }
         .overlay(alignment: .bottomTrailing) {
-            Button {
-                showCompose = true
-            } label: {
-                Image(systemName: "plus")
-                    .font(.system(size: 22, weight: .semibold))
-                    .foregroundStyle(TBColor.textOnInverse)
-                    .padding(16)
-                    .background(TBColor.inverse, in: Circle())
-                    .shadow(color: Color.black.opacity(0.12), radius: 4, y: 2)
+            GlassEffectContainer(spacing: 12) {
+                Button {
+                    showCompose = true
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.system(size: 22, weight: .semibold))
+                        .foregroundStyle(TBColor.textPrimary)
+                        .frame(width: 56, height: 56)
+                        .contentShape(Circle())
+                        .tbGlass(
+                            .prominent,
+                            in: Circle(),
+                            interactive: true
+                        )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("New post")
             }
             .padding(.bottom, 70)
             .padding(.trailing, 16)
-            .accessibilityLabel("New post")
         }
         .overlay(alignment: .bottom) {
             DevSeedToast()
@@ -79,11 +86,10 @@ private struct DevSeedToast: View {
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
-                .background(TBColor.base2, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
-                }
+                .tbGlass(
+                    .chrome,
+                    in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                )
                 .padding(.bottom, 18)
             } else if let message = env.devTools.seedMessage {
                 Text(message)
@@ -91,11 +97,10 @@ private struct DevSeedToast: View {
                     .foregroundStyle(TBColor.textPrimary)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
-                    .background(TBColor.base2, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
-                    }
+                    .tbGlass(
+                        .chrome,
+                        in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    )
                     .padding(.bottom, 18)
                     .onTapGesture { env.devTools.seedMessage = nil }
             }

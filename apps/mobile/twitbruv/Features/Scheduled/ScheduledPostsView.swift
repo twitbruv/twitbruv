@@ -52,7 +52,7 @@ struct ScheduledPostsView: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
-        .background(TBColor.base1)
+        .background(Color.clear)
         .navigationTitle("Scheduled")
         .refreshable { await load() }
         .task { await load() }
@@ -110,7 +110,7 @@ private struct ScheduledRow: View {
                     .font(TBTypography.caption)
                     .padding(.horizontal, 6).padding(.vertical, 2)
                     .foregroundStyle(TBColor.textSecondary)
-                    .background(TBColor.subtleFill, in: .capsule)
+                    .tbGlassCapsule(.card, shadow: false)
             }
             .font(TBTypography.caption)
             .foregroundStyle(TBColor.textSecondary)
@@ -146,10 +146,6 @@ struct ScheduledEditorView: View {
                         .font(TBTypography.label)
                         .foregroundStyle(TBColor.textSecondary)
                     ZStack(alignment: .topLeading) {
-                        RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
-                            .fill(TBColor.base2)
-                        RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
-                            .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
                         TextEditor(text: $text)
                             .font(TBTypography.body)
                             .foregroundStyle(TBColor.textPrimary)
@@ -157,6 +153,12 @@ struct ScheduledEditorView: View {
                             .padding(10)
                             .frame(minHeight: 120)
                     }
+                    .tbGlass(
+                        .field,
+                        in: RoundedRectangle(cornerRadius: TBLayout.radiusGlassCard, style: .continuous),
+                        interactive: true,
+                        shadow: false
+                    )
 
                     Text("When")
                         .font(TBTypography.label)
@@ -177,7 +179,7 @@ struct ScheduledEditorView: View {
                 }
                 .padding(TBLayout.pagePadding)
             }
-            .background(TBColor.base1)
+            .background(Color.clear)
             .navigationTitle("Edit scheduled")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

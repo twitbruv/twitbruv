@@ -54,10 +54,6 @@ struct ComposerView: View {
 
                     composerSection(title: nil) {
                         ZStack(alignment: .topLeading) {
-                            RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
-                                .fill(TBColor.base2)
-                            RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
-                                .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
                             TextEditor(text: $text)
                                 .font(TBTypography.body)
                                 .foregroundStyle(TBColor.textPrimary)
@@ -65,6 +61,12 @@ struct ComposerView: View {
                                 .padding(10)
                                 .frame(minHeight: 120)
                         }
+                        .tbGlass(
+                            .field,
+                            in: RoundedRectangle(cornerRadius: TBLayout.radiusGlassCard, style: .continuous),
+                            interactive: true,
+                            shadow: false
+                        )
                         HStack {
                             Spacer()
                             Text("\(text.count)/\(textLimit)")
@@ -153,15 +155,17 @@ struct ComposerView: View {
                             .tint(TBColor.inverse)
                         if sensitive {
                             ZStack(alignment: .leading) {
-                                RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
-                                    .fill(TBColor.base2)
-                                RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
-                                    .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
                                 TextField("Content warning", text: $contentWarning)
                                     .padding(.horizontal, 12)
                                     .padding(.vertical, 10)
                             }
                             .frame(minHeight: 40)
+                            .tbGlass(
+                                .field,
+                                in: RoundedRectangle(cornerRadius: TBLayout.radiusGlassCard, style: .continuous),
+                                interactive: true,
+                                shadow: false
+                            )
                         }
                         DatePicker(
                             "Schedule",
@@ -211,7 +215,7 @@ struct ComposerView: View {
                 }
                 .padding(TBLayout.pagePadding)
             }
-            .background(TBColor.base1)
+            .background(Color.clear)
             .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -234,7 +238,9 @@ struct ComposerView: View {
             .overlay {
                 if isSubmitting {
                     ZStack {
-                        TBColor.base1.opacity(0.72)
+                        Rectangle()
+                            .fill(.ultraThinMaterial)
+                            .ignoresSafeArea()
                         VStack(spacing: 12) {
                             ProgressView()
                                 .tint(TBColor.accent)
@@ -243,14 +249,14 @@ struct ComposerView: View {
                                 .foregroundStyle(TBColor.textPrimary)
                         }
                         .padding(24)
-                        .background(TBColor.base2, in: RoundedRectangle(cornerRadius: TBLayout.radiusLG, style: .continuous))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: TBLayout.radiusLG, style: .continuous)
-                                .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
-                        }
+                        .tbGlass(
+                            .panel,
+                            in: RoundedRectangle(cornerRadius: TBLayout.radiusGlassPanel, style: .continuous)
+                        )
                     }
                 }
             }
+            .presentationBackground(.ultraThinMaterial)
         }
     }
 
@@ -266,6 +272,11 @@ struct ComposerView: View {
             }
             content()
         }
+        .padding(14)
+        .tbGlass(
+            .panel,
+            in: RoundedRectangle(cornerRadius: TBLayout.radiusGlassPanel, style: .continuous)
+        )
     }
 
     private var navigationTitle: String {
@@ -397,10 +408,6 @@ private struct PollEditor: View {
         ForEach(options.indices, id: \.self) { idx in
             HStack {
                 ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
-                        .fill(TBColor.base2)
-                    RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
-                        .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
                     TextField("Option \(idx + 1)", text: Binding(
                         get: { options[idx] },
                         set: { options[idx] = $0 }
@@ -408,6 +415,12 @@ private struct PollEditor: View {
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
                 }
+                .tbGlass(
+                    .field,
+                    in: RoundedRectangle(cornerRadius: TBLayout.radiusGlassCard, style: .continuous),
+                    interactive: true,
+                    shadow: false
+                )
                 if options.count > 2 {
                     Button {
                         options.remove(at: idx)

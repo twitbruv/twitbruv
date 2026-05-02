@@ -43,7 +43,7 @@ private struct SplashView: View {
                 .foregroundStyle(TBColor.textSecondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(TBColor.base1)
+        .background(Color.clear)
     }
 }
 
@@ -53,7 +53,7 @@ private struct SignedOutContainer: View {
         NavigationStack(path: $path) {
             SignInView(path: $path)
         }
-        .background(TBColor.base1)
+        .background(Color.clear)
     }
 }
 
@@ -80,6 +80,6 @@ private struct MaintenanceFullView: View {
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(TBColor.base1)
+        .background(Color.clear)
     }
 }

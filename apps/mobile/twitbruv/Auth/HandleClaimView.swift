@@ -34,11 +34,12 @@ struct HandleClaimView: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 10)
-            .background(TBColor.base2, in: RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
-                    .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
-            }
+            .tbGlass(
+                .field,
+                in: RoundedRectangle(cornerRadius: TBLayout.radiusGlassCard, style: .continuous),
+                interactive: true,
+                shadow: false
+            )
             .padding(.horizontal, TBLayout.pagePadding)
 
             if let errorMessage {
@@ -82,7 +83,7 @@ struct HandleClaimView: View {
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(TBColor.base1)
+        .background(Color.clear)
     }
 
     private var isValid: Bool {

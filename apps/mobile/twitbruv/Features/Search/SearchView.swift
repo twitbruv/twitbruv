@@ -146,6 +146,7 @@ struct SearchView: View {
                                         }
                                         .buttonStyle(.plain)
                                         .listRowInsets(EdgeInsets())
+                                        .listRowBackground(Color.clear)
                                     }
                                 }
                             }
@@ -161,12 +162,12 @@ struct SearchView: View {
                     }
                     .listStyle(.insetGrouped)
                     .scrollContentBackground(.hidden)
-                    .background(TBColor.base1)
+                    .background(Color.clear)
                 } else {
                     ProgressView()
                         .tint(TBColor.accent)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(TBColor.base1)
+                        .background(Color.clear)
                 }
             }
             .navigationTitle("Search")
@@ -230,6 +231,7 @@ struct HashtagView: View {
                     ForEach(loader.items) { post in
                         PostCardView(post: post)
                             .listRowInsets(EdgeInsets())
+                            .listRowBackground(Color.clear)
                             .onTapGesture {
                                 path.append(FeedRoute.thread(id: post.id))
                             }
@@ -241,13 +243,13 @@ struct HashtagView: View {
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
-                .background(TBColor.base1)
+                .background(Color.clear)
                 .refreshable { await loader.reload() }
             } else {
                 ProgressView()
                     .tint(TBColor.accent)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(TBColor.base1)
+                    .background(Color.clear)
                     .task {
                     loader = PagedLoader<Post, PostsHashtagResponse>(
                         api: env.api,

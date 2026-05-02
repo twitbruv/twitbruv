@@ -8,6 +8,9 @@ enum TBLayout {
     static let radiusLG: CGFloat = 12
     static let radiusXL: CGFloat = 16
     static let radiusPostRow: CGFloat = 16
+    static let radiusGlassBar: CGFloat = 24
+    static let radiusGlassPanel: CGFloat = 22
+    static let radiusGlassCard: CGFloat = 18
     static let hitTarget: CGFloat = 44
     static let headerHeight: CGFloat = 48
     static let avatarFeed: CGFloat = 40

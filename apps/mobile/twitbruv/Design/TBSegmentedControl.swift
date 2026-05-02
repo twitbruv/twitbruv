@@ -19,7 +19,8 @@ struct TBFeedSegmented<Selection: Hashable>: View {
                         .background {
                             if on {
                                 Capsule(style: .continuous)
-                                    .fill(TBColor.subtleFill)
+                                    .fill(TBColor.glassProminentTint)
+                                    .tbGlassCapsule(.prominent, shadow: false)
                             }
                         }
                 }
@@ -27,10 +28,6 @@ struct TBFeedSegmented<Selection: Hashable>: View {
             }
         }
         .padding(4)
-        .background(TBColor.base2, in: Capsule(style: .continuous))
-        .overlay {
-            Capsule(style: .continuous)
-                .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
-        }
+        .tbGlassCapsule(.chrome, shadow: false)
     }
 }

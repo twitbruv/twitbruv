@@ -36,6 +36,7 @@ struct FeedListView: View {
                             }
                         }
                     )
+                    .listRowSeparator(.hidden)
                     #else
                     EmptyStateView(
                         icon: "rectangle.stack",
@@ -44,8 +45,8 @@ struct FeedListView: View {
                         actionTitle: nil,
                         action: nil
                     )
-                    #endif
                     .listRowSeparator(.hidden)
+                    #endif
                 }
             } else {
                 ForEach(loader.items) { post in
@@ -66,6 +67,7 @@ struct FeedListView: View {
                     .onTapGesture { onSelectPost(post) }
                     .listRowInsets(EdgeInsets())
                     .listRowSeparator(.visible)
+                    .listRowBackground(Color.clear)
                 }
                 LoadMoreFooter(
                     hasMore: loader.nextCursor != nil,
@@ -77,7 +79,7 @@ struct FeedListView: View {
         }
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
-        .background(TBColor.base1)
+        .background(Color.clear)
         .refreshable {
             await loader.reload()
         }

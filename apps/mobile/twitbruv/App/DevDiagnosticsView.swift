@@ -57,7 +57,7 @@ struct DevDiagnosticsView: View {
         }
         .navigationTitle("API diagnostics")
         .scrollContentBackground(.hidden)
-        .background(TBColor.base1)
+        .background(Color.clear)
         .task {
             if env.devTools.diagnostics.isEmpty {
                 await env.devTools.runDiagnostics()

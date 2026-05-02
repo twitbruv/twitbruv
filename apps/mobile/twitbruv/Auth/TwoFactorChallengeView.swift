@@ -14,10 +14,6 @@ struct TwoFactorChallengeView: View {
                 Toggle("Use backup code", isOn: $useBackup)
                     .tint(TBColor.inverse)
                 ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
-                        .fill(TBColor.base2)
-                    RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
-                        .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
                     TextField(
                         useBackup ? "Backup code" : "6-digit code",
                         text: $code
@@ -31,6 +27,12 @@ struct TwoFactorChallengeView: View {
                     .padding(.vertical, 10)
                 }
                 .frame(minHeight: 40)
+                .tbGlass(
+                    .field,
+                    in: RoundedRectangle(cornerRadius: TBLayout.radiusGlassCard, style: .continuous),
+                    interactive: true,
+                    shadow: false
+                )
 
                 if let errorMessage {
                     Text(errorMessage)
@@ -50,7 +52,7 @@ struct TwoFactorChallengeView: View {
             }
             .padding(TBLayout.pagePadding)
         }
-        .background(TBColor.base1)
+        .background(Color.clear)
         .navigationTitle("Two-factor")
     }
 

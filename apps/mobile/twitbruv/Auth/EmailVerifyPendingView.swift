@@ -86,7 +86,7 @@ struct EmailVerifyPendingView: View {
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(TBColor.base1)
+        .background(Color.clear)
     }
 
     private func resend() async {

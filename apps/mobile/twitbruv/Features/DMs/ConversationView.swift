@@ -165,7 +165,7 @@ struct ConversationView: View {
                 onTyping: { vm?.sendTyping() }
             )
         }
-        .background(TBColor.base1)
+        .background(Color.clear)
         .navigationTitle(vm?.conversation?.name ?? "Direct message")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -239,7 +239,7 @@ struct ConversationView: View {
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
-                .background(TBColor.base1)
+                .background(Color.clear)
                 .onChange(of: vm.messages.count) { _, _ in
                     if let last = vm.messages.last?.id {
                         withAnimation {
@@ -258,7 +258,7 @@ struct ConversationView: View {
             ProgressView()
                 .tint(TBColor.accent)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(TBColor.base1)
+                .background(Color.clear)
         }
     }
 }
@@ -276,8 +276,13 @@ private struct MessageBubble: View {
                         .font(TBTypography.bodySecondary)
                         .padding(10)
                         .background(
-                            isMine ? TBColor.inverse : TBColor.subtleFill,
+                            isMine ? TBColor.inverse : TBColor.glassCardTint,
                             in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        )
+                        .tbGlass(
+                            isMine ? .prominent : .card,
+                            in: RoundedRectangle(cornerRadius: 14, style: .continuous),
+                            shadow: false
                         )
                         .foregroundStyle(
                             isMine ? TBColor.textOnInverse : TBColor.textPrimary
@@ -301,11 +306,7 @@ private struct MessageBubble: View {
                             Text("\(r.emoji) \(r.count)")
                                 .font(TBTypography.caption)
                                 .padding(.horizontal, 6).padding(.vertical, 2)
-                                .background(TBColor.base2, in: .capsule)
-                                .overlay {
-                                    Capsule()
-                                        .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
-                                }
+                                .tbGlassCapsule(.card, shadow: false)
                         }
                     }
                 }
@@ -330,11 +331,12 @@ struct DMComposeBar: View {
                 .font(TBTypography.bodySecondary)
                 .foregroundStyle(TBColor.textPrimary)
                 .padding(8)
-                .background(TBColor.base2, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
-                }
+                .tbGlass(
+                    .field,
+                    in: RoundedRectangle(cornerRadius: 18, style: .continuous),
+                    interactive: true,
+                    shadow: false
+                )
                 .onChange(of: text) { _, _ in onTyping() }
             Button {
                 onSend()
@@ -348,10 +350,11 @@ struct DMComposeBar: View {
         }
         .padding(.horizontal, TBLayout.pagePadding)
         .padding(.vertical, 8)
-        .background(TBColor.base1)
+        .background(.ultraThinMaterial)
+        .background(TBColor.glassChromeTint)
         .overlay(alignment: .top) {
             Rectangle()
-                .fill(TBColor.borderNeutral)
+                .fill(TBColor.glassStroke)
                 .frame(height: 0.5)
         }
     }
@@ -382,7 +385,8 @@ private struct ReactionPicker: View {
             .padding()
         }
         .frame(maxWidth: .infinity)
-        .background(TBColor.base1)
+        .background(.ultraThinMaterial)
+        .presentationBackground(.ultraThinMaterial)
         .presentationDetents([.height(160)])
     }
 }

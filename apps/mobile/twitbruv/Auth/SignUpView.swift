@@ -56,7 +56,7 @@ struct SignUpView: View {
             }
             .padding(TBLayout.pagePadding)
         }
-        .background(TBColor.base1)
+        .background(Color.clear)
         .navigationTitle("Sign up")
     }
 

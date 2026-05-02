@@ -43,20 +43,21 @@ struct ConversationsListView: View {
             Group {
                 if let vm {
                     VStack(spacing: 0) {
-                        TBFeedSegmented(
-                            selection: Binding(
-                                get: { vm.folder },
-                                set: { new in
-                                    vm.folder = new
-                                    Task { await vm.reload() }
-                                }
-                            ),
-                            options: [
-                                ("Inbox", "inbox"),
-                                ("Requests (\(vm.requestCount))", "requests"),
-                            ]
-                        )
-                        .padding(.horizontal, TBLayout.pagePadding)
+                        TBGlassBar {
+                            TBFeedSegmented(
+                                selection: Binding(
+                                    get: { vm.folder },
+                                    set: { new in
+                                        vm.folder = new
+                                        Task { await vm.reload() }
+                                    }
+                                ),
+                                options: [
+                                    ("Inbox", "inbox"),
+                                    ("Requests (\(vm.requestCount))", "requests"),
+                                ]
+                            )
+                        }
                         .padding(.vertical, 8)
 
                         List {
@@ -80,14 +81,14 @@ struct ConversationsListView: View {
                         }
                         .listStyle(.plain)
                         .scrollContentBackground(.hidden)
-                        .background(TBColor.base1)
+                        .background(Color.clear)
                         .refreshable { await vm.reload() }
                     }
                 } else {
                     ProgressView()
                         .tint(TBColor.accent)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(TBColor.base1)
+                        .background(Color.clear)
                 }
             }
             .navigationTitle("Messages")

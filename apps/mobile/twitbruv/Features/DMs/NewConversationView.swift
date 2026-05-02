@@ -75,7 +75,8 @@ struct NewConversationView: View {
             .navigationTitle("New message")
             .navigationBarTitleDisplayMode(.inline)
             .scrollContentBackground(.hidden)
-            .background(TBColor.base1)
+            .background(Color.clear)
+            .presentationBackground(.ultraThinMaterial)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
