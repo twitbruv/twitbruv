@@ -160,13 +160,11 @@ export function filterChainIntermediates(
   const hasChildInFeed = new Set<string>()
   const shownAsChainRoot = new Set<string>()
   for (const p of posts) {
-    const displayed = p.repostOf ?? p
-    if (displayed.replyToId) hasChildInFeed.add(displayed.replyToId)
+    if (p.replyToId) hasChildInFeed.add(p.replyToId)
     if (p.chainPreview) shownAsChainRoot.add(p.chainPreview.root.id)
   }
   return posts.filter((p) => {
-    const displayed = p.repostOf ?? p
-    if (displayed.replyToId) return !hasChildInFeed.has(displayed.id)
-    return !shownAsChainRoot.has(displayed.id)
+    if (p.replyToId) return !hasChildInFeed.has(p.id)
+    return !shownAsChainRoot.has(p.id)
   })
 }
