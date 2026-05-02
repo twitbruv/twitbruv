@@ -423,6 +423,17 @@ postsRoute.post('/:id/like', requireHandle(), async (c) => {
       .where(eq(schema.posts.id, id))
       .limit(1)
     if (!target) return new Set<string>()
+    await tx
+      .delete(schema.notifications)
+      .where(
+        and(
+          eq(schema.notifications.userId, target.authorId),
+          eq(schema.notifications.actorId, session.user.id),
+          eq(schema.notifications.kind, 'like'),
+          eq(schema.notifications.entityType, 'post'),
+          eq(schema.notifications.entityId, id),
+        ),
+      )
     return notify(tx, [
       {
         userId: target.authorId,
