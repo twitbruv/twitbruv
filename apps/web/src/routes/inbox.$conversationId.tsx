@@ -500,17 +500,26 @@ function Thread() {
   return (
     <PageFrame className="flex min-h-0 flex-1 flex-col">
       <div
-        className="relative flex h-[calc(100vh-3.5rem)] flex-col"
+        className="relative flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden bg-base-1"
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
       >
         {dragOver && (
           <div className="bg-primary/10 pointer-events-none absolute inset-0 z-20 flex items-center justify-center text-sm font-medium text-primary">
-            <div className="border-primary bg-base rounded-md border-2 border-dashed px-4 py-3 shadow-sm">
+            <div className="border-primary rounded-lg border-2 border-dashed bg-base-1 px-5 py-4 shadow-sm">
               Drop image to attach
             </div>
           </div>
+        )}
+
+        {appHeader && (
+          <header className="sticky top-0 z-10 flex min-h-14 items-center justify-between gap-3 border-b border-neutral bg-base-1/90 px-3 py-2 backdrop-blur-md sm:px-4">
+            <div className="min-w-0 flex-1">{appHeader.title}</div>
+            {appHeader.action && (
+              <div className="shrink-0">{appHeader.action}</div>
+            )}
+          </header>
         )}
 
         {conversation && conversation.kind === "group" && (
@@ -536,7 +545,10 @@ function Thread() {
           />
         )}
 
-        <div ref={scrollerRef} className="flex-1 overflow-y-auto px-4 py-4">
+        <div
+          ref={scrollerRef}
+          className="flex-1 overflow-y-auto px-3 py-4 sm:px-4"
+        >
           {error && <PageError className="mb-3 max-w-prose" message={error} />}
           {messages.length === 0 && !error && (
             <PageEmpty
@@ -547,7 +559,7 @@ function Thread() {
             />
           )}
 
-          <ul className="flex flex-col gap-1">
+          <ul className="flex flex-col gap-1.5">
             {groups.map((group) => (
               <GroupBlock
                 key={group.key}
@@ -561,7 +573,7 @@ function Thread() {
           </ul>
 
           {typingMembers.length > 0 && (
-            <div className="mt-2 flex items-center gap-2 px-2 text-xs text-tertiary">
+            <div className="mt-3 flex w-fit items-center gap-2 rounded-full bg-base-2 px-3 py-1.5 text-xs text-tertiary">
               <span className="flex -space-x-1">
                 {typingMembers.slice(0, 3).map((m) => (
                   <Avatar
@@ -585,18 +597,18 @@ function Thread() {
         </div>
 
         {pending && (
-          <div className="flex items-start gap-3 border-t border-neutral px-3 pt-2">
+          <div className="flex items-start gap-3 border-t border-neutral bg-base-1/95 px-3 py-3 sm:px-4">
             <div className="relative shrink-0">
               <img
                 src={pending.previewUrl}
                 alt="attachment preview"
-                className="h-20 w-20 rounded-md border border-neutral object-cover"
+                className="size-18 rounded-lg border border-neutral object-cover"
               />
               <button
                 type="button"
                 onClick={clearPending}
                 aria-label="remove attachment"
-                className="bg-base absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full text-primary shadow-sm ring-1 ring-neutral hover:bg-base-2"
+                className="absolute -top-1.5 -right-1.5 flex size-5 items-center justify-center rounded-full bg-base-1 text-primary shadow-sm ring-1 ring-neutral hover:bg-base-2"
               >
                 <XMarkIcon className="size-3" />
               </button>
@@ -619,7 +631,7 @@ function Thread() {
         {conversation?.myRequestState !== "pending" && (
           <form
             onSubmit={send}
-            className="flex items-end gap-2 border-t border-neutral px-3 py-3"
+            className="flex items-end gap-2 border-t border-neutral bg-base-1/95 px-3 py-3 backdrop-blur-sm sm:px-4"
           >
             <input
               ref={fileInputRef}
@@ -649,7 +661,7 @@ function Thread() {
               rows={1}
               disabled={sending}
               onKeyDown={onKeyDown}
-              className="min-h-10 flex-1 py-2 text-sm leading-relaxed"
+              className="max-h-40 min-h-10 flex-1 resize-none py-2 text-sm leading-relaxed"
             />
             <Button
               type="submit"
@@ -709,24 +721,26 @@ function RequestBanner({
   }
 
   return (
-    <div className="flex flex-col gap-2 border-t border-neutral bg-base-2/30 px-4 py-3 text-xs sm:flex-row sm:items-center sm:justify-between">
-      <p className="text-tertiary">
-        This is a message request. Accept to start the conversation or decline
-        to remove it.
-      </p>
-      <div className="flex items-center gap-2">
-        {error && <span className="text-destructive">{error}</span>}
-        <Button
-          size="sm"
-          variant="transparent"
-          disabled={busy}
-          onClick={decline}
-        >
-          Decline
-        </Button>
-        <Button size="sm" disabled={busy} onClick={accept}>
-          Accept
-        </Button>
+    <div className="border-b border-neutral bg-base-2/50 px-4 py-3">
+      <div className="flex flex-col gap-3 rounded-lg border border-neutral bg-base-1 px-3 py-3 text-xs shadow-xs sm:flex-row sm:items-center sm:justify-between">
+        <p className="max-w-md text-secondary">
+          This is a message request. Accept to start the conversation or decline
+          to remove it.
+        </p>
+        <div className="flex items-center gap-2">
+          {error && <span className="text-destructive">{error}</span>}
+          <Button
+            size="sm"
+            variant="transparent"
+            disabled={busy}
+            onClick={decline}
+          >
+            Decline
+          </Button>
+          <Button size="sm" disabled={busy} onClick={accept}>
+            Accept
+          </Button>
+        </div>
       </div>
     </div>
   )
@@ -787,8 +801,10 @@ function GroupBlock({
   return (
     <>
       {group.daySeparator && (
-        <li className="my-3 text-center text-[11px] tracking-wider text-tertiary uppercase">
-          {group.daySeparator}
+        <li className="my-4 flex items-center justify-center">
+          <span className="rounded-full bg-base-2 px-3 py-1 text-[11px] font-medium tracking-wide text-tertiary uppercase">
+            {group.daySeparator}
+          </span>
         </li>
       )}
       <li
@@ -806,12 +822,13 @@ function GroupBlock({
                   .slice(0, 1)
                   .toUpperCase()}
                 src={group.sender.avatarUrl}
+                className="size-8"
               />
             )}
           </div>
         )}
         <div
-          className={`flex max-w-[75%] flex-col gap-0.5 ${isMine ? "items-end" : "items-start"}`}
+          className={`flex max-w-[min(78%,42rem)] flex-col gap-0.5 sm:max-w-[70%] ${isMine ? "items-end" : "items-start"}`}
         >
           {group.messages.map((m, i) => {
             const isFirst = i === 0
@@ -909,7 +926,6 @@ function Bubble({
     minute: "2-digit",
   })
 
-  // Roll up reactions: group by emoji with counts + "did I react with this".
   const reactionGroups = useMemo(() => {
     const map = new Map<string, { count: number; mine: boolean }>()
     for (const r of message.reactions) {
@@ -956,10 +972,6 @@ function Bubble({
     }
   }
 
-  // Controls render as flex siblings (not absolute) so the hover zone is the entire message
-  // lane, not just the bubble. They stay opacity-0 until the row is hovered, so they don't
-  // visually crowd the chat at rest. The picker stays open once toggled because it's
-  // state-driven, not hover-driven.
   const controls = !isDeleted && !editing && (
     <div
       className={`relative flex shrink-0 items-center gap-1 self-center transition-opacity ${
@@ -972,7 +984,7 @@ function Bubble({
         type="button"
         onClick={() => setShowPicker((p) => !p)}
         aria-label="add reaction"
-        className="bg-base flex size-6 items-center justify-center rounded-full text-xs ring-1 ring-neutral hover:bg-base-2/40"
+        className="flex size-7 items-center justify-center rounded-full bg-base-1 text-xs shadow-sm ring-1 ring-neutral transition hover:bg-base-2 focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
       >
         😀
       </button>
@@ -983,7 +995,7 @@ function Bubble({
               <button
                 type="button"
                 aria-label="message options"
-                className="bg-base flex size-6 items-center justify-center rounded-full ring-1 ring-neutral hover:bg-base-2/40"
+                className="flex size-7 items-center justify-center rounded-full bg-base-1 shadow-sm ring-1 ring-neutral transition hover:bg-base-2 focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
               >
                 <EllipsisHorizontalIcon className="size-3" />
               </button>
@@ -1011,7 +1023,7 @@ function Bubble({
       )}
       {showPicker && (
         <div
-          className={`bg-base absolute top-full z-20 mt-1 flex gap-1 rounded-full border border-neutral p-1 shadow-md ${
+          className={`absolute top-full z-20 mt-1 flex gap-1 rounded-full border border-neutral bg-base-1 p-1 shadow-md ${
             isMine ? "right-0" : "left-0"
           }`}
         >
@@ -1020,7 +1032,7 @@ function Bubble({
               key={e}
               type="button"
               onClick={() => react(e)}
-              className="rounded-full px-1 py-0.5 text-base hover:bg-base-2/40"
+              className="rounded-full px-1.5 py-0.5 text-base transition hover:bg-base-2 focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
             >
               {e}
             </button>
@@ -1034,14 +1046,13 @@ function Bubble({
     <div
       className={`group relative flex w-full items-start gap-1 ${isMine ? "justify-end" : "justify-start"}`}
     >
-      {/* For my messages, controls sit to the LEFT of the bubble (away from screen edge). */}
       {isMine && controls}
 
       <div
-        className={`flex max-w-full flex-col gap-1 ${isMine ? "items-end" : "items-start"}`}
+        className={`flex max-w-[min(78%,42rem)] flex-col gap-1 sm:max-w-[70%] ${isMine ? "items-end" : "items-start"}`}
       >
         <div
-          className={`max-w-full ${corners} ${bg} px-3 py-2 text-sm leading-relaxed`}
+          className={`max-w-full shadow-xs ${corners} ${bg} px-3 py-2 text-sm leading-relaxed`}
           title={new Date(message.createdAt).toLocaleString()}
         >
           {isDeleted ? (
@@ -1116,7 +1127,7 @@ function Bubble({
                 className={`flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs transition ${
                   g.mine
                     ? "border-primary/40 bg-primary/10"
-                    : "bg-base border-neutral hover:bg-base-2/40"
+                    : "border-neutral bg-base-1 hover:bg-base-2"
                 }`}
               >
                 <span>{g.emoji}</span>
@@ -1127,7 +1138,6 @@ function Bubble({
         )}
       </div>
 
-      {/* For other-side messages, controls sit to the RIGHT of the bubble. */}
       {!isMine && controls}
     </div>
   )
@@ -1355,11 +1365,11 @@ function GroupSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Group settings</DialogTitle>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader className="pr-8">
+          <DialogTitle className="text-base">Group settings</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
+        <div className="max-h-[70vh] space-y-4 overflow-y-auto pr-1">
           {isAdmin ? (
             <div className="space-y-2">
               <Label htmlFor="group-name" className="text-xs text-tertiary">
@@ -1380,7 +1390,7 @@ function GroupSettingsDialog({
               </div>
             </div>
           ) : (
-            <div className="text-sm">
+            <div className="rounded-lg bg-base-2/50 px-3 py-2 text-sm">
               <span className="text-tertiary">Name: </span>
               <span className="font-medium">
                 {conversation.title || "(no name)"}
@@ -1392,11 +1402,11 @@ function GroupSettingsDialog({
             <Label className="text-xs text-tertiary">
               Members ({conversation.members.length})
             </Label>
-            <ul className="divide-y divide-neutral rounded-md border border-neutral">
+            <ul className="divide-y divide-neutral overflow-hidden rounded-lg border border-neutral bg-base-1">
               {conversation.members.map((m) => (
                 <li
                   key={m.id}
-                  className="flex items-center gap-3 px-3 py-2 text-sm"
+                  className="flex items-center gap-3 px-3 py-2.5 text-sm"
                 >
                   <Avatar
                     initial={(m.displayName || m.handle || "?")
@@ -1415,10 +1425,14 @@ function GroupSettingsDialog({
                         <VerifiedBadge size={13} role={m.role} />
                       )}
                       {m.chatRole === "admin" && (
-                        <span className="text-xs text-tertiary">(admin)</span>
+                        <span className="rounded-full bg-base-2 px-1.5 py-0.5 text-[10px] font-medium text-tertiary">
+                          admin
+                        </span>
                       )}
                       {m.id === me && (
-                        <span className="text-xs text-tertiary">(you)</span>
+                        <span className="rounded-full bg-base-2 px-1.5 py-0.5 text-[10px] font-medium text-tertiary">
+                          you
+                        </span>
                       )}
                     </div>
                   </div>
@@ -1452,13 +1466,13 @@ function GroupSettingsDialog({
                 placeholder="Search by handle or name"
               />
               {results.length > 0 && (
-                <ul className="divide-y divide-neutral rounded-md border border-neutral">
+                <ul className="divide-y divide-neutral overflow-hidden rounded-lg border border-neutral bg-base-1">
                   {results.slice(0, 6).map((u) => (
                     <li key={u.id}>
                       <button
                         type="button"
                         onClick={() => add(u)}
-                        className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm transition hover:bg-base-2/30"
+                        className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm transition hover:bg-base-2/30 focus-visible:bg-base-2/30 focus-visible:outline-none"
                       >
                         <Avatar
                           initial={(u.displayName || u.handle || "?")
@@ -1574,13 +1588,13 @@ function InviteSection({ conversationId }: { conversationId: string }) {
         <p className="text-xs text-tertiary">No invite links yet.</p>
       )}
       {live.length > 0 && (
-        <ul className="divide-y divide-neutral rounded-md border border-neutral">
+        <ul className="divide-y divide-neutral overflow-hidden rounded-lg border border-neutral bg-base-1">
           {live.map((invite) => {
             const url = `${WEB_URL}/invite/${invite.token}`
             return (
               <li key={invite.id} className="space-y-1 px-3 py-2 text-xs">
                 <div className="flex items-center gap-2">
-                  <code className="flex-1 truncate rounded bg-base-2 px-2 py-1 text-[11px]">
+                  <code className="flex-1 truncate rounded-md bg-base-2 px-2 py-1 text-[11px]">
                     {url}
                   </code>
                   <Button

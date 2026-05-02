@@ -1,11 +1,10 @@
 import { Link, createFileRoute } from "@tanstack/react-router"
 import { useCallback, useMemo } from "react"
+import { Button } from "@workspace/ui/components/button"
 import { api } from "../lib/api"
 import { qk } from "../lib/query-keys"
-import { usePageHeader } from "../components/app-page-header"
-import { PageFrame } from "../components/page-frame"
+import { PageHeader } from "../components/page-surface"
 import { UserList } from "../components/user-list"
-import type { AppPageHeaderSpec } from "../components/app-page-header"
 
 export const Route = createFileRoute("/$handle/following")({
   component: Following,
@@ -19,36 +18,29 @@ function Following() {
     [handle]
   )
 
-  const appHeader = useMemo<AppPageHeaderSpec>(
-    () => ({
-      plainTitle: true,
-      title: (
-        <div className="flex w-full min-w-0 items-center gap-2">
-          <Link
-            to="/$handle"
-            params={{ handle }}
-            className="text-muted-foreground shrink-0 text-xs hover:underline"
-          >
-            ← @{handle}
-          </Link>
-          <h1 className="text-foreground truncate text-base leading-tight font-semibold">
-            Following
-          </h1>
-        </div>
-      ),
-    }),
-    [handle]
-  )
-  usePageHeader(appHeader)
-
   return (
-    <PageFrame>
+    <section className="min-h-0">
+      <PageHeader
+        title="Following"
+        description={`People @${handle} follows`}
+        sticky
+        action={
+          <Button
+            size="sm"
+            variant="transparent"
+            nativeButton={false}
+            render={<Link to="/$handle" params={{ handle }} />}
+          >
+            Back
+          </Button>
+        }
+      />
       <UserList
         queryKey={listKey}
         load={load}
         emptyTitle={`@${handle} isn't following anyone yet`}
         emptyMessage="Once they follow people, you'll see them here."
       />
-    </PageFrame>
+    </section>
   )
 }

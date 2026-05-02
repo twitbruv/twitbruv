@@ -11,7 +11,6 @@ import { Skeleton } from "@workspace/ui/components/skeleton"
 import { Avatar } from "@workspace/ui/components/avatar"
 import { SegmentedControl } from "@workspace/ui/components/segmented-control"
 import { api } from "../lib/api"
-import { usePageHeader } from "../components/app-page-header"
 import { PageEmpty, PageError } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
 import { VerifiedBadge } from "../components/verified-badge"
@@ -27,42 +26,44 @@ function InboxList() {
   const [folder, setFolder] = useState<Folder>("inbox")
   const [requestCount, setRequestCount] = useState(0)
 
-  const appHeader = useMemo(
-    () => ({
-      title: "Messages" as const,
-      action: (
-        <Button
-          size="sm"
-          variant="outline"
-          nativeButton={false}
-          render={<Link to="/inbox/new" />}
-        >
-          <PencilSquareIcon className="size-3.5" />
-          New
-        </Button>
-      ),
-    }),
-    []
-  )
-  usePageHeader(appHeader)
-
   return (
     <PageFrame>
-      <header className="sticky top-0 z-40 flex h-12 items-center bg-base-1/80 px-4 backdrop-blur-md">
-        <SegmentedControl<Folder>
-          layout="fit"
-          variant="ghost"
-          value={folder}
-          options={[
-            { value: "inbox", label: "Inbox" },
-            {
-              value: "requests",
-              label:
-                requestCount > 0 ? `Requests (${requestCount})` : "Requests",
-            },
-          ]}
-          onValueChange={(value) => setFolder(value)}
-        />
+      <header className="sticky top-0 z-40 border-b border-neutral bg-base-1/90 px-4 py-3 backdrop-blur-md">
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-base leading-tight font-semibold text-primary">
+              Messages
+            </h1>
+            <p className="mt-0.5 text-xs text-tertiary">
+              Inbox and message requests
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            nativeButton={false}
+            render={<Link to="/inbox/new" />}
+          >
+            <PencilSquareIcon className="size-3.5" />
+            New
+          </Button>
+        </div>
+        <div className="max-w-xs">
+          <SegmentedControl<Folder>
+            layout="fit"
+            variant="ghost"
+            value={folder}
+            options={[
+              { value: "inbox", label: "Inbox" },
+              {
+                value: "requests",
+                label:
+                  requestCount > 0 ? `Requests (${requestCount})` : "Requests",
+              },
+            ]}
+            onValueChange={(value) => setFolder(value)}
+          />
+        </div>
       </header>
 
       <ConversationList
@@ -112,19 +113,16 @@ function ConversationList({
   if (errorMsg) return <PageError message={errorMsg} />
   if (isPending) {
     return (
-      <ul>
+      <ul className="divide-y divide-neutral">
         {Array.from({ length: 6 }).map((_, i) => (
-          <li
-            key={i}
-            className="flex items-start gap-3 border-b border-neutral px-4 py-3"
-          >
-            <Skeleton className="size-10 shrink-0 rounded-full" />
-            <div className="flex-1 space-y-2">
-              <div className="flex justify-between">
+          <li key={i} className="flex items-start gap-3 px-4 py-3.5">
+            <Skeleton className="size-11 shrink-0 rounded-full" />
+            <div className="min-w-0 flex-1 space-y-2 pt-0.5">
+              <div className="flex justify-between gap-3">
                 <Skeleton className="h-4 w-32" />
                 <Skeleton className="h-3 w-12" />
               </div>
-              <Skeleton className="h-3 w-3/4" />
+              <Skeleton className="h-3 w-full max-w-sm" />
             </div>
           </li>
         ))}
@@ -163,7 +161,7 @@ function ConversationList({
     )
   }
   return (
-    <ul>
+    <ul className="divide-y divide-neutral">
       {conversations.map((c) => (
         <ConversationRow key={c.id} conversation={c} />
       ))}
@@ -178,7 +176,7 @@ function ConversationRow({ conversation }: { conversation: DmConversation }) {
     conversation.lastMessage?.text ??
     previewForKind(conversation.lastMessage?.kind)
   const ts = conversation.lastMessageAt
-    ? new Date(conversation.lastMessageAt).toLocaleString()
+    ? formatConversationTime(new Date(conversation.lastMessageAt))
     : ""
   const peer =
     !isGroup && !conversation.title ? conversation.members.at(0) : null
@@ -188,26 +186,30 @@ function ConversationRow({ conversation }: { conversation: DmConversation }) {
       <Link
         to="/inbox/$conversationId"
         params={{ conversationId: conversation.id }}
-        className="flex items-start gap-3 border-b border-neutral px-4 py-3 transition-colors hover:bg-base-2/20"
+        className="group flex items-start gap-3 px-4 py-3.5 transition-colors hover:bg-base-2/30 focus-visible:bg-base-2/30 focus-visible:outline-none"
       >
         <ConversationAvatar conversation={conversation} />
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 pt-0.5">
           <div className="flex items-baseline justify-between gap-2">
-            <span className="flex min-w-0 items-center gap-1 text-sm font-semibold">
+            <span className="flex min-w-0 items-center gap-1 text-sm font-semibold text-primary">
               <span className="truncate">{title}</span>
               {peer?.isVerified && (
                 <VerifiedBadge className="size-3.5" role={peer.role} />
               )}
             </span>
-            <time className="shrink-0 text-xs text-tertiary">{ts}</time>
+            {ts && (
+              <time className="shrink-0 text-xs text-tertiary tabular-nums">
+                {ts}
+              </time>
+            )}
           </div>
-          <p className="truncate text-sm text-tertiary">
+          <p className="mt-0.5 truncate text-sm text-tertiary">
             {isGroup && `${conversation.members.length + 1} members · `}
             {preview ?? "No messages yet."}
           </p>
         </div>
         {conversation.unreadCount > 0 && (
-          <span className="bg-accent ml-2 self-center rounded-full px-2 py-0.5 text-[10px] font-semibold text-white">
+          <span className="ml-1 self-center rounded-full bg-inverse px-2 py-0.5 text-[10px] font-semibold text-inverse tabular-nums">
             {conversation.unreadCount}
           </span>
         )}
@@ -222,25 +224,25 @@ function ConversationAvatar({
   conversation: DmConversation
 }) {
   if (conversation.kind === "group") {
-    // Stack the first two member avatars in a 2x2-ish overlap so groups read at a glance.
     const a = conversation.members.at(0)
     const b = conversation.members.at(1)
     return (
-      <div className="relative size-10 shrink-0">
+      <div className="relative size-11 shrink-0">
         {a && (
           <Avatar
             initial={initialFor(a)}
             src={a.avatarUrl}
-            className="ring-base-1 absolute top-0 left-0 size-7 ring-2"
+            className="ring-base-1 absolute top-0 left-0 size-8 ring-2"
           />
         )}
         {b && (
           <Avatar
             initial={initialFor(b)}
             src={b.avatarUrl}
-            className="ring-base-1 absolute right-0 bottom-0 size-7 ring-2"
+            className="ring-base-1 absolute right-0 bottom-0 size-8 ring-2"
           />
         )}
+        {!a && !b && <Avatar initial="G" className="size-11" />}
       </div>
     )
   }
@@ -249,7 +251,7 @@ function ConversationAvatar({
     <Avatar
       initial={other ? initialFor(other) : "?"}
       src={other?.avatarUrl ?? null}
-      className="size-10"
+      className="size-11"
     />
   )
 }
@@ -271,6 +273,15 @@ function defaultTitle(conversation: DmConversation): string {
 
 function initialFor(m: DmMember): string {
   return (m.displayName || m.handle || "?").slice(0, 1).toUpperCase()
+}
+
+function formatConversationTime(date: Date): string {
+  const now = new Date()
+  const sameDay = date.toDateString() === now.toDateString()
+  if (sameDay) {
+    return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+  }
+  return date.toLocaleDateString([], { month: "short", day: "numeric" })
 }
 
 type MessageKind = "text" | "media" | "post_share" | "article_share" | "system"

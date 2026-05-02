@@ -3,8 +3,9 @@ import { useInfiniteQuery } from "@tanstack/react-query"
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { useWindowVirtualizer } from "@tanstack/react-virtual"
 import { UsersIcon } from "@heroicons/react/24/solid"
+import { Avatar } from "@workspace/ui/components/avatar"
 import { useInfiniteScrollSentinel } from "../lib/use-infinite-scroll-sentinel"
-import { PageEmpty } from "./page-surface"
+import { PageEmpty, PageError, PageLoadingList } from "./page-surface"
 import { VerifiedBadge } from "./verified-badge"
 import type { InfiniteData } from "@tanstack/react-query"
 import type { PublicUser, UserListPage } from "../lib/api"
@@ -14,6 +15,10 @@ const useIsoLayoutEffect =
 
 const ESTIMATED_ROW_HEIGHT = 76
 const ESTIMATED_BIO_BUMP = 32
+
+function initialFor(user: PublicUser): string {
+  return (user.displayName || user.handle || "?").slice(0, 1).toUpperCase()
+}
 
 function estimateRowHeight(user: PublicUser | undefined): number {
   if (!user) return ESTIMATED_ROW_HEIGHT
@@ -90,14 +95,8 @@ export function UserList({
     () => fetchNextPage()
   )
 
-  if (isPending)
-    return (
-      <div className="text-muted-foreground px-4 py-6 text-sm">loading…</div>
-    )
-  if (error)
-    return (
-      <div className="text-destructive px-4 py-6 text-sm">{error.message}</div>
-    )
+  if (isPending) return <PageLoadingList />
+  if (error) return <PageError message={error.message} />
   if (visibleUsers.length === 0)
     return (
       <PageEmpty
@@ -112,7 +111,7 @@ export function UserList({
   const totalSize = virtualizer.getTotalSize()
 
   return (
-    <div>
+    <div className="min-h-0">
       <div
         ref={wrapperRef}
         style={{
@@ -139,20 +138,29 @@ export function UserList({
               <Link
                 to="/$handle"
                 params={{ handle: u.handle }}
-                className="border-border hover:bg-muted/40 block border-b px-4 py-3"
+                className="group flex gap-3 border-b border-neutral px-4 py-3.5 transition-colors hover:bg-base-2/30 focus-visible:bg-base-2/30 focus-visible:outline-none"
               >
-                <div className="flex items-center gap-1 text-sm font-medium">
-                  <span className="truncate">
-                    {u.displayName || `@${u.handle}`}
-                  </span>
-                  {u.isVerified && <VerifiedBadge size={14} role={u.role} />}
+                <Avatar
+                  initial={initialFor(u)}
+                  src={u.avatarUrl}
+                  className="size-10"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 items-center gap-1 text-sm font-semibold text-primary">
+                    <span className="truncate">
+                      {u.displayName || `@${u.handle}`}
+                    </span>
+                    {u.isVerified && <VerifiedBadge size={14} role={u.role} />}
+                  </div>
+                  <div className="truncate text-xs text-tertiary">
+                    @{u.handle}
+                  </div>
+                  {u.bio && (
+                    <p className="mt-1 line-clamp-2 text-sm/relaxed text-secondary">
+                      {u.bio}
+                    </p>
+                  )}
                 </div>
-                <div className="text-muted-foreground text-xs">@{u.handle}</div>
-                {u.bio && (
-                  <p className="text-muted-foreground mt-1 line-clamp-2 text-xs">
-                    {u.bio}
-                  </p>
-                )}
               </Link>
             </div>
           )
@@ -160,8 +168,8 @@ export function UserList({
       </div>
       <div ref={sentinelRef} aria-hidden className="h-px" />
       {hasNextPage && (
-        <div className="text-muted-foreground flex justify-center py-4 text-xs">
-          {isFetchingNextPage ? "loading…" : ""}
+        <div className="flex justify-center py-4 text-xs text-tertiary">
+          {isFetchingNextPage ? "Loading more..." : ""}
         </div>
       )}
     </div>
