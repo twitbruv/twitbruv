@@ -43,18 +43,20 @@ struct ConversationsListView: View {
             Group {
                 if let vm {
                     VStack(spacing: 0) {
-                        Picker("Folder", selection: Binding(
-                            get: { vm.folder },
-                            set: { new in
-                                vm.folder = new
-                                Task { await vm.reload() }
-                            }
-                        )) {
-                            Text("Inbox").tag("inbox")
-                            Text("Requests (\(vm.requestCount))").tag("requests")
-                        }
-                        .pickerStyle(.segmented)
-                        .padding(.horizontal)
+                        TBFeedSegmented(
+                            selection: Binding(
+                                get: { vm.folder },
+                                set: { new in
+                                    vm.folder = new
+                                    Task { await vm.reload() }
+                                }
+                            ),
+                            options: [
+                                ("Inbox", "inbox"),
+                                ("Requests (\(vm.requestCount))", "requests"),
+                            ]
+                        )
+                        .padding(.horizontal, TBLayout.pagePadding)
                         .padding(.vertical, 8)
 
                         List {
@@ -77,10 +79,15 @@ struct ConversationsListView: View {
                             }
                         }
                         .listStyle(.plain)
+                        .scrollContentBackground(.hidden)
+                        .background(TBColor.base1)
                         .refreshable { await vm.reload() }
                     }
                 } else {
                     ProgressView()
+                        .tint(TBColor.accent)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(TBColor.base1)
                 }
             }
             .navigationTitle("Messages")
@@ -91,6 +98,7 @@ struct ConversationsListView: View {
                         showNew = true
                     } label: {
                         Image(systemName: "square.and.pencil")
+                            .foregroundStyle(TBColor.accent)
                     }
                 }
             }
@@ -145,23 +153,26 @@ private struct ConversationRow: View {
             AvatarView(urlString: avatarURL, size: 44, fallbackInitial: displayName)
             VStack(alignment: .leading, spacing: 2) {
                 HStack {
-                    Text(displayName).font(.callout.weight(.semibold))
+                    Text(displayName)
+                        .font(TBTypography.meta.weight(.semibold))
+                        .foregroundStyle(TBColor.textPrimary)
                     Spacer()
                     if let date = conv.lastMessageAt {
                         Text(date.relativeShort)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(TBTypography.caption)
+                            .foregroundStyle(TBColor.textSecondary)
                     }
                 }
                 if let last = conv.lastMessage?.text {
-                    Text(last).font(.footnote)
-                        .foregroundStyle(.secondary)
+                    Text(last)
+                        .font(TBTypography.caption)
+                        .foregroundStyle(TBColor.textSecondary)
                         .lineLimit(2)
                 }
                 if (conv.unreadCount ?? 0) > 0 {
                     Text("\(conv.unreadCount ?? 0) unread")
-                        .font(.caption2)
-                        .foregroundStyle(.tint)
+                        .font(TBTypography.micro)
+                        .foregroundStyle(TBColor.accent)
                 }
             }
         }

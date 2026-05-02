@@ -22,28 +22,29 @@ struct MediaCarouselView: View {
         AsyncImage(url: m.bestURL) { phase in
             switch phase {
             case .empty:
-                Color(.tertiarySystemFill)
+                TBColor.base2
             case .success(let image):
                 image.resizable().scaledToFill()
             case .failure:
-                Color(.tertiarySystemFill).overlay {
+                ZStack {
+                    TBColor.base2
                     Image(systemName: "photo")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(TBColor.textTertiary)
                 }
             @unknown default:
-                Color(.tertiarySystemFill)
+                TBColor.base2
             }
         }
         .frame(maxWidth: .infinity)
         .aspectRatio(max(0.4, min(2.5, aspect)), contentMode: .fit)
-        .clipShape(.rect(cornerRadius: 14))
+        .clipShape(RoundedRectangle(cornerRadius: TBLayout.radiusPostRow, style: .continuous))
         .overlay(alignment: .topTrailing) {
             if let alt = m.altText, !alt.isEmpty {
                 Text("ALT")
-                    .font(.caption2.weight(.bold))
+                    .font(TBTypography.micro.weight(.bold))
                     .padding(.horizontal, 6).padding(.vertical, 2)
-                    .background(.black.opacity(0.6), in: .rect(cornerRadius: 4))
-                    .foregroundStyle(.white)
+                    .background(TBColor.inverse.opacity(0.72), in: RoundedRectangle(cornerRadius: 4, style: .continuous))
+                    .foregroundStyle(TBColor.textOnInverse)
                     .padding(8)
             }
         }
@@ -57,17 +58,17 @@ struct MediaCarouselView: View {
                 AsyncImage(url: m.thumbURL) { phase in
                     switch phase {
                     case .empty:
-                        Color(.tertiarySystemFill)
+                        TBColor.base2
                     case .success(let image):
                         image.resizable().scaledToFill()
                     case .failure:
-                        Color(.tertiarySystemFill)
+                        TBColor.base2
                     @unknown default:
-                        Color(.tertiarySystemFill)
+                        TBColor.base2
                     }
                 }
                 .frame(height: 140)
-                .clipShape(.rect(cornerRadius: 10))
+                .clipShape(RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous))
                 .accessibilityLabel(m.altText ?? "Image")
             }
         }

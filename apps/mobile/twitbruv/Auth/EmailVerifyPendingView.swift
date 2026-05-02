@@ -15,14 +15,15 @@ struct EmailVerifyPendingView: View {
     }
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 24) {
             Spacer()
             Image(systemName: "envelope.badge")
                 .font(.system(size: 56))
-                .foregroundStyle(.tint)
+                .foregroundStyle(TBColor.accent)
 
             Text("Verify your email")
-                .font(.title2.weight(.semibold))
+                .font(TBTypography.pageTitle)
+                .foregroundStyle(TBColor.textPrimary)
 
             Text(
                 email.isEmpty
@@ -30,62 +31,62 @@ struct EmailVerifyPendingView: View {
                     : "We sent a verification link to \(email). Tap it to continue."
             )
             .multilineTextAlignment(.center)
+            .font(TBTypography.bodySecondary)
+            .foregroundStyle(TBColor.textSecondary)
             .padding(.horizontal)
-            .foregroundStyle(.secondary)
 
             if let resendMessage {
                 Text(resendMessage)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
+                    .font(TBTypography.meta)
+                    .foregroundStyle(TBColor.textSecondary)
             }
 
             Spacer()
 
             VStack(spacing: 12) {
                 #if DEBUG
-                Button {
+                TBButton(
+                    title: "Seed + continue locally",
+                    style: .primary,
+                    expands: true,
+                    isLoading: env.devTools.isSeeding
+                ) {
                     Task { await seedAndContinue() }
-                } label: {
-                    if env.devTools.isSeeding {
-                        ProgressView()
-                    } else {
-                        Text("Seed + continue locally").frame(maxWidth: .infinity)
-                    }
                 }
-                .buttonStyle(.borderedProminent)
                 #endif
 
-                Button {
+                TBButton(
+                    title: "I've verified — continue",
+                    style: .primary,
+                    expands: true,
+                    isLoading: isChecking
+                ) {
                     Task { await checkAgain() }
-                } label: {
-                    if isChecking {
-                        ProgressView()
-                    } else {
-                        Text("I've verified — continue").frame(maxWidth: .infinity)
-                    }
                 }
-                .buttonStyle(.borderedProminent)
-                .disabled(isChecking)
 
-                Button {
+                TBButton(
+                    title: "Resend verification email",
+                    style: .outline,
+                    expands: true,
+                    isLoading: isResending,
+                    isDisabled: email.isEmpty
+                ) {
                     Task { await resend() }
-                } label: {
-                    if isResending {
-                        ProgressView()
-                    } else {
-                        Text("Resend verification email").frame(maxWidth: .infinity)
-                    }
                 }
-                .buttonStyle(.bordered)
-                .disabled(isResending || email.isEmpty)
 
-                Button("Sign out", role: .destructive) {
+                TBButton(
+                    title: "Sign out",
+                    style: .dangerLight,
+                    expands: true
+                ) {
                     Task { await env.auth.signOut() }
                 }
             }
-            .padding(.horizontal)
+            .padding(.horizontal, TBLayout.pagePadding)
         }
         .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(TBColor.base1)
     }
 
     private func resend() async {

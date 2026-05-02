@@ -25,13 +25,11 @@ struct HomeFeedView: View {
     var body: some View {
         NavigationStack(path: $path) {
             VStack(spacing: 0) {
-                Picker("Feed", selection: $scope) {
-                    ForEach(FeedScope.allCases) { s in
-                        Text(s.label).tag(s)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal)
+                TBFeedSegmented(
+                    selection: $scope,
+                    options: FeedScope.allCases.map { ($0.label, $0) }
+                )
+                .padding(.horizontal, TBLayout.pagePadding)
                 .padding(.bottom, 8)
 
                 if let loader = loader(for: scope) {
@@ -53,7 +51,9 @@ struct HomeFeedView: View {
                     )
                 } else {
                     ProgressView()
+                        .tint(TBColor.accent)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(TBColor.base1)
                 }
             }
             .navigationTitle("Home")

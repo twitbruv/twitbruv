@@ -12,10 +12,12 @@ struct MyProfileView: View {
                 } else {
                     VStack(spacing: 12) {
                         Text("No handle set.")
-                            .foregroundStyle(.secondary)
+                            .font(TBTypography.bodySecondary)
+                            .foregroundStyle(TBColor.textSecondary)
                         NavigationLink("Settings / diagnostics") {
                             SettingsView()
                         }
+                        .foregroundStyle(TBColor.accent)
                     }
                 }
             }
@@ -25,6 +27,7 @@ struct MyProfileView: View {
                         SettingsView()
                     } label: {
                         Image(systemName: "gearshape")
+                            .foregroundStyle(TBColor.accent)
                     }
                 }
             }
@@ -95,5 +98,7 @@ struct SettingsView: View {
             }
         }
         .navigationTitle("Settings")
+        .scrollContentBackground(.hidden)
+        .background(TBColor.base1)
     }
 }

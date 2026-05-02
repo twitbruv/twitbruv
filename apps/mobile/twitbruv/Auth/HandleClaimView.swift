@@ -12,50 +12,77 @@ struct HandleClaimView: View {
             Spacer()
             Image(systemName: "person.text.rectangle")
                 .font(.system(size: 56))
-                .foregroundStyle(.tint)
-            Text("Pick a handle").font(.title2.weight(.semibold))
+                .foregroundStyle(TBColor.accent)
+            Text("Pick a handle")
+                .font(TBTypography.pageTitle)
+                .foregroundStyle(TBColor.textPrimary)
             Text("Your handle is how people find you. Letters, numbers, and underscores only.")
                 .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
+                .font(TBTypography.bodySecondary)
+                .foregroundStyle(TBColor.textSecondary)
                 .padding(.horizontal)
 
-            HStack {
-                Text("@").foregroundStyle(.secondary)
+            HStack(spacing: 8) {
+                Text("@")
+                    .font(TBTypography.body)
+                    .foregroundStyle(TBColor.textSecondary)
                 TextField("yourhandle", text: $handle)
+                    .font(TBTypography.body)
+                    .foregroundStyle(TBColor.textPrimary)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
             }
-            .padding()
-            .background(Color(.secondarySystemBackground), in: .rect(cornerRadius: 12))
-            .padding(.horizontal)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(TBColor.base2, in: RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
+                    .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
+            }
+            .padding(.horizontal, TBLayout.pagePadding)
 
             if let errorMessage {
-                Text(errorMessage).foregroundStyle(.red).font(.callout)
+                Text(errorMessage)
+                    .font(TBTypography.meta)
+                    .foregroundStyle(TBColor.danger)
+                    .padding(.horizontal)
             }
 
-            Button {
+            TBButton(
+                title: "Claim handle",
+                style: .primary,
+                expands: true,
+                isLoading: isSubmitting,
+                isDisabled: !isValid
+            ) {
                 Task { await submit() }
-            } label: {
-                if isSubmitting { ProgressView() }
-                else { Text("Claim handle").frame(maxWidth: .infinity) }
             }
-            .buttonStyle(.borderedProminent)
-            .padding(.horizontal)
-            .disabled(!isValid || isSubmitting)
+            .padding(.horizontal, TBLayout.pagePadding)
 
             #if DEBUG
-            Button("Seed + continue locally") {
+            TBButton(
+                title: "Seed + continue locally",
+                style: .outline,
+                expands: true
+            ) {
                 Task { await seedAndContinue() }
             }
-            .buttonStyle(.bordered)
+            .padding(.horizontal, TBLayout.pagePadding)
             #endif
 
-            Button("Sign out", role: .destructive) {
+            TBButton(
+                title: "Sign out",
+                style: .dangerLight,
+                expands: true
+            ) {
                 Task { await env.auth.signOut() }
             }
+            .padding(.horizontal, TBLayout.pagePadding)
+
             Spacer()
         }
-        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(TBColor.base1)
     }
 
     private var isValid: Bool {

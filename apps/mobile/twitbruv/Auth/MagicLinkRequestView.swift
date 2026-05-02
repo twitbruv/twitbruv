@@ -8,43 +8,49 @@ struct MagicLinkRequestView: View {
     @State private var status: String?
 
     var body: some View {
-        Form {
-            Section {
-                TextField("Email", text: $email)
-                    .textContentType(.emailAddress)
-                    .keyboardType(.emailAddress)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-            } footer: {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                TBTextField(
+                    title: "Email",
+                    text: $email,
+                    keyboard: .emailAddress,
+                    contentType: .emailAddress,
+                    autocap: .never
+                )
+
                 Text(
                     "Open the link from the same device. Once your session is set, return to the app and tap continue."
                 )
-            }
+                .font(TBTypography.caption)
+                .foregroundStyle(TBColor.textSecondary)
 
-            if let status {
-                Section {
-                    Text(status).font(.callout)
+                if let status {
+                    Text(status)
+                        .font(TBTypography.meta)
+                        .foregroundStyle(TBColor.textPrimary)
                 }
-            }
 
-            Section {
-                Button {
+                TBButton(
+                    title: "Send magic link",
+                    style: .primary,
+                    expands: true,
+                    isLoading: isSubmitting,
+                    isDisabled: !email.contains("@")
+                ) {
                     Task { await submit() }
-                } label: {
-                    if isSubmitting {
-                        ProgressView()
-                    } else {
-                        Text("Send magic link").frame(maxWidth: .infinity)
-                    }
                 }
-                .buttonStyle(.borderedProminent)
-                .disabled(!email.contains("@") || isSubmitting)
 
-                Button("I've signed in — continue") {
+                TBButton(
+                    title: "I've signed in — continue",
+                    style: .outline,
+                    expands: true
+                ) {
                     Task { await env.auth.bootstrap() }
                 }
             }
+            .padding(TBLayout.pagePadding)
         }
+        .background(TBColor.base1)
         .navigationTitle("Magic link")
     }
 

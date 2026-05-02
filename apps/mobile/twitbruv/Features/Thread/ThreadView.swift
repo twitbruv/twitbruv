@@ -110,9 +110,14 @@ struct ThreadView: View {
                     }
                 }
                 .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .background(TBColor.base1)
                 .refreshable { await vm.load() }
             } else {
                 ProgressView()
+                    .tint(TBColor.accent)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(TBColor.base1)
             }
         }
         .navigationTitle("Thread")

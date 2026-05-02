@@ -37,9 +37,15 @@ struct UsersListView: View {
                             await loader.loadMore()
                         }
                     }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                    .background(TBColor.base1)
                     .refreshable { await loader.reload() }
                 } else {
                     ProgressView()
+                        .tint(TBColor.accent)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(TBColor.base1)
                 }
             }
             .navigationTitle(title)
@@ -47,6 +53,7 @@ struct UsersListView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
+                        .foregroundStyle(TBColor.accent)
                 }
             }
             .task {

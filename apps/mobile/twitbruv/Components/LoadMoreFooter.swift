@@ -12,6 +12,7 @@ struct LoadMoreFooter: View {
                     Spacer()
                     if isLoading {
                         ProgressView()
+                            .tint(TBColor.accent)
                     } else {
                         Color.clear.frame(height: 1)
                     }

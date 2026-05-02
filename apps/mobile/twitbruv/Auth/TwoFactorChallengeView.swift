@@ -9,35 +9,48 @@ struct TwoFactorChallengeView: View {
     @State private var errorMessage: String?
 
     var body: some View {
-        Form {
-            Section {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
                 Toggle("Use backup code", isOn: $useBackup)
-                TextField(
-                    useBackup ? "Backup code" : "6-digit code",
-                    text: $code
-                )
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .keyboardType(useBackup ? .default : .numberPad)
-            }
-
-            if let errorMessage {
-                Section {
-                    Text(errorMessage).foregroundStyle(.red).font(.callout)
+                    .tint(TBColor.inverse)
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
+                        .fill(TBColor.base2)
+                    RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
+                        .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
+                    TextField(
+                        useBackup ? "Backup code" : "6-digit code",
+                        text: $code
+                    )
+                    .font(TBTypography.body)
+                    .foregroundStyle(TBColor.textPrimary)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(useBackup ? .default : .numberPad)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
                 }
-            }
+                .frame(minHeight: 40)
 
-            Section {
-                Button {
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(TBTypography.meta)
+                        .foregroundStyle(TBColor.danger)
+                }
+
+                TBButton(
+                    title: "Verify",
+                    style: .primary,
+                    expands: true,
+                    isLoading: isSubmitting,
+                    isDisabled: code.isEmpty
+                ) {
                     Task { await submit() }
-                } label: {
-                    if isSubmitting { ProgressView() }
-                    else { Text("Verify").frame(maxWidth: .infinity) }
                 }
-                .buttonStyle(.borderedProminent)
-                .disabled(code.isEmpty || isSubmitting)
             }
+            .padding(TBLayout.pagePadding)
         }
+        .background(TBColor.base1)
         .navigationTitle("Two-factor")
     }
 

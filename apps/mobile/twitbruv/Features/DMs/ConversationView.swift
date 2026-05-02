@@ -165,6 +165,7 @@ struct ConversationView: View {
                 onTyping: { vm?.sendTyping() }
             )
         }
+        .background(TBColor.base1)
         .navigationTitle(vm?.conversation?.name ?? "Direct message")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -173,6 +174,7 @@ struct ConversationView: View {
                     showSettings = true
                 } label: {
                     Image(systemName: "info.circle")
+                        .foregroundStyle(TBColor.accent)
                 }
             }
         }
@@ -230,12 +232,14 @@ struct ConversationView: View {
                     }
                     if !vm.typing.isEmpty {
                         Text("typing…")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(TBTypography.caption)
+                            .foregroundStyle(TBColor.textTertiary)
                             .listRowSeparator(.hidden)
                     }
                 }
                 .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .background(TBColor.base1)
                 .onChange(of: vm.messages.count) { _, _ in
                     if let last = vm.messages.last?.id {
                         withAnimation {
@@ -251,7 +255,10 @@ struct ConversationView: View {
                 }
             }
         } else {
-            ProgressView().frame(maxHeight: .infinity)
+            ProgressView()
+                .tint(TBColor.accent)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(TBColor.base1)
         }
     }
 }
@@ -266,12 +273,15 @@ private struct MessageBubble: View {
             VStack(alignment: isMine ? .trailing : .leading, spacing: 4) {
                 if let text = message.text, !text.isEmpty {
                     Text(text)
+                        .font(TBTypography.bodySecondary)
                         .padding(10)
                         .background(
-                            isMine ? Color.accentColor : Color(.tertiarySystemFill),
-                            in: .rect(cornerRadius: 14)
+                            isMine ? TBColor.inverse : TBColor.subtleFill,
+                            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
                         )
-                        .foregroundStyle(isMine ? .white : .primary)
+                        .foregroundStyle(
+                            isMine ? TBColor.textOnInverse : TBColor.textPrimary
+                        )
                 }
                 if let media = message.media, let url = media.bestURL {
                     AsyncImage(url: url) { phase in
@@ -279,25 +289,29 @@ private struct MessageBubble: View {
                         case .success(let img):
                             img.resizable().scaledToFit()
                         default:
-                            Color(.tertiarySystemFill)
+                            TBColor.base2
                         }
                     }
                     .frame(maxWidth: 240, maxHeight: 240)
-                    .clipShape(.rect(cornerRadius: 14))
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
                 if let reactions = message.reactions, !reactions.isEmpty {
                     HStack(spacing: 4) {
                         ForEach(reactions, id: \.emoji) { r in
                             Text("\(r.emoji) \(r.count)")
-                                .font(.caption)
+                                .font(TBTypography.caption)
                                 .padding(.horizontal, 6).padding(.vertical, 2)
-                                .background(.thinMaterial, in: .capsule)
+                                .background(TBColor.base2, in: .capsule)
+                                .overlay {
+                                    Capsule()
+                                        .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
+                                }
                         }
                     }
                 }
                 Text(message.createdAt.relativeShort)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .font(TBTypography.micro)
+                    .foregroundStyle(TBColor.textTertiary)
             }
             if !isMine { Spacer(minLength: 60) }
         }
@@ -313,20 +327,33 @@ struct DMComposeBar: View {
         HStack(spacing: 8) {
             TextField("Message", text: $text, axis: .vertical)
                 .lineLimit(1...5)
+                .font(TBTypography.bodySecondary)
+                .foregroundStyle(TBColor.textPrimary)
                 .padding(8)
-                .background(Color(.secondarySystemBackground), in: .rect(cornerRadius: 18))
+                .background(TBColor.base2, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
+                }
                 .onChange(of: text) { _, _ in onTyping() }
             Button {
                 onSend()
             } label: {
                 Image(systemName: "arrow.up.circle.fill")
                     .font(.title)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(TBColor.accent)
             }
             .disabled(text.trimmingCharacters(in: .whitespaces).isEmpty)
         }
-        .padding(.horizontal)
+        .padding(.horizontal, TBLayout.pagePadding)
         .padding(.vertical, 8)
-        .background(.bar)
+        .background(TBColor.base1)
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(TBColor.borderNeutral)
+                .frame(height: 0.5)
+        }
     }
 }
 
@@ -336,8 +363,11 @@ private struct ReactionPicker: View {
     private let emojis = ["👍", "❤️", "😂", "😮", "😢", "🙏", "🔥", "🎉"]
 
     var body: some View {
-        VStack {
-            Text("Pick a reaction").font(.headline).padding(.top)
+        VStack(spacing: 12) {
+            Text("Pick a reaction")
+                .font(TBTypography.cardTitle)
+                .foregroundStyle(TBColor.textPrimary)
+                .padding(.top)
             HStack(spacing: 16) {
                 ForEach(emojis, id: \.self) { e in
                     Button {
@@ -346,10 +376,13 @@ private struct ReactionPicker: View {
                     } label: {
                         Text(e).font(.system(size: 36))
                     }
+                    .buttonStyle(.plain)
                 }
             }
             .padding()
         }
+        .frame(maxWidth: .infinity)
+        .background(TBColor.base1)
         .presentationDetents([.height(160)])
     }
 }

@@ -160,8 +160,13 @@ struct SearchView: View {
                         }
                     }
                     .listStyle(.insetGrouped)
+                    .scrollContentBackground(.hidden)
+                    .background(TBColor.base1)
                 } else {
                     ProgressView()
+                        .tint(TBColor.accent)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(TBColor.base1)
                 }
             }
             .navigationTitle("Search")
@@ -235,9 +240,15 @@ struct HashtagView: View {
                     ) { await loader.loadMore() }
                 }
                 .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .background(TBColor.base1)
                 .refreshable { await loader.reload() }
             } else {
-                ProgressView().task {
+                ProgressView()
+                    .tint(TBColor.accent)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(TBColor.base1)
+                    .task {
                     loader = PagedLoader<Post, PostsHashtagResponse>(
                         api: env.api,
                         endpoint: { cursor in API.Hashtags.posts(tag, cursor: cursor) },

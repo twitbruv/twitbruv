@@ -1,47 +1,54 @@
 import SwiftUI
 
-struct UserRowView: View {
+struct UserRowView<Trailing: View>: View {
     let user: UserSummary
-    var trailing: AnyView?
+    let trailing: () -> Trailing
 
-    init(user: UserSummary, @ViewBuilder trailing: () -> some View = { EmptyView() }) {
+    init(user: UserSummary, @ViewBuilder trailing: @escaping () -> Trailing) {
         self.user = user
-        self.trailing = AnyView(trailing())
+        self.trailing = trailing
     }
 
     var body: some View {
         HStack(spacing: 12) {
             AvatarView(
                 urlString: user.avatarUrl,
-                size: 44,
+                size: TBLayout.hitTarget,
                 fallbackInitial: user.displayName ?? user.handle
             )
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 4) {
                     Text(user.displayName ?? user.handle ?? "—")
-                        .font(.body.weight(.semibold))
+                        .font(TBTypography.body.weight(.semibold))
+                        .foregroundStyle(TBColor.textPrimary)
                     if user.isVerified == true {
                         Image(systemName: "checkmark.seal.fill")
                             .font(.caption)
-                            .foregroundStyle(.tint)
+                            .foregroundStyle(TBColor.accent)
                     }
                 }
                 if let handle = user.handle {
                     Text("@\(handle)")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
+                        .font(TBTypography.bodySecondary)
+                        .foregroundStyle(TBColor.textSecondary)
                 }
                 if let bio = user.bio, !bio.isEmpty {
                     Text(bio)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .font(TBTypography.caption)
+                        .foregroundStyle(TBColor.textSecondary)
                         .lineLimit(2)
                 }
             }
             Spacer()
-            trailing
+            trailing()
         }
         .contentShape(.rect)
+    }
+}
+
+extension UserRowView where Trailing == EmptyView {
+    init(user: UserSummary) {
+        self.init(user: user) { EmptyView() }
     }
 }
 

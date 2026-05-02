@@ -10,64 +10,75 @@ struct SignInView: View {
     @State private var errorMessage: String?
 
     var body: some View {
-        Form {
-            Section {
-                TextField("Email", text: $email)
-                    .textContentType(.emailAddress)
-                    .keyboardType(.emailAddress)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                SecureField("Password", text: $password)
-                    .textContentType(.password)
-            }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                TBTextField(
+                    title: "Email",
+                    text: $email,
+                    keyboard: .emailAddress,
+                    contentType: .emailAddress,
+                    autocap: .never
+                )
+                TBSecureField(title: "Password", text: $password)
 
-            if let errorMessage {
-                Section {
+                if let errorMessage {
                     Text(errorMessage)
-                        .foregroundStyle(.red)
-                        .font(.callout)
+                        .font(TBTypography.meta)
+                        .foregroundStyle(TBColor.danger)
                 }
-            }
 
-            Section {
-                Button {
+                TBButton(
+                    title: "Sign in",
+                    style: .primary,
+                    expands: true,
+                    isLoading: isSubmitting,
+                    isDisabled: !isValid
+                ) {
                     Task { await submit() }
-                } label: {
-                    if isSubmitting {
-                        ProgressView()
-                    } else {
-                        Text("Sign in")
-                            .frame(maxWidth: .infinity)
+                }
+
+                VStack(alignment: .leading, spacing: 10) {
+                    NavigationLink {
+                        MagicLinkRequestView()
+                    } label: {
+                        linkLabel("Forgot password? Use a magic link")
+                    }
+                    NavigationLink {
+                        OAuthSignInView(provider: "github")
+                    } label: {
+                        linkLabel("Sign in with GitHub")
+                    }
+                    NavigationLink {
+                        OAuthSignInView(provider: "google")
+                    } label: {
+                        linkLabel("Sign in with Google")
+                    }
+                    NavigationLink {
+                        OAuthSignInView(provider: "gitlab")
+                    } label: {
+                        linkLabel("Sign in with GitLab")
                     }
                 }
-                .buttonStyle(.borderedProminent)
-                .disabled(!isValid || isSubmitting)
-            }
 
-            Section {
-                NavigationLink("Forgot password? Use a magic link") {
-                    MagicLinkRequestView()
-                }
-                NavigationLink("Sign in with GitHub") {
-                    OAuthSignInView(provider: "github")
-                }
-                NavigationLink("Sign in with Google") {
-                    OAuthSignInView(provider: "google")
-                }
-                NavigationLink("Sign in with GitLab") {
-                    OAuthSignInView(provider: "gitlab")
-                }
-            }
-
-            Section {
                 NavigationLink {
                     SignUpView(path: $path)
                 } label: {
                     Text("Create an account")
+                        .font(TBTypography.meta.weight(.medium))
+                        .foregroundStyle(TBColor.textPrimary)
                         .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(TBColor.base2, in: Capsule(style: .continuous))
+                        .overlay {
+                            Capsule(style: .continuous)
+                                .strokeBorder(TBColor.borderNeutral, lineWidth: 1)
+                        }
                 }
+                .buttonStyle(.plain)
             }
+            .padding(TBLayout.pagePadding)
         }
+        .background(TBColor.base1)
         .navigationTitle("Sign in")
         .navigationDestination(isPresented: Binding(
             get: { env.auth.pendingTwoFactor != nil },
@@ -75,6 +86,19 @@ struct SignInView: View {
         )) {
             TwoFactorChallengeView()
         }
+    }
+
+    private func linkLabel(_ s: String) -> some View {
+        HStack {
+            Text(s)
+                .font(TBTypography.bodySecondary)
+                .foregroundStyle(TBColor.accent)
+            Spacer()
+            Image(systemName: "chevron.right")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(TBColor.textTertiary)
+        }
+        .padding(.vertical, 4)
     }
 
     private var isValid: Bool {

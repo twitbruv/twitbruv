@@ -56,7 +56,7 @@ struct NewConversationView: View {
                                     UserRowView(user: user)
                                     if selected.contains(where: { $0.id == user.id }) {
                                         Image(systemName: "checkmark")
-                                            .foregroundStyle(.tint)
+                                            .foregroundStyle(TBColor.accent)
                                     }
                                 }
                             }
@@ -65,11 +65,17 @@ struct NewConversationView: View {
                     }
                 }
                 if let errorMessage {
-                    Section { Text(errorMessage).foregroundStyle(.red) }
+                    Section {
+                        Text(errorMessage)
+                            .font(TBTypography.meta)
+                            .foregroundStyle(TBColor.danger)
+                    }
                 }
             }
             .navigationTitle("New message")
             .navigationBarTitleDisplayMode(.inline)
+            .scrollContentBackground(.hidden)
+            .background(TBColor.base1)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {

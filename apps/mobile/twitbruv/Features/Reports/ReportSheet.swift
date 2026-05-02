@@ -51,44 +51,76 @@ struct ReportSheet: View {
         ("violence", "Violence or self-harm"),
         ("nsfw", "Adult content not labeled"),
         ("impersonation", "Impersonation"),
-        ("other", "Other")
+        ("other", "Other"),
     ]
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Reporting \(subject.label)") {
-                    Picker("Reason", selection: $reason) {
-                        ForEach(reasons, id: \.id) { item in
-                            Text(item.label).tag(item.id)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    Text("Reporting \(subject.label)")
+                        .font(TBTypography.label)
+                        .foregroundStyle(TBColor.textSecondary)
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Reason")
+                            .font(TBTypography.label)
+                            .foregroundStyle(TBColor.textPrimary)
+                        Picker("Reason", selection: $reason) {
+                            ForEach(reasons, id: \.id) { item in
+                                Text(item.label).tag(item.id)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .tint(TBColor.accent)
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Details (optional)")
+                            .font(TBTypography.label)
+                            .foregroundStyle(TBColor.textPrimary)
+                        ZStack(alignment: .topLeading) {
+                            RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
+                                .fill(TBColor.base2)
+                            RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
+                                .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
+                            TextField("", text: $details, axis: .vertical)
+                                .font(TBTypography.body)
+                                .foregroundStyle(TBColor.textPrimary)
+                                .lineLimit(3...6)
+                                .padding(12)
                         }
                     }
-                    TextField("Details (optional)", text: $details, axis: .vertical)
-                        .lineLimit(3...6)
-                }
-                if sent {
-                    Section {
+
+                    if sent {
                         Label("Report submitted", systemImage: "checkmark.circle.fill")
-                            .foregroundStyle(.green)
+                            .font(TBTypography.meta.weight(.medium))
+                            .foregroundStyle(TBColor.success)
+                    }
+
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .font(TBTypography.meta)
+                            .foregroundStyle(TBColor.danger)
                     }
                 }
-                if let errorMessage {
-                    Section {
-                        Text(errorMessage).foregroundStyle(.red)
-                    }
-                }
+                .padding(TBLayout.pagePadding)
             }
+            .background(TBColor.base1)
             .navigationTitle("Report")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
+                        .foregroundStyle(TBColor.textSecondary)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(sent ? "Done" : "Submit") {
                         if sent { dismiss() }
                         else { Task { await submit() } }
                     }
+                    .fontWeight(.semibold)
+                    .foregroundStyle(TBColor.accent)
                     .disabled(isSubmitting)
                 }
             }

@@ -86,7 +86,7 @@ struct NotificationsView: View {
                             NotificationRow(item: item)
                                 .listRowBackground(
                                     item.readAt == nil
-                                        ? Color.accentColor.opacity(0.06)
+                                        ? TBColor.subtleFill
                                         : Color.clear
                                 )
                                 .contentShape(.rect)
@@ -104,15 +104,20 @@ struct NotificationsView: View {
                         ) { await vm.loadMore() }
                     }
                     .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                    .background(TBColor.base1)
                     .refreshable { await vm.reload() }
                 } else {
                     ProgressView()
+                        .tint(TBColor.accent)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(TBColor.base1)
                 }
             }
             .navigationTitle(
                 (vm?.unreadCount ?? 0) > 0
-                    ? "Alerts (\(vm?.unreadCount ?? 0))"
-                    : "Alerts"
+                    ? "Notifications (\(vm?.unreadCount ?? 0))"
+                    : "Notifications"
             )
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -121,6 +126,7 @@ struct NotificationsView: View {
                         Button("Mark read") {
                             Task { await vm?.markAllRead() }
                         }
+                        .foregroundStyle(TBColor.accent)
                     }
                 }
             }
@@ -149,7 +155,7 @@ private struct NotificationRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: icon)
-                .foregroundStyle(.tint)
+                .foregroundStyle(TBColor.accent)
                 .frame(width: 28, height: 28)
             VStack(alignment: .leading, spacing: 4) {
                 if let actor = item.actor {
@@ -159,23 +165,26 @@ private struct NotificationRow: View {
                             fallbackInitial: actor.displayName ?? actor.handle
                         )
                         Text(actor.displayName ?? actor.handle ?? "—")
-                            .font(.callout.weight(.semibold))
+                            .font(TBTypography.meta.weight(.semibold))
+                            .foregroundStyle(TBColor.textPrimary)
                         Text(verb)
-                            .font(.callout)
-                            .foregroundStyle(.secondary)
+                            .font(TBTypography.meta)
+                            .foregroundStyle(TBColor.textSecondary)
                     }
                 } else {
-                    Text(verb).font(.callout)
+                    Text(verb)
+                        .font(TBTypography.meta)
+                        .foregroundStyle(TBColor.textPrimary)
                 }
                 if let post = item.post, !post.text.isEmpty {
                     Text(post.text)
-                        .font(.footnote)
+                        .font(TBTypography.caption)
                         .lineLimit(2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(TBColor.textSecondary)
                 }
                 Text(item.createdAt.relativeShort)
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
+                    .font(TBTypography.micro)
+                    .foregroundStyle(TBColor.textTertiary)
             }
         }
         .padding(.vertical, 4)

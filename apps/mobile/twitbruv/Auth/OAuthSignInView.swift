@@ -14,36 +14,40 @@ struct OAuthSignInView: View {
             Spacer()
             Image(systemName: "lock.shield")
                 .font(.system(size: 48))
-                .foregroundStyle(.tint)
+                .foregroundStyle(TBColor.accent)
             Text("Sign in with \(provider.capitalized)")
-                .font(.title2.weight(.semibold))
+                .font(TBTypography.pageTitle)
+                .foregroundStyle(TBColor.textPrimary)
             Text(
                 "Opens a secure browser to authenticate, then returns you here once your session is set."
             )
             .multilineTextAlignment(.center)
-            .foregroundStyle(.secondary)
+            .font(TBTypography.bodySecondary)
+            .foregroundStyle(TBColor.textSecondary)
             .padding(.horizontal)
 
             if let errorMessage {
-                Text(errorMessage).foregroundStyle(.red).font(.callout)
+                Text(errorMessage)
+                    .foregroundStyle(TBColor.danger)
+                    .font(TBTypography.meta)
             }
 
-            Button {
+            TBButton(
+                title: "Continue",
+                style: .primary,
+                expands: true,
+                isLoading: isRunning,
+                isDisabled: isRunning
+            ) {
                 Task { await start() }
-            } label: {
-                if isRunning {
-                    ProgressView()
-                } else {
-                    Text("Continue").frame(maxWidth: .infinity)
-                }
             }
-            .buttonStyle(.borderedProminent)
             .padding(.horizontal)
-            .disabled(isRunning)
 
             Spacer()
         }
         .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(TBColor.base1)
         .navigationTitle(provider.capitalized)
     }
 

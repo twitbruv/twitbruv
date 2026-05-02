@@ -26,12 +26,15 @@ struct MyListsView: View {
                 } label: {
                     HStack {
                         Image(systemName: "list.bullet.rectangle")
-                            .foregroundStyle(.tint)
+                            .foregroundStyle(TBColor.accent)
                         VStack(alignment: .leading) {
-                            Text(list.name).font(.callout.weight(.semibold))
+                            Text(list.name)
+                                .font(TBTypography.meta.weight(.semibold))
+                                .foregroundStyle(TBColor.textPrimary)
                             if let n = list.memberCount {
-                                Text("\(n) members").font(.caption)
-                                    .foregroundStyle(.secondary)
+                                Text("\(n) members")
+                                    .font(TBTypography.caption)
+                                    .foregroundStyle(TBColor.textSecondary)
                             }
                         }
                     }
@@ -39,11 +42,14 @@ struct MyListsView: View {
             }
         }
         .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
+        .background(TBColor.base1)
         .navigationTitle("Lists")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button { showCreate = true } label: {
                     Image(systemName: "plus")
+                        .foregroundStyle(TBColor.accent)
                 }
             }
         }
@@ -69,6 +75,8 @@ struct MyListsView: View {
             }
             .navigationTitle("New list")
             .navigationBarTitleDisplayMode(.inline)
+            .scrollContentBackground(.hidden)
+            .background(TBColor.base1)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { showCreate = false }
@@ -121,12 +129,15 @@ struct ListDetailView: View {
             if let loader {
                 List {
                     Section {
-                        Picker("Tab", selection: $tab) {
-                            Text("Timeline").tag(ListTab.timeline)
-                            Text("Members (\(members.count))").tag(ListTab.members)
-                        }
-                        .pickerStyle(.segmented)
+                        TBFeedSegmented(
+                            selection: $tab,
+                            options: [
+                                ("Timeline", ListTab.timeline),
+                                ("Members (\(members.count))", ListTab.members),
+                            ]
+                        )
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 8, trailing: 16))
+                        .listRowSeparator(.hidden)
                     }
 
                     switch tab {
@@ -146,12 +157,18 @@ struct ListDetailView: View {
                     }
                 }
                 .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .background(TBColor.base1)
                 .refreshable {
                     await loader.reload()
                     await loadMembers()
                 }
             } else {
-                ProgressView().task { await setup() }
+                ProgressView()
+                    .tint(TBColor.accent)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(TBColor.base1)
+                    .task { await setup() }
             }
         }
         .navigationTitle(list.name)
@@ -159,6 +176,7 @@ struct ListDetailView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Button { showAdd = true } label: {
                     Image(systemName: "person.crop.circle.badge.plus")
+                        .foregroundStyle(TBColor.accent)
                 }
             }
         }
@@ -221,7 +239,7 @@ struct AddMembersSheet: View {
                                 UserRowView(user: user)
                                 if selected.contains(user.id) {
                                     Image(systemName: "checkmark")
-                                        .foregroundStyle(.tint)
+                                        .foregroundStyle(TBColor.accent)
                                 }
                             }
                         }
@@ -231,6 +249,8 @@ struct AddMembersSheet: View {
             }
             .navigationTitle("Add members")
             .navigationBarTitleDisplayMode(.inline)
+            .scrollContentBackground(.hidden)
+            .background(TBColor.base1)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }

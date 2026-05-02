@@ -7,24 +7,27 @@ struct ErrorBanner: View {
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(.red)
+                .foregroundStyle(TBColor.warn)
             VStack(alignment: .leading, spacing: 4) {
                 Text("Something went wrong")
-                    .font(.callout.weight(.semibold))
+                    .font(TBTypography.meta.weight(.semibold))
+                    .foregroundStyle(TBColor.textPrimary)
                 Text(message)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .font(TBTypography.caption)
+                    .foregroundStyle(TBColor.textSecondary)
             }
             Spacer()
             if let onRetry {
-                Button("Retry", action: onRetry)
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+                TBButton(title: "Retry", style: .outline, action: onRetry)
             }
         }
         .padding(12)
-        .background(.thinMaterial, in: .rect(cornerRadius: 12))
-        .padding(.horizontal)
+        .background(TBColor.warnSubtle.opacity(0.85), in: RoundedRectangle(cornerRadius: TBLayout.radiusLG, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: TBLayout.radiusLG, style: .continuous)
+                .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
+        }
+        .padding(.horizontal, TBLayout.pagePadding)
     }
 }
 
@@ -36,25 +39,14 @@ struct EmptyStateView: View {
     var action: (() -> Void)?
 
     var body: some View {
-        VStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.system(size: 36))
-                .foregroundStyle(.secondary)
-            Text(title)
-                .font(.headline)
-            if let message {
-                Text(message)
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-            }
+        VStack(spacing: 16) {
+            TBEmptyState(icon: icon, title: title, message: message)
             if let actionTitle, let action {
-                Button(actionTitle, action: action)
-                    .buttonStyle(.borderedProminent)
+                TBButton(title: actionTitle, style: .primary, expands: true, action: action)
+                    .padding(.horizontal, TBLayout.pagePadding)
             }
         }
-        .padding(.vertical, 40)
+        .padding(.vertical, 32)
         .frame(maxWidth: .infinity)
     }
 }

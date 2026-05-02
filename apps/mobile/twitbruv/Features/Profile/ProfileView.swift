@@ -95,13 +95,12 @@ struct ProfileView: View {
                     }
 
                     Section {
-                        Picker("Tab", selection: $tab) {
-                            ForEach(ProfileTab.allCases) { t in
-                                Text(t.label).tag(t)
-                            }
-                        }
-                        .pickerStyle(.segmented)
+                        TBFeedSegmented(
+                            selection: $tab,
+                            options: ProfileTab.allCases.map { ($0.label, $0) }
+                        )
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 8, trailing: 16))
+                        .listRowSeparator(.hidden)
                     }
 
                     switch tab {
@@ -144,6 +143,8 @@ struct ProfileView: View {
                     }
                 }
                 .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .background(TBColor.base1)
                 .refreshable {
                     await vm.load()
                     await postsLoader?.reload()
@@ -155,6 +156,9 @@ struct ProfileView: View {
                 }
             } else {
                 ProgressView()
+                    .tint(TBColor.accent)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(TBColor.base1)
             }
         }
         .navigationTitle(handle)
@@ -236,17 +240,32 @@ private struct ProfileHeader: View {
                 AsyncImage(url: user.bannerUrl.flatMap(URL.init(string:))) { phase in
                     switch phase {
                     case .success(let img): img.resizable().scaledToFill()
-                    default: Color(.tertiarySystemFill)
+                    default: TBColor.base2
                     }
                 }
                 .frame(height: 140)
                 .clipped()
+                .overlay(alignment: .bottom) {
+                    Rectangle()
+                        .fill(
+                            LinearGradient(
+                                colors: [Color.black.opacity(0.12), Color.clear],
+                                startPoint: .bottom,
+                                endPoint: .top
+                            )
+                        )
+                        .frame(height: 48)
+                }
 
                 AvatarView(
                     urlString: user.avatarUrl,
                     size: 76,
                     fallbackInitial: user.displayName ?? user.handle
                 )
+                .overlay {
+                    Circle()
+                        .strokeBorder(TBColor.base1, lineWidth: 4)
+                }
                 .padding(.leading)
                 .offset(y: 38)
             }
@@ -255,17 +274,22 @@ private struct ProfileHeader: View {
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
                     Text(user.displayName ?? user.handle ?? "—")
-                        .font(.title3.weight(.bold))
+                        .font(TBTypography.cardTitle.weight(.bold))
+                        .foregroundStyle(TBColor.textPrimary)
                     if user.isVerified == true {
                         Image(systemName: "checkmark.seal.fill")
-                            .foregroundStyle(.tint)
+                            .foregroundStyle(TBColor.accent)
                     }
                 }
                 if let handle = user.handle {
-                    Text("@\(handle)").foregroundStyle(.secondary)
+                    Text("@\(handle)")
+                        .font(TBTypography.bodySecondary)
+                        .foregroundStyle(TBColor.textSecondary)
                 }
                 if let bio = user.bio, !bio.isEmpty {
-                    Text(bio).font(.callout)
+                    Text(bio)
+                        .font(TBTypography.bodySecondary)
+                        .foregroundStyle(TBColor.textPrimary)
                 }
                 HStack(spacing: 16) {
                     if let location = user.location, !location.isEmpty {
@@ -278,8 +302,8 @@ private struct ProfileHeader: View {
                         }
                     }
                 }
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+                .font(TBTypography.caption)
+                .foregroundStyle(TBColor.textSecondary)
             }
             .padding(.horizontal)
         }
@@ -293,26 +317,33 @@ private struct ProfileActionsRow: View {
     let user: PublicUser
 
     var body: some View {
-        HStack {
+        HStack(spacing: 10) {
             let isMe = auth.currentUser?.handle == user.handle
             if isMe {
                 NavigationLink {
                     EditProfileView()
                 } label: {
                     Text("Edit profile")
+                        .font(TBTypography.meta.weight(.medium))
+                        .foregroundStyle(TBColor.textPrimary)
                         .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(TBColor.base2, in: Capsule(style: .continuous))
+                        .overlay {
+                            Capsule(style: .continuous)
+                                .strokeBorder(TBColor.borderNeutral, lineWidth: 1)
+                        }
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.plain)
             } else {
                 let following = user.viewer?.following == true
-                Button {
+                TBButton(
+                    title: following ? "Following" : "Follow",
+                    style: following ? .outline : .primary,
+                    expands: true
+                ) {
                     Task { await vm.setFollow(!following) }
-                } label: {
-                    Text(following ? "Following" : "Follow")
-                        .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(following ? .secondary : .accentColor)
 
                 Menu {
                     let muting = user.viewer?.muting == true
@@ -329,10 +360,13 @@ private struct ProfileActionsRow: View {
                     }
                 } label: {
                     Image(systemName: "ellipsis")
-                        .frame(width: 44, height: 36)
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(TBColor.textSecondary)
+                        .frame(width: TBLayout.hitTarget, height: 36)
+                        .background(TBColor.base2, in: RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous))
                         .overlay {
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(Color(.separator))
+                            RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
+                                .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
                         }
                 }
             }
@@ -362,8 +396,12 @@ private struct ProfileMetricsRow: View {
 
     private func metric(_ label: String, value: Int) -> some View {
         HStack(spacing: 4) {
-            Text("\(value)").font(.callout.weight(.semibold))
-            Text(label).font(.callout).foregroundStyle(.secondary)
+            Text("\(value)")
+                .font(TBTypography.meta.weight(.semibold))
+                .foregroundStyle(TBColor.textPrimary)
+            Text(label)
+                .font(TBTypography.meta)
+                .foregroundStyle(TBColor.textSecondary)
         }
     }
 }
@@ -372,9 +410,14 @@ private struct ArticleRow: View {
     let article: Article
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(article.title ?? "Untitled").font(.headline)
+            Text(article.title ?? "Untitled")
+                .font(TBTypography.cardTitle)
+                .foregroundStyle(TBColor.textPrimary)
             if let subtitle = article.subtitle {
-                Text(subtitle).font(.callout).foregroundStyle(.secondary).lineLimit(2)
+                Text(subtitle)
+                    .font(TBTypography.bodySecondary)
+                    .foregroundStyle(TBColor.textSecondary)
+                    .lineLimit(2)
             }
             HStack {
                 if let pub = article.publishedAt {
@@ -384,8 +427,8 @@ private struct ArticleRow: View {
                     Text("· \(mins) min read")
                 }
             }
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            .font(TBTypography.caption)
+            .foregroundStyle(TBColor.textSecondary)
         }
         .padding(.vertical, 6)
     }

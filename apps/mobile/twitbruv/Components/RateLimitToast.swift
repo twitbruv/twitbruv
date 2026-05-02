@@ -10,27 +10,33 @@ struct RateLimitToast: View {
             if let notice = env.rateLimit, remaining > 0 {
                 HStack(spacing: 12) {
                     Image(systemName: "hourglass")
+                        .foregroundStyle(TBColor.warn)
                     VStack(alignment: .leading) {
                         Text("Slow down")
-                            .font(.callout.weight(.semibold))
+                            .font(TBTypography.meta.weight(.semibold))
+                            .foregroundStyle(TBColor.textPrimary)
                         Text(
                             notice.bucket.map { "\($0) — try in \(remaining)s" }
                                 ?? "Try in \(remaining)s"
                         )
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .font(TBTypography.caption)
+                        .foregroundStyle(TBColor.textSecondary)
                     }
                     Spacer()
                     Button {
                         env.clearRateLimit()
                     } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(TBColor.textTertiary)
                     }
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
-                .background(.thinMaterial, in: .rect(cornerRadius: 14))
+                .background(TBColor.base2, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
+                }
                 .padding(.horizontal)
                 .padding(.bottom, 12)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -72,19 +78,26 @@ struct MaintenanceBannerView: View {
             if env.isMaintenance {
                 HStack(spacing: 8) {
                     Image(systemName: "wrench.and.screwdriver.fill")
+                        .foregroundStyle(TBColor.textTertiary)
                     Text("Maintenance — some actions may fail.")
-                        .font(.footnote.weight(.medium))
+                        .font(TBTypography.caption.weight(.medium))
+                        .foregroundStyle(TBColor.textPrimary)
                     Spacer()
                     Button("Retry") {
                         env.isMaintenance = false
                         Task { await env.bootstrap() }
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+                    .font(TBTypography.caption.weight(.semibold))
+                    .foregroundStyle(TBColor.accent)
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
-                .background(.thinMaterial)
+                .background(TBColor.base2)
+                .overlay(alignment: .bottom) {
+                    Rectangle()
+                        .fill(TBColor.borderNeutral)
+                        .frame(height: 0.5)
+                }
                 .transition(.move(edge: .top).combined(with: .opacity))
             }
         }

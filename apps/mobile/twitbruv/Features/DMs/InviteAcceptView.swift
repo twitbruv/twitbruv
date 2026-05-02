@@ -15,37 +15,42 @@ struct InviteAcceptView: View {
             if let preview {
                 if let conv = preview.conversation {
                     Text(conv.name ?? "Group invite")
-                        .font(.title2.weight(.semibold))
+                        .font(TBTypography.pageTitle)
+                        .foregroundStyle(TBColor.textPrimary)
                 }
                 if let inviter = preview.inviter {
                     Text("Invited by @\(inviter.handle ?? "—")")
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
+                        .font(TBTypography.bodySecondary)
+                        .foregroundStyle(TBColor.textSecondary)
                 }
                 if let n = preview.memberCount {
-                    Text("\(n) members").font(.callout).foregroundStyle(.secondary)
+                    Text("\(n) members")
+                        .font(TBTypography.bodySecondary)
+                        .foregroundStyle(TBColor.textSecondary)
                 }
                 Spacer()
-                Button {
+                TBButton(
+                    title: preview.alreadyMember == true ? "Open" : "Accept",
+                    style: .primary,
+                    expands: true,
+                    isLoading: isAccepting
+                ) {
                     Task { await accept() }
-                } label: {
-                    if isAccepting {
-                        ProgressView()
-                    } else {
-                        Text(preview.alreadyMember == true ? "Open" : "Accept")
-                            .frame(maxWidth: .infinity)
-                    }
                 }
-                .buttonStyle(.borderedProminent)
-                .padding(.horizontal)
+                .padding(.horizontal, TBLayout.pagePadding)
             } else {
                 ProgressView()
+                    .tint(TBColor.accent)
             }
             if let errorMessage {
-                Text(errorMessage).foregroundStyle(.red).font(.callout)
+                Text(errorMessage)
+                    .foregroundStyle(TBColor.danger)
+                    .font(TBTypography.meta)
             }
         }
         .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(TBColor.base1)
         .navigationTitle("Invite")
         .task {
             await load()

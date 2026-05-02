@@ -11,17 +11,18 @@ struct ScheduledPostsView: View {
     var body: some View {
         List {
             Section {
-                Picker("Kind", selection: Binding(
-                    get: { kind },
-                    set: { new in
-                        kind = new
-                        Task { await load() }
-                    }
-                )) {
-                    Text("Scheduled").tag("scheduled")
-                    Text("Drafts").tag("draft")
+                TBFeedSegmented(
+                    selection: $kind,
+                    options: [
+                        ("Scheduled", "scheduled"),
+                        ("Drafts", "draft"),
+                    ]
+                )
+                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                .listRowSeparator(.hidden)
+                .onChange(of: kind) { _, _ in
+                    Task { await load() }
                 }
-                .pickerStyle(.segmented)
             }
 
             if items.isEmpty && !isLoading {
@@ -42,13 +43,16 @@ struct ScheduledPostsView: View {
                         Button {
                             Task { await publish(item) }
                         } label: { Label("Publish", systemImage: "paperplane") }
-                            .tint(.green)
+                            .tint(TBColor.success)
                     }
                     .onTapGesture {
                         editing = item
                     }
             }
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(TBColor.base1)
         .navigationTitle("Scheduled")
         .refreshable { await load() }
         .task { await load() }
@@ -90,7 +94,10 @@ private struct ScheduledRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(item.text).lineLimit(3)
+            Text(item.text)
+                .lineLimit(3)
+                .font(TBTypography.bodySecondary)
+                .foregroundStyle(TBColor.textPrimary)
             HStack {
                 if let date = item.scheduledAt {
                     Label(
@@ -99,12 +106,14 @@ private struct ScheduledRow: View {
                     )
                 }
                 Spacer()
-                Text(item.kind).font(.caption)
+                Text(item.kind)
+                    .font(TBTypography.caption)
                     .padding(.horizontal, 6).padding(.vertical, 2)
-                    .background(Color(.tertiarySystemFill), in: .capsule)
+                    .foregroundStyle(TBColor.textSecondary)
+                    .background(TBColor.subtleFill, in: .capsule)
             }
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            .font(TBTypography.caption)
+            .foregroundStyle(TBColor.textSecondary)
         }
         .padding(.vertical, 4)
     }
@@ -131,37 +140,60 @@ struct ScheduledEditorView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Content") {
-                    TextEditor(text: $text)
-                        .frame(minHeight: 120)
-                }
-                Section("When") {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    Text("Content")
+                        .font(TBTypography.label)
+                        .foregroundStyle(TBColor.textSecondary)
+                    ZStack(alignment: .topLeading) {
+                        RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
+                            .fill(TBColor.base2)
+                        RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
+                            .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
+                        TextEditor(text: $text)
+                            .font(TBTypography.body)
+                            .foregroundStyle(TBColor.textPrimary)
+                            .scrollContentBackground(.hidden)
+                            .padding(10)
+                            .frame(minHeight: 120)
+                    }
+
+                    Text("When")
+                        .font(TBTypography.label)
+                        .foregroundStyle(TBColor.textSecondary)
                     DatePicker(
                         "Schedule",
                         selection: $scheduledAt,
                         in: Date()...,
                         displayedComponents: [.date, .hourAndMinute]
                     )
-                }
-                if let errorMessage {
-                    Section {
-                        Text(errorMessage).foregroundStyle(.red)
+                    .tint(TBColor.accent)
+
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .font(TBTypography.meta)
+                            .foregroundStyle(TBColor.danger)
                     }
                 }
+                .padding(TBLayout.pagePadding)
             }
+            .background(TBColor.base1)
             .navigationTitle("Edit scheduled")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
+                        .foregroundStyle(TBColor.textSecondary)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { Task { await save() } }
+                        .fontWeight(.semibold)
+                        .foregroundStyle(TBColor.accent)
                         .disabled(isSaving || text.isEmpty)
                 }
                 ToolbarItem(placement: .destructiveAction) {
                     Button("Publish now") { Task { await publish() } }
+                        .foregroundStyle(TBColor.success)
                         .disabled(isSaving)
                 }
             }

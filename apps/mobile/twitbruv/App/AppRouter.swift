@@ -37,10 +37,13 @@ private struct SplashView: View {
     var body: some View {
         VStack(spacing: 16) {
             ProgressView()
+                .tint(TBColor.accent)
             Text("twitbruv")
-                .font(.title2.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .font(TBTypography.pageTitle)
+                .foregroundStyle(TBColor.textSecondary)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(TBColor.base1)
     }
 }
 
@@ -50,6 +53,7 @@ private struct SignedOutContainer: View {
         NavigationStack(path: $path) {
             SignInView(path: $path)
         }
+        .background(TBColor.base1)
     }
 }
 
@@ -58,19 +62,24 @@ private struct MaintenanceFullView: View {
     var body: some View {
         VStack(spacing: 16) {
             Image(systemName: "wrench.and.screwdriver")
-                .font(.largeTitle)
+                .font(.system(size: 40, weight: .medium))
+                .foregroundStyle(TBColor.textTertiary)
             Text("Maintenance")
-                .font(.title2.weight(.semibold))
+                .font(TBTypography.pageTitle)
+                .foregroundStyle(TBColor.textPrimary)
             Text("twitbruv is updating. Please try again in a moment.")
                 .multilineTextAlignment(.center)
-                .foregroundStyle(.secondary)
+                .font(TBTypography.bodySecondary)
+                .foregroundStyle(TBColor.textSecondary)
                 .padding(.horizontal)
-            Button("Retry") {
+            TBButton(title: "Retry", style: .primary, expands: true) {
                 env.isMaintenance = false
                 Task { await env.bootstrap() }
             }
-            .buttonStyle(.borderedProminent)
+            .padding(.horizontal, TBLayout.pagePadding)
         }
         .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(TBColor.base1)
     }
 }

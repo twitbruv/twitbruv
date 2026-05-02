@@ -1,3 +1,4 @@
+import Foundation
 import PhotosUI
 import SwiftUI
 
@@ -32,149 +33,198 @@ struct ComposerView: View {
 
     var body: some View {
         NavigationStack {
-            Form {
-                if case .reply(let parent) = mode {
-                    Section("Replying to") {
-                        Text(parent.text).lineLimit(3).font(.callout)
-                            .foregroundStyle(.secondary)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    if case .reply(let parent) = mode {
+                        composerSection(title: "Replying to") {
+                            Text(parent.text)
+                                .font(TBTypography.bodySecondary)
+                                .foregroundStyle(TBColor.textSecondary)
+                                .lineLimit(3)
+                        }
                     }
-                }
-                if case .quote(let target) = mode {
-                    Section("Quoting") {
-                        Text(target.text).lineLimit(3).font(.callout)
-                            .foregroundStyle(.secondary)
+                    if case .quote(let target) = mode {
+                        composerSection(title: "Quoting") {
+                            Text(target.text)
+                                .font(TBTypography.bodySecondary)
+                                .foregroundStyle(TBColor.textSecondary)
+                                .lineLimit(3)
+                        }
                     }
-                }
 
-                Section {
-                    TextEditor(text: $text)
-                        .frame(minHeight: 120)
-                    HStack {
-                        Spacer()
-                        Text("\(text.count)/\(textLimit)")
-                            .font(.caption.monospacedDigit())
-                            .foregroundStyle(text.count > textLimit ? .red : .secondary)
+                    composerSection(title: nil) {
+                        ZStack(alignment: .topLeading) {
+                            RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
+                                .fill(TBColor.base2)
+                            RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
+                                .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
+                            TextEditor(text: $text)
+                                .font(TBTypography.body)
+                                .foregroundStyle(TBColor.textPrimary)
+                                .scrollContentBackground(.hidden)
+                                .padding(10)
+                                .frame(minHeight: 120)
+                        }
+                        HStack {
+                            Spacer()
+                            Text("\(text.count)/\(textLimit)")
+                                .font(TBTypography.caption.monospacedDigit())
+                                .foregroundStyle(
+                                    text.count > textLimit
+                                        ? TBColor.danger
+                                        : TBColor.textSecondary
+                                )
+                        }
                     }
-                }
 
-                Section {
-                    PhotosPicker(
-                        selection: $pickerItems,
-                        maxSelectionCount: 4,
-                        matching: .images
-                    ) {
-                        Label("Add photos", systemImage: "photo.on.rectangle")
-                    }
-                    .onChange(of: pickerItems) { _, items in
-                        Task { await picker.ingest(items) }
-                    }
-                    if !picker.picked.isEmpty {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack {
-                                ForEach(picker.picked) { p in
-                                    if let img = UIImage(data: p.data) {
-                                        Image(uiImage: img)
-                                            .resizable()
-                                            .scaledToFill()
-                                            .frame(width: 88, height: 88)
-                                            .clipShape(.rect(cornerRadius: 8))
-                                            .overlay(alignment: .topTrailing) {
-                                                Button {
-                                                    picker.remove(id: p.id)
-                                                } label: {
-                                                    Image(systemName: "xmark.circle.fill")
-                                                        .foregroundStyle(.white, .black)
+                    composerSection(title: "Media") {
+                        PhotosPicker(
+                            selection: $pickerItems,
+                            maxSelectionCount: 4,
+                            matching: .images
+                        ) {
+                            Label("Add photos", systemImage: "photo.on.rectangle")
+                                .font(TBTypography.meta.weight(.medium))
+                                .foregroundStyle(TBColor.textPrimary)
+                        }
+                        .tint(TBColor.accent)
+                        .onChange(of: pickerItems) { _, items in
+                            Task { await picker.ingest(items) }
+                        }
+                        if !picker.picked.isEmpty {
+                            ScrollView(.horizontal, showsIndicators: false) {
+                                HStack {
+                                    ForEach(picker.picked) { p in
+                                        if let img = UIImage(data: p.data) {
+                                            Image(uiImage: img)
+                                                .resizable()
+                                                .scaledToFill()
+                                                .frame(width: 88, height: 88)
+                                                .clipShape(RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous))
+                                                .overlay(alignment: .topTrailing) {
+                                                    Button {
+                                                        picker.remove(id: p.id)
+                                                    } label: {
+                                                        Image(systemName: "xmark.circle.fill")
+                                                            .foregroundStyle(
+                                                                TBColor.textOnInverse,
+                                                                TBColor.inverse
+                                                            )
+                                                    }
+                                                    .padding(2)
                                                 }
-                                                .padding(2)
-                                            }
+                                        }
                                     }
                                 }
                             }
                         }
                     }
-                }
 
-                Section {
-                    Toggle("Add a poll", isOn: Binding(
-                        get: { pollOptions != nil },
-                        set: { on in
-                            if on, pollOptions == nil { pollOptions = ["", ""] }
-                            if !on { pollOptions = nil }
-                        }
-                    ))
-
-                    if pollOptions != nil {
-                        PollEditor(
-                            options: Binding(
-                                get: { pollOptions ?? [] },
-                                set: { pollOptions = $0 }
-                            ),
-                            durationSec: $pollDurationSec,
-                            allowMultiple: $pollAllowMultiple
-                        )
-                    }
-                }
-
-                Section("Settings") {
-                    Picker("Visibility", selection: $visibility) {
-                        Text("Public").tag("public")
-                        Text("Followers").tag("followers")
-                        Text("Unlisted").tag("unlisted")
-                    }
-                    Toggle("Mark sensitive", isOn: $sensitive)
-                    if sensitive {
-                        TextField("Content warning", text: $contentWarning)
-                    }
-                    DatePicker(
-                        "Schedule",
-                        selection: Binding(
-                            get: { scheduledAt ?? .now.addingTimeInterval(3600) },
-                            set: { scheduledAt = $0 }
-                        ),
-                        in: Date()...,
-                        displayedComponents: [.date, .hourAndMinute]
-                    )
-                    .disabled(scheduledAt == nil)
-                    Toggle(
-                        "Schedule for later",
-                        isOn: Binding(
-                            get: { scheduledAt != nil },
+                    composerSection(title: "Poll") {
+                        Toggle("Add a poll", isOn: Binding(
+                            get: { pollOptions != nil },
                             set: { on in
-                                scheduledAt = on ? .now.addingTimeInterval(3600) : nil
+                                if on, pollOptions == nil { pollOptions = ["", ""] }
+                                if !on { pollOptions = nil }
                             }
-                        )
-                    )
-                }
+                        ))
+                        .tint(TBColor.inverse)
 
-                if let card = unfurlPreview {
-                    Section("Link preview") {
-                        VStack(alignment: .leading, spacing: 4) {
-                            if let title = card.title {
-                                Text(title).font(.callout.weight(.semibold))
+                        if pollOptions != nil {
+                            PollEditor(
+                                options: Binding(
+                                    get: { pollOptions ?? [] },
+                                    set: { pollOptions = $0 }
+                                ),
+                                durationSec: $pollDurationSec,
+                                allowMultiple: $pollAllowMultiple
+                            )
+                        }
+                    }
+
+                    composerSection(title: "Settings") {
+                        Picker("Visibility", selection: $visibility) {
+                            Text("Public").tag("public")
+                            Text("Followers").tag("followers")
+                            Text("Unlisted").tag("unlisted")
+                        }
+                        .tint(TBColor.accent)
+                        Toggle("Mark sensitive", isOn: $sensitive)
+                            .tint(TBColor.inverse)
+                        if sensitive {
+                            ZStack(alignment: .leading) {
+                                RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
+                                    .fill(TBColor.base2)
+                                RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
+                                    .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
+                                TextField("Content warning", text: $contentWarning)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 10)
                             }
-                            if let desc = card.description {
-                                Text(desc).font(.footnote).foregroundStyle(.secondary)
+                            .frame(minHeight: 40)
+                        }
+                        DatePicker(
+                            "Schedule",
+                            selection: Binding(
+                                get: { scheduledAt ?? .now.addingTimeInterval(3600) },
+                                set: { scheduledAt = $0 }
+                            ),
+                            in: Date()...,
+                            displayedComponents: [.date, .hourAndMinute]
+                        )
+                        .tint(TBColor.accent)
+                        .disabled(scheduledAt == nil)
+                        Toggle(
+                            "Schedule for later",
+                            isOn: Binding(
+                                get: { scheduledAt != nil },
+                                set: { on in
+                                    scheduledAt = on ? .now.addingTimeInterval(3600) : nil
+                                }
+                            )
+                        )
+                        .tint(TBColor.inverse)
+                    }
+
+                    if let card = unfurlPreview {
+                        composerSection(title: "Link preview") {
+                            VStack(alignment: .leading, spacing: 4) {
+                                if let title = card.title {
+                                    Text(title)
+                                        .font(TBTypography.bodySecondary.weight(.semibold))
+                                        .foregroundStyle(TBColor.textPrimary)
+                                }
+                                if let desc = card.description {
+                                    Text(desc)
+                                        .font(TBTypography.caption)
+                                        .foregroundStyle(TBColor.textSecondary)
+                                }
                             }
                         }
                     }
-                }
 
-                if let errorMessage {
-                    Section {
-                        Text(errorMessage).foregroundStyle(.red)
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .font(TBTypography.meta)
+                            .foregroundStyle(TBColor.danger)
                     }
                 }
+                .padding(TBLayout.pagePadding)
             }
+            .background(TBColor.base1)
             .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
+                        .foregroundStyle(TBColor.textSecondary)
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(scheduledAt == nil ? "Post" : "Schedule") {
                         Task { await submit() }
                     }
+                    .fontWeight(.semibold)
+                    .foregroundStyle(TBColor.accent)
                     .disabled(!canSubmit || isSubmitting)
                 }
             }
@@ -183,11 +233,38 @@ struct ComposerView: View {
             }
             .overlay {
                 if isSubmitting {
-                    ProgressView("Posting…")
-                        .padding(20)
-                        .background(.thinMaterial, in: .rect(cornerRadius: 12))
+                    ZStack {
+                        TBColor.base1.opacity(0.72)
+                        VStack(spacing: 12) {
+                            ProgressView()
+                                .tint(TBColor.accent)
+                            Text("Posting…")
+                                .font(TBTypography.meta.weight(.medium))
+                                .foregroundStyle(TBColor.textPrimary)
+                        }
+                        .padding(24)
+                        .background(TBColor.base2, in: RoundedRectangle(cornerRadius: TBLayout.radiusLG, style: .continuous))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: TBLayout.radiusLG, style: .continuous)
+                                .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
+                        }
+                    }
                 }
             }
+        }
+    }
+
+    private func composerSection<Content: View>(
+        title: String?,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if let title {
+                Text(title)
+                    .font(TBTypography.label)
+                    .foregroundStyle(TBColor.textSecondary)
+            }
+            content()
         }
     }
 
@@ -319,16 +396,24 @@ private struct PollEditor: View {
     var body: some View {
         ForEach(options.indices, id: \.self) { idx in
             HStack {
-                TextField("Option \(idx + 1)", text: Binding(
-                    get: { options[idx] },
-                    set: { options[idx] = $0 }
-                ))
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
+                        .fill(TBColor.base2)
+                    RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
+                        .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
+                    TextField("Option \(idx + 1)", text: Binding(
+                        get: { options[idx] },
+                        set: { options[idx] = $0 }
+                    ))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                }
                 if options.count > 2 {
                     Button {
                         options.remove(at: idx)
                     } label: {
                         Image(systemName: "minus.circle.fill")
-                            .foregroundStyle(.red)
+                            .foregroundStyle(TBColor.danger)
                     }
                     .buttonStyle(.plain)
                 }
@@ -339,7 +424,10 @@ private struct PollEditor: View {
                 options.append("")
             } label: {
                 Label("Add option", systemImage: "plus")
+                    .font(TBTypography.meta.weight(.medium))
+                    .foregroundStyle(TBColor.accent)
             }
+            .buttonStyle(.plain)
         }
 
         Picker("Duration", selection: $durationSec) {
@@ -349,6 +437,8 @@ private struct PollEditor: View {
             Text("3 days").tag(259_200)
             Text("7 days").tag(604_800)
         }
+        .tint(TBColor.accent)
         Toggle("Allow multiple choices", isOn: $allowMultiple)
+            .tint(TBColor.inverse)
     }
 }

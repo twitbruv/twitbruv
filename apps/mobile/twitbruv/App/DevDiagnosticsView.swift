@@ -32,15 +32,16 @@ struct DevDiagnosticsView: View {
             Section("Results") {
                 if env.devTools.diagnostics.isEmpty {
                     Text("No diagnostics yet.")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(TBColor.textSecondary)
                 }
                 ForEach(env.devTools.diagnostics) { line in
                     VStack(alignment: .leading, spacing: 4) {
                         Text(line.label)
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(.secondary)
+                            .font(TBTypography.caption.weight(.semibold))
+                            .foregroundStyle(TBColor.textSecondary)
                         Text(line.value)
-                            .font(.callout.monospaced())
+                            .font(.system(size: 14, design: .monospaced))
+                            .foregroundStyle(TBColor.textPrimary)
                             .textSelection(.enabled)
                     }
                     .padding(.vertical, 2)
@@ -55,6 +56,8 @@ struct DevDiagnosticsView: View {
             }
         }
         .navigationTitle("API diagnostics")
+        .scrollContentBackground(.hidden)
+        .background(TBColor.base1)
         .task {
             if env.devTools.diagnostics.isEmpty {
                 await env.devTools.runDiagnostics()

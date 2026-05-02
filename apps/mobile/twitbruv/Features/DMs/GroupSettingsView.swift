@@ -45,9 +45,12 @@ struct GroupSettingsView: View {
             }
             .navigationTitle(conversation.name ?? "Conversation")
             .navigationBarTitleDisplayMode(.inline)
+            .scrollContentBackground(.hidden)
+            .background(TBColor.base1)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
+                        .foregroundStyle(TBColor.accent)
                 }
             }
             .task {

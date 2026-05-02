@@ -11,47 +11,52 @@ struct SignUpView: View {
     @State private var errorMessage: String?
 
     var body: some View {
-        Form {
-            Section("Account") {
-                TextField("Email", text: $email)
-                    .textContentType(.emailAddress)
-                    .keyboardType(.emailAddress)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                SecureField("Password (10+ characters)", text: $password)
-                    .textContentType(.newPassword)
-                TextField("Display name (optional)", text: $displayName)
-                    .textContentType(.name)
-            }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                Text("Account")
+                    .font(TBTypography.label)
+                    .foregroundStyle(TBColor.textSecondary)
 
-            if let errorMessage {
-                Section {
-                    Text(errorMessage).foregroundStyle(.red).font(.callout)
+                TBTextField(
+                    title: "Email",
+                    text: $email,
+                    keyboard: .emailAddress,
+                    contentType: .emailAddress,
+                    autocap: .never
+                )
+                TBSecureField(title: "Password (10+ characters)", text: $password)
+                TBTextField(
+                    title: "Display name (optional)",
+                    text: $displayName,
+                    contentType: .name,
+                    autocap: .words
+                )
+
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(TBTypography.meta)
+                        .foregroundStyle(TBColor.danger)
                 }
-            }
 
-            Section {
-                Button {
+                TBButton(
+                    title: "Create account",
+                    style: .primary,
+                    expands: true,
+                    isLoading: isSubmitting,
+                    isDisabled: !isValid
+                ) {
                     Task { await submit() }
-                } label: {
-                    if isSubmitting {
-                        ProgressView()
-                    } else {
-                        Text("Create account").frame(maxWidth: .infinity)
-                    }
                 }
-                .buttonStyle(.borderedProminent)
-                .disabled(!isValid || isSubmitting)
-            }
 
-            Section {
                 Text(
                     "After creating your account you'll need to verify your email and pick a handle."
                 )
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+                .font(TBTypography.caption)
+                .foregroundStyle(TBColor.textSecondary)
             }
+            .padding(TBLayout.pagePadding)
         }
+        .background(TBColor.base1)
         .navigationTitle("Sign up")
     }
 

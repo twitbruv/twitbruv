@@ -23,6 +23,7 @@ struct FeedListView: View {
                 }
             } else if loader.items.isEmpty && loader.didLoadOnce {
                 Section {
+                    #if DEBUG
                     EmptyStateView(
                         icon: "rectangle.stack",
                         title: emptyTitle,
@@ -35,6 +36,15 @@ struct FeedListView: View {
                             }
                         }
                     )
+                    #else
+                    EmptyStateView(
+                        icon: "rectangle.stack",
+                        title: emptyTitle,
+                        message: emptyMessage,
+                        actionTitle: nil,
+                        action: nil
+                    )
+                    #endif
                     .listRowSeparator(.hidden)
                 }
             } else {
@@ -66,6 +76,8 @@ struct FeedListView: View {
             }
         }
         .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(TBColor.base1)
         .refreshable {
             await loader.reload()
         }

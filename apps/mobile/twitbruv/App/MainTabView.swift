@@ -20,19 +20,19 @@ struct MainTabView: View {
 
             NotificationsView()
                 .tabItem {
-                    Label("Alerts", systemImage: "bell.fill")
+                    Label("Notifications", systemImage: "bell.fill")
                 }
                 .tag(AppTab.notifications)
 
             ConversationsListView()
                 .tabItem {
-                    Label("DMs", systemImage: "envelope.fill")
+                    Label("Messages", systemImage: "envelope.fill")
                 }
                 .tag(AppTab.dms)
 
             MyProfileView()
                 .tabItem {
-                    Label("Me", systemImage: "person.crop.circle.fill")
+                    Label("Profile", systemImage: "person.crop.circle.fill")
                 }
                 .tag(AppTab.me)
         }
@@ -41,11 +41,11 @@ struct MainTabView: View {
                 showCompose = true
             } label: {
                 Image(systemName: "plus")
-                    .font(.title2.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .padding(18)
-                    .background(.tint, in: .circle)
-                    .shadow(radius: 6, y: 3)
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(TBColor.textOnInverse)
+                    .padding(16)
+                    .background(TBColor.inverse, in: Circle())
+                    .shadow(color: Color.black.opacity(0.12), radius: 4, y: 2)
             }
             .padding(.bottom, 70)
             .padding(.trailing, 16)
@@ -72,19 +72,30 @@ private struct DevSeedToast: View {
             if env.devTools.isSeeding {
                 HStack(spacing: 10) {
                     ProgressView()
+                        .tint(TBColor.accent)
                     Text("Seeding local data…")
-                        .font(.callout.weight(.medium))
+                        .font(TBTypography.meta.weight(.medium))
+                        .foregroundStyle(TBColor.textPrimary)
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
-                .background(.thinMaterial, in: .rect(cornerRadius: 14))
+                .background(TBColor.base2, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
+                }
                 .padding(.bottom, 18)
             } else if let message = env.devTools.seedMessage {
                 Text(message)
-                    .font(.callout.weight(.medium))
+                    .font(TBTypography.meta.weight(.medium))
+                    .foregroundStyle(TBColor.textPrimary)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
-                    .background(.thinMaterial, in: .rect(cornerRadius: 14))
+                    .background(TBColor.base2, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
+                    }
                     .padding(.bottom, 18)
                     .onTapGesture { env.devTools.seedMessage = nil }
             }

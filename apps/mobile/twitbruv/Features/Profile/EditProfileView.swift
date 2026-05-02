@@ -12,28 +12,57 @@ struct EditProfileView: View {
     @State private var errorMessage: String?
 
     var body: some View {
-        Form {
-            Section("Profile") {
-                TextField("Display name", text: $displayName)
-                TextField("Bio", text: $bio, axis: .vertical)
-                    .lineLimit(2...6)
-                TextField("Location", text: $location)
-                TextField("Website", text: $website)
-                    .keyboardType(.URL)
-                    .textInputAutocapitalization(.never)
-            }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                Text("Profile")
+                    .font(TBTypography.label)
+                    .foregroundStyle(TBColor.textSecondary)
 
-            if let errorMessage {
-                Section {
-                    Text(errorMessage).foregroundStyle(.red)
+                TBTextField(title: "Display name", text: $displayName, contentType: .name)
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Bio")
+                        .font(TBTypography.label)
+                        .foregroundStyle(TBColor.textPrimary)
+                    ZStack(alignment: .topLeading) {
+                        RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
+                            .fill(TBColor.base2)
+                        RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
+                            .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
+                        TextField("", text: $bio, axis: .vertical)
+                            .font(TBTypography.body)
+                            .foregroundStyle(TBColor.textPrimary)
+                            .lineLimit(2...6)
+                            .padding(12)
+                    }
+                }
+
+                TBTextField(title: "Location", text: $location)
+
+                TBTextField(
+                    title: "Website",
+                    text: $website,
+                    keyboard: .URL,
+                    contentType: .URL,
+                    autocap: .never
+                )
+
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(TBTypography.meta)
+                        .foregroundStyle(TBColor.danger)
                 }
             }
+            .padding(TBLayout.pagePadding)
         }
+        .background(TBColor.base1)
         .navigationTitle("Edit profile")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") { Task { await save() } }
+                    .fontWeight(.semibold)
+                    .foregroundStyle(TBColor.accent)
                     .disabled(isSaving)
             }
         }

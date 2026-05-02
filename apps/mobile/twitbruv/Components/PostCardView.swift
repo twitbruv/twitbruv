@@ -14,16 +14,16 @@ struct PostCardView: View {
             if post.repostOf != nil {
                 Label("Reposted by @\(post.author.handle ?? "—")",
                       systemImage: "arrow.2.squarepath")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(TBTypography.caption)
+                    .foregroundStyle(TBColor.textTertiary)
             }
 
             let displayed = post.repostOf?.value ?? post
 
             if displayed.pinned == true {
                 Label("Pinned", systemImage: "pin.fill")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .font(TBTypography.caption.weight(.semibold))
+                    .foregroundStyle(TBColor.textTertiary)
             }
 
             HStack(alignment: .top, spacing: 12) {
@@ -32,7 +32,7 @@ struct PostCardView: View {
                 } label: {
                     AvatarView(
                         urlString: displayed.author.avatarUrl,
-                        size: 44,
+                        size: TBLayout.hitTarget,
                         fallbackInitial: displayed.author.displayName ?? displayed.author.handle
                     )
                 }
@@ -41,28 +41,29 @@ struct PostCardView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 4) {
                         Text(displayed.author.displayName ?? displayed.author.handle ?? "—")
-                            .font(.subheadline.weight(.semibold))
+                            .font(TBTypography.meta.weight(.semibold))
+                            .foregroundStyle(TBColor.textPrimary)
                         if displayed.author.isVerified == true {
                             Image(systemName: "checkmark.seal.fill")
                                 .font(.caption2)
-                                .foregroundStyle(.tint)
+                                .foregroundStyle(TBColor.accent)
                         }
                         if let handle = displayed.author.handle {
                             Text("@\(handle)")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
+                                .font(TBTypography.meta)
+                                .foregroundStyle(TBColor.textSecondary)
                         }
                         Text("·")
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(TBColor.textSecondary)
                         Text(displayed.createdAt.relativeShort)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .font(TBTypography.meta)
+                            .foregroundStyle(TBColor.textSecondary)
                         Spacer()
                         Menu {
                             menu(for: displayed)
                         } label: {
                             Image(systemName: "ellipsis")
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(TBColor.textTertiary)
                                 .frame(width: 24, height: 24)
                                 .contentShape(.rect)
                         }
@@ -73,15 +74,17 @@ struct PostCardView: View {
 
                     if let warning = displayed.contentWarning, !warning.isEmpty {
                         Text(warning)
-                            .font(.footnote.weight(.semibold))
+                            .font(TBTypography.caption.weight(.semibold))
+                            .foregroundStyle(TBColor.textPrimary)
                             .padding(.vertical, 4)
                             .padding(.horizontal, 8)
-                            .background(.yellow.opacity(0.15), in: .rect(cornerRadius: 6))
+                            .background(TBColor.warnSubtle, in: RoundedRectangle(cornerRadius: TBLayout.radiusSM, style: .continuous))
                     }
 
                     if !displayed.text.isEmpty {
                         Text(displayed.text)
-                            .font(.body)
+                            .font(TBTypography.body)
+                            .foregroundStyle(TBColor.textPrimary)
                             .textSelection(.enabled)
                     }
 
@@ -110,62 +113,44 @@ struct PostCardView: View {
             }
         }
         .padding(.vertical, 8)
-        .padding(.horizontal)
+        .padding(.horizontal, TBLayout.pagePadding)
+        .background(TBColor.base1)
     }
 
     @ViewBuilder
     private func actionBar(displayed: Post) -> some View {
-        HStack(spacing: 24) {
-            actionButton(
-                "bubble.left",
+        HStack(spacing: 20) {
+            TBPostActionButton(
+                icon: "bubble.left",
                 count: displayed.counts.replies,
-                tinted: false
-            ) { onReply?() }
-            actionButton(
-                "arrow.2.squarepath",
+                isActive: false,
+                activeColor: TBColor.accent,
+                action: { onReply?() }
+            )
+            TBPostActionButton(
+                icon: "arrow.2.squarepath",
                 count: displayed.counts.reposts,
-                tinted: displayed.viewer?.reposted == true
-            ) { onRepost?() }
-            actionButton(
-                displayed.viewer?.liked == true ? "heart.fill" : "heart",
+                isActive: displayed.viewer?.reposted == true,
+                activeColor: TBColor.accent,
+                action: { onRepost?() }
+            )
+            TBPostActionButton(
+                icon: displayed.viewer?.liked == true ? "heart.fill" : "heart",
                 count: displayed.counts.likes,
-                tinted: displayed.viewer?.liked == true,
-                tintColor: .red
-            ) { onLike?() }
-            actionButton(
-                displayed.viewer?.bookmarked == true ? "bookmark.fill" : "bookmark",
+                isActive: displayed.viewer?.liked == true,
+                activeColor: TBColor.like,
+                action: { onLike?() }
+            )
+            TBPostActionButton(
+                icon: displayed.viewer?.bookmarked == true ? "bookmark.fill" : "bookmark",
                 count: displayed.counts.bookmarks,
-                tinted: displayed.viewer?.bookmarked == true,
-                tintColor: .yellow
-            ) { onBookmark?() }
+                isActive: displayed.viewer?.bookmarked == true,
+                activeColor: TBColor.accent,
+                action: { onBookmark?() }
+            )
             Spacer()
         }
-        .font(.subheadline)
-        .foregroundStyle(.secondary)
         .padding(.top, 4)
-    }
-
-    @ViewBuilder
-    private func actionButton(
-        _ icon: String,
-        count: Int,
-        tinted: Bool,
-        tintColor: Color = .accentColor,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            HStack(spacing: 6) {
-                Image(systemName: icon)
-                if count > 0 {
-                    Text(formatCount(count))
-                        .monospacedDigit()
-                }
-            }
-            .foregroundStyle(tinted ? tintColor : .secondary)
-            .contentShape(.rect)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("\(icon)")
     }
 
     @ViewBuilder
@@ -189,13 +174,6 @@ struct PostCardView: View {
             Label("Report", systemImage: "flag")
         }
     }
-
-    private func formatCount(_ n: Int) -> String {
-        if n < 1000 { return "\(n)" }
-        if n < 10_000 { return String(format: "%.1fk", Double(n) / 1000.0) }
-        if n < 1_000_000 { return "\(n / 1000)k" }
-        return String(format: "%.1fM", Double(n) / 1_000_000.0)
-    }
 }
 
 enum PostMenuAction {
@@ -215,24 +193,26 @@ private struct QuotedPostView: View {
                     fallbackInitial: post.author.displayName ?? post.author.handle
                 )
                 Text(post.author.displayName ?? post.author.handle ?? "—")
-                    .font(.footnote.weight(.semibold))
+                    .font(TBTypography.caption.weight(.semibold))
+                    .foregroundStyle(TBColor.textPrimary)
                 if let handle = post.author.handle {
                     Text("@\(handle)")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        .font(TBTypography.caption)
+                        .foregroundStyle(TBColor.textSecondary)
                 }
             }
             if !post.text.isEmpty {
                 Text(post.text)
-                    .font(.footnote)
+                    .font(TBTypography.caption)
+                    .foregroundStyle(TBColor.textPrimary)
                     .lineLimit(4)
             }
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .overlay {
-            RoundedRectangle(cornerRadius: 12)
-                .strokeBorder(Color(.separator), lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: TBLayout.radiusLG, style: .continuous)
+                .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
         }
     }
 }
@@ -250,25 +230,26 @@ private struct PollCard: View {
                 } label: {
                     ZStack(alignment: .leading) {
                         GeometryReader { proxy in
-                            Color.accentColor.opacity(0.15)
+                            TBColor.accent.opacity(0.15)
                                 .frame(width: proxy.size.width * pct)
-                                .clipShape(.rect(cornerRadius: 8))
+                                .clipShape(RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous))
                         }
                         HStack {
                             Text(option.text)
-                                .font(.callout)
+                                .font(TBTypography.bodySecondary)
+                                .foregroundStyle(TBColor.textPrimary)
                             Spacer()
                             Text("\(Int(pct * 100))%")
-                                .font(.callout.monospacedDigit())
-                                .foregroundStyle(.secondary)
+                                .font(TBTypography.bodySecondary.monospacedDigit())
+                                .foregroundStyle(TBColor.textSecondary)
                         }
                         .padding(.horizontal, 10)
                         .padding(.vertical, 8)
                     }
                     .frame(height: 36)
                     .overlay {
-                        RoundedRectangle(cornerRadius: 8)
-                            .strokeBorder(Color(.separator), lineWidth: 0.5)
+                        RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
+                            .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
                     }
                 }
                 .buttonStyle(.plain)
@@ -282,8 +263,8 @@ private struct PollCard: View {
                     Text("· closes \(poll.closesAt.relativeShort)")
                 }
             }
-            .font(.footnote)
-            .foregroundStyle(.secondary)
+            .font(TBTypography.caption)
+            .foregroundStyle(TBColor.textSecondary)
         }
     }
 
@@ -303,29 +284,37 @@ private struct UnfurlCardView: View {
                     AsyncImage(url: url) { phase in
                         switch phase {
                         case .success(let img): img.resizable().scaledToFill()
-                        default: Color(.tertiarySystemFill)
+                        default: TBColor.base2
                         }
                     }
                     .frame(width: 88, height: 88)
-                    .clipShape(.rect(cornerRadius: 8))
+                    .clipShape(RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous))
                 }
                 VStack(alignment: .leading, spacing: 4) {
                     if let title = card.title, !title.isEmpty {
-                        Text(title).font(.callout.weight(.semibold)).lineLimit(2)
+                        Text(title)
+                            .font(TBTypography.bodySecondary.weight(.semibold))
+                            .foregroundStyle(TBColor.textPrimary)
+                            .lineLimit(2)
                     }
                     if let desc = card.description, !desc.isEmpty {
-                        Text(desc).font(.footnote).foregroundStyle(.secondary).lineLimit(2)
+                        Text(desc)
+                            .font(TBTypography.caption)
+                            .foregroundStyle(TBColor.textSecondary)
+                            .lineLimit(2)
                     }
                     if let site = card.siteName {
-                        Text(site).font(.caption).foregroundStyle(.tertiary)
+                        Text(site)
+                            .font(TBTypography.caption)
+                            .foregroundStyle(TBColor.textTertiary)
                     }
                 }
                 Spacer()
             }
             .padding(8)
             .overlay {
-                RoundedRectangle(cornerRadius: 12)
-                    .strokeBorder(Color(.separator), lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: TBLayout.radiusLG, style: .continuous)
+                    .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
             }
         }
         .buttonStyle(.plain)

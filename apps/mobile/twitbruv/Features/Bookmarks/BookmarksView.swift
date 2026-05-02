@@ -23,7 +23,11 @@ struct BookmarksView: View {
                         onReport: { post in reportTarget = post }
                     )
                 } else {
-                    ProgressView().task { setupLoader() }
+                    ProgressView()
+                        .tint(TBColor.accent)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(TBColor.base1)
+                        .task { setupLoader() }
                 }
             }
             .navigationTitle("Bookmarks")

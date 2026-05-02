@@ -4,11 +4,16 @@ import SwiftUI
 struct twitbruvApp: App {
     @State private var env = AppEnvironment()
 
+    init() {
+        TBTheme.apply()
+    }
+
     var body: some Scene {
         WindowGroup {
             AppRouter()
                 .environment(env)
                 .environment(env.auth)
+                .tbChrome()
                 .task { await env.bootstrap() }
                 .onOpenURL { url in
                     NotificationCenter.default.post(
