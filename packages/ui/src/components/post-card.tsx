@@ -19,6 +19,7 @@ import { DropdownMenu } from "@workspace/ui/components/dropdown-menu"
 import { Hover } from "@workspace/ui/components/hover"
 import { PreviewCard } from "@workspace/ui/components/preview-card"
 import { AnimatedNumber } from "@workspace/ui/components/animated-number"
+import { LinkPill, trimTrailingPunct } from "./link-card"
 import type { CSSProperties, ReactNode } from "react"
 
 /** Extra profile data for the author hover card */
@@ -775,20 +776,11 @@ function PostText({ text }: { text: string }) {
     <>
       {parts.map((part, i) => {
         if (part.type === "url") {
-          const trimmed = part.value.replace(/[),.;:!?]+$/, "")
+          const trimmed = trimTrailingPunct(part.value)
           const trailing = part.value.slice(trimmed.length)
           return (
             <span key={i}>
-              <a
-                href={trimmed}
-                target="_blank"
-                rel="noreferrer"
-                data-post-card-ignore-open
-                onClick={(e) => e.stopPropagation()}
-                className="text-link underline decoration-link/0 decoration-from-font underline-offset-2 transition-[text-decoration-color] duration-200 ease-out hover:decoration-link/55"
-              >
-                {trimmed}
-              </a>
+              <LinkPill url={trimmed} />
               {trailing}
             </span>
           )
