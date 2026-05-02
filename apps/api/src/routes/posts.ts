@@ -2,7 +2,11 @@ import { Hono } from 'hono'
 import { and, asc, desc, eq, inArray, isNull, lt, sql } from '@workspace/db'
 import { schema } from '@workspace/db'
 import { publicUrl } from '@workspace/media/s3'
-import { createPostSchema, editPostSchema } from '@workspace/validators'
+import {
+  createPostSchema,
+  editPostSchema,
+  paginationSchema,
+} from '@workspace/validators'
 import { handleRateLimitError } from '@workspace/rate-limit'
 import { requireHandle, type HonoEnv } from '../middleware/session.ts'
 import { toPostDto } from '../lib/post-dto.ts'
@@ -918,8 +922,11 @@ postsRoute.get('/', async (c) => {
   const { db, mediaEnv, rateLimit } = c.get('ctx')
   await rateLimit(c, 'reads.feed')
   const viewerId = c.get('session')?.user.id
-  const limit = Math.min(Number(c.req.query('limit') ?? 40), 100)
-  const cursor = parseCursor(c.req.query('cursor'))
+  const { limit, cursor: cursorRaw } = paginationSchema.parse({
+    limit: c.req.query('limit'),
+    cursor: c.req.query('cursor'),
+  })
+  const cursor = parseCursor(cursorRaw)
 
   const rows = await db
     .select({ post: schema.posts, author: schema.users })
@@ -972,8 +979,11 @@ postsRoute.get('/', async (c) => {
   await attachFeedChainPreviews({ db, viewerId, env: mediaEnv, posts })
   linkSamePageReplies(posts)
   const filtered = filterRedundantChainPosts(posts)
-  const hasMore = rows.length === limit
-  const nextCursor = hasMore ? rows[rows.length - 1]!.post.createdAt.toISOString() : null
+  const hasMore = limit > 0 && rows.length === limit
+  const nextCursor =
+    hasMore && rows.length > 0
+      ? rows[rows.length - 1].post.createdAt.toISOString()
+      : null
   return c.json({ posts: filtered, nextCursor })
 })
 
