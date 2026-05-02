@@ -711,6 +711,79 @@ function ReplyRow({ item }: { item: NotificationItem }) {
   )
 }
 
+function MentionRow({ item }: { item: NotificationItem }) {
+  const actor = item.actor
+  const actorLabel = actor
+    ? actor.displayName || (actor.handle ? `@${actor.handle}` : "someone")
+    : "someone"
+  const actorHandle = actor?.handle ?? null
+  const actorInitial = (actor?.displayName ?? actorHandle ?? "·")
+    .slice(0, 1)
+    .toUpperCase()
+  const mentionTarget = item.target
+
+  const postLink =
+    mentionTarget?.author.handle && mentionTarget?.id
+      ? `/${mentionTarget.author.handle}/p/${mentionTarget.id}`
+      : null
+
+  return (
+    <Link
+      to={postLink ?? "#"}
+      className={`block border-b border-neutral px-4 py-3.5 transition-colors hover:bg-base-2/20 ${!item.readAt ? "bg-subtle" : ""}`}
+    >
+      <div className="flex items-start gap-3">
+        <Avatar
+          initial={actorInitial}
+          src={actor?.avatarUrl}
+          className="size-10 shrink-0"
+        />
+        <div className="min-w-0 flex-1 text-sm">
+          <div className="flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-1 font-semibold text-primary">
+              {actorLabel}
+              {actor?.isVerified && (
+                <VerifiedBadge size={14} role={actor.role} />
+              )}
+            </span>
+            <span className="text-xs text-tertiary">
+              · {formatShortTime(item.createdAt)}
+            </span>
+          </div>
+          <p className="mt-0.5 text-secondary">Mentioned you</p>
+          {mentionTarget?.text && (
+            <p className="mt-0.5 text-primary leading-relaxed whitespace-pre-wrap">
+              {mentionTarget.text}
+            </p>
+          )}
+          <div className="mt-2 flex items-center">
+            <div className="flex-1">
+              <span className="inline-flex size-7 items-center justify-center rounded-full text-tertiary">
+                <ChatBubbleOutline className="size-4" />
+              </span>
+            </div>
+            <div className="flex-1">
+              <span className="inline-flex size-7 items-center justify-center rounded-full text-tertiary">
+                <ArrowPathOutline className="size-4" />
+              </span>
+            </div>
+            <div className="flex-1">
+              <span className="inline-flex size-7 items-center justify-center rounded-full text-tertiary">
+                <HeartOutline className="size-4" />
+              </span>
+            </div>
+            <div>
+              <span className="inline-flex size-7 items-center justify-center rounded-full text-tertiary">
+                <BookmarkIconOutline className="size-4" />
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Link>
+  )
+}
+
 function formatShortTime(iso: string): string {
   const d = new Date(iso)
   const now = new Date()
