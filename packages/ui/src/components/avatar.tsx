@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { cn } from "@workspace/ui/lib/utils"
 
 const sizeStyles = {
@@ -23,6 +23,12 @@ export interface AvatarProps {
 
 export function Avatar({ initial, src, size = "md", className }: AvatarProps) {
   const [errored, setErrored] = useState(false)
+  const prevSrcRef = useRef(src)
+
+  if (prevSrcRef.current !== src) {
+    prevSrcRef.current = src
+    setErrored(false)
+  }
 
   if (src && !errored) {
     return (

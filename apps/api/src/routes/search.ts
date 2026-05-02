@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { and, asc, desc, eq, exists, gte, ilike, inArray, isNull, lte, or, sql } from '@workspace/db'
 import { schema } from '@workspace/db'
 import { assetUrl } from '@workspace/media/s3'
+import { handleSchema } from '@workspace/validators'
 import { requireHandle, type HonoEnv } from '../middleware/session.ts'
 import { toPostDto } from '../lib/post-dto.ts'
 import { loadViewerFlags } from '../lib/viewer-flags.ts'
@@ -37,7 +38,6 @@ interface ParsedQuery {
   minReplies?: number
 }
 
-const handleWord = /^[a-z0-9_]{1,30}$/i
 const langWord = /^[a-z]{2,3}(?:-[A-Za-z]{2,4})?$/
 const isoDate = /^\d{4}-\d{2}-\d{2}$/
 
@@ -61,7 +61,8 @@ function parseQuery(raw: string): ParsedQuery {
     switch (key) {
       case 'from': {
         const v = val.replace(/^@/, '')
-        if (handleWord.test(v)) out.fromHandle = v.toLowerCase()
+        const r = handleSchema.safeParse(v)
+        if (r.success) out.fromHandle = r.data.toLowerCase()
         else free.push(w)
         break
       }
@@ -69,7 +70,8 @@ function parseQuery(raw: string): ParsedQuery {
       case 'mention':
       case 'mentions': {
         const v = val.replace(/^@/, '')
-        if (handleWord.test(v)) out.toHandle = v.toLowerCase()
+        const r = handleSchema.safeParse(v)
+        if (r.success) out.toHandle = r.data.toLowerCase()
         else free.push(w)
         break
       }
