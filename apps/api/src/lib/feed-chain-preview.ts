@@ -154,6 +154,20 @@ export async function attachFeedChainPreviews(args: {
   }
 }
 
+export function linkSamePageReplies(posts: Array<PostDto>): void {
+  const byId = new Map<string, PostDto>()
+  for (const p of posts) byId.set(p.id, p)
+
+  for (const p of posts) {
+    if (p.chainPreview) continue
+    if (!p.replyToId) continue
+    const parent = byId.get(p.replyToId)
+    if (!parent) continue
+    p.chainPreview = { root: parent, omittedCount: 0 }
+    delete p.replyParent
+  }
+}
+
 export function filterChainIntermediates(
   posts: Array<PostDto>
 ): Array<PostDto> {

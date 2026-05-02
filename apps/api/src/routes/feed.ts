@@ -8,7 +8,7 @@ import { loadPostMedia } from '../lib/post-media.ts'
 import { loadArticleCards } from '../lib/article-cards.ts'
 import { loadRepostTargets } from '../lib/repost-targets.ts'
 import { loadQuoteTargets } from '../lib/quote-targets.ts'
-import { attachFeedChainPreviews, filterChainIntermediates } from '../lib/feed-chain-preview.ts'
+import { attachFeedChainPreviews, linkSamePageReplies, filterChainIntermediates } from '../lib/feed-chain-preview.ts'
 import { attachReplyParents } from '../lib/reply-parents.ts'
 import { loadPolls } from '../lib/polls.ts'
 import { loadUnfurlCards } from '../lib/unfurl-cards.ts'
@@ -104,6 +104,7 @@ feedRoute.get('/', requireHandle(), async (c) => {
   )
   await attachReplyParents({ db, viewerId: me, env: mediaEnv, posts })
   await attachFeedChainPreviews({ db, viewerId: me, env: mediaEnv, posts })
+  linkSamePageReplies(posts)
   const filtered = filterChainIntermediates(posts)
   const hasMore = rows.length === limit
   const nextCursor = hasMore ? rows[rows.length - 1]!.post.createdAt.toISOString() : null

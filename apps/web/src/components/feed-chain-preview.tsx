@@ -20,26 +20,29 @@ export function FeedChainPreview({ post }: { post: Post }) {
     navigate({ to: "/$handle/p/$id", params: { handle, id: leafId } })
   }
 
-  const replyWord = omittedCount === 1 ? "reply" : "replies"
-
   return (
     <div className="flex flex-col">
       <FeedPostCard post={root} threadLine="bottom" />
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation()
-          openLeaf()
-        }}
-        className="text-muted-foreground flex items-center gap-3 px-4 py-1.5 text-left text-xs hover:text-primary"
-      >
-        <div className="-my-1.5 flex w-10 shrink-0 items-stretch justify-center self-stretch">
-          <span className="w-px bg-[var(--border-color-neutral)]" aria-hidden />
-        </div>
-        <span className="underline-offset-2 hover:underline">
-          {omittedCount} more {replyWord}
-        </span>
-      </button>
+      {omittedCount > 0 && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            openLeaf()
+          }}
+          className="text-muted-foreground flex items-center gap-3 px-4 py-1.5 text-left text-xs hover:text-primary"
+        >
+          <div className="-my-1.5 flex w-10 shrink-0 items-stretch justify-center self-stretch">
+            <span
+              className="w-px bg-[var(--border-color-neutral)]"
+              aria-hidden
+            />
+          </div>
+          <span className="underline-offset-2 hover:underline">
+            {omittedCount} more {omittedCount === 1 ? "reply" : "replies"}
+          </span>
+        </button>
+      )}
       <FeedPostCard post={post} threadLine="top" />
     </div>
   )
