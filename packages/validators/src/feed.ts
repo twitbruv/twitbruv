@@ -17,16 +17,16 @@ const feedLimitSchema = z.preprocess((value) => {
 }, z.number().int().min(1).max(FEED_MAX_LIMIT))
 
 export const feedQuerySchema = z.object({
-  limit: feedLimitSchema,
+  limit: feedLimitSchema.optional().default(FEED_DEFAULT_LIMIT),
   cursor: z.string().optional(),
 })
 
 export const forYouFeedQuerySchema = z.object({
-  limit: feedLimitSchema,
+  limit: feedLimitSchema.optional().default(FEED_DEFAULT_LIMIT),
   cursor: z.preprocess(
     (value) => (typeof value === "string" ? value : null),
     z.string().nullable()
-  ),
+  ).optional().default(null),
 })
 
 export type FeedQuery = z.infer<typeof feedQuerySchema>
