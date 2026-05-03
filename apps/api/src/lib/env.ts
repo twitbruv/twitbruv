@@ -15,6 +15,14 @@ function expandLocalDevOrigins(origins: string[], nodeEnv: string): string[] {
   return [...new Set([...origins, ...extra])]
 }
 
+function optionalTrimmedString<T extends z.ZodTypeAny>(schema: T) {
+  return z.preprocess((value) => {
+    if (typeof value !== "string") return value
+    const trimmed = value.trim()
+    return trimmed.length === 0 ? undefined : trimmed
+  }, schema.optional())
+}
+
 const envSchema = z.object({
   DATABASE_URL: z.string().url(),
   BETTER_AUTH_SECRET: z.string().min(16),
@@ -158,8 +166,8 @@ const envSchema = z.object({
   // Internal ranker service used by the For You feed. All three vars are optional so the API
   // boots and serves every existing feed even when feed-ranker isn't deployed yet — in that
   // case /api/feed/for-you transparently falls back to a blended chrono feed on page 1.
-  FEED_RANKER_URL: z.string().url().optional(),
-  FEED_RANKER_TOKEN: z.string().min(16).optional(),
+  FEED_RANKER_URL: optionalTrimmedString(z.string().url()),
+  FEED_RANKER_TOKEN: optionalTrimmedString(z.string().min(16)),
   // Hard ceiling on the ranker call. The product budget is roughly p95 < 120ms; we kill the
   // request past that and fall back rather than letting a slow ranker drag the API timeline.
   FEED_RANKER_TIMEOUT_MS: z.coerce.number().int().min(20).max(2000).default(120),

@@ -423,7 +423,7 @@ feedRoute.get("/for-you", requireHandle(), async (c) => {
   const algoVersion = FOR_YOU_ALGO_VERSION
   const variant = bucketForYouVariant(me)
 
-  const cacheable = !cursor && limit === 40
+  const cacheable = !cursor && limit === FEED_DEFAULT_LIMIT
   const cacheKey = forYouFeedCacheKey({ userId: me, variant, algoVersion })
 
   if (cacheable) {
@@ -607,6 +607,7 @@ async function buildForYouFallbackIds(args: {
           isNull(schema.posts.deletedAt),
           eq(schema.posts.visibility, "public"),
           sql`${schema.posts.authorId} <> ${viewerId}`,
+          sql`NOT EXISTS (SELECT 1 FROM ${schema.follows} ff WHERE ff.follower_id = ${viewerId} AND ff.followee_id = ${schema.posts.authorId})`,
           sql`NOT EXISTS (SELECT 1 FROM ${schema.blocks} b WHERE (b.blocker_id = ${viewerId} AND b.blocked_id = ${schema.posts.authorId}) OR (b.blocker_id = ${schema.posts.authorId} AND b.blocked_id = ${viewerId}))`,
           sql`NOT EXISTS (SELECT 1 FROM ${schema.mutes} m WHERE m.muter_id = ${viewerId} AND m.muted_id = ${schema.posts.authorId} AND (m.scope = 'feed' OR m.scope = 'both'))`
         )
