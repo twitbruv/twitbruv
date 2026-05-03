@@ -1,4 +1,4 @@
-import { Hono } from 'hono'
+import { Hono } from "hono"
 import {
   and,
   desc,
@@ -9,30 +9,35 @@ import {
   sql,
   schema,
   type Database,
-} from '@workspace/db'
+} from "@workspace/db"
 import {
   FOR_YOU_ALGO_VERSION,
   bucketForYouVariant,
   type ForYouRankRequest,
-} from '@workspace/types'
-import { requireHandle, type HonoEnv } from '../middleware/session.ts'
-import { toPostDto, type PostDto } from '../lib/post-dto.ts'
-import { loadViewerFlags } from '../lib/viewer-flags.ts'
-import { loadPostMedia } from '../lib/post-media.ts'
-import { loadArticleCards } from '../lib/article-cards.ts'
-import { loadRepostTargets } from '../lib/repost-targets.ts'
-import { loadQuoteTargets } from '../lib/quote-targets.ts'
-import { attachFeedChainPreviews, linkSamePageReplies, filterRedundantChainPosts } from '../lib/feed-chain-preview.ts'
-import { attachReplyParents } from '../lib/reply-parents.ts'
-import { loadPolls } from '../lib/polls.ts'
-import { loadUnfurlCards } from '../lib/unfurl-cards.ts'
-import { parseCursor } from '../lib/cursor.ts'
-import { callForYouRanker } from '../lib/feed-ranker.ts'
-import { hydratePostsByIds } from '../lib/feed-hydrate.ts'
+} from "@workspace/types"
+import { requireHandle, type HonoEnv } from "../middleware/session.ts"
+import { toPostDto, type PostDto } from "../lib/post-dto.ts"
+import { loadViewerFlags } from "../lib/viewer-flags.ts"
+import { loadPostMedia } from "../lib/post-media.ts"
+import { loadArticleCards } from "../lib/article-cards.ts"
+import { loadRepostTargets } from "../lib/repost-targets.ts"
+import { loadQuoteTargets } from "../lib/quote-targets.ts"
+import {
+  attachFeedChainPreviews,
+  linkSamePageReplies,
+  filterRedundantChainPosts,
+} from "../lib/feed-chain-preview.ts"
+import { attachReplyParents } from "../lib/reply-parents.ts"
+import { loadPolls } from "../lib/polls.ts"
+import { loadUnfurlCards } from "../lib/unfurl-cards.ts"
+import { parseCursor } from "../lib/cursor.ts"
+import { callForYouRanker } from "../lib/feed-ranker.ts"
+import { hydratePostsByIds } from "../lib/feed-hydrate.ts"
 
 export const feedRoute = new Hono<HonoEnv>()
 
 const HOME_FEED_TTL_SEC = 30
+const FALLBACK_FEED_TOP_UP = 20
 
 export function homeFeedCacheKey(userId: string) {
   return `feed:home:${userId}:v3`
@@ -49,21 +54,23 @@ export function profileFeedCacheKey(authorId: string) {
 }
 
 // Home feed: reverse-chrono from follows, excluding blocks and muted-feed users.
-feedRoute.get('/', requireHandle(), async (c) => {
-  const session = c.get('session')!
-  const { db, mediaEnv, cache, rateLimit } = c.get('ctx')
-  await rateLimit(c, 'reads.feed')
-  const limit = Math.min(Number(c.req.query('limit') ?? 40), 100)
-  const cursor = parseCursor(c.req.query('cursor'))
+feedRoute.get("/", requireHandle(), async (c) => {
+  const session = c.get("session")!
+  const { db, mediaEnv, cache, rateLimit } = c.get("ctx")
+  await rateLimit(c, "reads.feed")
+  const limit = Math.min(Number(c.req.query("limit") ?? 40), 100)
+  const cursor = parseCursor(c.req.query("cursor"))
   const me = session.user.id
 
   // Cache only page 0 (no cursor) with default limit. Deeper pages are rarely fetched and
   // caching every (cursor, limit) combo isn't worth the keyspace.
   const cacheable = !cursor && limit === 40
   if (cacheable) {
-    const hit = await cache.get<{ posts: unknown; nextCursor: string | null }>(homeFeedCacheKey(me))
+    const hit = await cache.get<{ posts: unknown; nextCursor: string | null }>(
+      homeFeedCacheKey(me)
+    )
     if (hit) {
-      c.header('x-cache', 'hit')
+      c.header("x-cache", "hit")
       return c.json(hit)
     }
   }
@@ -72,38 +79,48 @@ feedRoute.get('/', requireHandle(), async (c) => {
     .select({ post: schema.posts, author: schema.users })
     .from(schema.posts)
     .innerJoin(schema.users, eq(schema.users.id, schema.posts.authorId))
-    .innerJoin(schema.follows, eq(schema.follows.followeeId, schema.posts.authorId))
+    .innerJoin(
+      schema.follows,
+      eq(schema.follows.followeeId, schema.posts.authorId)
+    )
     .where(
       and(
         eq(schema.follows.followerId, me),
         isNull(schema.posts.deletedAt),
         cursor ? lt(schema.posts.createdAt, cursor) : undefined,
         sql`NOT EXISTS (SELECT 1 FROM ${schema.blocks} b WHERE (b.blocker_id = ${me} AND b.blocked_id = ${schema.posts.authorId}) OR (b.blocker_id = ${schema.posts.authorId} AND b.blocked_id = ${me}))`,
-        sql`NOT EXISTS (SELECT 1 FROM ${schema.mutes} m WHERE m.muter_id = ${me} AND m.muted_id = ${schema.posts.authorId} AND (m.scope = 'feed' OR m.scope = 'both'))`,
-      ),
+        sql`NOT EXISTS (SELECT 1 FROM ${schema.mutes} m WHERE m.muter_id = ${me} AND m.muted_id = ${schema.posts.authorId} AND (m.scope = 'feed' OR m.scope = 'both'))`
+      )
     )
     .orderBy(desc(schema.posts.createdAt))
     .limit(limit)
 
   const ids = rows.map((r) => r.post.id)
-  const [flags, mediaMap, articleMap, repostMap, quoteMap, pollMap] = await Promise.all([
-    loadViewerFlags(db, me, ids),
-    loadPostMedia(db, ids),
-    loadArticleCards(db, ids),
-    loadRepostTargets({
-      db,
-      viewerId: me,
-      env: mediaEnv,
-      repostRows: rows.map((r) => ({ id: r.post.id, repostOfId: r.post.repostOfId })),
-    }),
-    loadQuoteTargets({
-      db,
-      viewerId: me,
-      env: mediaEnv,
-      quoteRows: rows.map((r) => ({ id: r.post.id, quoteOfId: r.post.quoteOfId })),
-    }),
-    loadPolls(db, me, ids),
-  ])
+  const [flags, mediaMap, articleMap, repostMap, quoteMap, pollMap] =
+    await Promise.all([
+      loadViewerFlags(db, me, ids),
+      loadPostMedia(db, ids),
+      loadArticleCards(db, ids),
+      loadRepostTargets({
+        db,
+        viewerId: me,
+        env: mediaEnv,
+        repostRows: rows.map((r) => ({
+          id: r.post.id,
+          repostOfId: r.post.repostOfId,
+        })),
+      }),
+      loadQuoteTargets({
+        db,
+        viewerId: me,
+        env: mediaEnv,
+        quoteRows: rows.map((r) => ({
+          id: r.post.id,
+          quoteOfId: r.post.quoteOfId,
+        })),
+      }),
+      loadPolls(db, me, ids),
+    ])
   const unfurlCardsMap = await loadUnfurlCards(db, ids, articleMap)
   const posts = rows.map((r) =>
     toPostDto(
@@ -115,20 +132,22 @@ feedRoute.get('/', requireHandle(), async (c) => {
       unfurlCardsMap.get(r.post.id),
       repostMap.get(r.post.id),
       quoteMap.get(r.post.id),
-      pollMap.get(r.post.id),
-    ),
+      pollMap.get(r.post.id)
+    )
   )
   await attachReplyParents({ db, viewerId: me, env: mediaEnv, posts })
   await attachFeedChainPreviews({ db, viewerId: me, env: mediaEnv, posts })
   linkSamePageReplies(posts)
   const filtered = filterRedundantChainPosts(posts)
   const hasMore = rows.length === limit
-  const nextCursor = hasMore ? rows[rows.length - 1]!.post.createdAt.toISOString() : null
+  const nextCursor = hasMore
+    ? rows[rows.length - 1]!.post.createdAt.toISOString()
+    : null
   const response = { posts: filtered, nextCursor }
 
   if (cacheable) {
     await cache.set(homeFeedCacheKey(me), response, HOME_FEED_TTL_SEC)
-    c.header('x-cache', 'miss')
+    c.header("x-cache", "miss")
   }
   return c.json(response)
 })
@@ -139,12 +158,12 @@ feedRoute.get('/', requireHandle(), async (c) => {
 // viewer's blocks/mutes and any post by a blocked author.
 const NETWORK_FEED_TTL_SEC = 60
 
-feedRoute.get('/network', requireHandle(), async (c) => {
-  const session = c.get('session')!
-  const { db, mediaEnv, rateLimit } = c.get('ctx')
-  await rateLimit(c, 'reads.feed')
-  const limit = Math.min(Number(c.req.query('limit') ?? 40), 100)
-  const cursor = parseCursor(c.req.query('cursor'))
+feedRoute.get("/network", requireHandle(), async (c) => {
+  const session = c.get("session")!
+  const { db, mediaEnv, rateLimit } = c.get("ctx")
+  await rateLimit(c, "reads.feed")
+  const limit = Math.min(Number(c.req.query("limit") ?? 40), 100)
+  const cursor = parseCursor(c.req.query("cursor"))
   const me = session.user.id
 
   // The activity that surfaced the post is one of: a like by a follow,
@@ -171,23 +190,23 @@ feedRoute.get('/network', requireHandle(), async (c) => {
       schema.follows,
       and(
         eq(schema.follows.followerId, me),
-        eq(schema.follows.followeeId, schema.likes.userId),
-      ),
+        eq(schema.follows.followeeId, schema.likes.userId)
+      )
     )
     .innerJoin(schema.posts, eq(schema.posts.id, schema.likes.postId))
     .innerJoin(schema.users, eq(schema.users.id, schema.posts.authorId))
     .where(
       and(
         isNull(schema.posts.deletedAt),
-        eq(schema.posts.visibility, 'public'),
+        eq(schema.posts.visibility, "public"),
         // Skip posts by people the viewer already follows; those belong on
         // the home feed. Skip viewer's own posts too.
         sql`NOT EXISTS (SELECT 1 FROM ${schema.follows} ff WHERE ff.follower_id = ${me} AND ff.followee_id = ${schema.posts.authorId})`,
         sql`${schema.posts.authorId} <> ${me}`,
         sql`NOT EXISTS (SELECT 1 FROM ${schema.blocks} b WHERE (b.blocker_id = ${me} AND b.blocked_id = ${schema.posts.authorId}) OR (b.blocker_id = ${schema.posts.authorId} AND b.blocked_id = ${me}))`,
         sql`NOT EXISTS (SELECT 1 FROM ${schema.mutes} m WHERE m.muter_id = ${me} AND m.muted_id = ${schema.posts.authorId} AND (m.scope = 'feed' OR m.scope = 'both'))`,
-        cursor ? lt(schema.likes.createdAt, cursor) : undefined,
-      ),
+        cursor ? lt(schema.likes.createdAt, cursor) : undefined
+      )
     )
     .orderBy(desc(schema.likes.createdAt))
     .limit(limit * 2)
@@ -198,8 +217,8 @@ feedRoute.get('/network', requireHandle(), async (c) => {
     .select({
       post: schema.posts,
       author: schema.users,
-      activityAt: sql<Date>`reposters.created_at`.as('activity_at'),
-      actorId: sql<string>`reposters.author_id`.as('actor_id'),
+      activityAt: sql<Date>`reposters.created_at`.as("activity_at"),
+      actorId: sql<string>`reposters.author_id`.as("actor_id"),
     })
     .from(
       sql`(
@@ -212,19 +231,19 @@ feedRoute.get('/network', requireHandle(), async (c) => {
           ${cursor ? sql`AND r.created_at < ${cursor}` : sql``}
         ORDER BY r.created_at DESC
         LIMIT ${limit * 2}
-      ) reposters`,
+      ) reposters`
     )
     .innerJoin(schema.posts, sql`${schema.posts.id} = reposters.post_id`)
     .innerJoin(schema.users, eq(schema.users.id, schema.posts.authorId))
     .where(
       and(
         isNull(schema.posts.deletedAt),
-        eq(schema.posts.visibility, 'public'),
+        eq(schema.posts.visibility, "public"),
         sql`NOT EXISTS (SELECT 1 FROM ${schema.follows} ff WHERE ff.follower_id = ${me} AND ff.followee_id = ${schema.posts.authorId})`,
         sql`${schema.posts.authorId} <> ${me}`,
         sql`NOT EXISTS (SELECT 1 FROM ${schema.blocks} b WHERE (b.blocker_id = ${me} AND b.blocked_id = ${schema.posts.authorId}) OR (b.blocker_id = ${schema.posts.authorId} AND b.blocked_id = ${me}))`,
-        sql`NOT EXISTS (SELECT 1 FROM ${schema.mutes} m WHERE m.muter_id = ${me} AND m.muted_id = ${schema.posts.authorId} AND (m.scope = 'feed' OR m.scope = 'both'))`,
-      ),
+        sql`NOT EXISTS (SELECT 1 FROM ${schema.mutes} m WHERE m.muter_id = ${me} AND m.muted_id = ${schema.posts.authorId} AND (m.scope = 'feed' OR m.scope = 'both'))`
+      )
     )
 
   // Merge by post id, keeping the most recent activity for ordering and
@@ -241,13 +260,16 @@ feedRoute.get('/network', requireHandle(), async (c) => {
         actorIds: [row.actorId],
       })
     } else {
-      if (row.activityAt > existing.activityAt) existing.activityAt = row.activityAt
-      if (!existing.actorIds.includes(row.actorId)) existing.actorIds.push(row.actorId)
+      if (row.activityAt > existing.activityAt)
+        existing.activityAt = row.activityAt
+      if (!existing.actorIds.includes(row.actorId))
+        existing.actorIds.push(row.actorId)
     }
   }
   for (const row of repostRows) {
     const existing = byId.get(row.post.id)
-    const at = row.activityAt instanceof Date ? row.activityAt : new Date(row.activityAt)
+    const at =
+      row.activityAt instanceof Date ? row.activityAt : new Date(row.activityAt)
     if (!existing) {
       byId.set(row.post.id, {
         post: row.post,
@@ -257,7 +279,8 @@ feedRoute.get('/network', requireHandle(), async (c) => {
       })
     } else {
       if (at > existing.activityAt) existing.activityAt = at
-      if (!existing.actorIds.includes(row.actorId)) existing.actorIds.push(row.actorId)
+      if (!existing.actorIds.includes(row.actorId))
+        existing.actorIds.push(row.actorId)
     }
   }
 
@@ -266,30 +289,38 @@ feedRoute.get('/network', requireHandle(), async (c) => {
     .slice(0, limit)
 
   const ids = merged.map((r) => r.post.id)
-  const [flags, mediaMap, articleMap, repostMapPost, quoteMapPost, pollMap] = await Promise.all([
-    loadViewerFlags(db, me, ids),
-    loadPostMedia(db, ids),
-    loadArticleCards(db, ids),
-    loadRepostTargets({
-      db,
-      viewerId: me,
-      env: mediaEnv,
-      repostRows: merged.map((r) => ({ id: r.post.id, repostOfId: r.post.repostOfId })),
-    }),
-    loadQuoteTargets({
-      db,
-      viewerId: me,
-      env: mediaEnv,
-      quoteRows: merged.map((r) => ({ id: r.post.id, quoteOfId: r.post.quoteOfId })),
-    }),
-    loadPolls(db, me, ids),
-  ])
+  const [flags, mediaMap, articleMap, repostMapPost, quoteMapPost, pollMap] =
+    await Promise.all([
+      loadViewerFlags(db, me, ids),
+      loadPostMedia(db, ids),
+      loadArticleCards(db, ids),
+      loadRepostTargets({
+        db,
+        viewerId: me,
+        env: mediaEnv,
+        repostRows: merged.map((r) => ({
+          id: r.post.id,
+          repostOfId: r.post.repostOfId,
+        })),
+      }),
+      loadQuoteTargets({
+        db,
+        viewerId: me,
+        env: mediaEnv,
+        quoteRows: merged.map((r) => ({
+          id: r.post.id,
+          quoteOfId: r.post.quoteOfId,
+        })),
+      }),
+      loadPolls(db, me, ids),
+    ])
   const unfurlCardsMapNetwork = await loadUnfurlCards(db, ids, articleMap)
   // Pull the triggering actors' handles for the "Lucas + 2 others liked this"
   // banner. We cap at 3 ids per post; the count beyond that is shown as
   // "+N others" in the UI.
   const allActorIds = new Set<string>()
-  for (const r of merged) for (const id of r.actorIds.slice(0, 3)) allActorIds.add(id)
+  for (const r of merged)
+    for (const id of r.actorIds.slice(0, 3)) allActorIds.add(id)
   const actorMap = new Map<
     string,
     { id: string; handle: string | null; displayName: string | null }
@@ -321,7 +352,7 @@ feedRoute.get('/network', requireHandle(), async (c) => {
       unfurlCardsMapNetwork.get(r.post.id),
       repostMapPost.get(r.post.id),
       quoteMapPost.get(r.post.id),
-      pollMap.get(r.post.id),
+      pollMap.get(r.post.id)
     ),
     networkActors: r.actorIds
       .slice(0, 3)
@@ -332,7 +363,9 @@ feedRoute.get('/network', requireHandle(), async (c) => {
   }))
   await attachReplyParents({ db, viewerId: me, env: mediaEnv, posts })
   const nextCursor =
-    posts.length === limit ? merged[merged.length - 1]!.activityAt.toISOString() : null
+    posts.length === limit
+      ? merged[merged.length - 1]!.activityAt.toISOString()
+      : null
   // Suppress unused TTL constant warning (kept for future caching hooks).
   void NETWORK_FEED_TTL_SEC
   return c.json({ posts, nextCursor })
@@ -359,10 +392,6 @@ feedRoute.get('/network', requireHandle(), async (c) => {
 const FOR_YOU_PAGE_TTL_SEC = 30
 const FOR_YOU_DEFAULT_LIMIT = 40
 const FOR_YOU_MAX_LIMIT = 100
-// API asks the ranker for a little more than the client requested. The hydrate step may
-// drop posts that became invisible between ranker pre-filter and now (delete / block /
-// mute), so a small overfetch keeps the page full without a second round trip.
-const FOR_YOU_OVERFETCH = 20
 const FOR_YOU_RANKER_MAX_LIMIT = 200
 
 export function forYouFeedCacheKey(args: {
@@ -373,27 +402,25 @@ export function forYouFeedCacheKey(args: {
   return `feed:foryou:${args.userId}:${args.variant}:${args.algoVersion}:v1`
 }
 
-// Opaque ranker cursor — base64url-ish string, max length bounded so a malicious or buggy
-// client can't push arbitrary blobs through to the ranker. We don't decode it here; that's
-// the ranker's responsibility (it owns the session payload format).
-function isValidRankerCursor(raw: string): boolean {
-  if (raw.length === 0 || raw.length > 256) return false
-  return /^[A-Za-z0-9_\-=.]+$/.test(raw)
-}
-
-feedRoute.get('/for-you', requireHandle(), async (c) => {
-  const session = c.get('session')!
-  const { db, mediaEnv, cache, env, log, rateLimit } = c.get('ctx')
-  await rateLimit(c, 'reads.feed')
+feedRoute.get("/for-you", requireHandle(), async (c) => {
+  const session = c.get("session")!
+  const { db, mediaEnv, cache, env, log, rateLimit } = c.get("ctx")
+  await rateLimit(c, "reads.feed")
 
   const me = session.user.id
-  const limitRaw = Number(c.req.query('limit') ?? FOR_YOU_DEFAULT_LIMIT)
+  const limitRaw = Number(c.req.query("limit") ?? FOR_YOU_DEFAULT_LIMIT)
   const limit = Math.min(
-    Math.max(Number.isFinite(limitRaw) ? Math.floor(limitRaw) : FOR_YOU_DEFAULT_LIMIT, 1),
-    FOR_YOU_MAX_LIMIT,
+    Math.max(
+      Number.isFinite(limitRaw) ? Math.floor(limitRaw) : FOR_YOU_DEFAULT_LIMIT,
+      1
+    ),
+    FOR_YOU_MAX_LIMIT
   )
-  const cursorRaw = c.req.query('cursor')
-  const cursor = cursorRaw && isValidRankerCursor(cursorRaw) ? cursorRaw : null
+  const cursorRaw = c.req.query("cursor")
+  // The ranker owns opaque cursor validation. Preserve any provided value so malformed or
+  // expired cursors produce the same explicit restartRequired path instead of silently
+  // downgrading the request to a first page.
+  const cursor = cursorRaw ?? null
 
   // Compute experiment assignment + algo version on the API side so the cache key, response
   // metadata, and analytics attribution all match even if the ranker is unreachable.
@@ -406,12 +433,12 @@ feedRoute.get('/for-you', requireHandle(), async (c) => {
   if (cacheable) {
     const hit = await cache.get<ForYouFeedResponse>(cacheKey)
     if (hit) {
-      c.header('x-cache', 'hit')
+      c.header("x-cache", "hit")
       return c.json(hit)
     }
   }
 
-  const rankerLimit = Math.min(limit + FOR_YOU_OVERFETCH, FOR_YOU_RANKER_MAX_LIMIT)
+  const rankerLimit = Math.min(limit, FOR_YOU_RANKER_MAX_LIMIT)
   const rankRequest: ForYouRankRequest = {
     userId: me,
     limit: rankerLimit,
@@ -430,42 +457,39 @@ feedRoute.get('/for-you', requireHandle(), async (c) => {
     log,
   })
 
-  if (ranker.kind === 'session_expired') {
+  if (ranker.kind === "session_expired") {
     // Page 2+ with a stale session. The client should refresh from page 1.
     return c.json(
       {
-        error: 'session_expired',
+        error: "session_expired",
         restartRequired: true,
         algoVersion,
         variant,
       },
-      410,
+      410
     )
   }
 
-  if (ranker.kind === 'unavailable') {
+  if (ranker.kind === "unavailable") {
     if (cursor) {
       // We can't honour a ranker cursor without the ranker. Treat this the same as an
       // expired session: tell the client to restart, don't quietly swap feed mode.
-      log.warn(
-        { userId: me, reason: ranker.reason },
-        'feed_for_you_cursor_without_ranker',
-      )
+      log.warn({ reason: ranker.reason }, "feed_for_you_cursor_without_ranker")
       return c.json(
         {
-          error: 'session_expired',
+          error: "session_expired",
           restartRequired: true,
           algoVersion,
           variant,
         },
-        410,
+        410
       )
     }
 
     const fallbackIds = await buildForYouFallbackIds({
       db,
       viewerId: me,
-      limit: limit + FOR_YOU_OVERFETCH,
+      limit: limit + FALLBACK_FEED_TOP_UP,
     })
     const fallbackPosts = await hydratePostsByIds({
       db,
@@ -483,8 +507,8 @@ feedRoute.get('/for-you', requireHandle(), async (c) => {
     }
     // Don't cache fallback under the page-0 key — we want to retry the ranker on the next
     // request, not lock in a chrono response for 30s.
-    c.header('x-cache', 'fallback')
-    c.header('x-feed-fallback-reason', ranker.reason)
+    c.header("x-cache", "fallback")
+    c.header("x-feed-fallback-reason", ranker.reason)
     return c.json(fallbackResponse)
   }
 
@@ -509,7 +533,7 @@ feedRoute.get('/for-you', requireHandle(), async (c) => {
 
   if (cacheable) {
     await cache.set(cacheKey, response, FOR_YOU_PAGE_TTL_SEC)
-    c.header('x-cache', 'miss')
+    c.header("x-cache", "miss")
   }
   return c.json(response)
 })
@@ -546,19 +570,19 @@ async function buildForYouFallbackIds(args: {
         schema.follows,
         and(
           eq(schema.follows.followerId, viewerId),
-          eq(schema.follows.followeeId, schema.likes.userId),
-        ),
+          eq(schema.follows.followeeId, schema.likes.userId)
+        )
       )
       .innerJoin(schema.posts, eq(schema.posts.id, schema.likes.postId))
       .where(
         and(
           isNull(schema.posts.deletedAt),
-          eq(schema.posts.visibility, 'public'),
+          eq(schema.posts.visibility, "public"),
           sql`NOT EXISTS (SELECT 1 FROM ${schema.follows} ff WHERE ff.follower_id = ${viewerId} AND ff.followee_id = ${schema.posts.authorId})`,
           sql`${schema.posts.authorId} <> ${viewerId}`,
           sql`NOT EXISTS (SELECT 1 FROM ${schema.blocks} b WHERE (b.blocker_id = ${viewerId} AND b.blocked_id = ${schema.posts.authorId}) OR (b.blocker_id = ${schema.posts.authorId} AND b.blocked_id = ${viewerId}))`,
-          sql`NOT EXISTS (SELECT 1 FROM ${schema.mutes} m WHERE m.muter_id = ${viewerId} AND m.muted_id = ${schema.posts.authorId} AND (m.scope = 'feed' OR m.scope = 'both'))`,
-        ),
+          sql`NOT EXISTS (SELECT 1 FROM ${schema.mutes} m WHERE m.muter_id = ${viewerId} AND m.muted_id = ${schema.posts.authorId} AND (m.scope = 'feed' OR m.scope = 'both'))`
+        )
       )
       .orderBy(desc(schema.likes.createdAt))
       .limit(perBucket),
@@ -567,15 +591,15 @@ async function buildForYouFallbackIds(args: {
       .from(schema.posts)
       .innerJoin(
         schema.follows,
-        eq(schema.follows.followeeId, schema.posts.authorId),
+        eq(schema.follows.followeeId, schema.posts.authorId)
       )
       .where(
         and(
           eq(schema.follows.followerId, viewerId),
           isNull(schema.posts.deletedAt),
           sql`NOT EXISTS (SELECT 1 FROM ${schema.blocks} b WHERE (b.blocker_id = ${viewerId} AND b.blocked_id = ${schema.posts.authorId}) OR (b.blocker_id = ${schema.posts.authorId} AND b.blocked_id = ${viewerId}))`,
-          sql`NOT EXISTS (SELECT 1 FROM ${schema.mutes} m WHERE m.muter_id = ${viewerId} AND m.muted_id = ${schema.posts.authorId} AND (m.scope = 'feed' OR m.scope = 'both'))`,
-        ),
+          sql`NOT EXISTS (SELECT 1 FROM ${schema.mutes} m WHERE m.muter_id = ${viewerId} AND m.muted_id = ${schema.posts.authorId} AND (m.scope = 'feed' OR m.scope = 'both'))`
+        )
       )
       .orderBy(desc(schema.posts.createdAt))
       .limit(perBucket),
@@ -585,11 +609,11 @@ async function buildForYouFallbackIds(args: {
       .where(
         and(
           isNull(schema.posts.deletedAt),
-          eq(schema.posts.visibility, 'public'),
+          eq(schema.posts.visibility, "public"),
           sql`${schema.posts.authorId} <> ${viewerId}`,
           sql`NOT EXISTS (SELECT 1 FROM ${schema.blocks} b WHERE (b.blocker_id = ${viewerId} AND b.blocked_id = ${schema.posts.authorId}) OR (b.blocker_id = ${schema.posts.authorId} AND b.blocked_id = ${viewerId}))`,
-          sql`NOT EXISTS (SELECT 1 FROM ${schema.mutes} m WHERE m.muter_id = ${viewerId} AND m.muted_id = ${schema.posts.authorId} AND (m.scope = 'feed' OR m.scope = 'both'))`,
-        ),
+          sql`NOT EXISTS (SELECT 1 FROM ${schema.mutes} m WHERE m.muter_id = ${viewerId} AND m.muted_id = ${schema.posts.authorId} AND (m.scope = 'feed' OR m.scope = 'both'))`
+        )
       )
       .orderBy(desc(schema.posts.createdAt))
       .limit(perBucket),

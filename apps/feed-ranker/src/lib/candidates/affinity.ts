@@ -62,7 +62,6 @@ export async function loadAffinityCandidates(
       )
     )
     .orderBy(desc(schema.posts.createdAt))
-    .limit(200)
 
   return rows
     .map((row) => ({

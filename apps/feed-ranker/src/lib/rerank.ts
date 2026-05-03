@@ -40,7 +40,8 @@ export function selectRankedCandidates(
         candidate,
         selected.length,
         authorCounts,
-        sourceCounts
+        sourceCounts,
+        context.requestedAt
       )
       if (adjustedScore > bestAdjustedScore) {
         bestAdjustedScore = adjustedScore
@@ -53,7 +54,8 @@ export function selectRankedCandidates(
         remaining,
         selected.length,
         authorCounts,
-        sourceCounts
+        sourceCounts,
+        context.requestedAt
       )
       bestIndex = fallback.index
       bestAdjustedScore = fallback.adjustedScore
@@ -89,7 +91,8 @@ function bestRemainingCandidate(
   remaining: Array<ScoredForYouCandidate>,
   index: number,
   authorCounts: Map<string, number>,
-  sourceCounts: Map<string, number>
+  sourceCounts: Map<string, number>,
+  requestedAt: Date
 ): { index: number; adjustedScore: number } {
   let bestIndex = -1
   let bestAdjustedScore = Number.NEGATIVE_INFINITY
@@ -104,7 +107,8 @@ function bestRemainingCandidate(
       candidate,
       index,
       authorCounts,
-      sourceCounts
+      sourceCounts,
+      requestedAt
     )
     if (adjustedScore > bestAdjustedScore) {
       bestAdjustedScore = adjustedScore
@@ -139,7 +143,8 @@ function adjustedRerankScore(
   candidate: ScoredForYouCandidate,
   index: number,
   authorCounts: Map<string, number>,
-  sourceCounts: Map<string, number>
+  sourceCounts: Map<string, number>,
+  requestedAt: Date
 ): number {
   const authorRepeats = authorCounts.get(candidate.authorId) ?? 0
   const sourceRepeats = sourceCounts.get(candidate.sourceBucket) ?? 0
@@ -147,7 +152,8 @@ function adjustedRerankScore(
     authorRepeats === 0 ? 1 : authorRepeats === 1 ? 0.72 : 0.5
   const sourcePenalty = index < 20 ? sourceRepeats * 0.08 : sourceRepeats * 0.03
   const replyPenalty = index < 20 && candidate.replyToId ? 0.35 : 0
-  const freshnessNudge = index < 10 ? freshnessNudgeFor(candidate) : 0
+  const freshnessNudge =
+    index < 10 ? freshnessNudgeFor(candidate, requestedAt) : 0
   const authorFactor =
     candidate.score >= 0 ? authorAttenuation : 1 + (1 - authorAttenuation)
 
@@ -159,10 +165,13 @@ function adjustedRerankScore(
   )
 }
 
-function freshnessNudgeFor(candidate: ScoredForYouCandidate): number {
+function freshnessNudgeFor(
+  candidate: ScoredForYouCandidate,
+  requestedAt: Date
+): number {
   const ageHours = Math.max(
     0,
-    (Date.now() - candidate.createdAt.getTime()) / (60 * 60 * 1000)
+    (requestedAt.getTime() - candidate.createdAt.getTime()) / (60 * 60 * 1000)
   )
   if (ageHours <= 3) return 0.4
   if (ageHours <= 12) return 0.2

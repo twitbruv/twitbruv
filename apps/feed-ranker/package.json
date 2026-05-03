@@ -9,8 +9,8 @@
     "build": "bun build src/index.ts --outdir=dist --target=bun",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
-    "format": "prettier --write \"**/*.{ts,tsx}\"",
-    "format:check": "prettier --check \"**/*.{ts,tsx}\"",
+    "format": "prettier --write --ignore-path ../../.prettierignore \"**/*.{ts,tsx,js}\"",
+    "format:check": "prettier --check --ignore-path ../../.prettierignore \"**/*.{ts,tsx,js}\"",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
