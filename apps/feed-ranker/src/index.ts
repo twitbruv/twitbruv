@@ -32,6 +32,7 @@ redis.on("error", (err) => {
 
 const runtime: RankerRuntime = { env, db, redis, log }
 const app = new Hono()
+const READINESS_TIMEOUT_MS = 1_000
 
 app.use("*", async (c, next) => {
   const start = Date.now()
@@ -53,8 +54,8 @@ app.get("/healthz", (c) => c.json({ ok: true }))
 
 app.get("/readyz", async (c) => {
   try {
-    await db.execute(sql`SELECT 1`)
-    await redis.ping()
+    await withTimeout(db.execute(sql`SELECT 1`), READINESS_TIMEOUT_MS, "db_readyz_timeout")
+    await withTimeout(redis.ping(), READINESS_TIMEOUT_MS, "redis_readyz_timeout")
     return c.json({ ok: true })
   } catch (err) {
     log.error({ err: errMsg(err) }, "readyz_failed")
@@ -105,6 +106,23 @@ app.onError((err, c) => {
 
 function errMsg(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
+}
+
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  message: string
+): Promise<T> {
+  let timeout: NodeJS.Timeout | undefined
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeout = setTimeout(() => reject(new Error(message)), timeoutMs)
+  })
+
+  try {
+    return await Promise.race([promise, timeoutPromise])
+  } finally {
+    if (timeout) clearTimeout(timeout)
+  }
 }
 
 const SHUTDOWN_TIMEOUT_MS = 5_000

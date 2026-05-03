@@ -61,7 +61,7 @@ export async function runForYouPipeline(
 
   runtime.log.info(
     {
-      anonymizedUserId: hashUserId(request.userId),
+      anonymizedUserId: hashUserId(request.userId, runtime.env.INTERNAL_SERVICE_TOKEN),
       algoVersion: request.algoVersion,
       variant: request.variant,
       candidates: candidates.length,
