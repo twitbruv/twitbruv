@@ -4,6 +4,7 @@ import UIKit
 struct TBTextField: View {
     let title: String
     @Binding var text: String
+    var placeholder: String = ""
     var keyboard: UIKeyboardType = .default
     var contentType: UITextContentType?
     var autocap: TextInputAutocapitalization = .sentences
@@ -14,7 +15,7 @@ struct TBTextField: View {
                 .font(TBTypography.label)
                 .foregroundStyle(TBColor.textPrimary)
             ZStack(alignment: .leading) {
-                TextField("", text: $text)
+                TextField(placeholder, text: $text)
                     .font(TBTypography.body)
                     .foregroundStyle(TBColor.textPrimary)
                     .textInputAutocapitalization(autocap)
@@ -24,11 +25,9 @@ struct TBTextField: View {
                     .textContentType(contentType)
             }
             .frame(minHeight: 40)
-            .tbGlass(
-                .field,
-                in: RoundedRectangle(cornerRadius: TBLayout.radiusGlassCard, style: .continuous),
-                interactive: true,
-                shadow: false
+            .background(
+                TBColor.subtleFill,
+                in: RoundedRectangle(cornerRadius: TBLayout.radiusGlassCard, style: .continuous)
             )
         }
     }
@@ -37,6 +36,7 @@ struct TBTextField: View {
 struct TBSecureField: View {
     let title: String
     @Binding var text: String
+    var placeholder: String = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -44,7 +44,7 @@ struct TBSecureField: View {
                 .font(TBTypography.label)
                 .foregroundStyle(TBColor.textPrimary)
             ZStack(alignment: .leading) {
-                SecureField("", text: $text)
+                SecureField(placeholder, text: $text)
                     .font(TBTypography.body)
                     .foregroundStyle(TBColor.textPrimary)
                     .textContentType(.password)
@@ -52,11 +52,9 @@ struct TBSecureField: View {
                     .padding(.vertical, 10)
             }
             .frame(minHeight: 40)
-            .tbGlass(
-                .field,
-                in: RoundedRectangle(cornerRadius: TBLayout.radiusGlassCard, style: .continuous),
-                interactive: true,
-                shadow: false
+            .background(
+                TBColor.subtleFill,
+                in: RoundedRectangle(cornerRadius: TBLayout.radiusGlassCard, style: .continuous)
             )
         }
     }

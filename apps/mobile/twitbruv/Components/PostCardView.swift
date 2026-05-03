@@ -12,10 +12,17 @@ struct PostCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if post.repostOf != nil {
-                Label("Reposted by @\(post.author.handle ?? "—")",
-                      systemImage: "arrow.2.squarepath")
-                    .font(TBTypography.caption)
-                    .foregroundStyle(TBColor.textTertiary)
+                HStack(spacing: 12) {
+                    HStack {
+                        Spacer()
+                        Image(systemName: "arrow.2.squarepath")
+                            .font(.system(size: 12, weight: .semibold))
+                    }
+                    .frame(width: TBLayout.hitTarget)
+                    Text("@\(post.author.handle ?? "—") reposted")
+                        .font(TBTypography.meta)
+                }
+                .foregroundStyle(TBColor.textTertiary)
             }
 
             let displayed = post.repostOf?.value ?? post
@@ -83,7 +90,7 @@ struct PostCardView: View {
 
                     if !displayed.text.isEmpty {
                         Text(displayed.text)
-                            .font(TBTypography.body)
+                            .font(TBTypography.meta)
                             .foregroundStyle(TBColor.textPrimary)
                             .textSelection(.enabled)
                     }
@@ -114,15 +121,11 @@ struct PostCardView: View {
         }
         .padding(.vertical, 8)
         .padding(.horizontal, TBLayout.pagePadding)
-        .background {
-            RoundedRectangle(cornerRadius: TBLayout.radiusPostRow, style: .continuous)
-                .fill(TBColor.base1.opacity(0.72))
-        }
     }
 
     @ViewBuilder
     private func actionBar(displayed: Post) -> some View {
-        HStack(spacing: 20) {
+        HStack(spacing: 0) {
             TBPostActionButton(
                 icon: "bubble.left",
                 count: displayed.counts.replies,
@@ -130,6 +133,8 @@ struct PostCardView: View {
                 activeColor: TBColor.accent,
                 action: { onReply?() }
             )
+            .frame(maxWidth: .infinity, alignment: .leading)
+
             TBPostActionButton(
                 icon: "arrow.2.squarepath",
                 count: displayed.counts.reposts,
@@ -137,6 +142,8 @@ struct PostCardView: View {
                 activeColor: TBColor.accent,
                 action: { onRepost?() }
             )
+            .frame(maxWidth: .infinity, alignment: .leading)
+
             TBPostActionButton(
                 icon: displayed.viewer?.liked == true ? "heart.fill" : "heart",
                 count: displayed.counts.likes,
@@ -144,6 +151,8 @@ struct PostCardView: View {
                 activeColor: TBColor.like,
                 action: { onLike?() }
             )
+            .frame(maxWidth: .infinity, alignment: .leading)
+
             TBPostActionButton(
                 icon: displayed.viewer?.bookmarked == true ? "bookmark.fill" : "bookmark",
                 count: displayed.counts.bookmarks,
@@ -151,9 +160,8 @@ struct PostCardView: View {
                 activeColor: TBColor.accent,
                 action: { onBookmark?() }
             )
-            Spacer()
         }
-        .padding(.top, 4)
+        .padding(.top, 10)
     }
 
     @ViewBuilder

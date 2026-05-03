@@ -15,11 +15,12 @@ struct SignInView: View {
                 TBTextField(
                     title: "Email",
                     text: $email,
+                    placeholder: "Email",
                     keyboard: .emailAddress,
                     contentType: .emailAddress,
                     autocap: .never
                 )
-                TBSecureField(title: "Password", text: $password)
+                TBSecureField(title: "Password", text: $password, placeholder: "Password")
 
                 if let errorMessage {
                     Text(errorMessage)

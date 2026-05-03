@@ -27,22 +27,32 @@ struct TBButton: View {
                     Text(title)
                         .font(TBTypography.meta.weight(.medium))
                         .foregroundStyle(foregroundColor)
-                        .frame(maxWidth: expands ? .infinity : nil)
                 }
             }
-            .frame(minHeight: 32)
+            .frame(maxWidth: expands ? .infinity : nil, minHeight: 32)
             .padding(.horizontal, horizontalPadding)
             .padding(.vertical, 6)
             .background {
                 background
                     .clipShape(Capsule(style: .continuous))
             }
-            .tbGlassCapsule(glassStyle, interactive: true, shadow: style == .primary)
-            .clipShape(RoundedRectangle(cornerRadius: 9999, style: .continuous))
+            .modifier(ButtonGlassModifier(style: style))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(TBSquishButtonStyle())
         .disabled(isDisabled || isLoading)
-        .opacity(isDisabled || isLoading ? 0.55 : 1)
+        .opacity(isInactive && usesOpaqueBackground ? 1 : (isInactive ? 0.55 : 1))
+        .saturation(isInactive && usesOpaqueBackground ? 0 : 1)
+    }
+
+    private var isInactive: Bool { isDisabled || isLoading }
+
+    private var usesOpaqueBackground: Bool {
+        switch style {
+        case .primary, .danger:
+            return true
+        default:
+            return false
+        }
     }
 
     private var horizontalPadding: CGFloat {
@@ -73,19 +83,8 @@ struct TBButton: View {
         }
     }
 
-    private var glassStyle: TBGlassStyle {
-        switch style {
-        case .primary, .danger:
-            return .prominent
-        case .outline, .secondary, .dangerLight:
-            return .chrome
-        case .transparent:
-            return .card
-        }
-    }
-
     private var foregroundColor: Color {
-        switch style {
+        let base: Color = switch style {
         case .primary:
             TBColor.textOnInverse
         case .outline, .secondary:
@@ -96,6 +95,38 @@ struct TBButton: View {
             TBColor.textOnInverse
         case .dangerLight:
             TBColor.danger
+        }
+        return isInactive && usesOpaqueBackground ? base.opacity(0.4) : base
+    }
+}
+
+private struct ButtonGlassModifier: ViewModifier {
+    let style: TBButton.Style
+
+    func body(content: Content) -> some View {
+        switch style {
+        case .primary, .danger:
+            content
+                .clipShape(Capsule(style: .continuous))
+                .shadow(
+                    color: TBColor.glassShadow.opacity(0.18),
+                    radius: 18,
+                    y: 8
+                )
+        default:
+            content
+                .tbGlassCapsule(glassStyle, interactive: false, shadow: false)
+        }
+    }
+
+    private var glassStyle: TBGlassStyle {
+        switch style {
+        case .outline, .secondary, .dangerLight:
+            .chrome
+        case .transparent:
+            .card
+        default:
+            .chrome
         }
     }
 }
@@ -111,9 +142,18 @@ struct TBIconButton: View {
                 .font(.system(size: 18, weight: .medium))
                 .foregroundStyle(TBColor.textSecondary)
                 .frame(width: TBLayout.hitTarget, height: TBLayout.hitTarget)
-                .tbGlass(.chrome, in: Circle(), interactive: true, shadow: false)
+                .tbGlass(.chrome, in: Circle(), interactive: false, shadow: false)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(TBSquishButtonStyle())
         .accessibilityLabel(accessibilityLabel)
     }
 }
+
+struct TBSquishButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.96 : 1)
+            .animation(.spring(response: 0.25, dampingFraction: 0.7), value: configuration.isPressed)
+    }
+}
+

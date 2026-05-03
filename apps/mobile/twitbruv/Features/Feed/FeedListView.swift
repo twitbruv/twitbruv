@@ -14,7 +14,17 @@ struct FeedListView<TopInset: View>: View {
     @ViewBuilder var topSafeAreaInset: () -> TopInset
 
     @State private var actions: PostActions?
-    @State private var showsTopInset = true
+    @State private var headerCollapseAmount: CGFloat = 0
+    @State private var headerSnapped = false
+    @State private var reverseAccumulator: CGFloat = 0
+    @State private var restingY: CGFloat?
+    private let snapThreshold: CGFloat = 0.15
+    private let reverseThreshold: CGFloat = 20
+    private let haptic: UIImpactFeedbackGenerator = {
+        let g = UIImpactFeedbackGenerator(style: .light)
+        g.prepare()
+        return g
+    }()
 
     init(
         loader: PagedLoader<Post, PostsResponse>,
@@ -109,28 +119,81 @@ struct FeedListView<TopInset: View>: View {
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .background(Color.clear)
-        .feedScrollCollapsesTopInset(
-            enabled: scrollCollapsesTopInset,
-            showTopInset: $showsTopInset
-        )
+        .onScrollGeometryChange(for: CGFloat.self) { geo in
+            geo.contentOffset.y
+        } action: { old, new in
+            guard scrollCollapsesTopInset else { return }
+            if restingY == nil { restingY = old }
+            let delta = new - old
+            let scrolled = new - (restingY ?? old)
+
+            if scrolled <= 10 {
+                if headerSnapped {
+                    headerSnapped = false
+                    reverseAccumulator = 0
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                        headerCollapseAmount = 0
+                    }
+                }
+                return
+            }
+
+            let snapPoint = TBLayout.feedScopeHeaderSlotHeight * snapThreshold
+
+            if !headerSnapped {
+                reverseAccumulator = 0
+                headerCollapseAmount = min(snapPoint, max(0, headerCollapseAmount + delta))
+                if headerCollapseAmount >= snapPoint && delta > 0 {
+                    haptic.impactOccurred()
+                    haptic.prepare()
+                    headerSnapped = true
+                    reverseAccumulator = 0
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                        headerCollapseAmount = TBLayout.feedScopeHeaderSlotHeight
+                    }
+                }
+            } else {
+                if delta < 0 {
+                    reverseAccumulator -= delta
+                } else {
+                    reverseAccumulator = max(0, reverseAccumulator - delta)
+                }
+                if reverseAccumulator >= reverseThreshold {
+                    haptic.impactOccurred()
+                    haptic.prepare()
+                    headerSnapped = false
+                    reverseAccumulator = 0
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                        headerCollapseAmount = 0
+                    }
+                }
+            }
+        }
         .safeAreaInset(edge: .top, spacing: 0) {
             if scrollCollapsesTopInset {
-                ZStack(alignment: .bottom) {
+                let collapsed = headerSnapped
+                ZStack {
                     topSafeAreaInset()
-                        .offset(y: showsTopInset ? 0 : -TBLayout.feedScopeHeaderHideOffset)
-                        .opacity(showsTopInset ? 1 : 0)
+                        .scaleEffect(collapsed ? 0.6 : 1, anchor: .center)
+                        .offset(y: collapsed ? -TBLayout.feedScopeHeaderSlotHeight * 0.5 : 0)
+                        .opacity(collapsed ? 0 : 1)
+                        .allowsHitTesting(!collapsed)
+                        .animation(.spring(response: 0.28, dampingFraction: 0.82), value: collapsed)
                 }
                 .frame(height: TBLayout.feedScopeHeaderSlotHeight)
                 .clipped()
-                .allowsHitTesting(showsTopInset)
-                .animation(TBLayout.easeOutExpo, value: showsTopInset)
             } else {
                 topSafeAreaInset()
             }
         }
         .onChange(of: collapseInsetResetToken) { _, _ in
             guard scrollCollapsesTopInset else { return }
-            showsTopInset = true
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
+                headerCollapseAmount = 0
+            }
+            headerSnapped = false
+            reverseAccumulator = 0
+            restingY = nil
         }
         .refreshable {
             await loader.reload()
@@ -179,41 +242,7 @@ struct FeedListView<TopInset: View>: View {
     }
 }
 
-private struct FeedScrollCollapseSample: Equatable {
-    let bucket: Int
-    let pinnedOpen: Bool
 
-    init(_ g: ScrollGeometry) {
-        let y = g.contentOffset.y
-        let insetTop = g.contentInsets.top
-        let pastTop = max(0, y - insetTop)
-        pinnedOpen = pastTop < 18
-        bucket = Int(floor(pastTop / TBLayout.feedScrollCollapseBucketPoints))
-    }
-}
-
-private extension View {
-    @ViewBuilder
-    func feedScrollCollapsesTopInset(enabled: Bool, showTopInset: Binding<Bool>) -> some View {
-        if enabled {
-            self.onScrollGeometryChange(for: FeedScrollCollapseSample.self) { geo in
-                FeedScrollCollapseSample(geo)
-            } action: { previous, next in
-                if next.pinnedOpen {
-                    showTopInset.wrappedValue = true
-                    return
-                }
-                if next.bucket > previous.bucket {
-                    showTopInset.wrappedValue = false
-                } else if next.bucket < previous.bucket {
-                    showTopInset.wrappedValue = true
-                }
-            }
-        } else {
-            self
-        }
-    }
-}
 
 extension FeedListView where TopInset == EmptyView {
     init(

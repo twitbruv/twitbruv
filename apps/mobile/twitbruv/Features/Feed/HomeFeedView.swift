@@ -49,9 +49,9 @@ struct HomeFeedView: View {
                                 selection: $scope,
                                 options: FeedScope.allCases.map { ($0.label, $0) }
                             )
-                            .padding(.horizontal, TBLayout.glassBarOuterMargin + TBLayout.pagePadding)
-                            .padding(.top, 8)
-                            .padding(.bottom, 8)
+                            .padding(.horizontal, TBLayout.glassBarOuterMargin)
+                            .padding(.top, 6)
+                            .padding(.bottom, 6)
                         }
                     )
                 } else {
