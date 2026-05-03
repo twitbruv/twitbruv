@@ -43,21 +43,20 @@ struct ConversationsListView: View {
             Group {
                 if let vm {
                     VStack(spacing: 0) {
-                        TBGlassBar {
-                            TBFeedSegmented(
-                                selection: Binding(
-                                    get: { vm.folder },
-                                    set: { new in
-                                        vm.folder = new
-                                        Task { await vm.reload() }
-                                    }
-                                ),
-                                options: [
-                                    ("Inbox", "inbox"),
-                                    ("Requests (\(vm.requestCount))", "requests"),
-                                ]
-                            )
-                        }
+                        TBFeedSegmented(
+                            selection: Binding(
+                                get: { vm.folder },
+                                set: { new in
+                                    vm.folder = new
+                                    Task { await vm.reload() }
+                                }
+                            ),
+                            options: [
+                                ("Inbox", "inbox"),
+                                ("Requests (\(vm.requestCount))", "requests"),
+                            ]
+                        )
+                        .padding(.horizontal, TBLayout.glassBarOuterMargin + TBLayout.pagePadding)
                         .padding(.vertical, 8)
 
                         List {

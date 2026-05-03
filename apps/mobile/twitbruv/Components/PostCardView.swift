@@ -114,7 +114,10 @@ struct PostCardView: View {
         }
         .padding(.vertical, 8)
         .padding(.horizontal, TBLayout.pagePadding)
-        .background(TBColor.base1.opacity(0.72))
+        .background {
+            RoundedRectangle(cornerRadius: TBLayout.radiusPostRow, style: .continuous)
+                .fill(TBColor.base1.opacity(0.72))
+        }
     }
 
     @ViewBuilder

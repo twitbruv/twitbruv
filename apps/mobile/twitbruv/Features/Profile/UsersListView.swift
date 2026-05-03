@@ -8,9 +8,10 @@ struct UsersListView: View {
     let endpoint: (String?) -> Endpoint
 
     @State private var loader: PagedLoader<UserSummary, UsersListResponse>?
+    @State private var navigationPath = NavigationPath()
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             Group {
                 if let loader {
                     List {
@@ -22,12 +23,10 @@ struct UsersListView: View {
                             .listRowSeparator(.hidden)
                         }
                         ForEach(loader.items) { user in
-                            NavigationLink {
-                                if let handle = user.handle {
-                                    ProfileView(handle: handle)
+                            if let handle = user.handle {
+                                NavigationLink(value: FeedRoute.profile(handle: handle)) {
+                                    UserRowView(user: user)
                                 }
-                            } label: {
-                                UserRowView(user: user)
                             }
                         }
                         LoadMoreFooter(
@@ -54,6 +53,14 @@ struct UsersListView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
                         .foregroundStyle(TBColor.accent)
+                }
+            }
+            .navigationDestination(for: FeedRoute.self) { route in
+                switch route {
+                case .thread(let id): ThreadView(postId: id)
+                case .profile(let h): ProfileView(handle: h, navigationPath: $navigationPath)
+                case .compose(let p): ComposerView(mode: .reply(p))
+                case .hashtag(let t): HashtagView(tag: t)
                 }
             }
             .task {

@@ -30,11 +30,17 @@ struct BookmarksView: View {
                         .task { setupLoader() }
                 }
             }
-            .navigationTitle("Bookmarks")
+            .navigationTitle("")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    TBPageHeader(title: "Bookmarks")
+                }
+            }
             .navigationDestination(for: FeedRoute.self) { route in
                 switch route {
                 case .thread(let id): ThreadView(postId: id)
-                case .profile(let handle): ProfileView(handle: handle)
+                case .profile(let handle): ProfileView(handle: handle, navigationPath: $path)
                 case .compose(let replyTo): ComposerView(mode: .reply(replyTo))
                 case .hashtag(let tag): HashtagView(tag: tag)
                 }

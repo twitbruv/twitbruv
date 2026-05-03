@@ -24,19 +24,12 @@ struct HomeFeedView: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            VStack(spacing: 0) {
-                TBGlassBar {
-                    TBFeedSegmented(
-                        selection: $scope,
-                        options: FeedScope.allCases.map { ($0.label, $0) }
-                    )
-                }
-                .padding(.bottom, 8)
-
+            Group {
                 if let loader = loader(for: scope) {
                     FeedListView(
                         loader: loader,
                         emptyTitle: emptyTitle(for: scope),
+                        emptyMessage: emptyMessage(for: scope),
                         onSelectPost: { post in
                             path.append(FeedRoute.thread(id: post.id))
                         },
@@ -48,6 +41,17 @@ struct HomeFeedView: View {
                         },
                         onReport: { post in
                             reportTarget = post
+                        },
+                        scrollCollapsesTopInset: true,
+                        collapseInsetResetToken: scope,
+                        topSafeAreaInset: {
+                            TBFeedSegmented(
+                                selection: $scope,
+                                options: FeedScope.allCases.map { ($0.label, $0) }
+                            )
+                            .padding(.horizontal, TBLayout.glassBarOuterMargin + TBLayout.pagePadding)
+                            .padding(.top, 8)
+                            .padding(.bottom, 8)
                         }
                     )
                 } else {
@@ -57,14 +61,13 @@ struct HomeFeedView: View {
                         .background(Color.clear)
                 }
             }
-            .navigationTitle("Home")
-            .navigationBarTitleDisplayMode(.inline)
+            .toolbar(path.isEmpty ? .hidden : .automatic, for: .navigationBar)
             .navigationDestination(for: FeedRoute.self) { route in
                 switch route {
                 case .thread(let id):
                     ThreadView(postId: id)
                 case .profile(let handle):
-                    ProfileView(handle: handle)
+                    ProfileView(handle: handle, navigationPath: $path)
                 case .compose(let replyTo):
                     ComposerView(mode: .reply(replyTo))
                 case .hashtag(let tag):
@@ -117,6 +120,14 @@ struct HomeFeedView: View {
         case .following: return "Follow people to fill your feed"
         case .network: return "Your network is quiet"
         case .discovery: return "Nothing public to show"
+        }
+    }
+    
+    private func emptyMessage(for scope: FeedScope) -> String {
+        switch scope {
+        case .following: return "Posts from people you follow will appear here."
+        case .network: return "Invite friends or follow more people to expand your feed."
+        case .discovery: return "Public posts from the broader community show up here."
         }
     }
 }

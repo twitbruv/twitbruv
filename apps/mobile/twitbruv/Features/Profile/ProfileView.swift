@@ -67,7 +67,10 @@ final class ProfileViewModel {
 
 struct ProfileView: View {
     @Environment(AppEnvironment.self) private var env
+    @Environment(AuthStore.self) private var auth
+
     let handle: String
+    @Binding var navigationPath: NavigationPath
 
     @State private var vm: ProfileViewModel?
     @State private var tab: ProfileTab = .posts
@@ -75,17 +78,32 @@ struct ProfileView: View {
     @State private var articlesLoader: PagedLoader<Article, ArticlesResponse>?
     @State private var showFollowers = false
     @State private var showFollowing = false
-    @State private var path = NavigationPath()
+    @State private var showSettings = false
+    @State private var showEditProfile = false
     @State private var reportTarget: Post?
+
+    private var profileBannerNavUnderlap: CGFloat {
+        TBLayout.profileBannerNavUnderlap(topSafeArea: 59)
+    }
 
     var body: some View {
         Group {
             if let vm, let user = vm.user {
                 List {
                     Section {
-                        ProfileHeader(user: user)
-                            .listRowInsets(EdgeInsets())
-                        ProfileActionsRow(vm: vm, user: user)
+                        ProfileHeader(user: user, bannerNavUnderlap: profileBannerNavUnderlap)
+                            .listRowInsets(
+                                EdgeInsets(
+                                    top: -profileBannerNavUnderlap,
+                                    leading: 0,
+                                    bottom: 0,
+                                    trailing: 0
+                                )
+                            )
+                            .listRowSeparator(.hidden)
+                        ProfileActionsRow(vm: vm, user: user) {
+                            showEditProfile = true
+                        }
                             .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                         ProfileMetricsRow(
                             user: user,
@@ -119,8 +137,10 @@ struct ProfileView: View {
                                     }
                                 )
                                 .listRowInsets(EdgeInsets())
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(Color.clear)
                                 .onTapGesture {
-                                    path.append(FeedRoute.thread(id: post.id))
+                                    navigationPath.append(FeedRoute.thread(id: post.id))
                                 }
                             }
                             LoadMoreFooter(
@@ -142,6 +162,7 @@ struct ProfileView: View {
                         }
                     }
                 }
+                .listRowSpacing(TBLayout.feedListRowSpacing)
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
                 .background(Color.clear)
@@ -161,12 +182,10 @@ struct ProfileView: View {
                     .background(Color.clear)
             }
         }
-        .navigationTitle(handle)
-        .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(for: FeedRoute.self) { route in
             switch route {
             case .thread(let id): ThreadView(postId: id)
-            case .profile(let h): ProfileView(handle: h)
+            case .profile(let h): ProfileView(handle: h, navigationPath: $navigationPath)
             case .compose(let replyTo): ComposerView(mode: .reply(replyTo))
             case .hashtag(let tag): HashtagView(tag: tag)
             }
@@ -176,6 +195,34 @@ struct ProfileView: View {
             case .detail(let h, let slug):
                 ArticleReaderView(handle: h, slug: slug)
             }
+        }
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .navigationTitle(handle)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if auth.currentUser?.handle == handle {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showSettings = true
+                    } label: {
+                        Image(systemName: "gearshape")
+                            .foregroundStyle(TBColor.textPrimary)
+                    }
+                    .accessibilityLabel("Settings")
+                }
+            }
+        }
+        .sheet(isPresented: $showEditProfile) {
+            NavigationStack {
+                EditProfileView()
+            }
+            .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showSettings) {
+            NavigationStack {
+                SettingsView()
+            }
+            .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showFollowers) {
             UsersListView(title: "Followers", endpoint: { cursor in
@@ -234,6 +281,12 @@ enum ArticleRoute: Hashable {
 
 private struct ProfileHeader: View {
     let user: PublicUser
+    var bannerNavUnderlap: CGFloat = 0
+
+    private var bannerPull: CGFloat {
+        max(0, bannerNavUnderlap)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             ZStack(alignment: .bottomLeading) {
@@ -243,8 +296,9 @@ private struct ProfileHeader: View {
                     default: TBColor.base2
                     }
                 }
-                .frame(height: 140)
-                .clipped()
+                .frame(maxWidth: .infinity)
+                .frame(height: 140 + bannerPull)
+                .offset(y: -bannerPull)
                 .overlay(alignment: .bottom) {
                     Rectangle()
                         .fill(
@@ -269,6 +323,9 @@ private struct ProfileHeader: View {
                 .padding(.leading)
                 .offset(y: 38)
             }
+            .frame(maxWidth: .infinity)
+            .frame(height: 140)
+            .clipped()
             .padding(.bottom, 38)
 
             VStack(alignment: .leading, spacing: 6) {
@@ -315,14 +372,13 @@ private struct ProfileActionsRow: View {
     @Environment(AuthStore.self) private var auth
     let vm: ProfileViewModel
     let user: PublicUser
+    let onEditProfile: () -> Void
 
     var body: some View {
         HStack(spacing: 10) {
             let isMe = auth.currentUser?.handle == user.handle
             if isMe {
-                NavigationLink {
-                    EditProfileView()
-                } label: {
+                Button(action: onEditProfile) {
                     Text("Edit profile")
                         .font(TBTypography.meta.weight(.medium))
                         .foregroundStyle(TBColor.textPrimary)

@@ -75,6 +75,8 @@ struct ThreadView: View {
                             onMenuAction: nil
                         )
                         .listRowInsets(EdgeInsets())
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
                     }
 
                     if let p = vm.post {
@@ -90,6 +92,8 @@ struct ThreadView: View {
                             }
                         )
                         .listRowInsets(EdgeInsets())
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
 
                         Section("\(vm.replies.count) replies") {
                             ForEach(vm.replies) { reply in
@@ -105,14 +109,18 @@ struct ThreadView: View {
                                     }
                                 )
                                 .listRowInsets(EdgeInsets())
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(Color.clear)
                             }
                         }
                     }
                 }
+                .listRowSpacing(TBLayout.feedListRowSpacing)
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
                 .background(Color.clear)
                 .refreshable { await vm.load() }
+                .tbReadableColumn()
             } else {
                 ProgressView()
                     .tint(TBColor.accent)

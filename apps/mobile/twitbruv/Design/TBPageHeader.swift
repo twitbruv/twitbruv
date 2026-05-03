@@ -23,18 +23,6 @@ struct TBPageHeader<Trailing: View>: View {
         .padding(.horizontal, TBLayout.pagePadding)
         .frame(height: TBLayout.headerHeight)
         .frame(maxWidth: .infinity)
-        .background {
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .overlay {
-                    TBColor.base1.opacity(0.88)
-                }
-        }
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(TBColor.borderNeutral)
-                .frame(height: 0.5)
-        }
     }
 }
 

@@ -49,6 +49,7 @@ struct OAuthSignInView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.clear)
         .navigationTitle(provider.capitalized)
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     private func start() async {

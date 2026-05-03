@@ -52,6 +52,7 @@ struct MagicLinkRequestView: View {
         }
         .background(Color.clear)
         .navigationTitle("Magic link")
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     private func submit() async {

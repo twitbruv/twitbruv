@@ -4,12 +4,16 @@ struct MyProfileView: View {
     @Environment(AppEnvironment.self) private var env
     @Environment(AuthStore.self) private var auth
 
+    @State private var navigationPath = NavigationPath()
+
     var body: some View {
-        NavigationStack {
-            Group {
-                if let handle = auth.currentUser?.handle, !handle.isEmpty {
-                    ProfileShell(handle: handle)
-                } else {
+        Group {
+            if let handle = auth.currentUser?.handle, !handle.isEmpty {
+                NavigationStack(path: $navigationPath) {
+                    ProfileView(handle: handle, navigationPath: $navigationPath)
+                }
+            } else {
+                NavigationStack {
                     VStack(spacing: 12) {
                         Text("No handle set.")
                             .font(TBTypography.bodySecondary)
@@ -21,25 +25,7 @@ struct MyProfileView: View {
                     }
                 }
             }
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    NavigationLink {
-                        SettingsView()
-                    } label: {
-                        Image(systemName: "gearshape")
-                            .foregroundStyle(TBColor.accent)
-                    }
-                }
-            }
         }
-    }
-}
-
-private struct ProfileShell: View {
-    let handle: String
-
-    var body: some View {
-        ProfileView(handle: handle)
     }
 }
 

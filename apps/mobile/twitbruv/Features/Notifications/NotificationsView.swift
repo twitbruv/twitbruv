@@ -103,10 +103,12 @@ struct NotificationsView: View {
                             isLoading: vm.isLoading
                         ) { await vm.loadMore() }
                     }
+                    .listRowSpacing(TBLayout.feedListRowSpacing)
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)
                     .background(Color.clear)
                     .refreshable { await vm.reload() }
+                    .tbReadableColumn()
                 } else {
                     ProgressView()
                         .tint(TBColor.accent)
@@ -114,26 +116,24 @@ struct NotificationsView: View {
                         .background(Color.clear)
                 }
             }
-            .navigationTitle(
-                (vm?.unreadCount ?? 0) > 0
-                    ? "Notifications (\(vm?.unreadCount ?? 0))"
-                    : "Notifications"
-            )
+            .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    if (vm?.unreadCount ?? 0) > 0 {
-                        Button("Mark read") {
-                            Task { await vm?.markAllRead() }
+                ToolbarItem(placement: .principal) {
+                    TBPageHeader(title: "Notifications") {
+                        if let vm = vm, vm.unreadCount > 0 {
+                            Button("Mark read") {
+                                Task { await vm.markAllRead() }
+                            }
+                            .foregroundStyle(TBColor.accent)
                         }
-                        .foregroundStyle(TBColor.accent)
                     }
                 }
             }
             .navigationDestination(for: FeedRoute.self) { route in
                 switch route {
                 case .thread(let id): ThreadView(postId: id)
-                case .profile(let h): ProfileView(handle: h)
+                case .profile(let h): ProfileView(handle: h, navigationPath: $path)
                 case .compose(let p): ComposerView(mode: .reply(p))
                 case .hashtag(let t): HashtagView(tag: t)
                 }
@@ -146,6 +146,7 @@ struct NotificationsView: View {
                 }
             }
         }
+        .tbOptionalTabBadge(vm?.unreadCount ?? 0)
     }
 }
 

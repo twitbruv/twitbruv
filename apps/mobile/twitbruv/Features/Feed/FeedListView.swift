@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct FeedListView: View {
+struct FeedListView<TopInset: View>: View {
     @Environment(AppEnvironment.self) private var env
     @Bindable var loader: PagedLoader<Post, PostsResponse>
     var emptyTitle: String = "Nothing here yet"
@@ -9,8 +9,36 @@ struct FeedListView: View {
     var onSelectAuthor: (String) -> Void
     var onReply: ((Post) -> Void)? = nil
     var onReport: ((Post) -> Void)? = nil
+    var scrollCollapsesTopInset: Bool = false
+    var collapseInsetResetToken: AnyHashable? = nil
+    @ViewBuilder var topSafeAreaInset: () -> TopInset
 
     @State private var actions: PostActions?
+    @State private var showsTopInset = true
+
+    init(
+        loader: PagedLoader<Post, PostsResponse>,
+        emptyTitle: String = "Nothing here yet",
+        emptyMessage: String? = "When there are new posts they'll show up here.",
+        onSelectPost: @escaping (Post) -> Void,
+        onSelectAuthor: @escaping (String) -> Void,
+        onReply: ((Post) -> Void)? = nil,
+        onReport: ((Post) -> Void)? = nil,
+        scrollCollapsesTopInset: Bool = false,
+        collapseInsetResetToken: AnyHashable? = nil,
+        @ViewBuilder topSafeAreaInset: @escaping () -> TopInset
+    ) {
+        self.loader = loader
+        self.emptyTitle = emptyTitle
+        self.emptyMessage = emptyMessage
+        self.onSelectPost = onSelectPost
+        self.onSelectAuthor = onSelectAuthor
+        self.onReply = onReply
+        self.onReport = onReport
+        self.scrollCollapsesTopInset = scrollCollapsesTopInset
+        self.collapseInsetResetToken = collapseInsetResetToken
+        self.topSafeAreaInset = topSafeAreaInset
+    }
 
     var body: some View {
         List {
@@ -66,7 +94,7 @@ struct FeedListView: View {
                     .contentShape(.rect)
                     .onTapGesture { onSelectPost(post) }
                     .listRowInsets(EdgeInsets())
-                    .listRowSeparator(.visible)
+                    .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
                 }
                 LoadMoreFooter(
@@ -77,9 +105,33 @@ struct FeedListView: View {
                 }
             }
         }
+        .listRowSpacing(TBLayout.feedListRowSpacing)
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .background(Color.clear)
+        .feedScrollCollapsesTopInset(
+            enabled: scrollCollapsesTopInset,
+            showTopInset: $showsTopInset
+        )
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if scrollCollapsesTopInset {
+                ZStack(alignment: .bottom) {
+                    topSafeAreaInset()
+                        .offset(y: showsTopInset ? 0 : -TBLayout.feedScopeHeaderHideOffset)
+                        .opacity(showsTopInset ? 1 : 0)
+                }
+                .frame(height: TBLayout.feedScopeHeaderSlotHeight)
+                .clipped()
+                .allowsHitTesting(showsTopInset)
+                .animation(TBLayout.easeOutExpo, value: showsTopInset)
+            } else {
+                topSafeAreaInset()
+            }
+        }
+        .onChange(of: collapseInsetResetToken) { _, _ in
+            guard scrollCollapsesTopInset else { return }
+            showsTopInset = true
+        }
         .refreshable {
             await loader.reload()
         }
@@ -107,6 +159,7 @@ struct FeedListView: View {
                 loader.prepend(post)
             }
         }
+        .tbReadableColumn()
     }
 
     private func handleMenu(action: PostMenuAction, post: Post) {
@@ -123,5 +176,66 @@ struct FeedListView: View {
                 onReport(p)
             }
         }
+    }
+}
+
+private struct FeedScrollCollapseSample: Equatable {
+    let bucket: Int
+    let pinnedOpen: Bool
+
+    init(_ g: ScrollGeometry) {
+        let y = g.contentOffset.y
+        let insetTop = g.contentInsets.top
+        let pastTop = max(0, y - insetTop)
+        pinnedOpen = pastTop < 18
+        bucket = Int(floor(pastTop / TBLayout.feedScrollCollapseBucketPoints))
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func feedScrollCollapsesTopInset(enabled: Bool, showTopInset: Binding<Bool>) -> some View {
+        if enabled {
+            self.onScrollGeometryChange(for: FeedScrollCollapseSample.self) { geo in
+                FeedScrollCollapseSample(geo)
+            } action: { previous, next in
+                if next.pinnedOpen {
+                    showTopInset.wrappedValue = true
+                    return
+                }
+                if next.bucket > previous.bucket {
+                    showTopInset.wrappedValue = false
+                } else if next.bucket < previous.bucket {
+                    showTopInset.wrappedValue = true
+                }
+            }
+        } else {
+            self
+        }
+    }
+}
+
+extension FeedListView where TopInset == EmptyView {
+    init(
+        loader: PagedLoader<Post, PostsResponse>,
+        emptyTitle: String = "Nothing here yet",
+        emptyMessage: String? = "When there are new posts they'll show up here.",
+        onSelectPost: @escaping (Post) -> Void,
+        onSelectAuthor: @escaping (String) -> Void,
+        onReply: ((Post) -> Void)? = nil,
+        onReport: ((Post) -> Void)? = nil
+    ) {
+        self.init(
+            loader: loader,
+            emptyTitle: emptyTitle,
+            emptyMessage: emptyMessage,
+            onSelectPost: onSelectPost,
+            onSelectAuthor: onSelectAuthor,
+            onReply: onReply,
+            onReport: onReport,
+            scrollCollapsesTopInset: false,
+            collapseInsetResetToken: nil,
+            topSafeAreaInset: { EmptyView() }
+        )
     }
 }

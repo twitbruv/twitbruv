@@ -54,6 +54,7 @@ struct TwoFactorChallengeView: View {
         }
         .background(Color.clear)
         .navigationTitle("Two-factor")
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     private func submit() async {

@@ -118,7 +118,7 @@ struct TBGlassBar<Content: View>: View {
                 in: RoundedRectangle(cornerRadius: TBLayout.radiusGlassBar, style: .continuous),
                 shadow: false
             )
-            .padding(.horizontal, 8)
+            .padding(.horizontal, TBLayout.glassBarOuterMargin)
     }
 }
 

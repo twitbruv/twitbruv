@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct MainTabView: View {
     @State private var selection: AppTab = .home
@@ -6,69 +7,88 @@ struct MainTabView: View {
 
     var body: some View {
         TabView(selection: $selection) {
-            HomeFeedView()
-                .tabItem {
-                    Label("Home", systemImage: "house.fill")
-                }
-                .tag(AppTab.home)
-
-            SearchView()
-                .tabItem {
-                    Label("Search", systemImage: "magnifyingglass")
-                }
-                .tag(AppTab.search)
-
-            NotificationsView()
-                .tabItem {
-                    Label("Notifications", systemImage: "bell.fill")
-                }
-                .tag(AppTab.notifications)
-
-            ConversationsListView()
-                .tabItem {
-                    Label("Messages", systemImage: "envelope.fill")
-                }
-                .tag(AppTab.dms)
-
-            MyProfileView()
-                .tabItem {
-                    Label("Profile", systemImage: "person.crop.circle.fill")
-                }
-                .tag(AppTab.me)
-        }
-        .overlay(alignment: .bottomTrailing) {
-            GlassEffectContainer(spacing: 12) {
-                Button {
-                    showCompose = true
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundStyle(TBColor.textPrimary)
-                        .frame(width: 56, height: 56)
-                        .contentShape(Circle())
-                        .tbGlass(
-                            .prominent,
-                            in: Circle(),
-                            interactive: true
-                        )
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("New post")
+            Tab(value: AppTab.home) {
+                HomeFeedView()
+            } label: {
+                tbTabLabel("Home", systemImage: "house.fill")
             }
-            .padding(.bottom, 70)
-            .padding(.trailing, 16)
+
+            Tab(value: AppTab.search) {
+                SearchView()
+            } label: {
+                tbTabLabel("Search", systemImage: "magnifyingglass")
+            }
+
+            Tab(value: AppTab.notifications) {
+                NotificationsView()
+            } label: {
+                tbTabLabel("Notifications", systemImage: "bell.fill")
+            }
+
+            Tab(value: AppTab.dms) {
+                ConversationsListView()
+            } label: {
+                tbTabLabel("Messages", systemImage: "envelope.fill")
+            }
+
+            Tab(value: AppTab.me) {
+                MyProfileView()
+            } label: {
+                tbTabLabel("Profile", systemImage: "person.crop.circle.fill")
+            }
         }
         .overlay(alignment: .bottom) {
             DevSeedToast()
+        }
+        .overlay(alignment: .bottomTrailing) {
+            Button {
+                showCompose = true
+            } label: {
+                Image(systemName: "square.and.pencil")
+                    .font(.system(size: TBLayout.composeFabIconPointSize, weight: .semibold))
+                    .foregroundStyle(TBColor.textOnInverse)
+                    .frame(width: TBLayout.composeFabSize, height: TBLayout.composeFabSize)
+                    .background {
+                        Circle().fill(TBColor.accent.opacity(0.96))
+                    }
+                    .tbGlass(.prominent, in: Circle(), interactive: true, shadow: true)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("New post")
+            .padding(.trailing, TBLayout.pagePadding)
+            .padding(.bottom, TBLayout.composeFabBottomPadding)
         }
         .sheet(isPresented: $showCompose) {
             ComposerView(mode: .new)
         }
     }
+
+    private func tbTabLabel(_ title: String, systemImage: String) -> some View {
+        let config = UIImage.SymbolConfiguration(
+            pointSize: TBLayout.tabBarIconPointSize,
+            weight: .thin
+        )
+        let icon = UIImage(systemName: systemImage, withConfiguration: config)
+
+        return Label {
+            Text(title)
+                .font(.system(size: TBLayout.tabBarTitlePointSize, weight: .thin))
+        } icon: {
+            if let icon {
+                Image(uiImage: icon)
+            } else {
+                Image(systemName: systemImage)
+            }
+        }
+    }
 }
 
 enum AppTab: Hashable {
-    case home, search, notifications, dms, me
+    case home
+    case search
+    case notifications
+    case dms
+    case me
 }
 
 private struct DevSeedToast: View {

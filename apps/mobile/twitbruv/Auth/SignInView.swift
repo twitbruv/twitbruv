@@ -37,28 +37,28 @@ struct SignInView: View {
                     Task { await submit() }
                 }
 
-                VStack(alignment: .leading, spacing: 10) {
-                    NavigationLink {
-                        MagicLinkRequestView()
-                    } label: {
-                        linkLabel("Forgot password? Use a magic link")
-                    }
-                    NavigationLink {
-                        OAuthSignInView(provider: "github")
-                    } label: {
-                        linkLabel("Sign in with GitHub")
-                    }
-                    NavigationLink {
-                        OAuthSignInView(provider: "google")
-                    } label: {
-                        linkLabel("Sign in with Google")
-                    }
-                    NavigationLink {
-                        OAuthSignInView(provider: "gitlab")
-                    } label: {
-                        linkLabel("Sign in with GitLab")
-                    }
-                }
+//                VStack(alignment: .leading, spacing: 10) {
+//                    NavigationLink {
+//                        MagicLinkRequestView()
+//                    } label: {
+//                        linkLabel("Forgot password? Use a magic link")
+//                    }
+//                    NavigationLink {
+//                        OAuthSignInView(provider: "github")
+//                    } label: {
+//                        linkLabel("Sign in with GitHub")
+//                    }
+//                    NavigationLink {
+//                        OAuthSignInView(provider: "google")
+//                    } label: {
+//                        linkLabel("Sign in with Google")
+//                    }
+//                    NavigationLink {
+//                        OAuthSignInView(provider: "gitlab")
+//                    } label: {
+//                        linkLabel("Sign in with GitLab")
+//                    }
+//                }
 
                 NavigationLink {
                     SignUpView(path: $path)
@@ -80,6 +80,7 @@ struct SignInView: View {
         }
         .background(Color.clear)
         .navigationTitle("Sign in")
+        .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(isPresented: Binding(
             get: { env.auth.pendingTwoFactor != nil },
             set: { if !$0 { env.auth.pendingTwoFactor = nil } }

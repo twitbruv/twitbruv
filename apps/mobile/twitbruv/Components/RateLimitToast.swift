@@ -91,8 +91,7 @@ struct MaintenanceBannerView: View {
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
-                .background(.ultraThinMaterial)
-                .background(TBColor.glassChromeTint)
+                .background(TBColor.base1)
                 .overlay(alignment: .bottom) {
                     Rectangle()
                         .fill(TBColor.glassStroke)

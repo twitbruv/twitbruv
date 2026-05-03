@@ -126,12 +126,10 @@ struct SearchView: View {
                             if !vm.users.isEmpty {
                                 Section("People") {
                                     ForEach(vm.users) { user in
-                                        NavigationLink {
-                                            if let h = user.handle {
-                                                ProfileView(handle: h)
+                                        if let h = user.handle {
+                                            NavigationLink(value: FeedRoute.profile(handle: h)) {
+                                                UserRowView(user: user)
                                             }
-                                        } label: {
-                                            UserRowView(user: user)
                                         }
                                     }
                                 }
@@ -146,6 +144,7 @@ struct SearchView: View {
                                         }
                                         .buttonStyle(.plain)
                                         .listRowInsets(EdgeInsets())
+                                        .listRowSeparator(.hidden)
                                         .listRowBackground(Color.clear)
                                     }
                                 }
@@ -160,9 +159,11 @@ struct SearchView: View {
                             }
                         }
                     }
+                    .listRowSpacing(TBLayout.feedListRowSpacing)
                     .listStyle(.insetGrouped)
                     .scrollContentBackground(.hidden)
                     .background(Color.clear)
+                    .tbReadableColumn()
                 } else {
                     ProgressView()
                         .tint(TBColor.accent)
@@ -197,7 +198,7 @@ struct SearchView: View {
             .navigationDestination(for: FeedRoute.self) { route in
                 switch route {
                 case .thread(let id): ThreadView(postId: id)
-                case .profile(let h): ProfileView(handle: h)
+                case .profile(let h): ProfileView(handle: h, navigationPath: $path)
                 case .compose(let p): ComposerView(mode: .reply(p))
                 case .hashtag(let t): HashtagView(tag: t)
                 }
@@ -231,6 +232,7 @@ struct HashtagView: View {
                     ForEach(loader.items) { post in
                         PostCardView(post: post)
                             .listRowInsets(EdgeInsets())
+                            .listRowSeparator(.hidden)
                             .listRowBackground(Color.clear)
                             .onTapGesture {
                                 path.append(FeedRoute.thread(id: post.id))
@@ -241,10 +243,12 @@ struct HashtagView: View {
                         isLoading: loader.isLoading
                     ) { await loader.loadMore() }
                 }
+                .listRowSpacing(TBLayout.feedListRowSpacing)
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
                 .background(Color.clear)
                 .refreshable { await loader.reload() }
+                .tbReadableColumn()
             } else {
                 ProgressView()
                     .tint(TBColor.accent)
@@ -265,7 +269,7 @@ struct HashtagView: View {
         .navigationDestination(for: FeedRoute.self) { route in
             switch route {
             case .thread(let id): ThreadView(postId: id)
-            case .profile(let h): ProfileView(handle: h)
+            case .profile(let h): ProfileView(handle: h, navigationPath: $path)
             case .compose(let p): ComposerView(mode: .reply(p))
             case .hashtag(let t): HashtagView(tag: t)
             }

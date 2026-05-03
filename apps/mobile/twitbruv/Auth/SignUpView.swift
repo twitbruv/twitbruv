@@ -58,6 +58,7 @@ struct SignUpView: View {
         }
         .background(Color.clear)
         .navigationTitle("Sign up")
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     private var isValid: Bool {

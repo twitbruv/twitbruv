@@ -4,9 +4,7 @@ import UIKit
 enum TBTheme {
     static func apply() {
         let nav = UINavigationBarAppearance()
-        nav.configureWithDefaultBackground()
-        nav.backgroundEffect = UIBlurEffect(style: .systemUltraThinMaterial)
-        nav.backgroundColor = UIColor.tbGlassChromeTint
+        nav.configureWithTransparentBackground()
         nav.titleTextAttributes = [
             .foregroundColor: UIColor.tbTextPrimary,
             .font: UIFont.systemFont(ofSize: 17, weight: .semibold),
@@ -18,12 +16,34 @@ enum TBTheme {
         UINavigationBar.appearance().standardAppearance = nav
         UINavigationBar.appearance().scrollEdgeAppearance = nav
         UINavigationBar.appearance().compactAppearance = nav
-        UINavigationBar.appearance().tintColor = UIColor.tbAccent
+        UINavigationBar.appearance().compactScrollEdgeAppearance = nav
+        UINavigationBar.appearance().tintColor = UIColor.tbTextPrimary
 
         let tab = UITabBarAppearance()
-        tab.configureWithDefaultBackground()
-        tab.backgroundEffect = UIBlurEffect(style: .systemUltraThinMaterial)
-        tab.backgroundColor = UIColor.tbGlassChromeTint
+        tab.configureWithOpaqueBackground()
+        tab.backgroundColor = UIColor.tbBase1
+
+        let tabItem = UITabBarItemAppearance()
+        tabItem.normal.titleTextAttributes = [
+            .font: UIFont.systemFont(
+                ofSize: TBLayout.tabBarTitlePointSize,
+                weight: .medium
+            ),
+            .foregroundColor: UIColor.tbTextSecondary,
+        ]
+        tabItem.selected.titleTextAttributes = [
+            .font: UIFont.systemFont(
+                ofSize: TBLayout.tabBarTitlePointSize,
+                weight: .semibold
+            ),
+            .foregroundColor: UIColor.tbAccent,
+        ]
+        tabItem.normal.iconColor = UIColor.tbTextSecondary
+        tabItem.selected.iconColor = UIColor.tbAccent
+        tab.stackedLayoutAppearance = tabItem
+        tab.inlineLayoutAppearance = tabItem
+        tab.compactInlineLayoutAppearance = tabItem
+
         UITabBar.appearance().standardAppearance = tab
         UITabBar.appearance().scrollEdgeAppearance = tab
         UITabBar.appearance().tintColor = UIColor.tbAccent
@@ -37,6 +57,7 @@ struct TBChromeModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .tint(TBColor.accent)
+            .toolbarBackground(.hidden, for: .navigationBar)
             .background {
                 LinearGradient(
                     colors: [

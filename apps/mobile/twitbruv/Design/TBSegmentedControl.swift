@@ -5,29 +5,13 @@ struct TBFeedSegmented<Selection: Hashable>: View {
     let options: [(label: String, value: Selection)]
 
     var body: some View {
-        HStack(spacing: 0) {
+        Picker("", selection: $selection) {
             ForEach(Array(options.enumerated()), id: \.offset) { _, opt in
-                let on = selection == opt.value
-                Button {
-                    withAnimation(TBLayout.easeOutExpo) { selection = opt.value }
-                } label: {
-                    Text(opt.label)
-                        .font(TBTypography.meta.weight(.medium))
-                        .foregroundStyle(on ? TBColor.textPrimary : TBColor.textTertiary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
-                        .background {
-                            if on {
-                                Capsule(style: .continuous)
-                                    .fill(TBColor.glassProminentTint)
-                                    .tbGlassCapsule(.prominent, shadow: false)
-                            }
-                        }
-                }
-                .buttonStyle(.plain)
+                Text(opt.label).tag(opt.value)
             }
         }
-        .padding(4)
-        .tbGlassCapsule(.chrome, shadow: false)
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .frame(maxWidth: .infinity)
     }
 }
