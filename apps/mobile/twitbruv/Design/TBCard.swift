@@ -8,11 +8,10 @@ struct TBCard<Content: View>: View {
         content()
             .padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(TBColor.base2, in: RoundedRectangle(cornerRadius: TBLayout.radiusLG, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: TBLayout.radiusLG, style: .continuous)
-                    .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
-            }
+            .tbGlass(
+                .panel,
+                in: RoundedRectangle(cornerRadius: TBLayout.radiusGlassPanel, style: .continuous)
+            )
     }
 }
 
@@ -24,10 +23,10 @@ struct TBInsetSurface<Content: View>: View {
             .padding(.vertical, 10)
             .padding(.horizontal, 12)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(TBColor.subtleFill.opacity(0.6), in: RoundedRectangle(cornerRadius: TBLayout.radiusPostRow, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: TBLayout.radiusPostRow, style: .continuous)
-                    .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
-            }
+            .tbGlass(
+                .card,
+                in: RoundedRectangle(cornerRadius: TBLayout.radiusPostRow, style: .continuous),
+                shadow: false
+            )
     }
 }

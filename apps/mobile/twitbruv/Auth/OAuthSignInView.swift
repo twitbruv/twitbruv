@@ -47,7 +47,7 @@ struct OAuthSignInView: View {
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(TBColor.base1)
+        .background(Color.clear)
         .navigationTitle(provider.capitalized)
     }
 

@@ -99,6 +99,6 @@ struct SettingsView: View {
         }
         .navigationTitle("Settings")
         .scrollContentBackground(.hidden)
-        .background(TBColor.base1)
+        .background(Color.clear)
     }
 }

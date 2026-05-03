@@ -9,8 +9,9 @@ struct TBEmptyState: View {
         VStack(spacing: 14) {
             ZStack {
                 Circle()
-                    .fill(TBColor.subtleFill)
+                    .fill(TBColor.glassCardTint)
                     .frame(width: 56, height: 56)
+                    .tbGlass(.card, in: Circle(), shadow: false)
                 Image(systemName: icon)
                     .font(.system(size: 22, weight: .medium))
                     .foregroundStyle(TBColor.textTertiary)
@@ -28,5 +29,11 @@ struct TBEmptyState: View {
         }
         .padding(24)
         .frame(maxWidth: .infinity)
+        .tbGlass(
+            .card,
+            in: RoundedRectangle(cornerRadius: TBLayout.radiusGlassPanel, style: .continuous),
+            shadow: false
+        )
+        .padding(.horizontal, TBLayout.pagePadding)
     }
 }

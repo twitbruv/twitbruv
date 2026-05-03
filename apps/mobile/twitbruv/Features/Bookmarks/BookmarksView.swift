@@ -26,7 +26,7 @@ struct BookmarksView: View {
                     ProgressView()
                         .tint(TBColor.accent)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(TBColor.base1)
+                        .background(Color.clear)
                         .task { setupLoader() }
                 }
             }

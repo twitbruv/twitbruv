@@ -32,11 +32,10 @@ struct RateLimitToast: View {
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
-                .background(TBColor.base2, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
-                }
+                .tbGlass(
+                    .chrome,
+                    in: RoundedRectangle(cornerRadius: 14, style: .continuous)
+                )
                 .padding(.horizontal)
                 .padding(.bottom, 12)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -92,10 +91,11 @@ struct MaintenanceBannerView: View {
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
-                .background(TBColor.base2)
+                .background(.ultraThinMaterial)
+                .background(TBColor.glassChromeTint)
                 .overlay(alignment: .bottom) {
                     Rectangle()
-                        .fill(TBColor.borderNeutral)
+                        .fill(TBColor.glassStroke)
                         .frame(height: 0.5)
                 }
                 .transition(.move(edge: .top).combined(with: .opacity))

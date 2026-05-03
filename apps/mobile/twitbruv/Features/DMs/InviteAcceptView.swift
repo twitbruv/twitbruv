@@ -50,7 +50,7 @@ struct InviteAcceptView: View {
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(TBColor.base1)
+        .background(Color.clear)
         .navigationTitle("Invite")
         .task {
             await load()

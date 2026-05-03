@@ -78,7 +78,7 @@ struct SignInView: View {
             }
             .padding(TBLayout.pagePadding)
         }
-        .background(TBColor.base1)
+        .background(Color.clear)
         .navigationTitle("Sign in")
         .navigationDestination(isPresented: Binding(
             get: { env.auth.pendingTwoFactor != nil },

@@ -25,16 +25,18 @@ struct EditProfileView: View {
                         .font(TBTypography.label)
                         .foregroundStyle(TBColor.textPrimary)
                     ZStack(alignment: .topLeading) {
-                        RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
-                            .fill(TBColor.base2)
-                        RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
-                            .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
                         TextField("", text: $bio, axis: .vertical)
                             .font(TBTypography.body)
                             .foregroundStyle(TBColor.textPrimary)
                             .lineLimit(2...6)
                             .padding(12)
                     }
+                    .tbGlass(
+                        .field,
+                        in: RoundedRectangle(cornerRadius: TBLayout.radiusGlassCard, style: .continuous),
+                        interactive: true,
+                        shadow: false
+                    )
                 }
 
                 TBTextField(title: "Location", text: $location)
@@ -55,7 +57,7 @@ struct EditProfileView: View {
             }
             .padding(TBLayout.pagePadding)
         }
-        .background(TBColor.base1)
+        .background(Color.clear)
         .navigationTitle("Edit profile")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

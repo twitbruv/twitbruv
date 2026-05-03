@@ -43,7 +43,7 @@ struct MyListsView: View {
         }
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
-        .background(TBColor.base1)
+        .background(Color.clear)
         .navigationTitle("Lists")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -76,7 +76,8 @@ struct MyListsView: View {
             .navigationTitle("New list")
             .navigationBarTitleDisplayMode(.inline)
             .scrollContentBackground(.hidden)
-            .background(TBColor.base1)
+            .background(Color.clear)
+            .presentationBackground(.ultraThinMaterial)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { showCreate = false }
@@ -158,7 +159,7 @@ struct ListDetailView: View {
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
-                .background(TBColor.base1)
+                .background(Color.clear)
                 .refreshable {
                     await loader.reload()
                     await loadMembers()
@@ -167,7 +168,7 @@ struct ListDetailView: View {
                 ProgressView()
                     .tint(TBColor.accent)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(TBColor.base1)
+                    .background(Color.clear)
                     .task { await setup() }
             }
         }
@@ -250,7 +251,8 @@ struct AddMembersSheet: View {
             .navigationTitle("Add members")
             .navigationBarTitleDisplayMode(.inline)
             .scrollContentBackground(.hidden)
-            .background(TBColor.base1)
+            .background(Color.clear)
+            .presentationBackground(.ultraThinMaterial)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }

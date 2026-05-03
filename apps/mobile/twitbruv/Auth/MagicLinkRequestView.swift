@@ -50,7 +50,7 @@ struct MagicLinkRequestView: View {
             }
             .padding(TBLayout.pagePadding)
         }
-        .background(TBColor.base1)
+        .background(Color.clear)
         .navigationTitle("Magic link")
     }
 

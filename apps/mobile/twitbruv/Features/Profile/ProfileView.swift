@@ -144,7 +144,7 @@ struct ProfileView: View {
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
-                .background(TBColor.base1)
+                .background(Color.clear)
                 .refreshable {
                     await vm.load()
                     await postsLoader?.reload()
@@ -158,7 +158,7 @@ struct ProfileView: View {
                 ProgressView()
                     .tint(TBColor.accent)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(TBColor.base1)
+                    .background(Color.clear)
             }
         }
         .navigationTitle(handle)
@@ -328,11 +328,7 @@ private struct ProfileActionsRow: View {
                         .foregroundStyle(TBColor.textPrimary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
-                        .background(TBColor.base2, in: Capsule(style: .continuous))
-                        .overlay {
-                            Capsule(style: .continuous)
-                                .strokeBorder(TBColor.borderNeutral, lineWidth: 1)
-                        }
+                        .tbGlassCapsule(.chrome, interactive: true, shadow: false)
                 }
                 .buttonStyle(.plain)
             } else {
@@ -363,11 +359,12 @@ private struct ProfileActionsRow: View {
                         .font(.system(size: 18, weight: .medium))
                         .foregroundStyle(TBColor.textSecondary)
                         .frame(width: TBLayout.hitTarget, height: 36)
-                        .background(TBColor.base2, in: RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
-                                .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
-                        }
+                        .tbGlass(
+                            .chrome,
+                            in: RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous),
+                            interactive: true,
+                            shadow: false
+                        )
                 }
             }
         }

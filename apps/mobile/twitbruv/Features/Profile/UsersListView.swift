@@ -39,13 +39,13 @@ struct UsersListView: View {
                     }
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)
-                    .background(TBColor.base1)
+                    .background(Color.clear)
                     .refreshable { await loader.reload() }
                 } else {
                     ProgressView()
                         .tint(TBColor.accent)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(TBColor.base1)
+                        .background(Color.clear)
                 }
             }
             .navigationTitle(title)

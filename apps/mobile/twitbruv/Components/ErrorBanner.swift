@@ -22,11 +22,14 @@ struct ErrorBanner: View {
             }
         }
         .padding(12)
-        .background(TBColor.warnSubtle.opacity(0.85), in: RoundedRectangle(cornerRadius: TBLayout.radiusLG, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: TBLayout.radiusLG, style: .continuous)
-                .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
-        }
+        .background(
+            TBColor.warnSubtle.opacity(0.45),
+            in: RoundedRectangle(cornerRadius: TBLayout.radiusGlassCard, style: .continuous)
+        )
+        .tbGlass(
+            .panel,
+            in: RoundedRectangle(cornerRadius: TBLayout.radiusGlassCard, style: .continuous)
+        )
         .padding(.horizontal, TBLayout.pagePadding)
     }
 }

@@ -33,11 +33,11 @@ struct TBButton: View {
             .frame(minHeight: 32)
             .padding(.horizontal, horizontalPadding)
             .padding(.vertical, 6)
-            .background(background)
-            .overlay {
-                RoundedRectangle(cornerRadius: 9999, style: .continuous)
-                    .strokeBorder(outlineColor, lineWidth: outlineWidth)
+            .background {
+                background
+                    .clipShape(Capsule(style: .continuous))
             }
+            .tbGlassCapsule(glassStyle, interactive: true, shadow: style == .primary)
             .clipShape(RoundedRectangle(cornerRadius: 9999, style: .continuous))
         }
         .buttonStyle(.plain)
@@ -58,40 +58,29 @@ struct TBButton: View {
         Group {
             switch style {
             case .primary:
-                TBColor.inverse
+                TBColor.inverse.opacity(0.88)
             case .outline:
-                TBColor.base2
+                Color.clear
             case .secondary:
-                TBColor.subtleFill
+                TBColor.subtleFill.opacity(0.34)
             case .transparent:
                 Color.clear
             case .danger:
-                TBColor.danger
+                TBColor.danger.opacity(0.86)
             case .dangerLight:
-                TBColor.dangerSubtle
+                TBColor.dangerSubtle.opacity(0.7)
             }
         }
     }
 
-    private var outlineColor: Color {
+    private var glassStyle: TBGlassStyle {
         switch style {
-        case .outline:
-            TBColor.borderNeutral
-        case .danger:
-            TBColor.danger
-        case .dangerLight:
-            Color.clear
-        case .primary, .secondary, .transparent:
-            Color.clear
-        }
-    }
-
-    private var outlineWidth: CGFloat {
-        switch style {
-        case .outline, .danger:
-            return 1
-        default:
-            return 0
+        case .primary, .danger:
+            return .prominent
+        case .outline, .secondary, .dangerLight:
+            return .chrome
+        case .transparent:
+            return .card
         }
     }
 
@@ -122,7 +111,7 @@ struct TBIconButton: View {
                 .font(.system(size: 18, weight: .medium))
                 .foregroundStyle(TBColor.textSecondary)
                 .frame(width: TBLayout.hitTarget, height: TBLayout.hitTarget)
-                .background(TBColor.subtleFill, in: Circle())
+                .tbGlass(.chrome, in: Circle(), interactive: true, shadow: false)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(accessibilityLabel)

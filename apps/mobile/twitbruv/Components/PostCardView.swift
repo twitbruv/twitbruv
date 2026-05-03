@@ -114,7 +114,7 @@ struct PostCardView: View {
         }
         .padding(.vertical, 8)
         .padding(.horizontal, TBLayout.pagePadding)
-        .background(TBColor.base1)
+        .background(TBColor.base1.opacity(0.72))
     }
 
     @ViewBuilder
@@ -210,10 +210,11 @@ private struct QuotedPostView: View {
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay {
-            RoundedRectangle(cornerRadius: TBLayout.radiusLG, style: .continuous)
-                .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
-        }
+        .tbGlass(
+            .card,
+            in: RoundedRectangle(cornerRadius: TBLayout.radiusGlassCard, style: .continuous),
+            shadow: false
+        )
     }
 }
 
@@ -247,10 +248,12 @@ private struct PollCard: View {
                         .padding(.vertical, 8)
                     }
                     .frame(height: 36)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous)
-                            .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
-                    }
+                    .tbGlass(
+                        .field,
+                        in: RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous),
+                        interactive: !poll.closed,
+                        shadow: false
+                    )
                 }
                 .buttonStyle(.plain)
                 .disabled(poll.closed)
@@ -312,10 +315,12 @@ private struct UnfurlCardView: View {
                 Spacer()
             }
             .padding(8)
-            .overlay {
-                RoundedRectangle(cornerRadius: TBLayout.radiusLG, style: .continuous)
-                    .strokeBorder(TBColor.borderNeutral, lineWidth: 0.5)
-            }
+            .tbGlass(
+                .card,
+                in: RoundedRectangle(cornerRadius: TBLayout.radiusGlassCard, style: .continuous),
+                interactive: true,
+                shadow: false
+            )
         }
         .buttonStyle(.plain)
     }
