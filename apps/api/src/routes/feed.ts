@@ -184,6 +184,7 @@ feedRoute.get("/network", requireHandle(), async (c) => {
     activityAt: Date
     actorIds: Array<string>
   }
+  const sourceWindow = limit * 2
   // Surface posts via likes from follows.
   const likeRows = await db
     .select({
@@ -216,7 +217,7 @@ feedRoute.get("/network", requireHandle(), async (c) => {
       )
     )
     .orderBy(desc(schema.likes.createdAt))
-    .limit(limit * 2)
+    .limit(sourceWindow)
 
   // Surface posts via reposts from follows. We use the repost row's createdAt
   // (i.e. when the follow reposted it), not the original post's createdAt.
@@ -237,7 +238,7 @@ feedRoute.get("/network", requireHandle(), async (c) => {
           AND r.deleted_at IS NULL
           ${cursor ? sql`AND r.created_at < ${cursor}` : sql``}
         ORDER BY r.created_at DESC
-        LIMIT ${limit * 2}
+        LIMIT ${sourceWindow}
       ) reposters`
     )
     .innerJoin(schema.posts, sql`${schema.posts.id} = reposters.post_id`)
@@ -369,9 +370,19 @@ feedRoute.get("/network", requireHandle(), async (c) => {
     networkActivityAt: r.activityAt.toISOString(),
   }))
   await attachReplyParents({ db, viewerId: me, env: mediaEnv, posts })
+  const hasMore =
+    likeRows.length === sourceWindow || repostRows.length === sourceWindow
+  const rawActivityTimes = [
+    ...likeRows.map((row) => row.activityAt),
+    ...repostRows.map((row) =>
+      row.activityAt instanceof Date ? row.activityAt : new Date(row.activityAt)
+    ),
+  ]
+    .map((at) => at.getTime())
+    .filter(Number.isFinite)
   const nextCursor =
-    posts.length === limit
-      ? merged[merged.length - 1]!.activityAt.toISOString()
+    hasMore && rawActivityTimes.length > 0
+      ? new Date(Math.min(...rawActivityTimes)).toISOString()
       : null
   // Suppress unused TTL constant warning (kept for future caching hooks).
   void NETWORK_FEED_TTL_SEC
@@ -515,6 +526,20 @@ feedRoute.get("/for-you", requireHandle(), async (c) => {
     postIds: ranker.data.postIds,
   })
   const trimmed = ordered.slice(0, limit)
+  if (
+    ranker.data.algoVersion !== algoVersion ||
+    ranker.data.variant !== variant
+  ) {
+    log.warn(
+      {
+        apiAlgoVersion: algoVersion,
+        rankerAlgoVersion: ranker.data.algoVersion,
+        apiVariant: variant,
+        rankerVariant: ranker.data.variant,
+      },
+      "feed_for_you_ranker_metadata_mismatch"
+    )
+  }
 
   const response: ForYouFeedResponse = {
     posts: trimmed,
@@ -523,8 +548,8 @@ feedRoute.get("/for-you", requireHandle(), async (c) => {
     // `limit`, we still pass the cursor through — the client will try to fetch more and
     // the ranker will continue from its offset.
     nextCursor: ranker.data.nextCursor,
-    algoVersion: ranker.data.algoVersion,
-    variant: ranker.data.variant,
+    algoVersion,
+    variant,
   }
 
   if (cacheable) {
