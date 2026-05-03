@@ -16,7 +16,7 @@ import { loadRepostTargets } from './repost-targets.ts'
 import { loadQuoteTargets } from './quote-targets.ts'
 import { attachReplyParents } from './reply-parents.ts'
 import { loadPolls } from './polls.ts'
-import { loadGithubCards } from './github-cards.ts'
+import { loadUnfurlCards } from './unfurl-cards.ts'
 
 export interface HydratePostsByIdsArgs {
   db: Database
@@ -60,32 +60,31 @@ export async function hydratePostsByIds(
   if (rows.length === 0) return []
 
   const ids = rows.map((r) => r.post.id)
-  const [flags, mediaMap, articleMap, repostMap, quoteMap, pollMap, githubMap] =
-    await Promise.all([
-      loadViewerFlags(db, viewerId, ids),
-      loadPostMedia(db, ids),
-      loadArticleCards(db, ids),
-      loadRepostTargets({
-        db,
-        viewerId,
-        env: mediaEnv,
-        repostRows: rows.map((r) => ({
-          id: r.post.id,
-          repostOfId: r.post.repostOfId,
-        })),
-      }),
-      loadQuoteTargets({
-        db,
-        viewerId,
-        env: mediaEnv,
-        quoteRows: rows.map((r) => ({
-          id: r.post.id,
-          quoteOfId: r.post.quoteOfId,
-        })),
-      }),
-      loadPolls(db, viewerId, ids),
-      loadGithubCards(db, ids),
-    ])
+  const [flags, mediaMap, articleMap, repostMap, quoteMap, pollMap] = await Promise.all([
+    loadViewerFlags(db, viewerId, ids),
+    loadPostMedia(db, ids),
+    loadArticleCards(db, ids),
+    loadRepostTargets({
+      db,
+      viewerId,
+      env: mediaEnv,
+      repostRows: rows.map((r) => ({
+        id: r.post.id,
+        repostOfId: r.post.repostOfId,
+      })),
+    }),
+    loadQuoteTargets({
+      db,
+      viewerId,
+      env: mediaEnv,
+      quoteRows: rows.map((r) => ({
+        id: r.post.id,
+        quoteOfId: r.post.quoteOfId,
+      })),
+    }),
+    loadPolls(db, viewerId, ids),
+  ])
+  const unfurlCardsMap = await loadUnfurlCards(db, ids, articleMap)
 
   const dtoById = new Map<string, PostDto>()
   for (const r of rows) {
@@ -97,11 +96,10 @@ export async function hydratePostsByIds(
         flags.get(r.post.id),
         mediaMap.get(r.post.id),
         mediaEnv,
-        articleMap.get(r.post.id),
+        unfurlCardsMap.get(r.post.id),
         repostMap.get(r.post.id),
         quoteMap.get(r.post.id),
         pollMap.get(r.post.id),
-        githubMap.get(r.post.id),
       ),
     )
   }
