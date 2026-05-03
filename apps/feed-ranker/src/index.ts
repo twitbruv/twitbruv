@@ -54,8 +54,16 @@ app.get("/healthz", (c) => c.json({ ok: true }))
 
 app.get("/readyz", async (c) => {
   try {
-    await withTimeout(db.execute(sql`SELECT 1`), READINESS_TIMEOUT_MS, "db_readyz_timeout")
-    await withTimeout(redis.ping(), READINESS_TIMEOUT_MS, "redis_readyz_timeout")
+    await withTimeout(
+      db.execute(sql`SELECT 1`),
+      READINESS_TIMEOUT_MS,
+      "db_readyz_timeout"
+    )
+    await withTimeout(
+      redis.ping(),
+      READINESS_TIMEOUT_MS,
+      "redis_readyz_timeout"
+    )
     return c.json({ ok: true })
   } catch (err) {
     log.error({ err: errMsg(err) }, "readyz_failed")
