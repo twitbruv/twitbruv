@@ -15,6 +15,11 @@ import {
   bucketForYouVariant,
   type ForYouRankRequest,
 } from "@workspace/types"
+import {
+  FEED_DEFAULT_LIMIT,
+  feedQuerySchema,
+  forYouFeedQuerySchema,
+} from "@workspace/validators"
 import { requireHandle, type HonoEnv } from "../middleware/session.ts"
 import { toPostDto, type PostDto } from "../lib/post-dto.ts"
 import { loadViewerFlags } from "../lib/viewer-flags.ts"
@@ -58,13 +63,14 @@ feedRoute.get("/", requireHandle(), async (c) => {
   const session = c.get("session")!
   const { db, mediaEnv, cache, rateLimit } = c.get("ctx")
   await rateLimit(c, "reads.feed")
-  const limit = Math.min(Number(c.req.query("limit") ?? 40), 100)
-  const cursor = parseCursor(c.req.query("cursor"))
+  const query = feedQuerySchema.parse(c.req.query())
+  const limit = query.limit
+  const cursor = parseCursor(query.cursor)
   const me = session.user.id
 
   // Cache only page 0 (no cursor) with default limit. Deeper pages are rarely fetched and
   // caching every (cursor, limit) combo isn't worth the keyspace.
-  const cacheable = !cursor && limit === 40
+  const cacheable = !cursor && limit === FEED_DEFAULT_LIMIT
   if (cacheable) {
     const hit = await cache.get<{ posts: unknown; nextCursor: string | null }>(
       homeFeedCacheKey(me)
@@ -162,8 +168,9 @@ feedRoute.get("/network", requireHandle(), async (c) => {
   const session = c.get("session")!
   const { db, mediaEnv, rateLimit } = c.get("ctx")
   await rateLimit(c, "reads.feed")
-  const limit = Math.min(Number(c.req.query("limit") ?? 40), 100)
-  const cursor = parseCursor(c.req.query("cursor"))
+  const query = feedQuerySchema.parse(c.req.query())
+  const limit = query.limit
+  const cursor = parseCursor(query.cursor)
   const me = session.user.id
 
   // The activity that surfaced the post is one of: a like by a follow,
@@ -390,8 +397,6 @@ feedRoute.get("/network", requireHandle(), async (c) => {
 // client as `restartRequired: true`, never silently swapped to a chrono feed — the plan
 // is explicit that mid-scroll feed swaps are worse than a clean restart.
 const FOR_YOU_PAGE_TTL_SEC = 30
-const FOR_YOU_DEFAULT_LIMIT = 40
-const FOR_YOU_MAX_LIMIT = 100
 const FOR_YOU_RANKER_MAX_LIMIT = 200
 
 export function forYouFeedCacheKey(args: {
@@ -408,26 +413,17 @@ feedRoute.get("/for-you", requireHandle(), async (c) => {
   await rateLimit(c, "reads.feed")
 
   const me = session.user.id
-  const limitRaw = Number(c.req.query("limit") ?? FOR_YOU_DEFAULT_LIMIT)
-  const limit = Math.min(
-    Math.max(
-      Number.isFinite(limitRaw) ? Math.floor(limitRaw) : FOR_YOU_DEFAULT_LIMIT,
-      1
-    ),
-    FOR_YOU_MAX_LIMIT
-  )
-  const cursorRaw = c.req.query("cursor")
+  const { limit, cursor } = forYouFeedQuerySchema.parse(c.req.query())
   // The ranker owns opaque cursor validation. Preserve any provided value so malformed or
   // expired cursors produce the same explicit restartRequired path instead of silently
   // downgrading the request to a first page.
-  const cursor = cursorRaw ?? null
 
   // Compute experiment assignment + algo version on the API side so the cache key, response
   // metadata, and analytics attribution all match even if the ranker is unreachable.
   const algoVersion = FOR_YOU_ALGO_VERSION
   const variant = bucketForYouVariant(me)
 
-  const cacheable = !cursor && limit === FOR_YOU_DEFAULT_LIMIT
+  const cacheable = !cursor && limit === 40
   const cacheKey = forYouFeedCacheKey({ userId: me, variant, algoVersion })
 
   if (cacheable) {
