@@ -4,6 +4,7 @@ export type SettingsTab =
   | "sessions"
   | "privacy"
   | "connections"
+  | "experiments"
   | "danger"
   | "dev"
 
@@ -13,6 +14,7 @@ export const SETTINGS_TABS: ReadonlyArray<SettingsTab> = [
   "sessions",
   "privacy",
   "connections",
+  "experiments",
   "danger",
   ...(import.meta.env.DEV ? (["dev"] as const) : []),
 ]
@@ -23,6 +25,7 @@ export const SETTINGS_TAB_LABELS: Record<SettingsTab, string> = {
   sessions: "Sessions",
   privacy: "Privacy",
   connections: "Connections",
+  experiments: "Experiments",
   danger: "Danger zone",
   dev: "Dev Tools",
 }

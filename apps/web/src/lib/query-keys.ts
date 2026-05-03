@@ -1,4 +1,4 @@
-export type FeedTabKey = "following" | "network" | "all"
+export type FeedTabKey = "following" | "network" | "all" | "forYou"
 
 export type AdminPostFilters = {
   q?: string

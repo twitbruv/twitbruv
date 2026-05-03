@@ -71,6 +71,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ handle }),
     }),
+  updateExperiments: (body: Partial<Experiments>) =>
+    request<{ experiments: Experiments }>("/api/me/experiments", {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }),
 
   user: (handle: string) =>
     request<{ user: PublicProfile }>(`/api/users/${h(handle)}`),
@@ -108,6 +113,8 @@ export const api = {
   feed: (cursor?: string) => request<FeedPage>(`/api/feed${qs(cursor)}`),
   networkFeed: (cursor?: string) =>
     request<NetworkFeedPage>(`/api/feed/network${qs(cursor)}`),
+  forYouFeed: (cursor?: string) =>
+    request<ForYouFeedPage>(`/api/feed/for-you${qs(cursor)}`),
   publicTimeline: (cursor?: string) =>
     request<FeedPage>(`/api/posts${qs(cursor)}`),
   hashtag: (tag: string, cursor?: string) =>
@@ -835,6 +842,13 @@ export interface FeedPage {
   nextCursor: string | null
 }
 
+export interface ForYouFeedPage extends FeedPage {
+  algoVersion: string
+  variant: string
+  fallback?: boolean
+  restartRequired?: boolean
+}
+
 export interface HashtagPage extends FeedPage {
   tag: string
 }
@@ -907,6 +921,10 @@ export interface MutedUser {
   scope: "feed" | "notifications" | "both"
 }
 
+export interface Experiments {
+  forYouFeed: boolean
+}
+
 export interface SelfUser {
   id: string
   email: string
@@ -925,6 +943,7 @@ export interface SelfUser {
   locale: string
   timezone: string | null
   createdAt: string
+  experiments: Experiments
 }
 
 export interface SavedSearch {

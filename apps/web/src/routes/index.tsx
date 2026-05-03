@@ -1,6 +1,6 @@
 import { Link, createFileRoute, redirect } from "@tanstack/react-router"
 import { useQueryClient } from "@tanstack/react-query"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   IdentificationIcon,
   PencilSquareIcon,
@@ -12,7 +12,7 @@ import { SegmentedControl } from "@workspace/ui/components/segmented-control"
 import { cn } from "@workspace/ui/lib/utils"
 import { authClient } from "../lib/auth"
 import { checkSessionCookie } from "../lib/auth-fns"
-import { api } from "../lib/api"
+import { ApiError, api } from "../lib/api"
 import { qk } from "../lib/query-keys"
 import { useMe } from "../lib/me"
 import { Compose } from "../components/compose"
@@ -26,17 +26,23 @@ import { PageEmpty } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
 import { useSettings } from "../components/settings/settings-provider"
 import { isSettingsTab } from "../components/settings/types"
+import { ForYouAnnouncement } from "../components/for-you-announcement"
 import type { FeedTabKey } from "../lib/query-keys"
 import type { InfiniteData } from "@tanstack/react-query"
 import type { FeedPage, Post } from "../lib/api"
 
-const FEED_TABS = ["following", "network", "all"] as const
-type FeedTab = (typeof FEED_TABS)[number]
+const ALL_TABS = ["forYou", "following", "network", "all"] as const
+type FeedTab = (typeof ALL_TABS)[number]
 
 const TAB_LABELS: Record<FeedTab, string> = {
+  forYou: "For You",
   following: "Following",
   network: "Network",
   all: "All",
+}
+
+function isValidTab(value: unknown): value is FeedTab {
+  return typeof value === "string" && ALL_TABS.includes(value as FeedTab)
 }
 
 type HomeSearch = {
@@ -48,11 +54,7 @@ type HomeSearch = {
 
 export const Route = createFileRoute("/")({
   validateSearch: (search: Record<string, unknown>): HomeSearch => {
-    const raw = search.tab
-    const feedTab =
-      typeof raw === "string" && FEED_TABS.includes(raw as FeedTab)
-        ? (raw as FeedTab)
-        : undefined
+    const feedTab = isValidTab(search.tab) ? search.tab : undefined
     const settingsRaw = search.settings_tab
     const settings_tab =
       typeof settingsRaw === "string" ? settingsRaw : undefined
@@ -76,6 +78,16 @@ export const Route = createFileRoute("/")({
   component: Home,
 })
 
+function useVisibleTabs(forYouEnabled: boolean) {
+  return useMemo<ReadonlyArray<FeedTab>>(
+    () =>
+      forYouEnabled
+        ? ["forYou", "following", "all"]
+        : ["following", "network", "all"],
+    [forYouEnabled]
+  )
+}
+
 function Home() {
   const { isPending } = authClient.useSession()
   const { me } = useMe()
@@ -88,19 +100,48 @@ function Home() {
   } = Route.useSearch()
   const navigate = Route.useNavigate()
   const { open: openSettings } = useSettings()
-  const tab: FeedTab = searchTab ?? "following"
+
+  const forYouEnabled = me?.experiments.forYouFeed ?? true
+  const visibleTabs = useVisibleTabs(forYouEnabled)
+  const defaultTab = visibleTabs[0]
+  const tab: FeedTab =
+    searchTab && visibleTabs.includes(searchTab) ? searchTab : defaultTab
+
   const queryClient = useQueryClient()
-  /** If React Query already has this tab's feed (return navigation / prefetch), skip the route-level loader. */
+  const [forYouRestartToken, setForYouRestartToken] = useState(0)
+  const feedQueryKey = useMemo(
+    () =>
+      tab === "forYou"
+        ? (["feed", "forYou", forYouRestartToken] as const)
+        : qk.feed(tab),
+    [tab, forYouRestartToken]
+  )
   const [feedReady, setFeedReady] = useState(() =>
-    Boolean(queryClient.getQueryData(qk.feed(tab)))
+    Boolean(queryClient.getQueryData(feedQueryKey))
   )
   const [newPost, setNewPost] = useState<Post | null>(null)
+  const [forYouRetrying, setForYouRetrying] = useState(false)
 
   useOnModalPostCreated(
     useCallback((post: Post) => {
       setNewPost(post)
     }, [])
   )
+
+  useEffect(() => {
+    if (searchTab && !visibleTabs.includes(searchTab)) {
+      void navigate({
+        to: "/",
+        search:
+          defaultTab === visibleTabs[0] && defaultTab === "forYou"
+            ? undefined
+            : defaultTab === "following"
+              ? undefined
+              : { tab: defaultTab },
+        replace: true,
+      })
+    }
+  }, [searchTab, visibleTabs, defaultTab, navigate])
 
   useEffect(() => {
     if (!settings_tab || !isSettingsTab(settings_tab)) return
@@ -117,10 +158,18 @@ function Home() {
     })
     navigate({
       to: "/",
-      search: { tab: tab === "following" ? undefined : tab },
+      search: tab === defaultTab ? undefined : { tab },
       replace: true,
     })
-  }, [settings_tab, connect_error, connected, navigate, openSettings, tab])
+  }, [
+    settings_tab,
+    connect_error,
+    connected,
+    navigate,
+    openSettings,
+    tab,
+    defaultTab,
+  ])
 
   const loadFeed = useCallback((cursor?: string) => api.feed(cursor), [])
   const loadPublic = useCallback(
@@ -131,25 +180,43 @@ function Home() {
     (cursor?: string) => api.networkFeed(cursor),
     []
   )
+  const loadForYou = useCallback(
+    async (cursor?: string): Promise<FeedPage> => {
+      try {
+        const page = await api.forYouFeed(cursor)
+        return page
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 410) {
+          setForYouRetrying(true)
+          setFeedReady(false)
+          queryClient.removeQueries({ queryKey: qk.feed("forYou") })
+          setForYouRestartToken((value) => value + 1)
+        }
+        throw err
+      }
+    },
+    [queryClient]
+  )
 
   const needsHandle = me && !me.handle
 
   useEffect(() => {
-    if (queryClient.getQueryData(qk.feed(tab))) {
-      setFeedReady(true)
-    }
-  }, [queryClient, tab])
+    setFeedReady(Boolean(queryClient.getQueryData(feedQueryKey)))
+    if (!queryClient.getQueryData(feedQueryKey)) setForYouRetrying(false)
+  }, [feedQueryKey, queryClient])
 
   useEffect(() => {
     if (needsHandle) return
-    for (const t of FEED_TABS) {
+    for (const t of visibleTabs) {
       if (t === tab) continue
       const load =
         t === "following"
           ? loadFeed
           : t === "network"
             ? loadNetwork
-            : loadPublic
+            : t === "forYou"
+              ? loadForYou
+              : loadPublic
       void queryClient.prefetchInfiniteQuery<
         FeedPage,
         Error,
@@ -163,12 +230,39 @@ function Home() {
         getNextPageParam: (last: FeedPage) => last.nextCursor ?? undefined,
       })
     }
-  }, [needsHandle, queryClient, tab, loadFeed, loadNetwork, loadPublic])
+  }, [
+    needsHandle,
+    queryClient,
+    tab,
+    visibleTabs,
+    loadFeed,
+    loadNetwork,
+    loadPublic,
+    loadForYou,
+  ])
 
-  const showLoader = useLoaderVisible(isPending || (!needsHandle && !feedReady))
+  const showLoader = useLoaderVisible(
+    isPending || (!needsHandle && !feedReady) || forYouRetrying
+  )
 
   const emptyState =
-    tab === "following" ? (
+    tab === "forYou" ? (
+      <PageEmpty
+        icon={<SparklesIcon />}
+        title="Nothing yet"
+        description="Your For You feed will populate as you follow people and engage with posts. Check out Following or All in the meantime."
+        actions={
+          <Button
+            size="sm"
+            variant="outline"
+            nativeButton={false}
+            render={<Link to="/" search={{ tab: "following" }} />}
+          >
+            View Following
+          </Button>
+        }
+      />
+    ) : tab === "following" ? (
       <PageEmpty
         icon={<UserPlusIcon />}
         title="Build your timeline"
@@ -223,6 +317,15 @@ function Home() {
       />
     )
 
+  const feedLoad =
+    tab === "following"
+      ? loadFeed
+      : tab === "network"
+        ? loadNetwork
+        : tab === "forYou"
+          ? loadForYou
+          : loadPublic
+
   return (
     <PageFrame>
       <header className="sticky top-0 z-40 flex h-12 items-center bg-base-1/80 px-4 backdrop-blur-md">
@@ -230,18 +333,19 @@ function Home() {
           layout="fit"
           variant="ghost"
           value={tab}
-          options={FEED_TABS.map((key) => ({
+          options={visibleTabs.map((key) => ({
             value: key,
             label: TAB_LABELS[key],
           }))}
           onValueChange={(value) => {
             void navigate({
               to: "/",
-              search: value === "following" ? undefined : { tab: value },
+              search: value === defaultTab ? undefined : { tab: value },
             })
           }}
         />
       </header>
+      {forYouEnabled && <ForYouAnnouncement />}
       {needsHandle ? (
         <PageEmpty
           icon={<IdentificationIcon />}
@@ -278,19 +382,15 @@ function Home() {
           )}
         >
           <Feed
-            queryKey={qk.feed(tab)}
-            load={
-              tab === "following"
-                ? loadFeed
-                : tab === "network"
-                  ? loadNetwork
-                  : loadPublic
-            }
+            queryKey={feedQueryKey}
+            load={feedLoad}
             emptyState={emptyState}
-            prependItem={newPost}
+            prependItem={tab === "forYou" ? null : newPost}
             quietPending={!feedReady}
             onReady={() => setFeedReady(true)}
-            chainPreview={tab === "following" || tab === "all"}
+            chainPreview={
+              tab === "following" || tab === "all" || tab === "forYou"
+            }
             renderActivityBanner={
               tab === "network"
                 ? (p) => {

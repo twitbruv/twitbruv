@@ -1,7 +1,13 @@
 import { Hono } from 'hono'
-import { and, desc, eq, isNull, lt } from '@workspace/db'
+import { and, desc, eq, isNull, lt, sql } from '@workspace/db'
 import { schema } from '@workspace/db'
-import { updateProfileSchema, claimHandleSchema } from '@workspace/validators'
+import {
+  updateProfileSchema,
+  claimHandleSchema,
+  updateExperimentsSchema,
+  resolveExperiments,
+  type ExperimentPrefs,
+} from '@workspace/validators'
 import { assetUrl, extractKey } from '@workspace/media/s3'
 import { requireAuth, type HonoEnv } from '../middleware/session.ts'
 import { isReservedHandle } from '../lib/handles.ts'
@@ -24,19 +30,20 @@ meRoute.use('*', requireAuth())
 meRoute.get('/', async (c) => {
   const session = c.get('session')!
   const { db, cache } = c.get('ctx')
-  const [user] = await db.select().from(schema.users).where(eq(schema.users.id, session.user.id)).limit(1)
-  if (!user) return c.json({ error: 'not_found' }, 404)
-  // Authoritative liveness check. The session middleware already rejects banned users, but
-  // it reads `banned` from the (possibly cached) session payload, so a moderation action in
-  // the cache window can be missed. The frontend polls this endpoint periodically and force
-  // signs out on 401, so keeping this in sync with the DB bounds the lag for kicking
-  // banned, suspended, or soft-deleted users.
+  const rows = await db
+    .select({ user: schema.users, priv: schema.profilePrivate })
+    .from(schema.users)
+    .leftJoin(schema.profilePrivate, eq(schema.profilePrivate.userId, schema.users.id))
+    .where(eq(schema.users.id, session.user.id))
+    .limit(1)
+  const row = rows[0]
+  if (!row) return c.json({ error: 'not_found' }, 404)
+  const user = row.user
   if (user.banned || user.deletedAt) return c.json({ error: 'unauthorized' }, 401)
-  // Presence heartbeat: the MeProvider polls this endpoint every ~30s while the tab is
-  // visible, so reusing it as the heartbeat costs zero extra requests and naturally tracks
-  // "tab open + foregrounded" rather than "session exists".
   void markOnline(cache, user.id)
-  return c.json({ user: toSelfDto(user, c.get('ctx').mediaEnv) })
+  return c.json({
+    user: toSelfDto(user, c.get('ctx').mediaEnv, row.priv?.experimentPrefs as ExperimentPrefs | null),
+  })
 })
 
 meRoute.patch('/', async (c) => {
@@ -71,7 +78,8 @@ meRoute.patch('/', async (c) => {
     .returning()
   if (!user) return c.json({ error: 'not_found' }, 404)
   c.get('ctx').track('profile_updated', session.user.id)
-  return c.json({ user: toSelfDto(user, c.get('ctx').mediaEnv) })
+  const priv = await loadExperimentPrefs(db, session.user.id)
+  return c.json({ user: toSelfDto(user, c.get('ctx').mediaEnv, priv) })
 })
 
 meRoute.post('/handle', async (c) => {
@@ -95,7 +103,8 @@ meRoute.post('/handle', async (c) => {
     .returning()
   if (!user) return c.json({ error: 'not_found' }, 404)
   c.get('ctx').track('handle_claimed', session.user.id)
-  return c.json({ user: toSelfDto(user, c.get('ctx').mediaEnv) })
+  const priv = await loadExperimentPrefs(db, session.user.id)
+  return c.json({ user: toSelfDto(user, c.get('ctx').mediaEnv, priv) })
 })
 
 // Users I've blocked. Newest first. Used by settings → Privacy so users can audit and
@@ -229,9 +238,47 @@ meRoute.get('/bookmarks', async (c) => {
   return c.json({ posts, nextCursor })
 })
 
+meRoute.patch('/experiments', async (c) => {
+  const session = c.get('session')!
+  const { db, rateLimit } = c.get('ctx')
+  await rateLimit(c, 'me.update')
+  const body = updateExperimentsSchema.parse(await c.req.json())
+
+  const [row] = await db
+    .insert(schema.profilePrivate)
+    .values({
+      userId: session.user.id,
+      experimentPrefs: body,
+    })
+    .onConflictDoUpdate({
+      target: schema.profilePrivate.userId,
+      set: {
+        experimentPrefs: sql`coalesce(${schema.profilePrivate.experimentPrefs}, '{}'::jsonb) || excluded.experiment_prefs`,
+      },
+    })
+    .returning({ experimentPrefs: schema.profilePrivate.experimentPrefs })
+
+  return c.json({
+    experiments: resolveExperiments(row?.experimentPrefs as ExperimentPrefs | null),
+  })
+})
+
+async function loadExperimentPrefs(
+  db: import('@workspace/db').Database,
+  userId: string,
+): Promise<ExperimentPrefs | null> {
+  const rows = await db
+    .select({ experimentPrefs: schema.profilePrivate.experimentPrefs })
+    .from(schema.profilePrivate)
+    .where(eq(schema.profilePrivate.userId, userId))
+    .limit(1)
+  return (rows[0]?.experimentPrefs as ExperimentPrefs | null) ?? null
+}
+
 function toSelfDto(
   u: typeof schema.users.$inferSelect,
   env: import('@workspace/media/env').MediaEnv,
+  experimentPrefs?: ExperimentPrefs | null,
 ) {
   return {
     id: u.id,
@@ -251,5 +298,6 @@ function toSelfDto(
     locale: u.locale,
     timezone: u.timezone,
     createdAt: u.createdAt,
+    experiments: resolveExperiments(experimentPrefs),
   }
 }
