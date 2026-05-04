@@ -182,3 +182,70 @@ export function filterRedundantChainPosts(
     return !shownAsChainRoot.has(p.id)
   })
 }
+
+/**
+ * Ranked-feed variant of link + dedup. Walks posts in ranker order so the first
+ * reply to claim a root wins; later replies to the same root are dropped entirely.
+ * This avoids showing the same root post twice and gives the ranker indirect control
+ * over which reply surfaces (the one it ranked highest).
+ *
+ * Handles three reply tiers:
+ *  1. depth >= 2 already processed by attachFeedChainPreviews (chainPreview set)
+ *  2. depth-1 replies whose parent is on the same page (same-page linking)
+ *  3. depth-1 replies whose parent is off-page (promote replyParent to chainPreview)
+ *
+ * After linking, standalone posts that became chain roots are removed.
+ */
+export function linkAndDeduplicateRanked(
+  posts: Array<PostDto>
+): Array<PostDto> {
+  const byId = new Map<string, PostDto>()
+  for (const p of posts) byId.set(p.id, p)
+
+  const usedRoots = new Set<string>()
+  const toRemove = new Set<string>()
+
+  for (const p of posts) {
+    if (p.chainPreview) {
+      const rootId = p.chainPreview.root.id
+      if (usedRoots.has(rootId)) {
+        delete p.chainPreview
+        toRemove.add(p.id)
+      } else {
+        usedRoots.add(rootId)
+      }
+      continue
+    }
+
+    if (!p.replyToId) continue
+
+    const parent = byId.get(p.replyToId)
+    if (parent) {
+      if (usedRoots.has(parent.id)) {
+        toRemove.add(p.id)
+        continue
+      }
+      p.chainPreview = { root: parent, omittedCount: 0 }
+      delete p.replyParent
+      usedRoots.add(parent.id)
+      continue
+    }
+
+    if (p.replyParent) {
+      const parentId = p.replyParent.id
+      if (usedRoots.has(parentId)) {
+        toRemove.add(p.id)
+        continue
+      }
+      p.chainPreview = { root: p.replyParent, omittedCount: 0 }
+      delete p.replyParent
+      usedRoots.add(parentId)
+    }
+  }
+
+  return posts.filter((p) => {
+    if (toRemove.has(p.id)) return false
+    if (usedRoots.has(p.id) && !p.chainPreview) return false
+    return true
+  })
+}

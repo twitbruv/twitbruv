@@ -31,6 +31,7 @@ import {
   attachFeedChainPreviews,
   linkSamePageReplies,
   filterRedundantChainPosts,
+  linkAndDeduplicateRanked,
 } from "../lib/feed-chain-preview.ts"
 import { attachReplyParents } from "../lib/reply-parents.ts"
 import { loadPolls } from "../lib/polls.ts"
@@ -504,7 +505,14 @@ feedRoute.get("/for-you", requireHandle(), async (c) => {
       mediaEnv,
       postIds: fallbackIds,
     })
-    const trimmed = fallbackPosts.slice(0, limit)
+    await attachFeedChainPreviews({
+      db,
+      viewerId: me,
+      env: mediaEnv,
+      posts: fallbackPosts,
+    })
+    const linkedFallback = linkAndDeduplicateRanked(fallbackPosts)
+    const trimmed = linkedFallback.slice(0, limit)
     const fallbackResponse: ForYouFeedResponse = {
       posts: trimmed,
       nextCursor: null,
@@ -525,7 +533,14 @@ feedRoute.get("/for-you", requireHandle(), async (c) => {
     mediaEnv,
     postIds: ranker.data.postIds,
   })
-  const trimmed = ordered.slice(0, limit)
+  await attachFeedChainPreviews({
+    db,
+    viewerId: me,
+    env: mediaEnv,
+    posts: ordered,
+  })
+  const linked = linkAndDeduplicateRanked(ordered)
+  const trimmed = linked.slice(0, limit)
   if (
     ranker.data.algoVersion !== algoVersion ||
     ranker.data.variant !== variant
