@@ -2,7 +2,6 @@
   "extends": "@workspace/config-tsconfig/react.json",
   "compilerOptions": {
     "jsx": "react-jsx",
-    "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
       "@workspace/ui/*": ["./src/*"]

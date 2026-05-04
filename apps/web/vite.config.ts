@@ -12,7 +12,6 @@ const config = defineConfig({
   plugins: [nitro(), tailwindcss(), tanstackStart(), viteReact()],
   resolve: {
     dedupe: ["react", "react-dom"],
-    tsconfigPaths: true,
   },
   // @vercel/og ships its own Yoga + resvg WASM. Vite's pre-bundler cannot rewrite
   // those import.meta.url WASM references, so we keep the package external on the
