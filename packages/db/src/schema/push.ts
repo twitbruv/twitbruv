@@ -7,6 +7,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core"
 import { users } from "./auth.ts"
+import { apnsEnvironmentEnum } from "./enums.ts"
 
 export const deviceTokens = pgTable(
   "device_tokens",
@@ -17,7 +18,7 @@ export const deviceTokens = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     token: text("token").notNull(),
     bundleId: text("bundle_id").notNull(),
-    environment: text("environment").notNull(),
+    environment: apnsEnvironmentEnum("environment").notNull(),
     appVersion: text("app_version"),
     osVersion: text("os_version"),
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true })

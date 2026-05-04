@@ -38,6 +38,8 @@ const defaultPushPrefs: Partial<Record<NotificationKind, boolean>> = {
   quote: true,
 }
 
+const apnsSendConcurrency = 10
+
 async function pushEnabledForUser(
   db: Database,
   userId: string,
@@ -62,8 +64,25 @@ export async function enqueueApnsSendJobs(
   db: Database,
   jobs: ApnsSendJob[]
 ): Promise<void> {
+  const pushEnabledCache = new Map<string, boolean>()
+  const jobsToSend: ApnsSendJob[] = []
+
   for (const job of jobs) {
-    if (!(await pushEnabledForUser(db, job.userId, job.kind))) continue
-    await boss.send("apns.send", job)
+    const key = `${job.userId}:${job.kind}`
+    let enabled = pushEnabledCache.get(key)
+    if (enabled === undefined) {
+      try {
+        enabled = await pushEnabledForUser(db, job.userId, job.kind)
+      } catch {
+        enabled = false
+      }
+      pushEnabledCache.set(key, enabled)
+    }
+    if (enabled) jobsToSend.push(job)
+  }
+
+  for (let i = 0; i < jobsToSend.length; i += apnsSendConcurrency) {
+    const chunk = jobsToSend.slice(i, i + apnsSendConcurrency)
+    await Promise.allSettled(chunk.map((job) => boss.send("apns.send", job)))
   }
 }

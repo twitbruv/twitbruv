@@ -1,4 +1,5 @@
 import { schema } from "@workspace/db"
+import type { Transaction } from "@workspace/db"
 import type { Cache } from "./cache.ts"
 
 export type NotificationKind =
@@ -40,7 +41,7 @@ export interface NotifyResult {
 }
 
 export async function notify(
-  tx: any,
+  tx: Transaction,
   inputs: Array<NotifyInput>
 ): Promise<NotifyResult> {
   const filtered = inputs.filter((n) => n.actorId !== n.userId)

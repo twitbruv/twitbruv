@@ -52,18 +52,13 @@ async function providerJwt(env: Env): Promise<string | null> {
   return jwt
 }
 
-function shouldDeleteToken(
+export function shouldDeleteToken(
   status: number,
   reason: string | undefined
 ): boolean {
   if (status === 410) return true
   const r = reason ?? ""
-  return (
-    r === "BadDeviceToken" ||
-    r === "Unregistered" ||
-    r === "DeviceTokenNotForTopic" ||
-    r === "TopicDisallowed"
-  )
+  return r === "BadDeviceToken" || r === "Unregistered"
 }
 
 async function sendOne(
