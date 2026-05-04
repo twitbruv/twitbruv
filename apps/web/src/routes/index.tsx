@@ -205,6 +205,10 @@ function Home() {
     },
     [queryClient]
   )
+  const loadForYouPrefetch = useCallback(
+    (cursor?: string): Promise<FeedPage> => api.forYouFeed(cursor),
+    []
+  )
 
   const needsHandle = me && !me.handle
 
@@ -224,7 +228,7 @@ function Home() {
           : t === "network"
             ? loadNetwork
             : t === "forYou"
-              ? loadForYou
+              ? loadForYouPrefetch
               : loadPublic
       void queryClient.prefetchInfiniteQuery<
         FeedPage,
@@ -247,7 +251,7 @@ function Home() {
     loadFeed,
     loadNetwork,
     loadPublic,
-    loadForYou,
+    loadForYouPrefetch,
     preferenceKnown,
     forYouRestartToken,
   ])
