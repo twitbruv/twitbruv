@@ -726,8 +726,11 @@ function ReplyRow({ item }: { item: NotificationItem }) {
               </span>
             </div>
             <div className="flex-1">
-              <span className="inline-flex size-7 items-center justify-center rounded-full text-tertiary">
+              <span className="inline-flex items-center gap-1 rounded-full text-tertiary">
                 <HeartOutline className="size-4" />
+                {(replyTarget?.counts.likes ?? 0) > 0 && (
+                  <span className="text-xs">{replyTarget?.counts.likes}</span>
+                )}
               </span>
             </div>
             <div>
@@ -818,8 +821,11 @@ function MentionRow({ item }: { item: NotificationItem }) {
               </span>
             </div>
             <div className="flex-1">
-              <span className="inline-flex size-7 items-center justify-center rounded-full text-tertiary">
+              <span className="inline-flex items-center gap-1 rounded-full text-tertiary">
                 <HeartOutline className="size-4" />
+                {(mentionTarget?.counts.likes ?? 0) > 0 && (
+                  <span className="text-xs">{mentionTarget?.counts.likes}</span>
+                )}
               </span>
             </div>
             <div>
@@ -899,6 +905,12 @@ function NotificationRow({ item }: { item: NotificationItem }) {
           <p className="mt-1 line-clamp-1 text-sm text-tertiary">
             {item.target.text}
           </p>
+        )}
+        {item.target && item.kind !== "like" && item.target.counts.likes > 0 && (
+          <div className="mt-1.5 flex items-center gap-1 text-xs text-tertiary">
+            <HeartOutline className="size-3.5" />
+            <span>{item.target.counts.likes}</span>
+          </div>
         )}
       </div>
     </div>
