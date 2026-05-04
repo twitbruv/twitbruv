@@ -1,12 +1,12 @@
-import { CheckBadgeIcon } from "@heroicons/react/24/solid"
+import { CheckBadgeIcon } from "@heroicons/react/16/solid"
 import { cn } from "@workspace/ui/lib/utils"
 
 export type VerifiedBadgeRole = "user" | "admin" | "owner"
 
 const roleColorClass: Record<VerifiedBadgeRole, string> = {
-  user: "text-sky-500",
-  admin: "text-emerald-500",
-  owner: "text-amber-400",
+  user: "text-link",
+  admin: "text-success",
+  owner: "text-warn",
 }
 
 const roleAriaLabel: Record<VerifiedBadgeRole, string> = {
