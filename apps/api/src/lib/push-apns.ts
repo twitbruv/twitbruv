@@ -38,6 +38,8 @@ const defaultPushPrefs: Partial<Record<NotificationKind, boolean>> = {
   quote: true,
 }
 
+const apnsSendConcurrency = 10
+
 async function pushEnabledForUser(
   db: Database,
   userId: string,
@@ -62,8 +64,38 @@ export async function enqueueApnsSendJobs(
   db: Database,
   jobs: ApnsSendJob[]
 ): Promise<void> {
+  const pushEnabledCache = new Map<string, boolean>()
+  const jobsToSend: ApnsSendJob[] = []
+  const uniquePreferenceJobs = new Map<string, ApnsSendJob>()
+
   for (const job of jobs) {
-    if (!(await pushEnabledForUser(db, job.userId, job.kind))) continue
-    await boss.send("apns.send", job)
+    const key = `${job.userId}:${job.kind}`
+    if (!uniquePreferenceJobs.has(key)) uniquePreferenceJobs.set(key, job)
+  }
+
+  const preferenceJobs = Array.from(uniquePreferenceJobs.entries())
+  for (let i = 0; i < preferenceJobs.length; i += apnsSendConcurrency) {
+    const chunk = preferenceJobs.slice(i, i + apnsSendConcurrency)
+    await Promise.allSettled(
+      chunk.map(async ([key, job]) => {
+        try {
+          pushEnabledCache.set(
+            key,
+            await pushEnabledForUser(db, job.userId, job.kind)
+          )
+        } catch {
+          pushEnabledCache.set(key, false)
+        }
+      })
+    )
+  }
+
+  for (const job of jobs) {
+    if (pushEnabledCache.get(`${job.userId}:${job.kind}`)) jobsToSend.push(job)
+  }
+
+  for (let i = 0; i < jobsToSend.length; i += apnsSendConcurrency) {
+    const chunk = jobsToSend.slice(i, i + apnsSendConcurrency)
+    await Promise.allSettled(chunk.map((job) => boss.send("apns.send", job)))
   }
 }
