@@ -20,6 +20,8 @@ import { DropdownMenu } from "@workspace/ui/components/dropdown-menu"
 import { Hover } from "@workspace/ui/components/hover"
 import { PreviewCard } from "@workspace/ui/components/preview-card"
 import { AnimatedNumber } from "@workspace/ui/components/animated-number"
+import { VerifiedBadge } from "@workspace/ui/components/verified-badge"
+import type { VerifiedBadgeRole } from "@workspace/ui/components/verified-badge"
 import type { CSSProperties, ReactNode } from "react"
 
 /** Extra profile data for the author hover card */
@@ -42,6 +44,8 @@ export interface PostQuoteOf {
     handle: string | null
     displayName: string | null
     avatarUrl: string | null
+    isVerified?: boolean
+    role?: VerifiedBadgeRole | null
   }
   text: string
   time: string
@@ -55,6 +59,8 @@ export interface PostCardProps {
     handle: string
     displayName: string
     avatarUrl: string | null
+    isVerified?: boolean
+    role?: VerifiedBadgeRole | null
   }
   text: string
   time: string
@@ -296,7 +302,7 @@ export function PostCard({
                   <PreviewCard.Trigger
                     render={<span />}
                     className={cn(
-                      "truncate font-semibold text-primary outline-none",
+                      "flex items-center gap-1 truncate font-semibold text-primary outline-none",
                       onAuthorClick && "cursor-pointer hover:underline"
                     )}
                     onClick={(e) => {
@@ -305,6 +311,9 @@ export function PostCard({
                     }}
                   >
                     {author.displayName}
+                    {author.isVerified && (
+                      <VerifiedBadge size={15} role={author.role} />
+                    )}
                   </PreviewCard.Trigger>
                   <PreviewCard.Content
                     side="bottom"
@@ -327,7 +336,7 @@ export function PostCard({
               ) : (
                 <span
                   className={cn(
-                    "truncate font-semibold text-primary",
+                    "flex items-center gap-1 truncate font-semibold text-primary",
                     onAuthorClick && "cursor-pointer hover:underline"
                   )}
                   onClick={(e) => {
@@ -336,6 +345,9 @@ export function PostCard({
                   }}
                 >
                   {author.displayName}
+                  {author.isVerified && (
+                    <VerifiedBadge size={15} role={author.role} />
+                  )}
                 </span>
               )}
               <span className="truncate text-tertiary">@{author.handle}</span>
@@ -638,7 +650,12 @@ function QuoteEmbed({ quote }: { quote: PostQuoteOf }) {
               src={quote.author.avatarUrl}
               size="xs"
             />
-            <span className="font-semibold text-primary">{displayName}</span>
+            <span className="flex items-center gap-1 font-semibold text-primary">
+              {displayName}
+              {quote.author.isVerified && (
+                <VerifiedBadge size={13} role={quote.author.role} />
+              )}
+            </span>
             {handle && <span className="text-tertiary">@{handle}</span>}
             <span className="text-tertiary">&middot;</span>
             <span className="text-tertiary">{quote.time}</span>
@@ -742,6 +759,7 @@ function AuthorHoverContent({
           }}
         >
           {author.displayName}
+          {author.isVerified && <VerifiedBadge size={15} role={author.role} />}
         </span>
         <span className="text-xs text-tertiary">@{author.handle}</span>
       </div>

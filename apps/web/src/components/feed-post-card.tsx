@@ -198,6 +198,8 @@ export function FeedPostCard({
             handle: q.author.handle,
             displayName: q.author.displayName,
             avatarUrl: q.author.avatarUrl,
+            isVerified: q.author.isVerified,
+            role: q.author.role,
           },
           text: q.text,
           time: relativeTime(q.createdAt),
@@ -218,6 +220,8 @@ export function FeedPostCard({
           handle: authorHandle,
           displayName: post.author.displayName ?? authorHandle,
           avatarUrl: post.author.avatarUrl,
+          isVerified: post.author.isVerified,
+          role: post.author.role,
         }}
         text={post.text}
         time={relativeTime(post.createdAt)}
