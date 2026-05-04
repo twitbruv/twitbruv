@@ -1177,7 +1177,7 @@ export function ExperimentsSection() {
       const { experiments } = await api.updateExperiments({
         forYouFeed: checked,
       })
-      setMe({ ...me, experiments })
+      setMe((prev) => (prev ? { ...prev, experiments } : prev))
       queryClient.removeQueries({ queryKey: qk.feed("forYou") })
       queryClient.removeQueries({ queryKey: qk.feed("network") })
     } catch (err) {

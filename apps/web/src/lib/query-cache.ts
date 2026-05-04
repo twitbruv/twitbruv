@@ -239,7 +239,6 @@ export function prependPostToFeeds(
       "following",
       "network",
       "all",
-      "forYou",
     ] as const satisfies ReadonlyArray<FeedTabKey>)
   for (const tab of tabsToUse) {
     qc.setQueryData<InfiniteData<FeedPage>>(qk.feed(tab), (current) => {

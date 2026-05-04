@@ -36,7 +36,10 @@ export const qk = {
 
   postEdits: (id: string) => ["postEdits", id] as const,
 
-  feed: (tab: FeedTabKey) => ["feed", tab] as const,
+  feed: (tab: FeedTabKey, restartToken?: number) =>
+    restartToken === undefined
+      ? (["feed", tab] as const)
+      : (["feed", tab, restartToken] as const),
 
   bookmarks: () => ["bookmarks"] as const,
 

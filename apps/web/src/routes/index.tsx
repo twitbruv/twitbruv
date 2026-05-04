@@ -27,7 +27,6 @@ import { PageFrame } from "../components/page-frame"
 import { useSettings } from "../components/settings/settings-provider"
 import { isSettingsTab } from "../components/settings/types"
 import { ForYouAnnouncement } from "../components/for-you-announcement"
-import type { FeedTabKey } from "../lib/query-keys"
 import type { InfiniteData } from "@tanstack/react-query"
 import type { FeedPage, Post } from "../lib/api"
 
@@ -78,12 +77,14 @@ export const Route = createFileRoute("/")({
   component: Home,
 })
 
-function useVisibleTabs(forYouEnabled: boolean) {
+function useVisibleTabs(forYouEnabled: boolean | undefined) {
   return useMemo<ReadonlyArray<FeedTab>>(
     () =>
-      forYouEnabled
-        ? ["forYou", "following", "all"]
-        : ["following", "network", "all"],
+      forYouEnabled === undefined
+        ? ALL_TABS
+        : forYouEnabled
+          ? ["forYou", "following", "all"]
+          : ["following", "network", "all"],
     [forYouEnabled]
   )
 }
@@ -101,9 +102,15 @@ function Home() {
   const navigate = Route.useNavigate()
   const { open: openSettings } = useSettings()
 
-  const forYouEnabled = me?.experiments.forYouFeed ?? true
+  const forYouEnabled = me?.experiments.forYouFeed
+  const preferenceKnown = forYouEnabled !== undefined
   const visibleTabs = useVisibleTabs(forYouEnabled)
-  const defaultTab = visibleTabs[0]
+  const defaultTab: FeedTab =
+    forYouEnabled === undefined
+      ? "following"
+      : forYouEnabled
+        ? "forYou"
+        : "following"
   const tab: FeedTab =
     searchTab && visibleTabs.includes(searchTab) ? searchTab : defaultTab
 
@@ -111,9 +118,7 @@ function Home() {
   const [forYouRestartToken, setForYouRestartToken] = useState(0)
   const feedQueryKey = useMemo(
     () =>
-      tab === "forYou"
-        ? (["feed", "forYou", forYouRestartToken] as const)
-        : qk.feed(tab),
+      tab === "forYou" ? qk.feed("forYou", forYouRestartToken) : qk.feed(tab),
     [tab, forYouRestartToken]
   )
   const [feedReady, setFeedReady] = useState(() =>
@@ -129,6 +134,7 @@ function Home() {
   )
 
   useEffect(() => {
+    if (!preferenceKnown) return
     if (searchTab && !visibleTabs.includes(searchTab)) {
       void navigate({
         to: "/",
@@ -141,9 +147,10 @@ function Home() {
         replace: true,
       })
     }
-  }, [searchTab, visibleTabs, defaultTab, navigate])
+  }, [preferenceKnown, searchTab, visibleTabs, defaultTab, navigate])
 
   useEffect(() => {
+    if (!preferenceKnown) return
     if (!settings_tab || !isSettingsTab(settings_tab)) return
     openSettings({
       tab: settings_tab,
@@ -169,6 +176,7 @@ function Home() {
     openSettings,
     tab,
     defaultTab,
+    preferenceKnown,
   ])
 
   const loadFeed = useCallback((cursor?: string) => api.feed(cursor), [])
@@ -206,6 +214,7 @@ function Home() {
   }, [feedQueryKey, queryClient])
 
   useEffect(() => {
+    if (!preferenceKnown) return
     if (needsHandle) return
     for (const t of visibleTabs) {
       if (t === tab) continue
@@ -221,10 +230,10 @@ function Home() {
         FeedPage,
         Error,
         InfiniteData<FeedPage, string | undefined>,
-        readonly ["feed", FeedTabKey],
+        ReadonlyArray<unknown>,
         string | undefined
       >({
-        queryKey: qk.feed(t),
+        queryKey: qk.feed(t, t === "forYou" ? forYouRestartToken : undefined),
         queryFn: ({ pageParam }) => load(pageParam),
         initialPageParam: undefined,
         getNextPageParam: (last: FeedPage) => last.nextCursor ?? undefined,
@@ -239,10 +248,15 @@ function Home() {
     loadNetwork,
     loadPublic,
     loadForYou,
+    preferenceKnown,
+    forYouRestartToken,
   ])
 
   const showLoader = useLoaderVisible(
-    isPending || (!needsHandle && !feedReady) || forYouRetrying
+    isPending ||
+      !preferenceKnown ||
+      (!needsHandle && !feedReady) ||
+      forYouRetrying
   )
 
   const emptyState =
@@ -345,7 +359,7 @@ function Home() {
           }}
         />
       </header>
-      {forYouEnabled && <ForYouAnnouncement />}
+      {forYouEnabled === true && <ForYouAnnouncement />}
       {needsHandle ? (
         <PageEmpty
           icon={<IdentificationIcon />}
@@ -374,7 +388,7 @@ function Home() {
           />
         </div>
       )}
-      {!needsHandle && (
+      {preferenceKnown && !needsHandle && (
         <div
           className={cn(
             "transition-opacity duration-200",
