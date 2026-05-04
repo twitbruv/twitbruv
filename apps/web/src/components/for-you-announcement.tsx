@@ -63,14 +63,14 @@ export function ForYouAnnouncement() {
           <DialogFooter className="flex-row justify-end gap-2">
             <Button
               variant="secondary"
-              className="flex-[4] sm:flex-none"
+              className="flex-[3] sm:flex-none"
               onClick={handleTurnOff}
             >
               Turn off
             </Button>
             <Button
               variant="primary"
-              className="flex-[6] sm:flex-none"
+              className="flex-[7] sm:flex-none"
               onClick={handleDismiss}
             >
               Dismiss
