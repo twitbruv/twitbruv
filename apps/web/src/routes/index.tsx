@@ -138,12 +138,7 @@ function Home() {
     if (searchTab && !visibleTabs.includes(searchTab)) {
       void navigate({
         to: "/",
-        search:
-          defaultTab === visibleTabs[0] && defaultTab === "forYou"
-            ? undefined
-            : defaultTab === "following"
-              ? undefined
-              : { tab: defaultTab },
+        search: undefined,
         replace: true,
       })
     }
