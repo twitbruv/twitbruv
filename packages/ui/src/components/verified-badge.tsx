@@ -4,9 +4,9 @@ import { cn } from "@workspace/ui/lib/utils"
 export type VerifiedBadgeRole = "user" | "admin" | "owner"
 
 const roleColorClass: Record<VerifiedBadgeRole, string> = {
-  user: "text-link",
-  admin: "text-success",
-  owner: "text-warn",
+  user: "text-badge-user",
+  admin: "text-badge-admin",
+  owner: "text-badge-owner",
 }
 
 const roleAriaLabel: Record<VerifiedBadgeRole, string> = {
