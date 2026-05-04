@@ -193,9 +193,9 @@ app.route(
 )
 
 // Signing proxy: takes a stored object key on the path, mints a short-lived signed URL, and
-// 302s the browser to it. We cache the redirect for a few minutes so repeated `<img>` paints
-// don't thrash signing. The signed URL itself stays valid past the cache so refreshes hit the
-// same underlying object cheaply.
+// 302s the browser to it. The CDN edge caches the redirect briefly (s-maxage) so repeated
+// paints don't thrash signing; browsers are told no-store to avoid disk-caching a redirect
+// whose signed URL expires long before the browser would evict it.
 app.get('/api/m/*', async (c) => {
   // Recover the object key by stripping every leading occurrence of the route prefix. Belt
   // and suspenders for any path-doubling that happens upstream (proxies, custom domains).
@@ -221,14 +221,12 @@ app.get('/api/m/*', async (c) => {
     key,
     expiresInSeconds: ctx.env.MEDIA_SIGNED_URL_TTL_SEC,
   })
-  // Keep redirect caches comfortably shorter than the signed URL they point at. If an
-  // intermediary or browser reuses the 302 after the S3 signature expires, image loads fail
-  // with 403 until the cached redirect is bypassed.
-  const cacheSeconds = Math.max(0, Math.min(300, ctx.env.MEDIA_SIGNED_URL_TTL_SEC - 60))
-  c.header(
-    'Cache-Control',
-    `public, max-age=${cacheSeconds}, s-maxage=${cacheSeconds}, must-revalidate`,
-  )
+  // Cloudflare's default Browser Cache TTL (4 h) overrides any lower max-age, so the
+  // browser would disk-cache this 302 far past the signed URL's 15-min lifetime → 403.
+  // `no-store` is respected even when CF overrides max-age, preventing browser caching.
+  // `s-maxage` still lets the CDN edge cache the redirect for a few minutes.
+  const edgeSeconds = Math.max(0, Math.min(300, ctx.env.MEDIA_SIGNED_URL_TTL_SEC - 60))
+  c.header('Cache-Control', `no-store, s-maxage=${edgeSeconds}`)
   return c.redirect(signed, 302)
 })
 app.route('/api/articles', articlesRoute)
