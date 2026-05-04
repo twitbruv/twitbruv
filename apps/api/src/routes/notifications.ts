@@ -10,6 +10,7 @@ import { loadPostMedia } from '../lib/post-media.ts'
 import { loadArticleCards } from '../lib/article-cards.ts'
 import { loadUnfurlCards } from '../lib/unfurl-cards.ts'
 import { loadViewerFlags } from '../lib/viewer-flags.ts'
+import { attachReplyParents, attachReplyChainHandles } from '../lib/reply-parents.ts'
 
 export const notificationsRoute = new Hono<HonoEnv>()
 
@@ -114,6 +115,12 @@ notificationsRoute.get('/', async (c) => {
       ),
     )
   }
+
+  // Attach reply parents so replies display "Replying to @user"
+  const postList = Array.from(postById.values())
+  await attachReplyParents({ db, viewerId: session.user.id, env: mediaEnv, posts: postList })
+  // Attach full reply chain handles for thread context (e.g., "Replying to @user1, @user2")
+  await attachReplyChainHandles({ db, posts: postList })
 
   const items = rows.map((r) => ({
     id: r.n.id,

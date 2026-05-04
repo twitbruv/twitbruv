@@ -7,6 +7,7 @@ import {
   ConnectionsSection,
   DangerZone,
   DevToolsSection,
+  ExperimentsSection,
   PasskeysSection,
   PrivacySection,
   ProfileSection,
@@ -114,6 +115,7 @@ export function SettingsContent({
             oauthConnectError={githubOAuth?.connectError}
           />
         )}
+        {tab === "experiments" && <ExperimentsSection />}
         {tab === "danger" && <DangerZone onDeleted={onDeleted} />}
         {tab === "dev" && <DevToolsSection />}
       </div>

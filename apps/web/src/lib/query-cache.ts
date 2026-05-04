@@ -7,6 +7,7 @@ import type {
 } from "@tanstack/react-query"
 import type {
   FeedPage,
+  ForYouFeedPage,
   HashtagPage,
   NetworkFeedPage,
   Post,
@@ -133,7 +134,9 @@ export function updatePostEverywhere(
       "pages" in data &&
       Array.isArray((data as InfiniteData<FeedPage>).pages)
     ) {
-      const inf = data as InfiniteData<FeedPage | HashtagPage | NetworkFeedPage>
+      const inf = data as InfiniteData<
+        FeedPage | ForYouFeedPage | HashtagPage | NetworkFeedPage
+      >
       return patchInfiniteFeedPages(inf, postId, mapFn)
     }
     if (
@@ -182,7 +185,9 @@ export function removePostEverywhere(qc: QueryClient, postId: string) {
       "pages" in data &&
       Array.isArray((data as InfiniteData<FeedPage>).pages)
     ) {
-      const inf = data as InfiniteData<FeedPage | HashtagPage | NetworkFeedPage>
+      const inf = data as InfiniteData<
+        FeedPage | ForYouFeedPage | HashtagPage | NetworkFeedPage
+      >
       return removeFromInfiniteFeedPages(inf, postId)
     }
     if (

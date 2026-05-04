@@ -1,4 +1,9 @@
-import { Link, createFileRoute, useRouter } from "@tanstack/react-router"
+import {
+  Link,
+  createFileRoute,
+  useNavigate,
+  useRouter,
+} from "@tanstack/react-router"
 import {
   useCallback,
   useEffect,
@@ -18,6 +23,12 @@ import {
   HeartIcon,
   UserPlusIcon,
 } from "@heroicons/react/24/solid"
+import {
+  ArrowPathIcon as ArrowPathOutline,
+  BookmarkIcon as BookmarkIconOutline,
+  ChatBubbleOvalLeftIcon as ChatBubbleOutline,
+  HeartIcon as HeartOutline,
+} from "@heroicons/react/24/outline"
 import { Button } from "@workspace/ui/components/button"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { Avatar } from "@workspace/ui/components/avatar"
@@ -29,9 +40,10 @@ import { useCompose } from "../components/compose-provider"
 import { PageEmpty } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
 import { VerifiedBadge } from "../components/verified-badge"
+import { RichText } from "../components/rich-text"
 import { useInfiniteScrollSentinel } from "../lib/use-infinite-scroll-sentinel"
 import type { InfiniteData } from "@tanstack/react-query"
-import type { ArticleUnfurlCard, NotificationItem, Post } from "../lib/api"
+import type { NotificationItem, Post } from "../lib/api"
 
 export const Route = createFileRoute("/notifications")({
   component: Notifications,
@@ -46,9 +58,96 @@ type NotificationsQueryKey = ReturnType<typeof qk.notifications.list>
 
 const ESTIMATED_NOTIFICATION_HEIGHT = 140
 
-// Walk up the DOM to find the nearest ancestor that scrolls. Returns null when
-// the page itself scrolls (the common case on mobile and on routes that don't
-// pin the column).
+const GROUPING_THRESHOLD = 3
+
+type GroupedNotification =
+  | { type: "single"; item: NotificationItem }
+  | { type: "grouped-likes"; items: Array<NotificationItem>; target: Post }
+  | { type: "grouped-follows"; items: Array<NotificationItem> }
+  | { type: "reply"; item: NotificationItem }
+  | { type: "mention"; item: NotificationItem }
+
+function groupNotifications(
+  items: Array<NotificationItem>
+): Array<GroupedNotification> {
+  const likesByEntity = new Map<string, Array<NotificationItem>>()
+  const follows: Array<NotificationItem> = []
+  const others: Array<{ index: number; entry: GroupedNotification }> = []
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]
+    if (item.kind === "like" && item.entityId) {
+      const key = item.entityId
+      if (!likesByEntity.has(key)) likesByEntity.set(key, [])
+      likesByEntity.get(key)!.push(item)
+    } else if (item.kind === "follow") {
+      follows.push(item)
+    } else if (item.kind === "reply" || item.kind === "article_reply") {
+      others.push({ index: i, entry: { type: "reply", item } })
+    } else if (item.kind === "mention") {
+      others.push({ index: i, entry: { type: "mention", item } })
+    } else {
+      others.push({ index: i, entry: { type: "single", item } })
+    }
+  }
+
+  const result: Array<{ index: number; entry: GroupedNotification }> = [
+    ...others,
+  ]
+
+  for (const [, likeItems] of likesByEntity) {
+    const firstIndex = items.indexOf(likeItems[0])
+    if (likeItems.length >= GROUPING_THRESHOLD && likeItems[0].target) {
+      result.push({
+        index: firstIndex,
+        entry: {
+          type: "grouped-likes",
+          items: likeItems,
+          target: likeItems[0].target,
+        },
+      })
+    } else {
+      for (const item of likeItems) {
+        result.push({
+          index: items.indexOf(item),
+          entry: { type: "single", item },
+        })
+      }
+    }
+  }
+
+  if (follows.length >= GROUPING_THRESHOLD) {
+    const firstIndex = items.indexOf(follows[0])
+    result.push({
+      index: firstIndex,
+      entry: { type: "grouped-follows", items: follows },
+    })
+  } else {
+    for (const item of follows) {
+      result.push({
+        index: items.indexOf(item),
+        entry: { type: "single", item },
+      })
+    }
+  }
+
+  result.sort((a, b) => a.index - b.index)
+  return result.map((r) => r.entry)
+}
+
+function groupId(group: GroupedNotification): string {
+  switch (group.type) {
+    case "single":
+    case "reply":
+    case "mention":
+      return group.item.id
+    case "grouped-likes":
+      return `likes-${group.items[0].entityId}`
+    case "grouped-follows":
+      return `follows-${group.items[0].id}`
+  }
+}
+
 function findScrollParent(el: HTMLElement | null): HTMLElement | null {
   let node: HTMLElement | null = el?.parentElement ?? null
   while (node) {
@@ -216,22 +315,21 @@ interface NotificationsListProps {
 
 function NotificationsList(props: NotificationsListProps) {
   const probeRef = useRef<HTMLDivElement>(null)
-  // null = window scroll, HTMLElement = contained scroll, undefined = unresolved
   const [scrollEl, setScrollEl] = useState<HTMLElement | null | undefined>(
     undefined
   )
+
+  const grouped = useMemo(() => groupNotifications(props.items), [props.items])
 
   useIsoLayoutEffect(() => {
     setScrollEl(findScrollParent(probeRef.current))
   }, [])
 
-  // First paint (and SSR): render non-virtualized so the page isn't blank
-  // while the scroll container is being detected.
   if (scrollEl === undefined) {
     return (
       <div ref={probeRef}>
-        {props.items.map((item) => (
-          <NotificationRow key={item.id} item={item} />
+        {grouped.map((group) => (
+          <GroupedNotificationRow key={groupId(group)} group={group} />
         ))}
         {props.hasNextPage && (
           <div className="flex justify-center py-4 text-xs text-tertiary">
@@ -243,17 +341,23 @@ function NotificationsList(props: NotificationsListProps) {
   }
 
   if (scrollEl === null) {
-    return <WindowNotificationsList {...props} />
+    return <WindowNotificationsList {...props} grouped={grouped} />
   }
-  return <ContainerNotificationsList {...props} scrollEl={scrollEl} />
+  return (
+    <ContainerNotificationsList
+      {...props}
+      grouped={grouped}
+      scrollEl={scrollEl}
+    />
+  )
 }
 
 function WindowNotificationsList({
-  items,
+  grouped,
   hasNextPage,
   isFetchingNextPage,
   fetchNextPage,
-}: NotificationsListProps) {
+}: NotificationsListProps & { grouped: Array<GroupedNotification> }) {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
   const [scrollMargin, setScrollMargin] = useState(0)
@@ -266,11 +370,11 @@ function WindowNotificationsList({
   }, [])
 
   const virtualizer = useWindowVirtualizer({
-    count: items.length,
+    count: grouped.length,
     estimateSize: () => ESTIMATED_NOTIFICATION_HEIGHT,
     overscan: 6,
     scrollMargin,
-    getItemKey: (i) => items[i].id,
+    getItemKey: (i) => groupId(grouped[i]),
   })
 
   useInfiniteScrollSentinel(
@@ -295,7 +399,7 @@ function WindowNotificationsList({
         }}
       >
         {virtualItems.map((vi) => {
-          const item = items[vi.index]
+          const group = grouped[vi.index]
           return (
             <div
               key={vi.key}
@@ -309,7 +413,7 @@ function WindowNotificationsList({
                 transform: `translateY(${vi.start - scrollMargin}px)`,
               }}
             >
-              <NotificationRow item={item} />
+              <GroupedNotificationRow group={group} />
             </div>
           )
         })}
@@ -325,20 +429,23 @@ function WindowNotificationsList({
 }
 
 function ContainerNotificationsList({
-  items,
+  grouped,
   hasNextPage,
   isFetchingNextPage,
   fetchNextPage,
   scrollEl,
-}: NotificationsListProps & { scrollEl: HTMLElement }) {
+}: NotificationsListProps & {
+  grouped: Array<GroupedNotification>
+  scrollEl: HTMLElement
+}) {
   const sentinelRef = useRef<HTMLDivElement>(null)
 
   const virtualizer = useVirtualizer({
-    count: items.length,
+    count: grouped.length,
     getScrollElement: () => scrollEl,
     estimateSize: () => ESTIMATED_NOTIFICATION_HEIGHT,
     overscan: 6,
-    getItemKey: (i) => items[i].id,
+    getItemKey: (i) => groupId(grouped[i]),
   })
 
   useInfiniteScrollSentinel(
@@ -356,7 +463,7 @@ function ContainerNotificationsList({
     <div>
       <div style={{ height: totalSize, position: "relative", width: "100%" }}>
         {virtualItems.map((vi) => {
-          const item = items[vi.index]
+          const group = grouped[vi.index]
           return (
             <div
               key={vi.key}
@@ -370,7 +477,7 @@ function ContainerNotificationsList({
                 transform: `translateY(${vi.start}px)`,
               }}
             >
-              <NotificationRow item={item} />
+              <GroupedNotificationRow group={group} />
             </div>
           )
         })}
@@ -385,156 +492,427 @@ function ContainerNotificationsList({
   )
 }
 
-function NotificationRow({ item }: { item: NotificationItem }) {
-  const Icon = iconForKind(item.kind)
-  const iconClass = iconClassForKind(item.kind)
-  const verb = verbForKind(item.kind)
-  const actorLabel = item.actor
-    ? item.actor.displayName ||
-      (item.actor.handle ? `@${item.actor.handle}` : "someone")
-    : "someone"
-  const actorHandle = item.actor?.handle ?? null
-  const actorInitial = (item.actor?.displayName ?? actorHandle ?? "·")
-    .slice(0, 1)
-    .toUpperCase()
+function GroupedNotificationRow({ group }: { group: GroupedNotification }) {
+  switch (group.type) {
+    case "grouped-likes":
+      return <GroupedLikeRow items={group.items} target={group.target} />
+    case "grouped-follows":
+      return <GroupedFollowRow items={group.items} />
+    case "reply":
+      return <ReplyRow item={group.item} />
+    case "mention":
+      return <MentionRow item={group.item} />
+    case "single":
+      return <NotificationRow item={group.item} />
+  }
+}
+
+function AvatarRow({ items }: { items: Array<NotificationItem> }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      {items.slice(0, 8).map((item) => {
+        const initial = (item.actor?.displayName ?? item.actor?.handle ?? "·")
+          .slice(0, 1)
+          .toUpperCase()
+        return (
+          <Avatar
+            key={item.id}
+            initial={initial}
+            src={item.actor?.avatarUrl}
+            size="md"
+          />
+        )
+      })}
+    </div>
+  )
+}
+
+function GroupedLikeRow({
+  items,
+  target,
+}: {
+  items: Array<NotificationItem>
+  target: Post
+}) {
+  const lead = items[0]
+  const leadDisplayName = lead.actor?.displayName ?? null
+  const leadHandle = lead.actor?.handle ?? null
+  const isUnread = items.some((n) => !n.readAt)
+
+  const postLink =
+    target.author.handle && target.id
+      ? `/${target.author.handle}/p/${target.id}`
+      : null
+
+  return (
+    <Link
+      to={postLink ?? "#"}
+      className={`block border-b border-neutral px-4 py-3.5 transition-colors hover:bg-base-2/20 ${isUnread ? "bg-subtle" : ""}`}
+    >
+      <div className="flex items-center gap-3">
+        <div className="flex size-10 shrink-0 items-center justify-center">
+          <HeartIcon className="size-5.5 text-like" />
+        </div>
+        <AvatarRow items={items} />
+      </div>
+      <div className="mt-2 pl-[52px]">
+        <p className="text-sm">
+          <span className="font-semibold text-primary">
+            {leadDisplayName || leadHandle || "someone"}
+          </span>
+          {leadHandle && <span className="text-tertiary"> @{leadHandle}</span>}
+          <span className="text-secondary">
+            {" "}
+            and {items.length - 1} other{items.length - 1 !== 1 ? "s" : ""}{" "}
+            liked your post
+          </span>
+        </p>
+        {target.text && (
+          <p className="mt-1 line-clamp-1 text-sm text-tertiary">
+            {target.text}
+          </p>
+        )}
+      </div>
+    </Link>
+  )
+}
+
+function GroupedFollowRow({ items }: { items: Array<NotificationItem> }) {
+  const lead = items[0]
+  const leadDisplayName = lead.actor?.displayName ?? null
+  const leadHandle = lead.actor?.handle ?? null
+  const isUnread = items.some((n) => !n.readAt)
 
   return (
     <div
-      className={`border-b border-neutral px-4 py-3 transition-colors hover:bg-base-2/20 ${
-        !item.readAt ? "bg-subtle" : ""
-      }`}
+      className={`border-b border-neutral px-4 py-3.5 transition-colors hover:bg-base-2/20 ${isUnread ? "bg-subtle" : ""}`}
     >
-      <div className="flex items-start gap-3">
-        <div
-          className={`mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full ${iconClass}`}
-        >
-          <Icon className="size-[18px]" />
+      <div className="flex items-center gap-3">
+        <div className="flex size-10 shrink-0 items-center justify-center">
+          <UserPlusIcon className="size-5.5 text-sky-500" />
         </div>
-        <div className="min-w-0 flex-1 text-sm">
-          {actorHandle ? (
+        <AvatarRow items={items} />
+      </div>
+      <div className="mt-2 pl-[52px]">
+        <p className="text-sm">
+          {leadHandle ? (
             <Link
               to="/$handle"
-              params={{ handle: actorHandle }}
-              className="inline-block"
+              params={{ handle: leadHandle }}
+              className="font-semibold text-primary hover:underline"
             >
-              <Avatar
-                initial={actorInitial}
-                src={item.actor?.avatarUrl}
-                className="size-8 ring-1 ring-neutral"
-              />
+              {leadDisplayName || leadHandle}
             </Link>
           ) : (
-            <Avatar
-              initial={actorInitial}
-              src={item.actor?.avatarUrl}
-              className="size-8 ring-1 ring-neutral"
-            />
+            <span className="font-semibold text-primary">
+              {leadDisplayName || "someone"}
+            </span>
           )}
-          <p className="mt-2">
-            {actorHandle ? (
-              <Link
-                to="/$handle"
-                params={{ handle: actorHandle }}
-                className="inline-flex items-center gap-1 align-middle font-semibold hover:underline"
-              >
-                {actorLabel}
-                {item.actor?.isVerified && (
-                  <VerifiedBadge size={14} role={item.actor.role} />
-                )}
-              </Link>
-            ) : (
-              <span className="inline-flex items-center gap-1 align-middle font-semibold">
-                {actorLabel}
-                {item.actor?.isVerified && (
-                  <VerifiedBadge size={14} role={item.actor.role} />
-                )}
-              </span>
-            )}{" "}
-            <span className="text-tertiary">{verb}</span>
-          </p>
-          {item.target && <TargetCard post={item.target} />}
-          <time
-            className="mt-1 block text-xs text-tertiary"
-            dateTime={item.createdAt}
+          {leadHandle && <span className="text-tertiary"> @{leadHandle}</span>}
+          <span className="text-secondary">
+            {" "}
+            and {items.length - 1} other{items.length - 1 !== 1 ? "s" : ""}{" "}
+            followed you
+          </span>
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function ReplyRow({ item }: { item: NotificationItem }) {
+  const navigate = useNavigate()
+  const actor = item.actor
+  const actorDisplayName = actor?.displayName ?? null
+  const actorHandle = actor?.handle ?? null
+  const actorInitial = (actor?.displayName ?? actorHandle ?? "·")
+    .slice(0, 1)
+    .toUpperCase()
+  const replyTarget = item.target
+
+  // Use chain handles if available, otherwise fall back to single parent handle
+  const chainHandles = replyTarget?.replyChainHandles ?? []
+  const fallbackHandle = replyTarget?.replyToId
+    ? (replyTarget.replyParent?.author.handle ?? null)
+    : null
+  const replyToHandles =
+    chainHandles.length > 0
+      ? chainHandles
+      : fallbackHandle
+        ? [fallbackHandle]
+        : []
+
+  function openPost(e: React.MouseEvent | React.KeyboardEvent) {
+    // Don't navigate if click originated from a link (e.g., @mention in RichText)
+    if ("target" in e && (e.target as HTMLElement).closest("a")) return
+    if (!replyTarget?.author.handle || !replyTarget.id) return
+    navigate({
+      to: "/$handle/p/$id",
+      params: { handle: replyTarget.author.handle, id: replyTarget.id },
+    })
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault()
+      openPost(e)
+    }
+  }
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={openPost}
+      onKeyDown={handleKeyDown}
+      className={`focus-visible:ring-primary cursor-pointer border-b border-neutral px-4 py-3.5 transition-colors hover:bg-base-2/20 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset ${!item.readAt ? "bg-subtle" : ""}`}
+    >
+      <div className="flex items-start gap-3">
+        <Avatar
+          initial={actorInitial}
+          src={actor?.avatarUrl}
+          className="size-10 shrink-0"
+        />
+        <div className="min-w-0 flex-1 text-sm">
+          <div className="flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-1 font-semibold text-primary">
+              {actorDisplayName || actorHandle || "someone"}
+              {actor?.isVerified && (
+                <VerifiedBadge size={14} role={actor.role} />
+              )}
+            </span>
+            {actorHandle && (
+              <span className="text-tertiary">@{actorHandle}</span>
+            )}
+            <span className="text-xs text-tertiary">
+              · {formatShortTime(item.createdAt)}
+            </span>
+          </div>
+          {replyToHandles.length > 0 && (
+            <p className="mt-0.5 text-secondary">
+              Replying to{" "}
+              {replyToHandles.slice(0, 2).map((handle, i) => (
+                <span key={handle}>
+                  {i > 0 && ", "}
+                  <span className="text-sky-500">@{handle}</span>
+                </span>
+              ))}
+              {replyToHandles.length > 2 && (
+                <span className="text-secondary">
+                  {" "}
+                  and {replyToHandles.length - 2} other
+                  {replyToHandles.length - 2 !== 1 ? "s" : ""}
+                </span>
+              )}
+            </p>
+          )}
+          {replyTarget?.text && (
+            <p className="mt-0.5 leading-relaxed whitespace-pre-wrap text-primary">
+              <RichText text={replyTarget.text} />
+            </p>
+          )}
+          <div
+            className="mt-2 flex items-center"
+            onClick={(e) => e.stopPropagation()}
           >
-            {new Date(item.createdAt).toLocaleString()}
-          </time>
+            <div className="flex-1">
+              <span className="inline-flex size-7 items-center justify-center rounded-full text-tertiary">
+                <ChatBubbleOutline className="size-4" />
+              </span>
+            </div>
+            <div className="flex-1">
+              <span className="inline-flex size-7 items-center justify-center rounded-full text-tertiary">
+                <ArrowPathOutline className="size-4" />
+              </span>
+            </div>
+            <div className="flex-1">
+              <span className="inline-flex size-7 items-center justify-center rounded-full text-tertiary">
+                <HeartOutline className="size-4" />
+              </span>
+            </div>
+            <div>
+              <span className="inline-flex size-7 items-center justify-center rounded-full text-tertiary">
+                <BookmarkIconOutline className="size-4" />
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   )
 }
 
-/**
- * Compact preview of the post a notification refers to. For likes/reposts the post is the
- * recipient's own; for replies/mentions/quotes it's the actor's new post. We render the body
- * (or quoted body), an optional media thumbnail, and link the whole card to the post page.
- */
-function TargetCard({ post }: { post: Post }) {
-  const handle = post.author.handle
-  const thumb = post.media?.find((m) => m.processingState === "ready")
-  const variant =
-    thumb?.variants.find((v) => v.kind === "thumb") ??
-    thumb?.variants.find((v) => v.kind === "medium") ??
-    thumb?.variants[0]
+function MentionRow({ item }: { item: NotificationItem }) {
+  const navigate = useNavigate()
+  const actor = item.actor
+  const actorDisplayName = actor?.displayName ?? null
+  const actorHandle = actor?.handle ?? null
+  const actorInitial = (actorDisplayName ?? actorHandle ?? "·")
+    .slice(0, 1)
+    .toUpperCase()
+  const mentionTarget = item.target
 
-  const body = (
-    <div className="mt-2 overflow-hidden rounded-md border border-neutral transition hover:bg-base-2/40">
-      <div className="flex gap-3 p-3">
-        <div className="min-w-0 flex-1">
-          {post.text ? (
-            <p className="wrap-break-words line-clamp-4 text-sm leading-relaxed whitespace-pre-wrap">
-              {post.text}
-            </p>
-          ) : (
-            (() => {
-              const article = post.cards?.find(
-                (c): c is ArticleUnfurlCard => c.provider === "article"
-              )
-              if (article) {
-                return (
-                  <p className="line-clamp-2 text-sm">
-                    <span className="font-semibold">{article.title}</span>
-                    {article.subtitle && (
-                      <span className="text-tertiary">
-                        {" "}
-                        — {article.subtitle}
-                      </span>
-                    )}
-                  </p>
-                )
-              }
-              return (
-                <p className="text-sm text-tertiary italic">[media post]</p>
-              )
-            })()
-          )}
-        </div>
-        {variant && (
-          <div className="size-16 shrink-0 overflow-hidden rounded">
-            <img
-              src={variant.url}
-              alt=""
-              className="h-full w-full object-cover"
-            />
+  function openPost(e: React.MouseEvent | React.KeyboardEvent) {
+    // Don't navigate if click originated from a link (e.g., @mention in RichText)
+    if ("target" in e && (e.target as HTMLElement).closest("a")) return
+    if (!mentionTarget?.author.handle || !mentionTarget.id) return
+    navigate({
+      to: "/$handle/p/$id",
+      params: { handle: mentionTarget.author.handle, id: mentionTarget.id },
+    })
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault()
+      openPost(e)
+    }
+  }
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={openPost}
+      onKeyDown={handleKeyDown}
+      className={`focus-visible:ring-primary cursor-pointer border-b border-neutral px-4 py-3.5 transition-colors hover:bg-base-2/20 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset ${!item.readAt ? "bg-subtle" : ""}`}
+    >
+      <div className="flex items-start gap-3">
+        <Avatar
+          initial={actorInitial}
+          src={actor?.avatarUrl}
+          className="size-10 shrink-0"
+        />
+        <div className="min-w-0 flex-1 text-sm">
+          <div className="flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-1 font-semibold text-primary">
+              {actorDisplayName || actorHandle || "someone"}
+              {actor?.isVerified && (
+                <VerifiedBadge size={14} role={actor.role} />
+              )}
+            </span>
+            {actorHandle && (
+              <span className="text-tertiary">@{actorHandle}</span>
+            )}
+            <span className="text-xs text-tertiary">
+              · {formatShortTime(item.createdAt)}
+            </span>
           </div>
+          {mentionTarget?.text && (
+            <p className="mt-0.5 leading-relaxed whitespace-pre-wrap text-primary">
+              <RichText text={mentionTarget.text} />
+            </p>
+          )}
+          <div
+            className="mt-2 flex items-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex-1">
+              <span className="inline-flex size-7 items-center justify-center rounded-full text-tertiary">
+                <ChatBubbleOutline className="size-4" />
+              </span>
+            </div>
+            <div className="flex-1">
+              <span className="inline-flex size-7 items-center justify-center rounded-full text-tertiary">
+                <ArrowPathOutline className="size-4" />
+              </span>
+            </div>
+            <div className="flex-1">
+              <span className="inline-flex size-7 items-center justify-center rounded-full text-tertiary">
+                <HeartOutline className="size-4" />
+              </span>
+            </div>
+            <div>
+              <span className="inline-flex size-7 items-center justify-center rounded-full text-tertiary">
+                <BookmarkIconOutline className="size-4" />
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function formatShortTime(iso: string): string {
+  const d = new Date(iso)
+  const now = new Date()
+  const diffMs = now.getTime() - d.getTime()
+  const diffMin = Math.floor(diffMs / 60000)
+  if (diffMin < 1) return "now"
+  if (diffMin < 60) return `${diffMin}m`
+  const diffHr = Math.floor(diffMin / 60)
+  if (diffHr < 24) return `${diffHr}h`
+  const diffDays = Math.floor(diffHr / 24)
+  if (diffDays < 7) return `${diffDays}d`
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" })
+}
+
+function NotificationRow({ item }: { item: NotificationItem }) {
+  const Icon = iconForKind(item.kind)
+  const iconClass = iconClassForKind(item.kind)
+  const verb = verbForKind(item.kind)
+  const actorDisplayName = item.actor?.displayName ?? null
+  const actorHandle = item.actor?.handle ?? null
+  const actorInitial = (actorDisplayName ?? actorHandle ?? "·")
+    .slice(0, 1)
+    .toUpperCase()
+
+  // For follow notifications, link to the actor's profile
+  // For other notifications with a target post, link to the post
+  const destination =
+    item.kind === "follow" && actorHandle
+      ? `/${actorHandle}`
+      : item.target?.author.handle && item.target.id
+        ? `/${item.target.author.handle}/p/${item.target.id}`
+        : null
+
+  const containerClass = `block border-b border-neutral px-4 py-3.5 transition-colors hover:bg-base-2/20 ${!item.readAt ? "bg-subtle" : ""}`
+
+  const content = (
+    <div className="flex items-start gap-3">
+      <div className="flex size-10 shrink-0 items-center justify-center">
+        <Icon className={`size-5.5 ${iconClass}`} />
+      </div>
+      <Avatar
+        initial={actorInitial}
+        src={item.actor?.avatarUrl}
+        className="size-10 shrink-0"
+      />
+      <div className="min-w-0 flex-1 text-sm">
+        <p>
+          <span className="inline-flex items-center gap-1 align-middle font-semibold text-primary">
+            {actorDisplayName || actorHandle || "someone"}
+            {item.actor?.isVerified && (
+              <VerifiedBadge size={14} role={item.actor.role} />
+            )}
+          </span>
+          {actorHandle && (
+            <span className="text-tertiary"> @{actorHandle}</span>
+          )}
+          <span className="text-secondary"> {verb}</span>
+          <span className="ml-1.5 text-xs text-tertiary">
+            · {formatShortTime(item.createdAt)}
+          </span>
+        </p>
+        {item.target?.text && (
+          <p className="mt-1 line-clamp-1 text-sm text-tertiary">
+            {item.target.text}
+          </p>
         )}
       </div>
     </div>
   )
 
-  if (handle) {
+  if (destination) {
     return (
-      <Link
-        to="/$handle/p/$id"
-        params={{ handle, id: post.id }}
-        className="block"
-      >
-        {body}
+      <Link to={destination} className={containerClass}>
+        {content}
       </Link>
     )
   }
-  return body
+
+  return <div className={containerClass}>{content}</div>
 }
 
 function iconForKind(kind: NotificationItem["kind"]) {
@@ -560,18 +938,18 @@ function iconForKind(kind: NotificationItem["kind"]) {
 function iconClassForKind(kind: NotificationItem["kind"]): string {
   switch (kind) {
     case "like":
-      return "bg-rose-500/10 text-rose-600"
+      return "text-like"
     case "repost":
-      return "bg-emerald-500/10 text-emerald-600"
+      return "text-emerald-500"
     case "follow":
-      return "bg-sky-500/10 text-sky-600"
+      return "text-sky-500"
     case "quote":
-      return "bg-amber-500/10 text-amber-600"
+      return "text-amber-500"
     case "mention":
     case "reply":
     case "article_reply":
     default:
-      return "bg-base-2 text-foreground/80"
+      return "text-tertiary"
   }
 }
 

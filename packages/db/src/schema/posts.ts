@@ -108,6 +108,8 @@ export const likes = pgTable(
   (t) => [
     primaryKey({ columns: [t.userId, t.postId] }),
     index('likes_post_idx').on(t.postId),
+    // Supports For You fallback's network bucket: likes by followed users ordered by recency.
+    index('likes_user_created_idx').on(t.userId, t.createdAt),
   ],
 )
 

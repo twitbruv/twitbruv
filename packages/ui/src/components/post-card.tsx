@@ -13,6 +13,7 @@ import {
   HeartIcon as HeartSolid,
 } from "@heroicons/react/24/solid"
 import { cn } from "@workspace/ui/lib/utils"
+import { LinkPill, trimTrailingPunct } from "@workspace/ui/components/link-card"
 import { Avatar } from "@workspace/ui/components/avatar"
 import { Button } from "@workspace/ui/components/button"
 import { DropdownMenu } from "@workspace/ui/components/dropdown-menu"
@@ -93,6 +94,18 @@ export interface PostCardProps {
   /** Called when the author avatar or name is clicked */
   onAuthorClick?: () => void
   resolveBruvLikeBurstSrc?: () => string | undefined
+  renderPostText?: (text: string) => ReactNode
+}
+
+function clickedInteractiveElement(target: EventTarget | null) {
+  return (
+    target instanceof Element &&
+    Boolean(
+      target.closest(
+        'a, button, input, textarea, select, summary, label, [role="button"], [role="menuitem"], [data-slot^="dropdown-menu"], [data-post-card-ignore-open]'
+      )
+    )
+  )
 }
 
 export function PostCard({
@@ -124,6 +137,7 @@ export function PostCard({
   onFetchAuthorProfile,
   onAuthorClick,
   resolveBruvLikeBurstSrc,
+  renderPostText,
 }: PostCardProps) {
   const showLineTop = threadLine === "top" || threadLine === "both"
   const showLineBottom = threadLine === "bottom" || threadLine === "both"
@@ -181,7 +195,13 @@ export function PostCard({
       fullWidth
       className={cn(!disableHover && "cursor-pointer", className)}
     >
-      <article className="flex w-full flex-col px-4 py-3" onClick={onClick}>
+      <article
+        className="flex w-full flex-col px-4 py-3"
+        onClick={(event) => {
+          if (clickedInteractiveElement(event.target)) return
+          onClick?.()
+        }}
+      >
         {/* Repost badge */}
         {repostedBy && (
           <div className="mb-1 flex items-center gap-3 text-sm text-tertiary">
@@ -331,7 +351,7 @@ export function PostCard({
                 truncateText && "line-clamp-5"
               )}
             >
-              <PostText text={text} />
+              {renderPostText ? renderPostText(text) : <PostText text={text} />}
             </p>
 
             {/* Show more */}
@@ -625,7 +645,7 @@ function QuoteEmbed({ quote }: { quote: PostQuoteOf }) {
           </div>
           {quote.text && (
             <p className="mt-1 line-clamp-3 text-sm leading-relaxed whitespace-pre-wrap text-primary">
-              {quote.text}
+              <PostText text={quote.text} />
             </p>
           )}
         </div>
@@ -773,20 +793,11 @@ function PostText({ text }: { text: string }) {
     <>
       {parts.map((part, i) => {
         if (part.type === "url") {
-          const trimmed = part.value.replace(/[),.;:!?]+$/, "")
+          const trimmed = trimTrailingPunct(part.value)
           const trailing = part.value.slice(trimmed.length)
           return (
             <span key={i}>
-              <a
-                href={trimmed}
-                target="_blank"
-                rel="noreferrer"
-                data-post-card-ignore-open
-                onClick={(e) => e.stopPropagation()}
-                className="text-blue-500 underline decoration-blue-500/40 underline-offset-2 hover:decoration-blue-500"
-              >
-                {trimmed}
-              </a>
+              <LinkPill url={trimmed} />
               {trailing}
             </span>
           )
@@ -795,7 +806,7 @@ function PostText({ text }: { text: string }) {
           return (
             <span
               key={i}
-              className="text-blue-500"
+              className="text-link"
               onClick={(e) => e.stopPropagation()}
             >
               {part.value}
@@ -806,7 +817,7 @@ function PostText({ text }: { text: string }) {
           return (
             <span
               key={i}
-              className="text-blue-500"
+              className="text-link"
               onClick={(e) => e.stopPropagation()}
             >
               {part.value}

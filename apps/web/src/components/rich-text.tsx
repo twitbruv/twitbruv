@@ -50,7 +50,7 @@ export function RichText({ text }: { text: string }): ReactNode {
               key={i}
               to="/$handle"
               params={{ handle: p.value.slice(1) }}
-              className="text-primary hover:underline"
+              className="text-sky-500 hover:underline"
             >
               {p.value}
             </Link>

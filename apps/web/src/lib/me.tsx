@@ -13,10 +13,12 @@ import { qk } from "./query-keys"
 import type { ReactNode } from "react"
 import type { SelfUser } from "./api"
 
+type MeUpdater = SelfUser | null | ((prev: SelfUser | null) => SelfUser | null)
+
 interface MeContextValue {
   me: SelfUser | null
   isLoading: boolean
-  setMe: (next: SelfUser | null) => void
+  setMe: (next: MeUpdater) => void
   refresh: () => Promise<void>
 }
 
@@ -71,12 +73,16 @@ export function MeProvider({
   })
 
   const setMe = useCallback(
-    (next: SelfUser | null) => {
-      if (!next) {
+    (next: MeUpdater) => {
+      const current = qc.getQueryData<{ user: SelfUser }>(qk.me())
+      const resolved =
+        typeof next === "function" ? next(current?.user ?? null) : next
+
+      if (!resolved) {
         qc.removeQueries({ queryKey: qk.me() })
         return
       }
-      qc.setQueryData(qk.me(), { user: next })
+      qc.setQueryData(qk.me(), { user: resolved })
     },
     [qc]
   )

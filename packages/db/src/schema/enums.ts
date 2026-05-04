@@ -28,6 +28,8 @@ export const notificationKindEnum = pgEnum('notification_kind', [
   'quote',
 ])
 
+export const apnsEnvironmentEnum = pgEnum('apns_environment', ['sandbox', 'production'])
+
 export const oauthProviderEnum = pgEnum('oauth_provider', [
   'github',
   'gitlab',

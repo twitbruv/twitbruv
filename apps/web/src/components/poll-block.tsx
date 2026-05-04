@@ -134,7 +134,10 @@ export function PollBlock({
   )
 
   return (
-    <div className="border-border mt-2 rounded-md border p-3">
+    <div
+      data-post-card-ignore-open
+      className="border-border mt-2 rounded-md border p-3"
+    >
       {!showResults && !poll.allowMultiple ? (
         <RadioGroup
           value={[...selected][0] ?? ""}

@@ -78,6 +78,7 @@ export const profilePrivate = pgTable('profile_private', {
   pushSubscriptions: jsonb('push_subscriptions'),
   notificationPrefs: jsonb('notification_prefs'),
   analyticsOptOut: boolean('analytics_opt_out').notNull().default(false),
+  experimentPrefs: jsonb('experiment_prefs'),
 })
 
 // ---- better-auth tables ----

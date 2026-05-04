@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { and, asc, desc, eq, exists, gte, ilike, inArray, isNull, lte, or, sql } from '@workspace/db'
 import { schema } from '@workspace/db'
 import { assetUrl } from '@workspace/media/s3'
+import { handleSchema } from '@workspace/validators'
 import { requireHandle, type HonoEnv } from '../middleware/session.ts'
 import { toPostDto } from '../lib/post-dto.ts'
 import { loadViewerFlags } from '../lib/viewer-flags.ts'
@@ -37,7 +38,6 @@ interface ParsedQuery {
   minReplies?: number
 }
 
-const handleWord = /^[a-z0-9_]{1,30}$/i
 const langWord = /^[a-z]{2,3}(?:-[A-Za-z]{2,4})?$/
 const isoDate = /^\d{4}-\d{2}-\d{2}$/
 
@@ -49,22 +49,32 @@ function parseQuery(raw: string): ParsedQuery {
     if (!w) continue
     const m = /^([a-z_]+):(.+)$/i.exec(w)
     if (!m) {
-      free.push(w)
+      // Strip leading @ from bare words: handles are stored without @, so
+      // "@alice" must search as "alice". Mirrors the @-strip already done
+      // for from:/to: handle operators below.
+      const stripped = w.startsWith('@') ? w.slice(1) : w
+      if (stripped) free.push(stripped)
       continue
     }
     const key = m[1]!.toLowerCase()
     const val = m[2]!
     switch (key) {
-      case 'from':
-        if (handleWord.test(val)) out.fromHandle = val.replace(/^@/, '').toLowerCase()
+      case 'from': {
+        const v = val.replace(/^@/, '')
+        const r = handleSchema.safeParse(v)
+        if (r.success) out.fromHandle = r.data.toLowerCase()
         else free.push(w)
         break
+      }
       case 'to':
       case 'mention':
-      case 'mentions':
-        if (handleWord.test(val)) out.toHandle = val.replace(/^@/, '').toLowerCase()
+      case 'mentions': {
+        const v = val.replace(/^@/, '')
+        const r = handleSchema.safeParse(v)
+        if (r.success) out.toHandle = r.data.toLowerCase()
         else free.push(w)
         break
+      }
       case 'has':
         if (val === 'media' || val === 'image' || val === 'images') out.hasMedia = true
         else if (val === 'link' || val === 'links') out.hasLink = true

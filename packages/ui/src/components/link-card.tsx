@@ -1,4 +1,5 @@
-import { useState } from "react"
+import { LinkIcon } from "@heroicons/react/16/solid"
+import { useEffect, useState } from "react"
 import { cn } from "../lib/utils"
 
 export const linkCardShellClasses =
@@ -37,9 +38,24 @@ function faviconServiceUrl(hostname: string): string {
 
 function safeHost(urlStr: string): string {
   try {
-    return new URL(urlStr).hostname.replace(/^www\./, "")
+    return new URL(urlStr).hostname.replace(/^www\./i, "")
   } catch {
     return ""
+  }
+}
+
+/** Host + path, no protocol, query, or hash — for compact inline link pills. */
+export function linkPillDisplayLabel(trimmedUrl: string): string {
+  try {
+    const u = new URL(trimmedUrl)
+    const host = u.hostname.replace(/^www\./i, "")
+    const path = u.pathname
+    if (!path || path === "/") return host
+    return `${host}${path}`
+  } catch {
+    const stripped = trimmedUrl.replace(/^https?:\/\//i, "")
+    const cut = stripped.split(/[?#]/)[0] ?? stripped
+    return cut.length > 0 ? cut : trimmedUrl
   }
 }
 
@@ -51,14 +67,16 @@ export function LinkPill({
   className?: string
 }) {
   const trimmed = trimTrailingPunct(url)
-  let label = trimmed
-  try {
-    label = new URL(trimmed).hostname.replace(/^www\./, "")
-  } catch {}
-  const fav =
-    label.length > 0
-      ? faviconServiceUrl(label)
-      : faviconServiceUrl(safeHost(trimmed) || "example.com")
+  const hostForFavicon = safeHost(trimmed)
+  const fav = hostForFavicon ? faviconServiceUrl(hostForFavicon) : null
+  const label = linkPillDisplayLabel(trimmed)
+  const [faviconFailed, setFaviconFailed] = useState(false)
+
+  useEffect(() => {
+    setFaviconFailed(false)
+  }, [trimmed])
+
+  const showFaviconImg = Boolean(fav && !faviconFailed)
 
   return (
     <a
@@ -69,19 +87,24 @@ export function LinkPill({
       data-post-card-ignore-open
       onClick={(e) => e.stopPropagation()}
       className={cn(
-        "inline-flex max-w-[min(100%,14rem)] items-baseline gap-1.5 rounded-md border border-neutral bg-base-2 px-1.5 py-0.5 align-middle font-semibold tracking-tight text-primary no-underline shadow-[var(--inset-shadow-primary)] transition hover:scale-[1.03] hover:bg-subtle",
+        "inline-flex max-w-[min(100%,18rem)] items-center gap-1.5 rounded-md border border-neutral bg-base-2 px-1.5 py-0.5 align-middle text-sm font-semibold tracking-tight text-primary no-underline shadow-[var(--inset-shadow-primary)] transition hover:scale-[1.03] hover:bg-subtle",
         className
       )}
     >
-      <img
-        src={fav}
-        alt=""
-        width={12}
-        height={12}
-        className="size-3 shrink-0 self-center rounded-[3px] object-cover"
-        loading="lazy"
-      />
-      <span className="truncate">{label}</span>
+      {showFaviconImg && fav ? (
+        <img
+          src={fav}
+          alt=""
+          width={12}
+          height={12}
+          className="size-3 shrink-0 rounded-[3px] object-cover"
+          loading="lazy"
+          onError={() => setFaviconFailed(true)}
+        />
+      ) : (
+        <LinkIcon aria-hidden className="size-3 shrink-0 text-tertiary" />
+      )}
+      <span className="min-w-0 truncate">{label}</span>
     </a>
   )
 }

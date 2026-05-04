@@ -31,6 +31,27 @@ export type UpdateProfileInput = z.infer<typeof updateProfileSchema>
 
 export const claimHandleSchema = z.object({ handle: handleSchema })
 
+export const EXPERIMENT_DEFAULTS = {
+  forYouFeed: true,
+} as const satisfies Record<string, boolean>
+
+export type ExperimentPrefs = { [K in keyof typeof EXPERIMENT_DEFAULTS]?: boolean }
+
+export const updateExperimentsSchema = z.object({
+  forYouFeed: z.boolean().optional(),
+})
+
+export type UpdateExperimentsInput = z.infer<typeof updateExperimentsSchema>
+
+export function resolveExperiments(
+  stored: ExperimentPrefs | null | undefined,
+): { [K in keyof typeof EXPERIMENT_DEFAULTS]: boolean } {
+  return {
+    ...EXPERIMENT_DEFAULTS,
+    ...stored,
+  }
+}
+
 export const adminSetUserHandleSchema = z.object({
   handle: handleSchema,
   reason: z.string().trim().min(1).max(500).optional(),

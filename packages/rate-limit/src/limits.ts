@@ -109,6 +109,10 @@ export const BUCKETS = {
   "me.handle-claim": [{ windowMs: HOUR, max: 5 }],
   // Profile updates — bounded to limit bio-spam churn.
   "me.update": [{ windowMs: HOUR, max: 60 }],
+  "me.push-register": [
+    { windowMs: MIN, max: 20 },
+    { windowMs: DAY, max: 200 },
+  ],
   // Invite-token accept — guards against brute-forcing invite tokens to crash private DMs.
   "invites.accept": [
     { windowMs: MIN, max: 30 },

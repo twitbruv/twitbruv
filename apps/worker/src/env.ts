@@ -20,6 +20,12 @@ const envSchema = z.object({
   GITHUB_UNFURL_TOKEN: z.string().optional(),
   YOUTUBE_API_KEY: z.string().optional(),
   FXTWITTER_API_BASE_URL: z.string().optional(),
+
+  APNS_BUNDLE_ID: z.string().optional(),
+  APNS_ENVIRONMENT: z.enum(["sandbox", "production"]).optional(),
+  APNS_KEY_P8: z.string().optional(),
+  APNS_KEY_ID: z.string().optional(),
+  APNS_TEAM_ID: z.string().optional(),
 })
 
 export type Env = z.infer<typeof envSchema>
@@ -35,6 +41,30 @@ export function loadEnv(): Env {
     !parsed.data.RESEND_API_KEY?.trim()
   ) {
     console.error("Invalid environment:", { RESEND_API_KEY: ["Required"] })
+    process.exit(1)
+  }
+  const apnsKeys = [
+    "APNS_BUNDLE_ID",
+    "APNS_ENVIRONMENT",
+    "APNS_KEY_P8",
+    "APNS_KEY_ID",
+    "APNS_TEAM_ID",
+  ] as const
+  const configuredApnsKeys = apnsKeys.filter((key) => {
+    const value = parsed.data[key]
+    return typeof value === "string" && value.trim().length > 0
+  })
+  if (
+    configuredApnsKeys.length > 0 &&
+    configuredApnsKeys.length < apnsKeys.length
+  ) {
+    console.error("Invalid environment:", {
+      APNS: [
+        `Set all APNS variables or leave all unset. Missing: ${apnsKeys
+          .filter((key) => !configuredApnsKeys.includes(key))
+          .join(", ")}`,
+      ],
+    })
     process.exit(1)
   }
   return parsed.data

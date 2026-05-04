@@ -28,6 +28,7 @@ import { VerifiedBadge } from "../verified-badge"
 import { PageLoading } from "../page-surface"
 import {
   SettingsSection,
+  SettingsSectionDescription,
   SettingsSectionTitle,
 } from "./settings-section-primitives"
 
@@ -1157,6 +1158,64 @@ export function ConnectionsSection({
         {status ? <p className="mt-2 text-xs text-tertiary">{status}</p> : null}
       </div>
     </section>
+  )
+}
+
+export function ExperimentsSection() {
+  const { me, setMe } = useMe()
+  const [busy, setBusy] = useState(false)
+  const queryClient = useQueryClient()
+
+  if (!me) return null
+
+  const forYouEnabled = me.experiments.forYouFeed
+
+  async function toggleForYou(checked: boolean) {
+    if (!me) return
+    setBusy(true)
+    try {
+      const { experiments } = await api.updateExperiments({
+        forYouFeed: checked,
+      })
+      setMe((prev) => (prev ? { ...prev, experiments } : prev))
+      queryClient.removeQueries({ queryKey: qk.feed("forYou") })
+      queryClient.removeQueries({ queryKey: qk.feed("network") })
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : "Failed to update experiment"
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <SettingsSection>
+      <SettingsSectionTitle>Experiments</SettingsSectionTitle>
+      <SettingsSectionDescription>
+        Try new features before they roll out to everyone. You can turn them off
+        at any time.
+      </SettingsSectionDescription>
+      <div className="flex flex-col gap-4">
+        <label className="flex cursor-pointer items-start gap-3">
+          <Switch
+            checked={forYouEnabled}
+            onCheckedChange={toggleForYou}
+            disabled={busy}
+            className="mt-0.5"
+          />
+          <div className="flex flex-col gap-0.5">
+            <span className="text-sm font-medium text-primary">
+              For You feed
+            </span>
+            <span className="text-xs text-secondary">
+              Replace the Network tab with a personalized For You feed on your
+              home timeline.
+            </span>
+          </div>
+        </label>
+      </div>
+    </SettingsSection>
   )
 }
 

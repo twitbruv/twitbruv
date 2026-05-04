@@ -7,6 +7,7 @@ import type { MediaEnv } from "@workspace/media/env"
 import { loadEnv } from "./env.ts"
 import { handleEmailJob } from "./jobs/email.ts"
 import { handleMediaJob } from "./jobs/media-process.ts"
+import { handleApnsSendJob } from "./jobs/apns-send.ts"
 import { publishDueScheduledPosts } from "./jobs/publish-scheduled.ts"
 import { handleGithubUnfurlJob } from "./jobs/github-unfurl.ts"
 import { handleYoutubeUnfurlJob } from "./jobs/youtube-unfurl.ts"
@@ -57,6 +58,7 @@ await boss.createQueue("github.unfurl")
 await boss.createQueue("youtube.unfurl")
 await boss.createQueue("generic.unfurl")
 await boss.createQueue("x.unfurl")
+await boss.createQueue("apns.send")
 
 await boss.work("email.send", { batchSize: 5 }, async (jobs) => {
   await Promise.all(jobs.map((job) => handleEmailJob(mailer, job.data)))
@@ -157,6 +159,22 @@ await boss.work("x.unfurl", { batchSize: 4 }, async (jobs) => {
   }
 })
 
+await boss.work("apns.send", { batchSize: 10 }, async (jobs) => {
+  for (const job of jobs) {
+    try {
+      await handleApnsSendJob(db, env, job.data, log)
+    } catch (err) {
+      log.error(
+        {
+          err: err instanceof Error ? (err.stack ?? err.message) : err,
+          payload: job.data,
+        },
+        "apns_send_handler_error",
+      )
+    }
+  }
+})
+
 const SCHEDULED_INTERVAL_MS = 30_000
 let scheduledRunning = false
 const scheduledTimer = setInterval(async () => {
@@ -181,6 +199,7 @@ log.info(
       "youtube.unfurl",
       "generic.unfurl",
       "x.unfurl",
+      "apns.send",
     ],
     scheduledIntervalMs: SCHEDULED_INTERVAL_MS,
   },

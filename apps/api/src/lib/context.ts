@@ -112,6 +112,7 @@ export async function buildContext(): Promise<AppContext> {
   await boss.createQueue("youtube.unfurl")
   await boss.createQueue("generic.unfurl")
   await boss.createQueue("x.unfurl")
+  await boss.createQueue("apns.send")
 
   const cache = createCache(env.REDIS_URL)
   const pubsub = createPubSub(env.REDIS_URL)

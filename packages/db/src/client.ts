@@ -3,6 +3,7 @@ import postgres from 'postgres'
 import * as schema from './schema/index.ts'
 
 export type Database = ReturnType<typeof createDb>
+export type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0]
 
 export interface CreateDbOptions {
   /** Max concurrent connections in the pool. Default: DB_POOL_MAX env or 30. */

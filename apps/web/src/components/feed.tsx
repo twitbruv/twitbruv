@@ -1,8 +1,10 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query"
+import { useElementScrollRestoration } from "@tanstack/react-router"
 import { useVirtualizer, useWindowVirtualizer } from "@tanstack/react-virtual"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { PageEmpty, PageError } from "./page-surface"
+import { FeedChainPreview } from "./feed-chain-preview"
 import { FeedPostCard } from "./feed-post-card"
 import type { InfiniteData } from "@tanstack/react-query"
 import type { FeedPage, Post } from "../lib/api"
@@ -45,9 +47,9 @@ const ESTIMATED_LINK_CARD_BUMP = 260
 const ESTIMATED_QUOTE_BUMP = 110
 const ESTIMATED_ARTICLE_BUMP = 90
 const ESTIMATED_POLL_BUMP = 140
+const ESTIMATED_CHAIN_GAP = 36
 
-function estimatePostHeight(post: Post | undefined): number {
-  if (!post) return ESTIMATED_POST_HEIGHT
+function estimateInnerCardHeight(post: Post): number {
   const target = post.repostOf ?? post
   let height = ESTIMATED_POST_HEIGHT
   if (target.media && target.media.length > 0) height += ESTIMATED_MEDIA_BUMP
@@ -63,6 +65,18 @@ function estimatePostHeight(post: Post | undefined): number {
   return height
 }
 
+function estimatePostHeight(post: Post | undefined): number {
+  if (!post) return ESTIMATED_POST_HEIGHT
+  if (post.chainPreview) {
+    return (
+      estimateInnerCardHeight(post.chainPreview.root) +
+      ESTIMATED_CHAIN_GAP +
+      estimateInnerCardHeight(post)
+    )
+  }
+  return estimateInnerCardHeight(post)
+}
+
 export function Feed({
   queryKey,
   load,
@@ -72,6 +86,7 @@ export function Feed({
   hideReplies = false,
   onlyReplies = false,
   renderActivityBanner,
+  chainPreview = false,
   quietPending = false,
   onReady,
 }: {
@@ -87,6 +102,8 @@ export function Feed({
   /** Optional banner rendered above each post card (e.g. "Lucas liked this"
    *  on the network feed). Returning null skips the banner for that row. */
   renderActivityBanner?: (post: Post) => React.ReactNode
+  /** When true, render root → gap → leaf for posts with `chainPreview` (home-style feeds). */
+  chainPreview?: boolean
   /** When true, render `null` instead of the skeleton placeholders during the
    *  initial pending state. Lets a parent show its own loading affordance. */
   quietPending?: boolean
@@ -178,7 +195,11 @@ export function Feed({
     return (
       <>
         {banner && <div className="pt-2 pr-4 pl-[68px]">{banner}</div>}
-        <FeedPostCard post={post} />
+        {chainPreview && post.chainPreview ? (
+          <FeedChainPreview post={post} />
+        ) : (
+          <FeedPostCard post={post} />
+        )}
       </>
     )
   }
@@ -247,6 +268,9 @@ function WindowFeedList({
   const wrapperRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
   const [scrollMargin, setScrollMargin] = useState(0)
+  const scrollEntry = useElementScrollRestoration({
+    getElement: () => window,
+  })
 
   useIsoLayoutEffect(() => {
     const node = wrapperRef.current
@@ -260,6 +284,7 @@ function WindowFeedList({
   const virtualizer = useWindowVirtualizer({
     count: posts.length,
     estimateSize: (i) => estimatePostHeight(posts[i]),
+    initialOffset: scrollEntry?.scrollY,
     overscan: 6,
     scrollMargin,
     getItemKey: (i) => posts[i].id,
@@ -326,11 +351,15 @@ function ContainerFeedList({
 }: FeedListProps & { scrollEl: HTMLElement }) {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const sentinelRef = useRef<HTMLDivElement>(null)
+  const scrollEntry = useElementScrollRestoration({
+    getElement: () => scrollEl,
+  })
 
   const virtualizer = useVirtualizer({
     count: posts.length,
     getScrollElement: () => scrollEl,
     estimateSize: (i) => estimatePostHeight(posts[i]),
+    initialOffset: scrollEntry?.scrollY,
     overscan: 6,
     getItemKey: (i) => posts[i].id,
   })
