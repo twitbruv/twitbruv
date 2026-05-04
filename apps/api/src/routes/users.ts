@@ -1,23 +1,23 @@
-import { Hono } from 'hono'
-import { and, desc, eq, isNull, lt, sql } from '@workspace/db'
-import { schema } from '@workspace/db'
-import { assetUrl } from '@workspace/media/s3'
-import type { HonoEnv } from '../middleware/session.ts'
-import { requireHandle } from '../middleware/session.ts'
-import { toPostDto, type PostDto } from '../lib/post-dto.ts'
-import { loadViewerFlags } from '../lib/viewer-flags.ts'
-import { loadPostMedia } from '../lib/post-media.ts'
-import { loadArticleCards } from '../lib/article-cards.ts'
-import { loadRepostTargets } from '../lib/repost-targets.ts'
-import { loadQuoteTargets } from '../lib/quote-targets.ts'
-import { attachReplyParents } from '../lib/reply-parents.ts'
-import { notify, invalidateUnreadCounts } from '../lib/notify.ts'
-import { enqueueApnsSendJobs, profilePermalink } from '../lib/push-apns.ts'
-import { loadPolls } from '../lib/polls.ts'
-import { parseCursor } from '../lib/cursor.ts'
-import { homeFeedCacheKey, profileFeedCacheKey } from './feed.ts'
-import { getGithubSnapshot } from '../lib/github-snapshot.ts'
-import { loadUnfurlCards } from '../lib/unfurl-cards.ts'
+import { Hono } from "hono"
+import { and, desc, eq, isNull, lt, sql } from "@workspace/db"
+import { schema } from "@workspace/db"
+import { assetUrl } from "@workspace/media/s3"
+import type { HonoEnv } from "../middleware/session.ts"
+import { requireHandle } from "../middleware/session.ts"
+import { toPostDto, type PostDto } from "../lib/post-dto.ts"
+import { loadViewerFlags } from "../lib/viewer-flags.ts"
+import { loadPostMedia } from "../lib/post-media.ts"
+import { loadArticleCards } from "../lib/article-cards.ts"
+import { loadRepostTargets } from "../lib/repost-targets.ts"
+import { loadQuoteTargets } from "../lib/quote-targets.ts"
+import { attachReplyParents } from "../lib/reply-parents.ts"
+import { notify, invalidateUnreadCounts } from "../lib/notify.ts"
+import { enqueueApnsSendJobs, profilePermalink } from "../lib/push-apns.ts"
+import { loadPolls } from "../lib/polls.ts"
+import { parseCursor } from "../lib/cursor.ts"
+import { homeFeedCacheKey, profileFeedCacheKey } from "./feed.ts"
+import { getGithubSnapshot } from "../lib/github-snapshot.ts"
+import { loadUnfurlCards } from "../lib/unfurl-cards.ts"
 
 export const usersRoute = new Hono<HonoEnv>()
 
@@ -32,12 +32,15 @@ export const usersRoute = new Hono<HonoEnv>()
 // parametric route doesn't swallow the literal segment.
 const SUGGESTED_USERS_LIMIT = 12
 
-usersRoute.get('/suggested', requireHandle(), async (c) => {
-  const session = c.get('session')!
-  const { db, mediaEnv, rateLimit } = c.get('ctx')
-  await rateLimit(c, 'reads.profile')
+usersRoute.get("/suggested", requireHandle(), async (c) => {
+  const session = c.get("session")!
+  const { db, mediaEnv, rateLimit } = c.get("ctx")
+  await rateLimit(c, "reads.profile")
   const me = session.user.id
-  const limit = Math.min(Number(c.req.query('limit') ?? SUGGESTED_USERS_LIMIT), 30)
+  const limit = Math.min(
+    Number(c.req.query("limit") ?? SUGGESTED_USERS_LIMIT),
+    30
+  )
 
   const exclusions = sql`
     ${schema.users.id} <> ${me}
@@ -64,12 +67,12 @@ usersRoute.get('/suggested', requireHandle(), async (c) => {
   const friendsOfFriends = await db
     .select({
       user: schema.users,
-      mutuals: sql<number>`count(distinct ff.follower_id)::int`.as('mutuals'),
+      mutuals: sql<number>`count(distinct ff.follower_id)::int`.as("mutuals"),
     })
     .from(schema.users)
     .innerJoin(
       sql`${schema.follows} ff`,
-      sql`ff.followee_id = ${schema.users.id}`,
+      sql`ff.followee_id = ${schema.users.id}`
     )
     .where(
       and(
@@ -77,11 +80,14 @@ usersRoute.get('/suggested', requireHandle(), async (c) => {
           SELECT followee_id FROM ${schema.follows}
           WHERE follower_id = ${me}
         )`,
-        exclusions,
-      ),
+        exclusions
+      )
     )
     .groupBy(schema.users.id)
-    .orderBy(sql`count(distinct ff.follower_id) DESC`, desc(schema.users.createdAt))
+    .orderBy(
+      sql`count(distinct ff.follower_id) DESC`,
+      desc(schema.users.createdAt)
+    )
     .limit(limit)
 
   const users = friendsOfFriends.map((r) => publicUser(r.user, mediaEnv))
@@ -94,7 +100,7 @@ usersRoute.get('/suggested', requireHandle(), async (c) => {
         followers: sql<number>`(
           SELECT count(*)::int FROM ${schema.follows} f2
           WHERE f2.followee_id = ${schema.users.id}
-        )`.as('followers'),
+        )`.as("followers"),
       })
       .from(schema.users)
       .where(
@@ -102,15 +108,15 @@ usersRoute.get('/suggested', requireHandle(), async (c) => {
           users.length > 0
             ? sql`${schema.users.id} NOT IN (${sql.join(
                 users.map((u) => sql`${u.id}::uuid`),
-                sql`, `,
+                sql`, `
               )})`
             : undefined,
-          exclusions,
-        ),
+          exclusions
+        )
       )
       .orderBy(
         sql`(SELECT count(*) FROM ${schema.follows} f2 WHERE f2.followee_id = ${schema.users.id}) DESC`,
-        desc(schema.users.createdAt),
+        desc(schema.users.createdAt)
       )
       .limit(limit - users.length)
     for (const r of popular) {
@@ -122,8 +128,11 @@ usersRoute.get('/suggested', requireHandle(), async (c) => {
   return c.json({ users })
 })
 
-async function resolveHandle(db: HonoEnv['Variables']['ctx']['db'], raw: string) {
-  const handle = raw.replace(/^@/, '')
+async function resolveHandle(
+  db: HonoEnv["Variables"]["ctx"]["db"],
+  raw: string
+) {
+  const handle = raw.replace(/^@/, "")
   const [user] = await db
     .select()
     .from(schema.users)
@@ -133,12 +142,12 @@ async function resolveHandle(db: HonoEnv['Variables']['ctx']['db'], raw: string)
 }
 
 // Public user profile, with counts + viewer-relative flags.
-usersRoute.get('/:handle', async (c) => {
-  const { db, mediaEnv, rateLimit } = c.get('ctx')
-  await rateLimit(c, 'reads.profile')
-  const viewerId = c.get('session')?.user.id
-  const user = await resolveHandle(db, c.req.param('handle'))
-  if (!user) return c.json({ error: 'not_found' }, 404)
+usersRoute.get("/:handle", async (c) => {
+  const { db, mediaEnv, rateLimit } = c.get("ctx")
+  await rateLimit(c, "reads.profile")
+  const viewerId = c.get("session")?.user.id
+  const user = await resolveHandle(db, c.req.param("handle"))
+  if (!user) return c.json({ error: "not_found" }, 404)
 
   const [[followers], [following], [posts]] = await Promise.all([
     db
@@ -152,26 +161,45 @@ usersRoute.get('/:handle', async (c) => {
     db
       .select({ n: sql<number>`count(*)::int` })
       .from(schema.posts)
-      .where(and(eq(schema.posts.authorId, user.id), isNull(schema.posts.deletedAt))),
+      .where(
+        and(eq(schema.posts.authorId, user.id), isNull(schema.posts.deletedAt))
+      ),
   ])
 
-  let viewer: { following: boolean; blocking: boolean; muting: boolean } | undefined
+  let viewer:
+    | { following: boolean; blocking: boolean; muting: boolean }
+    | undefined
   if (viewerId && viewerId !== user.id) {
     const [[follow], [block], [mute]] = await Promise.all([
       db
         .select({ x: sql<number>`1` })
         .from(schema.follows)
-        .where(and(eq(schema.follows.followerId, viewerId), eq(schema.follows.followeeId, user.id)))
+        .where(
+          and(
+            eq(schema.follows.followerId, viewerId),
+            eq(schema.follows.followeeId, user.id)
+          )
+        )
         .limit(1),
       db
         .select({ x: sql<number>`1` })
         .from(schema.blocks)
-        .where(and(eq(schema.blocks.blockerId, viewerId), eq(schema.blocks.blockedId, user.id)))
+        .where(
+          and(
+            eq(schema.blocks.blockerId, viewerId),
+            eq(schema.blocks.blockedId, user.id)
+          )
+        )
         .limit(1),
       db
         .select({ x: sql<number>`1` })
         .from(schema.mutes)
-        .where(and(eq(schema.mutes.muterId, viewerId), eq(schema.mutes.mutedId, user.id)))
+        .where(
+          and(
+            eq(schema.mutes.muterId, viewerId),
+            eq(schema.mutes.mutedId, user.id)
+          )
+        )
         .limit(1),
     ])
     viewer = { following: !!follow, blocking: !!block, muting: !!mute }
@@ -204,11 +232,11 @@ usersRoute.get('/:handle', async (c) => {
 // Public GitHub snapshot for the profile page. Gated on showOnProfile so users can disconnect
 // the public view without revoking the OAuth grant. Only an explicit allow-list of fields is
 // returned — never the encrypted token, scopes, or failure reasons.
-usersRoute.get('/:handle/github', async (c) => {
-  const ctx = c.get('ctx')
-  await ctx.rateLimit(c, 'reads.profile')
-  const user = await resolveHandle(ctx.db, c.req.param('handle'))
-  if (!user) return c.json({ error: 'not_found' }, 404)
+usersRoute.get("/:handle/github", async (c) => {
+  const ctx = c.get("ctx")
+  await ctx.rateLimit(c, "reads.profile")
+  const user = await resolveHandle(ctx.db, c.req.param("handle"))
+  if (!user) return c.json({ error: "not_found" }, 404)
   const { snapshot, showOnProfile } = await getGithubSnapshot(ctx, user.id)
   if (!snapshot || !showOnProfile) {
     return c.json({ connected: false })
@@ -232,14 +260,14 @@ usersRoute.get('/:handle/github', async (c) => {
 // Profile feed.
 const PROFILE_FEED_TTL_SEC = 60
 
-usersRoute.get('/:handle/posts', async (c) => {
-  const { db, mediaEnv, cache, rateLimit } = c.get('ctx')
-  await rateLimit(c, 'reads.profile')
-  const viewerId = c.get('session')?.user.id
-  const user = await resolveHandle(db, c.req.param('handle'))
-  if (!user) return c.json({ error: 'not_found' }, 404)
-  const limit = Math.min(Number(c.req.query('limit') ?? 40), 100)
-  const cursor = parseCursor(c.req.query('cursor'))
+usersRoute.get("/:handle/posts", async (c) => {
+  const { db, mediaEnv, cache, rateLimit } = c.get("ctx")
+  await rateLimit(c, "reads.profile")
+  const viewerId = c.get("session")?.user.id
+  const user = await resolveHandle(db, c.req.param("handle"))
+  if (!user) return c.json({ error: "not_found" }, 404)
+  const limit = Math.min(Number(c.req.query("limit") ?? 40), 100)
+  const cursor = parseCursor(c.req.query("cursor"))
 
   // Page-0 cache. Identical post list per author; viewer-relative flags + repost/quote
   // embeds (which carry their own viewer flags) are layered on after the cache lookup.
@@ -253,7 +281,7 @@ usersRoute.get('/:handle/posts', async (c) => {
   let payload: CachedPayload | null = null
   if (cacheable) {
     payload = await cache.get<CachedPayload>(profileFeedCacheKey(user.id))
-    if (payload) c.header('x-cache', 'hit')
+    if (payload) c.header("x-cache", "hit")
   }
 
   if (!payload) {
@@ -273,9 +301,9 @@ usersRoute.get('/:handle/posts', async (c) => {
           and(
             eq(schema.posts.authorId, user.id),
             isNull(schema.posts.deletedAt),
-            eq(schema.posts.visibility, 'public'),
-            sql`${schema.posts.pinnedAt} IS NOT NULL`,
-          ),
+            eq(schema.posts.visibility, "public"),
+            sql`${schema.posts.pinnedAt} IS NOT NULL`
+          )
         )
         .limit(1)
       pinnedRow = pinned ?? null
@@ -289,18 +317,22 @@ usersRoute.get('/:handle/posts', async (c) => {
         and(
           eq(schema.posts.authorId, user.id),
           isNull(schema.posts.deletedAt),
-          eq(schema.posts.visibility, 'public'),
+          eq(schema.posts.visibility, "public"),
           // Don't double-render the pinned post in the date-ordered list.
-          pinnedRow ? sql`${schema.posts.id} <> ${pinnedRow.post.id}` : undefined,
-          cursor ? lt(schema.posts.createdAt, cursor) : undefined,
-        ),
+          pinnedRow
+            ? sql`${schema.posts.id} <> ${pinnedRow.post.id}`
+            : undefined,
+          cursor ? lt(schema.posts.createdAt, cursor) : undefined
+        )
       )
       .orderBy(desc(schema.posts.createdAt))
       .limit(limit)
 
     const allRows: Array<Row> = pinnedRow ? [pinnedRow, ...rows] : rows
     const nextCursor =
-      rows.length === limit ? rows[rows.length - 1]!.post.createdAt.toISOString() : null
+      rows.length === limit
+        ? rows[rows.length - 1]!.post.createdAt.toISOString()
+        : null
 
     // Build viewer-independent DTOs (no viewer flags, no repost/quote embeds — those are
     // layered on after, since they vary per viewer).
@@ -320,8 +352,7 @@ usersRoute.get('/:handle/posts', async (c) => {
         unfurlCardsMap.get(r.post.id),
         undefined,
         undefined,
-        undefined,
-
+        undefined
       )
       if (pinnedRow && r.post.id === pinnedRow.post.id) {
         ;(dto as { pinned?: boolean }).pinned = true
@@ -332,8 +363,12 @@ usersRoute.get('/:handle/posts', async (c) => {
     payload = { posts: cachedPosts, nextCursor }
 
     if (cacheable) {
-      await cache.set(profileFeedCacheKey(user.id), payload, PROFILE_FEED_TTL_SEC)
-      c.header('x-cache', 'miss')
+      await cache.set(
+        profileFeedCacheKey(user.id),
+        payload,
+        PROFILE_FEED_TTL_SEC
+      )
+      c.header("x-cache", "miss")
     }
   }
 
@@ -344,13 +379,19 @@ usersRoute.get('/:handle/posts', async (c) => {
       db,
       viewerId,
       env: mediaEnv,
-      repostRows: payload.posts.map((p) => ({ id: p.id, repostOfId: p.repostOfId })),
+      repostRows: payload.posts.map((p) => ({
+        id: p.id,
+        repostOfId: p.repostOfId,
+      })),
     }),
     loadQuoteTargets({
       db,
       viewerId,
       env: mediaEnv,
-      quoteRows: payload.posts.map((p) => ({ id: p.id, quoteOfId: p.quoteOfId })),
+      quoteRows: payload.posts.map((p) => ({
+        id: p.id,
+        quoteOfId: p.quoteOfId,
+      })),
     }),
     loadPolls(db, viewerId, ids),
   ])
@@ -372,22 +413,22 @@ usersRoute.get('/:handle/posts', async (c) => {
 })
 
 // Author's published articles list.
-usersRoute.get('/:handle/articles', async (c) => {
-  const { db } = c.get('ctx')
-  const user = await resolveHandle(db, c.req.param('handle'))
-  if (!user) return c.json({ error: 'not_found' }, 404)
-  const limit = Math.min(Number(c.req.query('limit') ?? 40), 100)
-  const cursor = parseCursor(c.req.query('cursor'))
+usersRoute.get("/:handle/articles", async (c) => {
+  const { db } = c.get("ctx")
+  const user = await resolveHandle(db, c.req.param("handle"))
+  if (!user) return c.json({ error: "not_found" }, 404)
+  const limit = Math.min(Number(c.req.query("limit") ?? 40), 100)
+  const cursor = parseCursor(c.req.query("cursor"))
   const rows = await db
     .select()
     .from(schema.articles)
     .where(
       and(
         eq(schema.articles.authorId, user.id),
-        eq(schema.articles.status, 'published'),
+        eq(schema.articles.status, "published"),
         isNull(schema.articles.deletedAt),
-        cursor ? lt(schema.articles.publishedAt, cursor) : undefined,
-      ),
+        cursor ? lt(schema.articles.publishedAt, cursor) : undefined
+      )
     )
     .orderBy(desc(schema.articles.publishedAt))
     .limit(limit)
@@ -400,16 +441,19 @@ usersRoute.get('/:handle/articles', async (c) => {
       readingMinutes: a.readingMinutes,
       publishedAt: a.publishedAt?.toISOString() ?? null,
     })),
-    nextCursor: rows.length === limit ? rows[rows.length - 1]!.publishedAt?.toISOString() ?? null : null,
+    nextCursor:
+      rows.length === limit
+        ? (rows[rows.length - 1]!.publishedAt?.toISOString() ?? null)
+        : null,
   })
 })
 
 // Public article by author + slug.
-usersRoute.get('/:handle/articles/:slug', async (c) => {
-  const { db, mediaEnv } = c.get('ctx')
-  const user = await resolveHandle(db, c.req.param('handle'))
-  if (!user) return c.json({ error: 'not_found' }, 404)
-  const slug = c.req.param('slug')
+usersRoute.get("/:handle/articles/:slug", async (c) => {
+  const { db, mediaEnv } = c.get("ctx")
+  const user = await resolveHandle(db, c.req.param("handle"))
+  if (!user) return c.json({ error: "not_found" }, 404)
+  const slug = c.req.param("slug")
   const [article] = await db
     .select()
     .from(schema.articles)
@@ -417,12 +461,12 @@ usersRoute.get('/:handle/articles/:slug', async (c) => {
       and(
         eq(schema.articles.authorId, user.id),
         eq(schema.articles.slug, slug),
-        eq(schema.articles.status, 'published'),
-        isNull(schema.articles.deletedAt),
-      ),
+        eq(schema.articles.status, "published"),
+        isNull(schema.articles.deletedAt)
+      )
     )
     .limit(1)
-  if (!article) return c.json({ error: 'not_found' }, 404)
+  if (!article) return c.json({ error: "not_found" }, 404)
   let coverUrl: string | null = null
   if (article.coverMediaId) {
     const [cover] = await db
@@ -434,8 +478,8 @@ usersRoute.get('/:handle/articles/:slug', async (c) => {
       ? (cover.variants as Array<{ kind: string; key: string }>)
       : []
     const key =
-      variants.find((v) => v.kind === 'large')?.key ??
-      variants.find((v) => v.kind === 'medium')?.key ??
+      variants.find((v) => v.kind === "large")?.key ??
+      variants.find((v) => v.kind === "medium")?.key ??
       null
     coverUrl = key ? assetUrl(mediaEnv, key) : null
   }
@@ -470,12 +514,12 @@ usersRoute.get('/:handle/articles/:slug', async (c) => {
 })
 
 // Followers list (paginated).
-usersRoute.get('/:handle/followers', async (c) => {
-  const { db, mediaEnv } = c.get('ctx')
-  const user = await resolveHandle(db, c.req.param('handle'))
-  if (!user) return c.json({ error: 'not_found' }, 404)
-  const limit = Math.min(Number(c.req.query('limit') ?? 40), 100)
-  const cursor = parseCursor(c.req.query('cursor'))
+usersRoute.get("/:handle/followers", async (c) => {
+  const { db, mediaEnv } = c.get("ctx")
+  const user = await resolveHandle(db, c.req.param("handle"))
+  if (!user) return c.json({ error: "not_found" }, 404)
+  const limit = Math.min(Number(c.req.query("limit") ?? 40), 100)
+  const cursor = parseCursor(c.req.query("cursor"))
 
   const rows = await db
     .select({ user: schema.users, follow: schema.follows })
@@ -485,23 +529,26 @@ usersRoute.get('/:handle/followers', async (c) => {
       and(
         eq(schema.follows.followeeId, user.id),
         isNull(schema.users.deletedAt),
-        cursor ? lt(schema.follows.createdAt, cursor) : undefined,
-      ),
+        cursor ? lt(schema.follows.createdAt, cursor) : undefined
+      )
     )
     .orderBy(desc(schema.follows.createdAt))
     .limit(limit)
 
   const users = rows.map((r) => publicUser(r.user, mediaEnv))
-  const nextCursor = rows.length === limit ? rows[rows.length - 1]!.follow.createdAt.toISOString() : null
+  const nextCursor =
+    rows.length === limit
+      ? rows[rows.length - 1]!.follow.createdAt.toISOString()
+      : null
   return c.json({ users, nextCursor })
 })
 
-usersRoute.get('/:handle/following', async (c) => {
-  const { db, mediaEnv } = c.get('ctx')
-  const user = await resolveHandle(db, c.req.param('handle'))
-  if (!user) return c.json({ error: 'not_found' }, 404)
-  const limit = Math.min(Number(c.req.query('limit') ?? 40), 100)
-  const cursor = parseCursor(c.req.query('cursor'))
+usersRoute.get("/:handle/following", async (c) => {
+  const { db, mediaEnv } = c.get("ctx")
+  const user = await resolveHandle(db, c.req.param("handle"))
+  if (!user) return c.json({ error: "not_found" }, 404)
+  const limit = Math.min(Number(c.req.query("limit") ?? 40), 100)
+  const cursor = parseCursor(c.req.query("cursor"))
 
   const rows = await db
     .select({ user: schema.users, follow: schema.follows })
@@ -511,50 +558,57 @@ usersRoute.get('/:handle/following', async (c) => {
       and(
         eq(schema.follows.followerId, user.id),
         isNull(schema.users.deletedAt),
-        cursor ? lt(schema.follows.createdAt, cursor) : undefined,
-      ),
+        cursor ? lt(schema.follows.createdAt, cursor) : undefined
+      )
     )
     .orderBy(desc(schema.follows.createdAt))
     .limit(limit)
 
   const users = rows.map((r) => publicUser(r.user, mediaEnv))
-  const nextCursor = rows.length === limit ? rows[rows.length - 1]!.follow.createdAt.toISOString() : null
+  const nextCursor =
+    rows.length === limit
+      ? rows[rows.length - 1]!.follow.createdAt.toISOString()
+      : null
   return c.json({ users, nextCursor })
 })
 
 // Follow / unfollow.
-usersRoute.post('/:handle/follow', requireHandle(), async (c) => {
-  const session = c.get('session')!
-  const { db, cache, rateLimit } = c.get('ctx')
-  await rateLimit(c, 'users.follow')
-  const user = await resolveHandle(db, c.req.param('handle'))
-  if (!user) return c.json({ error: 'not_found' }, 404)
-  if (user.id === session.user.id) return c.json({ error: 'self_follow' }, 400)
+usersRoute.post("/:handle/follow", requireHandle(), async (c) => {
+  const session = c.get("session")!
+  const { db, cache, rateLimit } = c.get("ctx")
+  await rateLimit(c, "users.follow")
+  const user = await resolveHandle(db, c.req.param("handle"))
+  if (!user) return c.json({ error: "not_found" }, 404)
+  if (user.id === session.user.id) return c.json({ error: "self_follow" }, 400)
 
-  const webUrl = c.get('ctx').env.PUBLIC_WEB_URL
+  const webUrl = c.get("ctx").env.PUBLIC_WEB_URL
   const followResult = await db.transaction(async (tx) => {
     const inserted = await tx
       .insert(schema.follows)
       .values({ followerId: session.user.id, followeeId: user.id })
       .onConflictDoNothing()
       .returning({ followerId: schema.follows.followerId })
-    if (inserted.length === 0) return { recipients: new Set<string>(), pushJobs: [] }
+    if (inserted.length === 0)
+      return { recipients: new Set<string>(), pushJobs: [] }
 
     const [actor] = await tx
-      .select({ displayName: schema.users.displayName, handle: schema.users.handle })
+      .select({
+        displayName: schema.users.displayName,
+        handle: schema.users.handle,
+      })
       .from(schema.users)
       .where(eq(schema.users.id, session.user.id))
       .limit(1)
-    const actorLabel = actor?.displayName?.trim() || actor?.handle || 'Someone'
+    const actorLabel = actor?.displayName?.trim() || actor?.handle || "Someone"
 
     return notify(tx, [
       {
         userId: user.id,
         actorId: session.user.id,
-        kind: 'follow',
+        kind: "follow",
         push: {
           title: actorLabel,
-          body: 'Started following you',
+          body: "Started following you",
           deepLink: profilePermalink(webUrl, actor?.handle),
         },
       },
@@ -564,35 +618,40 @@ usersRoute.post('/:handle/follow', requireHandle(), async (c) => {
   await Promise.all([
     cache.del(homeFeedCacheKey(session.user.id)),
     invalidateUnreadCounts(cache, followResult.recipients),
-    enqueueApnsSendJobs(c.get('ctx').boss, db, followResult.pushJobs),
+    enqueueApnsSendJobs(c.get("ctx").boss, db, followResult.pushJobs),
   ])
-  c.get('ctx').track('user_followed', session.user.id)
+  c.get("ctx").track("user_followed", session.user.id)
   return c.json({ ok: true })
 })
 
-usersRoute.delete('/:handle/follow', requireHandle(), async (c) => {
-  const session = c.get('session')!
-  const { db, cache } = c.get('ctx')
-  const user = await resolveHandle(db, c.req.param('handle'))
-  if (!user) return c.json({ error: 'not_found' }, 404)
+usersRoute.delete("/:handle/follow", requireHandle(), async (c) => {
+  const session = c.get("session")!
+  const { db, cache } = c.get("ctx")
+  const user = await resolveHandle(db, c.req.param("handle"))
+  if (!user) return c.json({ error: "not_found" }, 404)
 
   await db
     .delete(schema.follows)
-    .where(and(eq(schema.follows.followerId, session.user.id), eq(schema.follows.followeeId, user.id)))
+    .where(
+      and(
+        eq(schema.follows.followerId, session.user.id),
+        eq(schema.follows.followeeId, user.id)
+      )
+    )
 
   await cache.del(homeFeedCacheKey(session.user.id))
-  c.get('ctx').track('user_unfollowed', session.user.id)
+  c.get("ctx").track("user_unfollowed", session.user.id)
   return c.json({ ok: true })
 })
 
 // Block / unblock (two-way hide). Also removes any follow edges in either direction.
-usersRoute.post('/:handle/block', requireHandle(), async (c) => {
-  const session = c.get('session')!
-  const { db, cache, rateLimit } = c.get('ctx')
-  await rateLimit(c, 'users.block')
-  const user = await resolveHandle(db, c.req.param('handle'))
-  if (!user) return c.json({ error: 'not_found' }, 404)
-  if (user.id === session.user.id) return c.json({ error: 'self_block' }, 400)
+usersRoute.post("/:handle/block", requireHandle(), async (c) => {
+  const session = c.get("session")!
+  const { db, cache, rateLimit } = c.get("ctx")
+  await rateLimit(c, "users.block")
+  const user = await resolveHandle(db, c.req.param("handle"))
+  if (!user) return c.json({ error: "not_found" }, 404)
+  if (user.id === session.user.id) return c.json({ error: "self_block" }, 400)
 
   await db.transaction(async (tx) => {
     await tx
@@ -601,43 +660,50 @@ usersRoute.post('/:handle/block', requireHandle(), async (c) => {
       .onConflictDoNothing()
     await tx.delete(schema.follows).where(
       sql`(${schema.follows.followerId} = ${session.user.id} AND ${schema.follows.followeeId} = ${user.id})
-          OR (${schema.follows.followerId} = ${user.id} AND ${schema.follows.followeeId} = ${session.user.id})`,
+          OR (${schema.follows.followerId} = ${user.id} AND ${schema.follows.followeeId} = ${session.user.id})`
     )
   })
 
   // Both sides' feeds change — the blocker stops seeing the target, and the target stops
   // seeing the blocker. Drop both cached feeds.
   await cache.del(homeFeedCacheKey(session.user.id), homeFeedCacheKey(user.id))
-  c.get('ctx').track('user_blocked', session.user.id)
+  c.get("ctx").track("user_blocked", session.user.id)
   return c.json({ ok: true })
 })
 
-usersRoute.delete('/:handle/block', requireHandle(), async (c) => {
-  const session = c.get('session')!
-  const { db, cache } = c.get('ctx')
-  const user = await resolveHandle(db, c.req.param('handle'))
-  if (!user) return c.json({ error: 'not_found' }, 404)
+usersRoute.delete("/:handle/block", requireHandle(), async (c) => {
+  const session = c.get("session")!
+  const { db, cache } = c.get("ctx")
+  const user = await resolveHandle(db, c.req.param("handle"))
+  if (!user) return c.json({ error: "not_found" }, 404)
 
   await db
     .delete(schema.blocks)
-    .where(and(eq(schema.blocks.blockerId, session.user.id), eq(schema.blocks.blockedId, user.id)))
+    .where(
+      and(
+        eq(schema.blocks.blockerId, session.user.id),
+        eq(schema.blocks.blockedId, user.id)
+      )
+    )
 
   await cache.del(homeFeedCacheKey(session.user.id), homeFeedCacheKey(user.id))
-  c.get('ctx').track('user_unblocked', session.user.id)
+  c.get("ctx").track("user_unblocked", session.user.id)
   return c.json({ ok: true })
 })
 
 // Mute / unmute (one-way).
-usersRoute.post('/:handle/mute', requireHandle(), async (c) => {
-  const session = c.get('session')!
-  const { db, cache, rateLimit } = c.get('ctx')
-  await rateLimit(c, 'users.mute')
-  const user = await resolveHandle(db, c.req.param('handle'))
-  if (!user) return c.json({ error: 'not_found' }, 404)
-  if (user.id === session.user.id) return c.json({ error: 'self_mute' }, 400)
+usersRoute.post("/:handle/mute", requireHandle(), async (c) => {
+  const session = c.get("session")!
+  const { db, cache, rateLimit } = c.get("ctx")
+  await rateLimit(c, "users.mute")
+  const user = await resolveHandle(db, c.req.param("handle"))
+  if (!user) return c.json({ error: "not_found" }, 404)
+  if (user.id === session.user.id) return c.json({ error: "self_mute" }, 400)
 
   const body = await c.req.json().catch(() => ({}))
-  const scope = ['feed', 'notifications', 'both'].includes(body?.scope) ? body.scope : 'feed'
+  const scope = ["feed", "notifications", "both"].includes(body?.scope)
+    ? body.scope
+    : "feed"
 
   await db
     .insert(schema.mutes)
@@ -648,28 +714,33 @@ usersRoute.post('/:handle/mute', requireHandle(), async (c) => {
     })
 
   await cache.del(homeFeedCacheKey(session.user.id))
-  c.get('ctx').track('user_muted', session.user.id)
+  c.get("ctx").track("user_muted", session.user.id)
   return c.json({ ok: true })
 })
 
-usersRoute.delete('/:handle/mute', requireHandle(), async (c) => {
-  const session = c.get('session')!
-  const { db, cache } = c.get('ctx')
-  const user = await resolveHandle(db, c.req.param('handle'))
-  if (!user) return c.json({ error: 'not_found' }, 404)
+usersRoute.delete("/:handle/mute", requireHandle(), async (c) => {
+  const session = c.get("session")!
+  const { db, cache } = c.get("ctx")
+  const user = await resolveHandle(db, c.req.param("handle"))
+  if (!user) return c.json({ error: "not_found" }, 404)
 
   await db
     .delete(schema.mutes)
-    .where(and(eq(schema.mutes.muterId, session.user.id), eq(schema.mutes.mutedId, user.id)))
+    .where(
+      and(
+        eq(schema.mutes.muterId, session.user.id),
+        eq(schema.mutes.mutedId, user.id)
+      )
+    )
 
   await cache.del(homeFeedCacheKey(session.user.id))
-  c.get('ctx').track('user_unmuted', session.user.id)
+  c.get("ctx").track("user_unmuted", session.user.id)
   return c.json({ ok: true })
 })
 
 function publicUser(
   u: typeof schema.users.$inferSelect,
-  env: import('@workspace/media/env').MediaEnv,
+  env: import("@workspace/media/env").MediaEnv
 ) {
   return {
     id: u.id,

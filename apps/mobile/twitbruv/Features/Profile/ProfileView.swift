@@ -91,207 +91,72 @@ struct ProfileView: View {
         TBLayout.profileBannerNavUnderlap(topSafeArea: 59, navChrome: 0)
     }
 
-    private var navigationBarTitle: String {
-        if let u = vm?.user {
-            if let name = u.displayName, !name.isEmpty { return name }
-            if let h = u.handle, !h.isEmpty { return "@\(h)" }
-        }
-        if handle.hasPrefix("@") { return handle }
-        return "@\(handle)"
-    }
-
     var body: some View {
-        Group {
-            if let vm, let user = vm.user {
-                List {
-                    Section {
-                        ProfileHeader(
-                            user: user,
-                            vm: vm,
-                            bannerNavUnderlap: profileBannerTopUnderlap,
-                            navigationPath: $navigationPath,
-                            onEditProfile: { showEditProfile = true }
-                        )
-                        .listRowInsets(
-                            EdgeInsets(
-                                top: -profileBannerTopUnderlap,
-                                leading: 0,
-                                bottom: 0,
-                                trailing: 0
-                            )
-                        )
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
-                        ProfileMetricsRow(
-                            user: user,
-                            onFollowers: { showFollowers = true },
-                            onFollowing: { showFollowing = true }
-                        )
+        ZStack(alignment: .top) {
+            Group {
+                if let vm, let user = vm.user {
+                    profileList(vm: vm, user: user)
+                } else if let error = vm?.error {
+                    ErrorBanner(message: error.localizedDescription) {
+                        Task { await vm?.load() }
                     }
-
-                    Section {
-                        TBFeedSegmented(
-                            selection: $tab,
-                            options: ProfileTab.allCases.map { ($0.label, $0) }
-                        )
-                        .listRowInsets(
-                            EdgeInsets(top: 0, leading: 16, bottom: 8, trailing: 16)
-                        )
-                        .listRowSeparator(.hidden)
-                    }
-
-                    switch tab {
-                        case .posts:
-                            if let loader = postsLoader {
-                                ForEach(loader.items) { post in
-                                    PostCardView(
-                                        post: post,
-                                        onLike: {
-                                            Task { await PostActions(api: env.api).toggleLike(post) }
-                                        },
-                                        onRepost: {
-                                            Task { await PostActions(api: env.api).toggleRepost(post) }
-                                        },
-                                        onBookmark: {
-                                            Task { await PostActions(api: env.api).toggleBookmark(post) }
-                                        },
-                                        onReply: nil,
-                                        onTapAuthor: nil,
-                                        onMenuAction: { action in
-                                            if case .report = action { reportTarget = post }
-                                        }
-                                    )
-                                    .listRowInsets(EdgeInsets())
-                                    .listRowSeparator(.hidden)
-                                    .listRowBackground(Color.clear)
-                                    .onTapGesture {
-                                        navigationPath.append(FeedRoute.thread(id: post.id))
-                                    }
-                                }
-                                LoadMoreFooter(
-                                    hasMore: loader.nextCursor != nil,
-                                    isLoading: loader.isLoading
-                                ) { await loader.loadMore() }
-                            }
-                        case .articles:
-                            if let loader = articlesLoader {
-                                ForEach(loader.items) { article in
-                                    NavigationLink(
-                                        value: ArticleRoute.detail(
-                                            handle: handle,
-                                            slug: article.slug ?? ""
-                                        )
-                                    ) {
-                                        ArticleRow(article: article)
-                                    }
-                                }
-                                LoadMoreFooter(
-                                    hasMore: loader.nextCursor != nil,
-                                    isLoading: loader.isLoading
-                                ) { await loader.loadMore() }
-                            }
-                        }
-                    }
-                    .listRowSpacing(TBLayout.feedListRowSpacing)
-                    .listStyle(.plain)
-                    .scrollContentBackground(.hidden)
-                    .background(Color.clear)
-                    .refreshable {
-                        await vm.load()
-                        await postsLoader?.reload()
-                        await articlesLoader?.reload()
-                    }
-            } else if let error = vm?.error {
-                ErrorBanner(message: error.localizedDescription) {
-                    Task { await vm?.load() }
+                } else {
+                    ProgressView()
+                        .tint(TBColor.accent)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color.clear)
                 }
-            } else {
-                ProgressView()
-                    .tint(TBColor.accent)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color.clear)
+            }
+            if let vm, let profileUser = vm.user {
+                ProfileFloatingChrome(
+                    navigationPath: $navigationPath,
+                    isSelf: auth.currentUser?.handle == handle,
+                    vm: vm,
+                    user: profileUser,
+                    showSettings: $showSettings,
+                    reportUser: $reportUser
+                )
+                .padding(.horizontal, TBLayout.pagePadding)
+                .padding(.top, profileBannerTopUnderlap + 4)
             }
         }
         .navigationDestination(for: FeedRoute.self) { route in
             switch route {
             case .thread(let id):
                 ThreadView(postId: id)
+                    .toolbarVisibility(.automatic, for: .navigationBar)
             case .profile(let h):
                 ProfileView(handle: h, navigationPath: $navigationPath)
             case .compose(let replyTo):
                 ComposerView(mode: .reply(replyTo))
+                    .toolbarVisibility(.automatic, for: .navigationBar)
             case .hashtag(let tag):
                 HashtagView(tag: tag)
+                    .toolbarVisibility(.automatic, for: .navigationBar)
             case .search(let q):
                 SearchStackContent(path: $navigationPath, initialQuery: q)
+                    .toolbarVisibility(.automatic, for: .navigationBar)
             }
         }
         .navigationDestination(for: ArticleRoute.self) { route in
             switch route {
             case .detail(let h, let slug):
                 ArticleReaderView(handle: h, slug: slug)
+                    .toolbarVisibility(.automatic, for: .navigationBar)
             }
         }
         .navigationDestination(for: DMRoute.self) { route in
             switch route {
             case .conversation(let id):
                 ConversationView(conversationId: id)
+                    .toolbarVisibility(.automatic, for: .navigationBar)
             case .invite(let token):
                 InviteAcceptView(token: token)
+                    .toolbarVisibility(.automatic, for: .navigationBar)
             }
         }
-        .navigationTitle(navigationBarTitle)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarBackground(TBColor.base1, for: .navigationBar)
-        .toolbarBackground(.visible, for: .navigationBar)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                if let vm, let profileUser = vm.user {
-                    if auth.currentUser?.handle == handle {
-                        Button {
-                            showSettings = true
-                        } label: {
-                            Image(systemName: "gearshape")
-                                .foregroundStyle(TBColor.textPrimary)
-                        }
-                        .accessibilityLabel("Settings")
-                    } else {
-                        Menu {
-                            Button {
-                                Task { await vm.setMute(!(profileUser.viewer?.muting == true)) }
-                            } label: {
-                                Label(
-                                    (profileUser.viewer?.muting == true) ? "Unmute" : "Mute",
-                                    systemImage: "speaker.slash"
-                                )
-                            }
-                            Button("Report", systemImage: "flag") {
-                                if let h = profileUser.handle {
-                                    reportUser = ReportSubject.user(handle: h, id: profileUser.id)
-                                }
-                            }
-                            if profileUser.viewer?.blocking == true {
-                                Button {
-                                    Task { await vm.setBlock(false) }
-                                } label: {
-                                    Label("Unblock", systemImage: "hand.raised")
-                                }
-                            } else {
-                                Button(role: .destructive) {
-                                    Task { await vm.setBlock(true) }
-                                } label: {
-                                    Label("Block", systemImage: "hand.raised")
-                                }
-                            }
-                        } label: {
-                            Image(systemName: "ellipsis")
-                                .foregroundStyle(TBColor.textPrimary)
-                        }
-                        .accessibilityLabel("More")
-                    }
-                }
-            }
-        }
+        .navigationBarBackButtonHidden(true)
+        .toolbarVisibility(.hidden, for: .navigationBar)
         .sheet(isPresented: $showEditProfile) {
             NavigationStack {
                 EditProfileView()
@@ -345,6 +210,98 @@ struct ProfileView: View {
             }
         }
     }
+
+    @ViewBuilder
+    private func profileList(vm: ProfileViewModel, user: PublicUser) -> some View {
+        List {
+            Section {
+                ProfileHeader(
+                    user: user,
+                    vm: vm,
+                    bannerNavUnderlap: profileBannerTopUnderlap,
+                    navigationPath: $navigationPath,
+                    onEditProfile: { showEditProfile = true },
+                    onFollowers: { showFollowers = true },
+                    onFollowing: { showFollowing = true }
+                )
+                .listRowInsets(EdgeInsets())
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+            }
+
+            Section {
+                TBFeedSegmented(
+                    selection: $tab,
+                    options: ProfileTab.allCases.map { ($0.label, $0) }
+                )
+                .listRowInsets(
+                    EdgeInsets(top: 0, leading: 16, bottom: 8, trailing: 16)
+                )
+                .listRowSeparator(.hidden)
+            }
+
+            switch tab {
+            case .posts:
+                if let loader = postsLoader {
+                    ForEach(loader.items) { post in
+                        PostCardView(
+                            post: post,
+                            onLike: {
+                                Task { await PostActions(api: env.api).toggleLike(post) }
+                            },
+                            onRepost: {
+                                Task { await PostActions(api: env.api).toggleRepost(post) }
+                            },
+                            onBookmark: {
+                                Task { await PostActions(api: env.api).toggleBookmark(post) }
+                            },
+                            onReply: nil,
+                            onTapAuthor: nil,
+                            onMenuAction: { action in
+                                if case .report = action { reportTarget = post }
+                            }
+                        )
+                        .listRowInsets(EdgeInsets())
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
+                        .onTapGesture {
+                            navigationPath.append(FeedRoute.thread(id: post.id))
+                        }
+                    }
+                    LoadMoreFooter(
+                        hasMore: loader.nextCursor != nil,
+                        isLoading: loader.isLoading
+                    ) { await loader.loadMore() }
+                }
+            case .articles:
+                if let loader = articlesLoader {
+                    ForEach(loader.items) { article in
+                        NavigationLink(
+                            value: ArticleRoute.detail(
+                                handle: handle,
+                                slug: article.slug ?? ""
+                            )
+                        ) {
+                            ArticleRow(article: article)
+                        }
+                    }
+                    LoadMoreFooter(
+                        hasMore: loader.nextCursor != nil,
+                        isLoading: loader.isLoading
+                    ) { await loader.loadMore() }
+                }
+            }
+        }
+        .listRowSpacing(TBLayout.feedListRowSpacing)
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(Color.clear)
+        .refreshable {
+            await vm.load()
+            await postsLoader?.reload()
+            await articlesLoader?.reload()
+        }
+    }
 }
 
 enum ProfileTab: String, CaseIterable, Identifiable {
@@ -362,19 +319,96 @@ enum ArticleRoute: Hashable {
     case detail(handle: String, slug: String)
 }
 
+private struct ProfileFloatingChrome: View {
+    @Binding var navigationPath: NavigationPath
+    let isSelf: Bool
+    let vm: ProfileViewModel
+    let user: PublicUser
+    @Binding var showSettings: Bool
+    @Binding var reportUser: ReportSubject?
+
+    var body: some View {
+        HStack(alignment: .center) {
+            if !navigationPath.isEmpty {
+                Button {
+                    navigationPath.removeLast()
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(TBColor.textPrimary)
+                        .frame(width: 40, height: 40)
+                }
+                .buttonStyle(.plain)
+                .tbGlass(.chrome, in: Circle(), interactive: true, shadow: false)
+                .accessibilityLabel("Back")
+            }
+            Spacer(minLength: 0)
+            Menu {
+                if isSelf {
+                    Button {
+                        showSettings = true
+                    } label: {
+                        Label("Settings", systemImage: "gearshape")
+                    }
+                } else {
+                    Button {
+                        Task { await vm.setMute(!(user.viewer?.muting == true)) }
+                    } label: {
+                        Label(
+                            (user.viewer?.muting == true) ? "Unmute" : "Mute",
+                            systemImage: "speaker.slash"
+                        )
+                    }
+                    Button {
+                        if let h = user.handle {
+                            reportUser = ReportSubject.user(handle: h, id: user.id)
+                        }
+                    } label: {
+                        Label("Report", systemImage: "flag")
+                    }
+                    if user.viewer?.blocking == true {
+                        Button {
+                            Task { await vm.setBlock(false) }
+                        } label: {
+                            Label("Unblock", systemImage: "hand.raised")
+                        }
+                    } else {
+                        Button(role: .destructive) {
+                            Task { await vm.setBlock(true) }
+                        } label: {
+                            Label("Block", systemImage: "hand.raised")
+                        }
+                    }
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(TBColor.textPrimary)
+                    .frame(height: 40)
+                    .padding(.horizontal, 14)
+            }
+            .buttonStyle(.plain)
+            .tbGlassCapsule(.chrome, interactive: true, shadow: false)
+            .accessibilityLabel("More")
+        }
+    }
+}
+
 private struct ProfileHeader: View {
     let user: PublicUser
     let vm: ProfileViewModel
     var bannerNavUnderlap: CGFloat = 0
     @Binding var navigationPath: NavigationPath
     let onEditProfile: () -> Void
+    let onFollowers: () -> Void
+    let onFollowing: () -> Void
 
     private var bannerPull: CGFloat {
         max(0, bannerNavUnderlap)
     }
 
-    private let bannerHeight: CGFloat = 160
-    private let avatarSize: CGFloat = 80
+    private let bannerHeight: CGFloat = 180
+    private let avatarSize: CGFloat = 64
     private let avatarLift: CGFloat = 40
 
     private var joinedLine: String? {
@@ -385,24 +419,30 @@ private struct ProfileHeader: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            ZStack(alignment: .bottomLeading) {
-                Color.clear
-                    .frame(maxWidth: .infinity)
-                    .frame(height: bannerHeight + bannerPull)
-                    .offset(y: -bannerPull)
-                    .background {
-                        AsyncImage(url: user.bannerUrl.flatMap(URL.init(string:))) { phase in
-                            switch phase {
-                            case .success(let img):
-                                img.resizable().scaledToFill()
-                            default:
-                                TBColor.base2
-                            }
+        VStack(alignment: .leading, spacing: 0) {
+            heroBand
+            detailsBand
+        }
+    }
+
+    private var heroBand: some View {
+        ZStack(alignment: .bottomLeading) {
+            Color.clear
+                .frame(maxWidth: .infinity)
+                .frame(height: bannerHeight + bannerPull)
+                .offset(y: -bannerPull)
+                .background {
+                    AsyncImage(url: user.bannerUrl.flatMap(URL.init(string:))) { phase in
+                        switch phase {
+                        case .success(let img):
+                            img.resizable().scaledToFill()
+                        default:
+                            TBColor.base2
                         }
                     }
-                    .clipped()
-                    .overlay(alignment: .bottom) {
+                }
+                .clipped()
+                .overlay(alignment: .bottom) {
                     Rectangle()
                         .fill(
                             LinearGradient(
@@ -414,74 +454,84 @@ private struct ProfileHeader: View {
                         .frame(height: 48)
                 }
 
-                HStack(alignment: .bottom, spacing: 10) {
-                    AvatarView(
-                        urlString: user.avatarUrl,
-                        size: avatarSize,
-                        fallbackInitial: user.displayName ?? user.handle
-                    )
-                    .overlay {
-                        Circle()
-                            .strokeBorder(TBColor.base1, lineWidth: 4)
-                    }
-                    .padding(.leading, TBLayout.pagePadding)
-
-                    Spacer(minLength: 8)
-
-                    ProfileActionsRow(
-                        vm: vm,
-                        user: user,
-                        navigationPath: $navigationPath,
-                        onEditProfile: onEditProfile
-                    )
-                    .padding(.trailing, TBLayout.pagePadding)
+            HStack(alignment: .bottom, spacing: 10) {
+                AvatarView(
+                    urlString: user.avatarUrl,
+                    size: avatarSize,
+                    fallbackInitial: user.displayName ?? user.handle
+                )
+                .overlay {
+                    Circle()
+                        .strokeBorder(TBColor.base1, lineWidth: 3)
                 }
+                .padding(.leading, TBLayout.pagePadding)
+
+                Spacer(minLength: 8)
+
+                ProfileActionsRow(
+                    vm: vm,
+                    user: user,
+                    navigationPath: $navigationPath,
+                    onEditProfile: onEditProfile
+                )
+                .padding(.trailing, TBLayout.pagePadding)
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: bannerHeight + avatarLift)
-
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 6) {
-                    Text(user.displayName ?? user.handle ?? "—")
-                        .font(TBTypography.pageTitle)
-                        .foregroundStyle(TBColor.textPrimary)
-                    if user.isVerified == true {
-                        Image(systemName: "checkmark.seal.fill")
-                            .foregroundStyle(TBColor.accent)
-                    }
-                }
-                if let bio = user.bio, !bio.isEmpty {
-                    Text(bio)
-                        .font(TBTypography.bodySecondary)
-                        .foregroundStyle(TBColor.textPrimary)
-                }
-                metaLine
-                websiteGlobeRow
-            }
-            .padding(.horizontal, TBLayout.pagePadding)
         }
+        .frame(maxWidth: .infinity)
+        .frame(height: bannerHeight + avatarLift)
+    }
+
+    private var detailsBand: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Text(user.displayName ?? user.handle ?? "—")
+                    .font(TBTypography.pageTitle)
+                    .foregroundStyle(TBColor.textPrimary)
+                if user.isVerified == true {
+                    Image(systemName: "checkmark.seal.fill")
+                        .foregroundStyle(TBColor.accent)
+                }
+            }
+            if let h = user.handle?.trimmingCharacters(in: .whitespaces), !h.isEmpty {
+                Text("@\(h)")
+                    .font(TBTypography.bodySecondary)
+                    .foregroundStyle(TBColor.textSecondary)
+            }
+            if let bio = user.bio, !bio.isEmpty {
+                Text(bio)
+                    .font(TBTypography.bodySecondary)
+                    .foregroundStyle(TBColor.textPrimary)
+            }
+            metaLine
+            websiteGlobeRow
+            ProfileMetricsRow(user: user, onFollowers: onFollowers, onFollowing: onFollowing)
+        }
+        .padding(.horizontal, TBLayout.pagePadding)
+        .padding(.top, 16)
     }
 
     @ViewBuilder
     private var metaLine: some View {
         let loc = user.location?.trimmingCharacters(in: .whitespaces) ?? ""
         let hasLoc = !loc.isEmpty
-        let joined = joinedLine
-        if hasLoc || joined != nil {
+        let secondary = localTimeString ?? joinedLine
+        if hasLoc || secondary != nil {
             HStack(spacing: 6) {
                 if hasLoc {
                     Image(systemName: "mappin.and.ellipse")
                         .font(.system(size: 12, weight: .medium))
                 }
-                if hasLoc {
-                    Text(loc)
-                }
-                if hasLoc, joined != nil {
-                    Text("·")
-                        .foregroundStyle(TBColor.textTertiary)
-                }
-                if let joined {
-                    Text(joined)
+                Group {
+                    if hasLoc, let s = secondary {
+                        Text(loc)
+                        Text("·")
+                            .foregroundStyle(TBColor.textTertiary)
+                        Text(s)
+                    } else if hasLoc {
+                        Text(loc)
+                    } else if let s = secondary {
+                        Text(s)
+                    }
                 }
             }
             .font(TBTypography.caption)
@@ -587,19 +637,17 @@ private struct ProfileMetricsRow: View {
             metricLabel(count: user.counts?.posts ?? 0, noun: "posts")
             Spacer(minLength: 0)
         }
-        .font(TBTypography.caption)
-        .padding(.horizontal, TBLayout.pagePadding)
-        .padding(.vertical, 4)
+        .font(TBTypography.meta)
+        .padding(.vertical, 2)
         .buttonStyle(.plain)
     }
 
     private func metricLabel(count: Int, noun: String) -> some View {
         HStack(spacing: 4) {
             Text("\(count)")
-                .foregroundStyle(TBColor.textPrimary)
-                .fontWeight(.semibold)
-            Text(noun)
                 .foregroundStyle(TBColor.textSecondary)
+            Text(noun)
+                .foregroundStyle(TBColor.textTertiary)
         }
     }
 }
