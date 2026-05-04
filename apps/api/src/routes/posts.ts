@@ -1,7 +1,6 @@
 import { Hono } from 'hono'
 import { and, asc, desc, eq, inArray, isNull, lt, sql } from '@workspace/db'
 import { schema } from '@workspace/db'
-import { publicUrl } from '@workspace/media/s3'
 import {
   createPostSchema,
   editPostSchema,
@@ -34,34 +33,9 @@ const EDIT_WINDOW_MS = 5 * 60 * 1000
 // Create a post (top-level, reply, or quote).
 postsRoute.post('/', requireHandle(), async (c) => {
   const session = c.get('session')!
-  const { db, cache, rateLimit, moderate, log, mediaEnv } = c.get('ctx')
+  const { db, cache, rateLimit } = c.get('ctx')
   const body = createPostSchema.parse(await c.req.json())
   await rateLimit(c, body.replyToId ? 'posts.reply' : 'posts.create')
-
-  let imageUrls: string[] = []
-  if (body.mediaIds && body.mediaIds.length > 0) {
-    const rows = await db
-      .select({ kind: schema.media.kind, originalKey: schema.media.originalKey })
-      .from(schema.media)
-      .where(
-        and(
-          inArray(schema.media.id, body.mediaIds),
-          eq(schema.media.ownerId, session.user.id),
-        ),
-      )
-    imageUrls = rows
-      .filter((r) => r.kind === 'image' || r.kind === 'gif')
-      .map((r) => publicUrl(mediaEnv, r.originalKey))
-  }
-
-  const verdict = await moderate(body.text, imageUrls)
-  if (verdict.verdict === 'block') {
-    log.info(
-      { userId: session.user.id, categories: verdict.categories, hadImages: imageUrls.length > 0 },
-      'post_blocked_by_moderation',
-    )
-    return c.json({ error: 'moderation_blocked', message: verdict.message }, 422)
-  }
 
   if (body.replyToId && body.quoteOfId) {
     return c.json({ error: 'invalid_combo', message: 'reply and quote are mutually exclusive' }, 400)

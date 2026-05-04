@@ -10,7 +10,6 @@ import { createPubSub, type PubSub } from "./pubsub.ts"
 import { createLogger, type Logger } from "./logger.ts"
 import { makeRateLimit } from "@workspace/rate-limit"
 import { createTracker, type TrackFn } from "./analytics.ts"
-import { createModerator, type Moderator } from "./moderation.ts"
 
 export interface AppContext {
   env: Env
@@ -25,7 +24,6 @@ export interface AppContext {
   log: Logger
   rateLimit: ReturnType<typeof makeRateLimit>
   track: TrackFn
-  moderate: Moderator
 }
 
 export async function buildContext(): Promise<AppContext> {
@@ -122,7 +120,6 @@ export async function buildContext(): Promise<AppContext> {
     env.DATABUDDY_WEBSITE_ID,
     log
   )
-  const moderate = createModerator(env, log)
 
   return {
     env,
@@ -137,6 +134,5 @@ export async function buildContext(): Promise<AppContext> {
     log,
     rateLimit,
     track,
-    moderate,
   }
 }
