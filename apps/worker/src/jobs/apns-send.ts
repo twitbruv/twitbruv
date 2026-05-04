@@ -56,7 +56,6 @@ export function shouldDeleteToken(
   status: number,
   reason: string | undefined
 ): boolean {
-  if (status === 410) return true
   const r = reason ?? ""
   return r === "BadDeviceToken" || r === "Unregistered"
 }

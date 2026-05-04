@@ -1,6 +1,6 @@
 export * as schema from "./schema/index.ts"
 export { createDb, createDbFromEnv } from "./client.ts"
-export type { Database } from "./client.ts"
+export type { Database, Transaction } from "./client.ts"
 export * from "./feed-policy.ts"
 export {
   sql,

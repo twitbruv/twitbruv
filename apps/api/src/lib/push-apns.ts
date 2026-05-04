@@ -66,19 +66,32 @@ export async function enqueueApnsSendJobs(
 ): Promise<void> {
   const pushEnabledCache = new Map<string, boolean>()
   const jobsToSend: ApnsSendJob[] = []
+  const uniquePreferenceJobs = new Map<string, ApnsSendJob>()
 
   for (const job of jobs) {
     const key = `${job.userId}:${job.kind}`
-    let enabled = pushEnabledCache.get(key)
-    if (enabled === undefined) {
-      try {
-        enabled = await pushEnabledForUser(db, job.userId, job.kind)
-      } catch {
-        enabled = false
-      }
-      pushEnabledCache.set(key, enabled)
-    }
-    if (enabled) jobsToSend.push(job)
+    if (!uniquePreferenceJobs.has(key)) uniquePreferenceJobs.set(key, job)
+  }
+
+  const preferenceJobs = Array.from(uniquePreferenceJobs.entries())
+  for (let i = 0; i < preferenceJobs.length; i += apnsSendConcurrency) {
+    const chunk = preferenceJobs.slice(i, i + apnsSendConcurrency)
+    await Promise.allSettled(
+      chunk.map(async ([key, job]) => {
+        try {
+          pushEnabledCache.set(
+            key,
+            await pushEnabledForUser(db, job.userId, job.kind)
+          )
+        } catch {
+          pushEnabledCache.set(key, false)
+        }
+      })
+    )
+  }
+
+  for (const job of jobs) {
+    if (pushEnabledCache.get(`${job.userId}:${job.kind}`)) jobsToSend.push(job)
   }
 
   for (let i = 0; i < jobsToSend.length; i += apnsSendConcurrency) {
