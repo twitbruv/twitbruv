@@ -8,7 +8,7 @@ import type { Env } from "../env.ts"
 
 const jobSchema = z.object({
   userId: z.string().uuid(),
-  kind: z.string(),
+  kind: z.enum(schema.notificationKindEnum.enumValues),
   title: z.string(),
   body: z.string(),
   deepLink: z.string(),
@@ -166,6 +166,7 @@ export async function handleApnsSendJob(
     .where(
       and(
         eq(schema.deviceTokens.userId, job.userId),
+        eq(schema.deviceTokens.bundleId, env.APNS_BUNDLE_ID),
         eq(schema.deviceTokens.environment, env.APNS_ENVIRONMENT)
       )
     )
@@ -180,6 +181,7 @@ export async function handleApnsSendJob(
         .where(
           and(
             eq(schema.deviceTokens.token, row.token),
+            eq(schema.deviceTokens.bundleId, env.APNS_BUNDLE_ID),
             eq(schema.deviceTokens.environment, row.environment)
           )
         )
