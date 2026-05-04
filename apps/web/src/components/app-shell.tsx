@@ -24,8 +24,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { data: session } = authClient.useSession()
   const authed = Boolean(session)
   const pathname = useRouterState({ select: (s) => s.location.pathname })
-  const isAdminShell = pathname.startsWith("/admin");
-  const showMobileIslandNav = authed && !isAdminShell;
+  const isAdminShell = pathname.startsWith("/admin")
+  const showMobileIslandNav = authed && !isAdminShell
 
   const sidebarLeftStyle = {
     left: "max(0px, calc((100vw - 1080px) / 2))",
