@@ -14,7 +14,10 @@ final class SearchViewModel {
     var error: APIError?
     private var lastQuery = ""
 
-    init(api: APIClient) { self.api = api }
+    init(api: APIClient, initialQuery: String = "") {
+        self.api = api
+        self.query = initialQuery
+    }
 
     func loadOpening() async {
         do {
@@ -22,9 +25,7 @@ final class SearchViewModel {
             async let savedResp: SavedSearchesResponse = api.get(API.Search.saved())
             trending = try await trendResp.hashtags
             saved = try await savedResp.items
-        } catch {
-            // tolerate trending/saved failures
-        }
+        } catch {}
     }
 
     func search() async {
@@ -71,143 +72,174 @@ final class SearchViewModel {
 }
 
 struct SearchView: View {
-    @Environment(AppEnvironment.self) private var env
-
-    @State private var vm: SearchViewModel?
     @State private var path = NavigationPath()
 
     var body: some View {
         NavigationStack(path: $path) {
-            Group {
-                if let vm {
-                    List {
-                        if vm.query.trimmingCharacters(in: .whitespaces).isEmpty {
-                            if !vm.trending.isEmpty {
-                                Section("Trending") {
-                                    ForEach(vm.trending) { tag in
-                                        Button {
-                                            path.append(SearchRoute.hashtag(tag: tag.tag))
-                                        } label: {
-                                            HStack {
-                                                Text("#\(tag.tag)").font(.callout.weight(.semibold))
-                                                Spacer()
-                                                if let n = tag.postCount {
-                                                    Text("\(n) posts").font(.caption)
-                                                        .foregroundStyle(.secondary)
-                                                }
-                                            }
-                                        }
-                                        .buttonStyle(.plain)
-                                    }
-                                }
-                            }
-                            if !vm.saved.isEmpty {
-                                Section("Saved") {
-                                    ForEach(vm.saved) { s in
+            SearchStackContent(path: $path, initialQuery: nil)
+        }
+    }
+}
+
+#if DEBUG
+#Preview("Light") {
+    SearchView()
+        .tbPreview(authState: .signedIn(user: .preview), colorScheme: .light)
+}
+
+#Preview("Dark") {
+    SearchView()
+        .tbPreview(authState: .signedIn(user: .preview), colorScheme: .dark)
+}
+#endif
+
+struct SearchStackContent: View {
+    @Environment(AppEnvironment.self) private var env
+    @Binding var path: NavigationPath
+    var initialQuery: String?
+
+    @State private var vm: SearchViewModel?
+
+    var body: some View {
+        Group {
+            if let vm {
+                List {
+                    if vm.query.trimmingCharacters(in: .whitespaces).isEmpty {
+                        if !vm.trending.isEmpty {
+                            Section("Trending") {
+                                ForEach(vm.trending) { tag in
+                                    Button {
+                                        path.append(SearchRoute.hashtag(tag: tag.tag))
+                                    } label: {
                                         HStack {
-                                            Text(s.query)
+                                            Text("#\(tag.tag)").font(.callout.weight(.semibold))
                                             Spacer()
-                                            Button(role: .destructive) {
-                                                Task { await vm.deleteSaved(s.id) }
-                                            } label: {
-                                                Image(systemName: "trash")
-                                            }
-                                            .buttonStyle(.plain)
-                                        }
-                                        .contentShape(.rect)
-                                        .onTapGesture {
-                                            vm.query = s.query
-                                            Task { await vm.search() }
-                                        }
-                                    }
-                                }
-                            }
-                        } else {
-                            if !vm.users.isEmpty {
-                                Section("People") {
-                                    ForEach(vm.users) { user in
-                                        if let h = user.handle {
-                                            NavigationLink(value: FeedRoute.profile(handle: h)) {
-                                                UserRowView(user: user)
+                                            if let n = tag.postCount {
+                                                Text("\(n) posts").font(.caption)
+                                                    .foregroundStyle(.secondary)
                                             }
                                         }
                                     }
+                                    .buttonStyle(.plain)
                                 }
                             }
-                            if !vm.posts.isEmpty {
-                                Section("Posts") {
-                                    ForEach(vm.posts) { post in
-                                        Button {
-                                            path.append(FeedRoute.thread(id: post.id))
+                        }
+                        if !vm.saved.isEmpty {
+                            Section("Saved") {
+                                ForEach(vm.saved) { s in
+                                    HStack {
+                                        Text(s.query)
+                                        Spacer()
+                                        Button(role: .destructive) {
+                                            Task { await vm.deleteSaved(s.id) }
                                         } label: {
-                                            PostCardView(post: post)
+                                            Image(systemName: "trash")
                                         }
                                         .buttonStyle(.plain)
-                                        .listRowInsets(EdgeInsets())
-                                        .listRowSeparator(.hidden)
-                                        .listRowBackground(Color.clear)
+                                    }
+                                    .contentShape(.rect)
+                                    .onTapGesture {
+                                        vm.query = s.query
+                                        Task { await vm.search() }
                                     }
                                 }
                             }
-                            if vm.users.isEmpty && vm.posts.isEmpty && !vm.isSearching {
-                                Section {
-                                    EmptyStateView(
-                                        icon: "magnifyingglass",
-                                        title: "No results"
-                                    )
+                        }
+                    } else {
+                        if !vm.users.isEmpty {
+                            Section("People") {
+                                ForEach(vm.users) { user in
+                                    if let h = user.handle {
+                                        NavigationLink(value: FeedRoute.profile(handle: h)) {
+                                            UserRowView(user: user)
+                                        }
+                                    }
                                 }
                             }
                         }
-                    }
-                    .listRowSpacing(TBLayout.feedListRowSpacing)
-                    .listStyle(.insetGrouped)
-                    .scrollContentBackground(.hidden)
-                    .background(Color.clear)
-                    .tbReadableColumn()
-                } else {
-                    ProgressView()
-                        .tint(TBColor.accent)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(Color.clear)
-                }
-            }
-            .navigationTitle("Search")
-            .searchable(text: Binding(
-                get: { vm?.query ?? "" },
-                set: { vm?.query = $0 }
-            ), prompt: "People, posts, #tags")
-            .onSubmit(of: .search) {
-                Task { await vm?.search() }
-            }
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    if let vm, !vm.query.isEmpty {
-                        Button {
-                            Task { await vm.saveCurrent() }
-                        } label: {
-                            Image(systemName: "bookmark")
+                        if !vm.posts.isEmpty {
+                            Section("Posts") {
+                                ForEach(vm.posts) { post in
+                                    Button {
+                                        path.append(FeedRoute.thread(id: post.id))
+                                    } label: {
+                                        PostCardView(post: post)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .listRowInsets(EdgeInsets())
+                                    .listRowSeparator(.hidden)
+                                    .listRowBackground(Color.clear)
+                                }
+                            }
+                        }
+                        if vm.users.isEmpty && vm.posts.isEmpty && !vm.isSearching {
+                            Section {
+                                EmptyStateView(
+                                    icon: "magnifyingglass",
+                                    title: "No results"
+                                )
+                            }
                         }
                     }
                 }
-            }
-            .navigationDestination(for: SearchRoute.self) { route in
-                switch route {
-                case .hashtag(let tag): HashtagView(tag: tag)
+                .listRowSpacing(TBLayout.feedListRowSpacing)
+                .listStyle(.insetGrouped)
+                .scrollContentBackground(.hidden)
+                .background(Color.clear)
+                .tbReadableColumn()
+                .navigationTitle("Search")
+                .searchable(
+                    text: Binding(get: { vm.query }, set: { vm.query = $0 }),
+                    prompt: "People, posts, #tags"
+                )
+                .onSubmit(of: .search) {
+                    Task { await vm.search() }
                 }
-            }
-            .navigationDestination(for: FeedRoute.self) { route in
-                switch route {
-                case .thread(let id): ThreadView(postId: id)
-                case .profile(let h): ProfileView(handle: h, navigationPath: $path)
-                case .compose(let p): ComposerView(mode: .reply(p))
-                case .hashtag(let t): HashtagView(tag: t)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        if !vm.query.isEmpty {
+                            Button {
+                                Task { await vm.saveCurrent() }
+                            } label: {
+                                Image(systemName: "bookmark")
+                            }
+                        }
+                    }
                 }
+            } else {
+                ProgressView()
+                    .tint(TBColor.accent)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color.clear)
             }
-            .task {
-                if vm == nil {
-                    let new = SearchViewModel(api: env.api)
-                    vm = new
-                    await new.loadOpening()
+        }
+        .navigationDestination(for: SearchRoute.self) { route in
+            switch route {
+            case .hashtag(let tag): HashtagView(tag: tag)
+            }
+        }
+        .navigationDestination(for: FeedRoute.self) { route in
+            switch route {
+            case .thread(let id):
+                ThreadView(postId: id)
+            case .profile(let h):
+                ProfileView(handle: h, navigationPath: $path)
+            case .compose(let p):
+                ComposerView(mode: .reply(p))
+            case .hashtag(let t):
+                HashtagView(tag: t)
+            case .search(let q):
+                SearchStackContent(path: $path, initialQuery: q)
+            }
+        }
+        .task {
+            if vm == nil {
+                let q = initialQuery ?? ""
+                let new = SearchViewModel(api: env.api, initialQuery: q)
+                vm = new
+                await new.loadOpening()
+                if q.count >= 2 {
+                    await new.search()
                 }
             }
         }
@@ -255,23 +287,29 @@ struct HashtagView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(Color.clear)
                     .task {
-                    loader = PagedLoader<Post, PostsHashtagResponse>(
-                        api: env.api,
-                        endpoint: { cursor in API.Hashtags.posts(tag, cursor: cursor) },
-                        extract: { ($0.posts, $0.nextCursor) }
-                    )
-                    await loader?.loadInitial()
-                }
+                        loader = PagedLoader<Post, PostsHashtagResponse>(
+                            api: env.api,
+                            endpoint: { cursor in API.Hashtags.posts(tag, cursor: cursor) },
+                            extract: { ($0.posts, $0.nextCursor) }
+                        )
+                        await loader?.loadInitial()
+                    }
             }
         }
         .navigationTitle("#\(tag)")
         .navigationBarTitleDisplayMode(.inline)
         .navigationDestination(for: FeedRoute.self) { route in
             switch route {
-            case .thread(let id): ThreadView(postId: id)
-            case .profile(let h): ProfileView(handle: h, navigationPath: $path)
-            case .compose(let p): ComposerView(mode: .reply(p))
-            case .hashtag(let t): HashtagView(tag: t)
+            case .thread(let id):
+                ThreadView(postId: id)
+            case .profile(let h):
+                ProfileView(handle: h, navigationPath: $path)
+            case .compose(let p):
+                ComposerView(mode: .reply(p))
+            case .hashtag(let t):
+                HashtagView(tag: t)
+            case .search(let q):
+                SearchStackContent(path: $path, initialQuery: q)
             }
         }
     }

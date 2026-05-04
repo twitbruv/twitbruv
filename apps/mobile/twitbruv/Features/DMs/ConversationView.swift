@@ -390,3 +390,15 @@ private struct ReactionPicker: View {
         .presentationDetents([.height(160)])
     }
 }
+
+#if DEBUG
+#Preview("Light") {
+    ConversationView(conversationId: PreviewConst.conversationId)
+        .tbPreview(authState: .signedIn(user: .preview), colorScheme: .light)
+}
+
+#Preview("Dark") {
+    ConversationView(conversationId: PreviewConst.conversationId)
+        .tbPreview(authState: .signedIn(user: .preview), colorScheme: .dark)
+}
+#endif

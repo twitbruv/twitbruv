@@ -238,3 +238,19 @@ struct ScheduledEditorView: View {
         }
     }
 }
+
+#if DEBUG
+#Preview("Light") {
+    NavigationStack {
+        ScheduledPostsView()
+    }
+    .tbPreview(authState: .signedIn(user: .preview), colorScheme: .light)
+}
+
+#Preview("Dark") {
+    NavigationStack {
+        ScheduledPostsView()
+    }
+    .tbPreview(authState: .signedIn(user: .preview), colorScheme: .dark)
+}
+#endif

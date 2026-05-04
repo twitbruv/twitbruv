@@ -41,25 +41,17 @@ struct MainTabView: View {
             DevSeedToast()
         }
         .overlay(alignment: .bottomTrailing) {
-            Button {
+            ComposeLiquidGlassFAB {
                 showCompose = true
-            } label: {
-                Image(systemName: "square.and.pencil")
-                    .font(.system(size: TBLayout.composeFabIconPointSize, weight: .semibold))
-                    .foregroundStyle(TBColor.textOnInverse)
-                    .frame(width: TBLayout.composeFabSize, height: TBLayout.composeFabSize)
-                    .background {
-                        Circle().fill(TBColor.accent.opacity(0.96))
-                    }
-                    .tbGlass(.prominent, in: Circle(), interactive: true, shadow: true)
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("New post")
             .padding(.trailing, TBLayout.pagePadding)
             .padding(.bottom, TBLayout.composeFabBottomPadding)
         }
         .sheet(isPresented: $showCompose) {
             ComposerView(mode: .new)
+        }
+        .task {
+            await PushController.shared.requestAndRegisterIfSignedIn()
         }
     }
 
@@ -89,6 +81,39 @@ enum AppTab: Hashable {
     case notifications
     case dms
     case me
+}
+
+private struct ComposeLiquidGlassFAB: View {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            if reduceTransparency {
+                Image(systemName: "square.and.pencil")
+                    .font(.system(size: TBLayout.composeFabIconPointSize, weight: .semibold))
+                    .foregroundStyle(TBColor.accent)
+                    .frame(width: TBLayout.composeFabSize, height: TBLayout.composeFabSize)
+                    .background(Circle().fill(TBColor.base2))
+                    .overlay {
+                        Circle().strokeBorder(TBColor.glassStroke, lineWidth: 0.6)
+                    }
+            } else {
+                Image(systemName: "square.and.pencil")
+                    .font(.system(size: TBLayout.composeFabIconPointSize, weight: .semibold))
+                    .foregroundStyle(TBColor.accent)
+                    .frame(width: TBLayout.composeFabSize, height: TBLayout.composeFabSize)
+                    .background { Circle().fill(.clear) }
+                    .glassEffect(
+                        Glass.clear.interactive(),
+                        in: Circle()
+                    )
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("New post")
+    }
 }
 
 private struct DevSeedToast: View {

@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct twitbruvApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var env = AppEnvironment()
 
     init() {
@@ -14,7 +15,9 @@ struct twitbruvApp: App {
                 .environment(env)
                 .environment(env.auth)
                 .tbChrome()
-                .task { await env.bootstrap() }
+                .task {
+                    await env.bootstrap()
+                }
                 .onOpenURL { url in
                     NotificationCenter.default.post(
                         name: .twitbruvDeepLink, object: nil, userInfo: ["url": url]

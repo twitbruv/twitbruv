@@ -74,7 +74,7 @@ final class DevTools {
     }
 }
 
-struct DevSeedResponse: Decodable, Sendable {
+struct DevSeedResponse: Codable, Sendable {
     let ok: Bool?
     let message: String?
 }

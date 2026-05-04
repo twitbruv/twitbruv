@@ -67,6 +67,22 @@ struct OAuthSignInView: View {
     }
 }
 
+#if DEBUG
+#Preview("Light") {
+    NavigationStack {
+        OAuthSignInView(provider: "github")
+    }
+    .tbPreview(authState: .signedOut, colorScheme: .light)
+}
+
+#Preview("Dark") {
+    NavigationStack {
+        OAuthSignInView(provider: "github")
+    }
+    .tbPreview(authState: .signedOut, colorScheme: .dark)
+}
+#endif
+
 @MainActor
 final class OAuthCoordinator: NSObject, ASWebAuthenticationPresentationContextProviding {
     private var session: ASWebAuthenticationSession?

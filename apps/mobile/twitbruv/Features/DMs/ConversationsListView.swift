@@ -42,46 +42,56 @@ struct ConversationsListView: View {
         NavigationStack(path: $path) {
             Group {
                 if let vm {
-                    VStack(spacing: 0) {
-                        TBFeedSegmented(
-                            selection: Binding(
-                                get: { vm.folder },
-                                set: { new in
-                                    vm.folder = new
-                                    Task { await vm.reload() }
-                                }
-                            ),
-                            options: [
-                                ("Inbox", "inbox"),
-                                ("Requests (\(vm.requestCount))", "requests"),
-                            ]
-                        )
-                        .padding(.horizontal, TBLayout.glassBarOuterMargin + TBLayout.pagePadding)
-                        .padding(.vertical, 8)
-
-                        List {
-                            if vm.conversations.isEmpty && vm.didLoadOnce {
-                                EmptyStateView(
-                                    icon: "envelope",
-                                    title: vm.folder == "requests"
-                                        ? "No pending requests"
-                                        : "No conversations yet"
-                                )
-                                .listRowSeparator(.hidden)
-                            }
-                            ForEach(vm.conversations) { conv in
-                                Button {
-                                    path.append(DMRoute.conversation(id: conv.id))
-                                } label: {
-                                    ConversationRow(conv: conv)
-                                }
-                                .buttonStyle(.plain)
-                            }
+                    List {
+                        if vm.conversations.isEmpty && vm.didLoadOnce {
+                            EmptyStateView(
+                                icon: "envelope",
+                                title: vm.folder == "requests"
+                                    ? "No pending requests"
+                                    : "No conversations yet"
+                            )
+                            .listRowSeparator(.hidden)
                         }
-                        .listStyle(.plain)
-                        .scrollContentBackground(.hidden)
-                        .background(Color.clear)
-                        .refreshable { await vm.reload() }
+                        ForEach(vm.conversations) { conv in
+                            Button {
+                                path.append(DMRoute.conversation(id: conv.id))
+                            } label: {
+                                ConversationRow(conv: conv)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                    .background(Color.clear)
+                    .refreshable { await vm.reload() }
+                    .safeAreaInset(edge: .top, spacing: 0) {
+                        HStack(alignment: .center, spacing: 10) {
+                            TBFeedSegmented(
+                                selection: Binding(
+                                    get: { vm.folder },
+                                    set: { new in
+                                        vm.folder = new
+                                        Task { await vm.reload() }
+                                    }
+                                ),
+                                options: [
+                                    ("Inbox", "inbox"),
+                                    ("Requests (\(vm.requestCount))", "requests"),
+                                ]
+                            )
+                            .padding(.leading, TBLayout.glassBarOuterMargin)
+                            Spacer(minLength: 8)
+                            Button {
+                                showNew = true
+                            } label: {
+                                Image(systemName: "square.and.pencil")
+                                    .foregroundStyle(TBColor.accent)
+                            }
+                            .padding(.trailing, TBLayout.glassBarOuterMargin)
+                        }
+                        .padding(.top, 6)
+                        .padding(.bottom, 6)
                     }
                 } else {
                     ProgressView()
@@ -90,18 +100,7 @@ struct ConversationsListView: View {
                         .background(Color.clear)
                 }
             }
-            .navigationTitle("Messages")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showNew = true
-                    } label: {
-                        Image(systemName: "square.and.pencil")
-                            .foregroundStyle(TBColor.accent)
-                    }
-                }
-            }
+            .toolbar(path.isEmpty ? .hidden : .automatic, for: .navigationBar)
             .sheet(isPresented: $showNew) {
                 NewConversationView { conv in
                     showNew = false
@@ -179,3 +178,15 @@ private struct ConversationRow: View {
         .padding(.vertical, 6)
     }
 }
+
+#if DEBUG
+#Preview("Light") {
+    ConversationsListView()
+        .tbPreview(authState: .signedIn(user: .preview), colorScheme: .light)
+}
+
+#Preview("Dark") {
+    ConversationsListView()
+        .tbPreview(authState: .signedIn(user: .preview), colorScheme: .dark)
+}
+#endif

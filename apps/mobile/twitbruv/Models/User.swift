@@ -14,6 +14,7 @@ struct PublicUser: Codable, Identifiable, Hashable, Sendable {
     var role: String?
     var counts: Counts?
     var viewer: ViewerFlags?
+    var createdAt: Date?
 
     struct Counts: Codable, Hashable, Sendable {
         var followers: Int?

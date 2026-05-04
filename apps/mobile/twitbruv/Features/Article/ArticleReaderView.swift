@@ -91,3 +91,19 @@ struct ArticleReaderView: View {
         }
     }
 }
+
+#if DEBUG
+#Preview("Light") {
+    NavigationStack {
+        ArticleReaderView(handle: PreviewConst.handle, slug: PreviewConst.articleSlug)
+    }
+    .tbPreview(authState: .signedIn(user: .preview), colorScheme: .light)
+}
+
+#Preview("Dark") {
+    NavigationStack {
+        ArticleReaderView(handle: PreviewConst.handle, slug: PreviewConst.articleSlug)
+    }
+    .tbPreview(authState: .signedIn(user: .preview), colorScheme: .dark)
+}
+#endif

@@ -117,3 +117,21 @@ struct EmailVerifyPendingView: View {
     }
     #endif
 }
+
+#if DEBUG
+#Preview("Light") {
+    EmailVerifyPendingView()
+        .tbPreview(
+            authState: .needsEmailVerification(email: "preview@example.com"),
+            colorScheme: .light
+        )
+}
+
+#Preview("Dark") {
+    EmailVerifyPendingView()
+        .tbPreview(
+            authState: .needsEmailVerification(email: "preview@example.com"),
+            colorScheme: .dark
+        )
+}
+#endif

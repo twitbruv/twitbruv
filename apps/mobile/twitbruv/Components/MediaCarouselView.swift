@@ -4,13 +4,16 @@ struct MediaCarouselView: View {
     let media: [Media]
 
     var body: some View {
-        if media.isEmpty {
-            EmptyView()
-        } else if media.count == 1 {
-            single(media[0])
-        } else {
-            grid
+        Group {
+            if media.isEmpty {
+                EmptyView()
+            } else if media.count == 1 {
+                single(media[0])
+            } else {
+                grid
+            }
         }
+        .tbReadableColumn()
     }
 
     @ViewBuilder
@@ -19,25 +22,29 @@ struct MediaCarouselView: View {
             guard let w = m.width, let h = m.height, w > 0, h > 0 else { return 4.0 / 3.0 }
             return CGFloat(w) / CGFloat(h)
         }()
-        AsyncImage(url: m.bestURL) { phase in
-            switch phase {
-            case .empty:
-                TBColor.base2
-            case .success(let image):
-                image.resizable().scaledToFill()
-            case .failure:
-                ZStack {
-                    TBColor.base2
-                    Image(systemName: "photo")
-                        .foregroundStyle(TBColor.textTertiary)
+        Color.clear
+            .frame(maxWidth: .infinity)
+            .aspectRatio(max(0.4, min(2.5, aspect)), contentMode: .fit)
+            .background {
+                AsyncImage(url: m.bestURL) { phase in
+                    switch phase {
+                    case .empty:
+                        TBColor.base2
+                    case .success(let image):
+                        image.resizable().scaledToFill()
+                    case .failure:
+                        ZStack {
+                            TBColor.base2
+                            Image(systemName: "photo")
+                                .foregroundStyle(TBColor.textTertiary)
+                        }
+                    @unknown default:
+                        TBColor.base2
+                    }
                 }
-            @unknown default:
-                TBColor.base2
             }
-        }
-        .frame(maxWidth: .infinity)
-        .aspectRatio(max(0.4, min(2.5, aspect)), contentMode: .fit)
-        .clipShape(RoundedRectangle(cornerRadius: TBLayout.radiusPostRow, style: .continuous))
+            .clipped()
+            .clipShape(RoundedRectangle(cornerRadius: TBLayout.radiusPostRow, style: .continuous))
         .overlay(alignment: .topTrailing) {
             if let alt = m.altText, !alt.isEmpty {
                 Text("ALT")

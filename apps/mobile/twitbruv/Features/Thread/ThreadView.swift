@@ -154,3 +154,15 @@ struct ThreadView: View {
         }
     }
 }
+
+#if DEBUG
+#Preview("Light") {
+    ThreadView(postId: PreviewConst.threadPostId)
+        .tbPreview(authState: .signedIn(user: .preview), colorScheme: .light)
+}
+
+#Preview("Dark") {
+    ThreadView(postId: PreviewConst.threadPostId)
+        .tbPreview(authState: .signedIn(user: .preview), colorScheme: .dark)
+}
+#endif

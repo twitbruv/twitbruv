@@ -4,7 +4,8 @@ import UIKit
 enum TBTheme {
     static func apply() {
         let nav = UINavigationBarAppearance()
-        nav.configureWithTransparentBackground()
+        nav.configureWithOpaqueBackground()
+        nav.backgroundColor = UIColor.tbBase1
         nav.titleTextAttributes = [
             .foregroundColor: UIColor.tbTextPrimary,
             .font: UIFont.systemFont(ofSize: 17, weight: .semibold),
@@ -57,7 +58,6 @@ struct TBChromeModifier: ViewModifier {
     func body(content: Content) -> some View {
         content
             .tint(TBColor.accent)
-            .toolbarBackground(.hidden, for: .navigationBar)
             .background {
                 LinearGradient(
                     colors: [

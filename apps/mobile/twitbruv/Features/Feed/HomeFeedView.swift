@@ -72,6 +72,8 @@ struct HomeFeedView: View {
                     ComposerView(mode: .reply(replyTo))
                 case .hashtag(let tag):
                     HashtagView(tag: tag)
+                case .search(let initialQuery):
+                    SearchStackContent(path: $path, initialQuery: initialQuery)
                 }
             }
             .sheet(item: $reportTarget) { post in
@@ -137,4 +139,17 @@ enum FeedRoute: Hashable {
     case profile(handle: String)
     case compose(replyTo: Post)
     case hashtag(tag: String)
+    case search(initialQuery: String)
 }
+
+#if DEBUG
+#Preview("Light") {
+    HomeFeedView()
+        .tbPreview(authState: .signedIn(user: .preview), colorScheme: .light)
+}
+
+#Preview("Dark") {
+    HomeFeedView()
+        .tbPreview(authState: .signedIn(user: .preview), colorScheme: .dark)
+}
+#endif

@@ -9,6 +9,17 @@ struct NotificationItem: Codable, Identifiable, Hashable, Sendable {
     var createdAt: Date
     var readAt: Date?
     var meta: [String: String]?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case type = "kind"
+        case actor
+        case post = "target"
+        case conversationId
+        case createdAt
+        case readAt
+        case meta
+    }
 }
 
 struct NotificationsResponse: Codable, Sendable {

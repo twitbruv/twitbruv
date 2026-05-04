@@ -6,7 +6,12 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		0CE8B4B12FA8124C00FF124B /* twitbruv.icon in Resources */ = {isa = PBXBuildFile; fileRef = 0CE8B4B02FA8124C00FF124B /* twitbruv.icon */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
+		0CE8B4B02FA8124C00FF124B /* twitbruv.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = twitbruv.icon; sourceTree = "<group>"; };
 		78D8D98F2FA6294A00D7299E /* twitbruv.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = twitbruv.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -45,6 +50,7 @@
 		78D8D9862FA6294A00D7299E = {
 			isa = PBXGroup;
 			children = (
+				0CE8B4B02FA8124C00FF124B /* twitbruv.icon */,
 				78D8D9912FA6294A00D7299E /* twitbruv */,
 				78D8D9902FA6294A00D7299E /* Products */,
 			);
@@ -122,6 +128,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0CE8B4B12FA8124C00FF124B /* twitbruv.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -262,10 +269,12 @@
 		78D8D99B2FA6294B00D7299E /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = twitbruv;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = twitbruv/twitbruv.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = DS2JFEEZDM;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -293,10 +302,12 @@
 		78D8D99C2FA6294B00D7299E /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = twitbruv;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CODE_SIGN_ENTITLEMENTS = "twitbruv/twitbruv-release.entitlements";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = DS2JFEEZDM;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = NO;

@@ -116,6 +116,22 @@ struct MyListsView: View {
     }
 }
 
+#if DEBUG
+#Preview("Light") {
+    NavigationStack {
+        MyListsView()
+    }
+    .tbPreview(authState: .signedIn(user: .preview), colorScheme: .light)
+}
+
+#Preview("Dark") {
+    NavigationStack {
+        MyListsView()
+    }
+    .tbPreview(authState: .signedIn(user: .preview), colorScheme: .dark)
+}
+#endif
+
 struct ListDetailView: View {
     @Environment(AppEnvironment.self) private var env
     let list: UserList

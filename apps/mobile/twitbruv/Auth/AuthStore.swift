@@ -29,6 +29,12 @@ final class AuthStore {
         self.api = api
     }
 
+    #if DEBUG
+    func previewReplaceState(_ newState: AuthState) {
+        state = newState
+    }
+    #endif
+
     func bootstrap() async {
         do {
             let response: CurrentUserResponse = try await api.get(API.Me.get())
@@ -212,6 +218,7 @@ final class AuthStore {
     }
 
     func signOut() async {
+        await PushController.shared.deregisterIfNeeded()
         do {
             try await api.sendVoid(API.Auth.signOut())
         } catch {

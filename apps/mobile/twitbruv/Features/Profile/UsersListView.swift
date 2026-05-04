@@ -61,6 +61,7 @@ struct UsersListView: View {
                 case .profile(let h): ProfileView(handle: h, navigationPath: $navigationPath)
                 case .compose(let p): ComposerView(mode: .reply(p))
                 case .hashtag(let t): HashtagView(tag: t)
+                case .search(let q): SearchStackContent(path: $navigationPath, initialQuery: q)
                 }
             }
             .task {

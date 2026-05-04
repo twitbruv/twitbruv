@@ -120,3 +120,15 @@ struct HandleClaimView: View {
     }
     #endif
 }
+
+#if DEBUG
+#Preview("Light") {
+    HandleClaimView()
+        .tbPreview(authState: .needsHandle(user: .previewNeedsHandle), colorScheme: .light)
+}
+
+#Preview("Dark") {
+    HandleClaimView()
+        .tbPreview(authState: .needsHandle(user: .previewNeedsHandle), colorScheme: .dark)
+}
+#endif

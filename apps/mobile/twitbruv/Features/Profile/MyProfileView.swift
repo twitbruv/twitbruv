@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct MyProfileView: View {
     @Environment(AppEnvironment.self) private var env
@@ -32,10 +33,20 @@ struct MyProfileView: View {
 struct SettingsView: View {
     @Environment(AppEnvironment.self) private var env
     @Environment(AuthStore.self) private var auth
+    @Environment(\.openURL) private var openURL
     @State private var isSigningOut = false
 
     var body: some View {
         Form {
+            Section("Notifications") {
+                Button("System notification settings") {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        openURL(url)
+                    }
+                }
+                .foregroundStyle(TBColor.accent)
+            }
+
             Section("Library") {
                 NavigationLink("Bookmarks") { BookmarksView() }
                 NavigationLink("Lists") { MyListsView() }
@@ -88,3 +99,29 @@ struct SettingsView: View {
         .background(Color.clear)
     }
 }
+
+#if DEBUG
+#Preview("My profile · Light") {
+    MyProfileView()
+        .tbPreview(authState: .signedIn(user: .preview), colorScheme: .light)
+}
+
+#Preview("My profile · Dark") {
+    MyProfileView()
+        .tbPreview(authState: .signedIn(user: .preview), colorScheme: .dark)
+}
+
+#Preview("Settings · Light") {
+    NavigationStack {
+        SettingsView()
+    }
+    .tbPreview(authState: .signedIn(user: .preview), colorScheme: .light)
+}
+
+#Preview("Settings · Dark") {
+    NavigationStack {
+        SettingsView()
+    }
+    .tbPreview(authState: .signedIn(user: .preview), colorScheme: .dark)
+}
+#endif

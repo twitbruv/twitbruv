@@ -82,3 +82,19 @@ struct SignUpView: View {
         }
     }
 }
+
+#if DEBUG
+#Preview("Light") {
+    NavigationStack {
+        SignUpView(path: .constant(NavigationPath()))
+    }
+    .tbPreview(authState: .signedOut, colorScheme: .light)
+}
+
+#Preview("Dark") {
+    NavigationStack {
+        SignUpView(path: .constant(NavigationPath()))
+    }
+    .tbPreview(authState: .signedOut, colorScheme: .dark)
+}
+#endif

@@ -33,8 +33,9 @@ added under `apps/mobile/twitbruv/` is automatically part of the build target.
 
 3. In Xcode, pick an **iOS 26.4** simulator and Cmd-R. The DEBUG build points
    at `http://localhost:3001` (see `App/Config.swift`). Release builds default
-   to `https://api.twitbruv.app`. To override, set the `API_BASE_URL` and
-   `WEB_BASE_URL` Info.plist entries via build settings or an `.xcconfig`.
+   to `https://api.ak2.dev` (API) and `https://ak2.dev` (web). To override, set
+   the `API_BASE_URL` and `WEB_BASE_URL` Info.plist entries via build settings
+   or an `.xcconfig`.
 
    The DEBUG `Info.plist` includes an `NSAppTransportSecurity` exception for
    `localhost` and `127.0.0.1` so HTTP traffic to the dev API is allowed.
@@ -76,9 +77,15 @@ Before pointing the app at a non-local environment:
    `API_BASE_URL` / `WEB_BASE_URL` via build settings if the URLs differ from
    the defaults baked into `Config.swift`.
 
+4. **Push (APNs):** Enable the Push Notifications capability in Xcode for your
+   team if it is not already applied. Debug builds use
+   `twitbruv/twitbruv.entitlements` (`aps-environment` = development); Release
+   uses `twitbruv-release.entitlements` (production). Run `bun run db:push`
+   locally so the `device_tokens` table exists. Configure `APNS_*` in `.env`
+   for `apps/worker` (see root `.env.example`).
+
 ## Out of scope for v1
 
-- Push notifications (no APNs server work yet)
 - Bearer / API-key auth — cookie sessions only
 - Article composition (read-only viewer; write on web)
 - Chess, admin, analytics dashboard, GitHub connector, ActivityPub

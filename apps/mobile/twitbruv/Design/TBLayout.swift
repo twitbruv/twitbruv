@@ -16,7 +16,7 @@ enum TBLayout {
     static let hitTarget: CGFloat = 44
     static let composeFabSize: CGFloat = 48
     static let composeFabIconPointSize: CGFloat = 19
-    static let composeFabBottomPadding: CGFloat = 100
+    static let composeFabBottomPadding: CGFloat = 58
     static let tabBarIconPointSize: CGFloat = 14
     static let tabBarTitlePointSize: CGFloat = 10
     static let feedScopeHeaderSlotHeight: CGFloat = 56

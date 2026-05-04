@@ -43,6 +43,7 @@ struct BookmarksView: View {
                 case .profile(let handle): ProfileView(handle: handle, navigationPath: $path)
                 case .compose(let replyTo): ComposerView(mode: .reply(replyTo))
                 case .hashtag(let tag): HashtagView(tag: tag)
+                case .search(let q): SearchStackContent(path: $path, initialQuery: q)
                 }
             }
             .sheet(item: $reportTarget) { post in
@@ -59,3 +60,15 @@ struct BookmarksView: View {
         )
     }
 }
+
+#if DEBUG
+#Preview("Light") {
+    BookmarksView()
+        .tbPreview(authState: .signedIn(user: .preview), colorScheme: .light)
+}
+
+#Preview("Dark") {
+    BookmarksView()
+        .tbPreview(authState: .signedIn(user: .preview), colorScheme: .dark)
+}
+#endif

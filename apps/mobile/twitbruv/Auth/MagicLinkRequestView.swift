@@ -67,3 +67,19 @@ struct MagicLinkRequestView: View {
         }
     }
 }
+
+#if DEBUG
+#Preview("Light") {
+    NavigationStack {
+        MagicLinkRequestView()
+    }
+    .tbPreview(authState: .signedOut, colorScheme: .light)
+}
+
+#Preview("Dark") {
+    NavigationStack {
+        MagicLinkRequestView()
+    }
+    .tbPreview(authState: .signedOut, colorScheme: .dark)
+}
+#endif

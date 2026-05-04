@@ -97,3 +97,19 @@ struct EditProfileView: View {
         }
     }
 }
+
+#if DEBUG
+#Preview("Light") {
+    NavigationStack {
+        EditProfileView()
+    }
+    .tbPreview(authState: .signedIn(user: .preview), colorScheme: .light)
+}
+
+#Preview("Dark") {
+    NavigationStack {
+        EditProfileView()
+    }
+    .tbPreview(authState: .signedIn(user: .preview), colorScheme: .dark)
+}
+#endif

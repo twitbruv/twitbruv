@@ -17,7 +17,18 @@ final class AppEnvironment {
         self.auth = AuthStore(api: api)
         self.devTools = DevTools(api: api)
         api.delegate = self
+        PushController.shared.attach(api: api)
     }
+
+    #if DEBUG
+    init(previewApi api: APIClient) {
+        self.api = api
+        self.auth = AuthStore(api: api)
+        self.devTools = DevTools(api: api)
+        api.delegate = self
+        PushController.shared.attach(api: api)
+    }
+    #endif
 
     func bootstrap() async {
         await auth.bootstrap()

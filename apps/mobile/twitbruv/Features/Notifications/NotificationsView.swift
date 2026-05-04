@@ -17,6 +17,7 @@ final class NotificationsViewModel {
     func reload() async {
         isLoading = true
         defer { isLoading = false }
+        error = nil
         do {
             let response: NotificationsResponse = try await api.get(
                 API.Notifications.list(cursor: nil, unreadOnly: false)
@@ -75,6 +76,12 @@ struct NotificationsView: View {
             Group {
                 if let vm {
                     List {
+                        if let err = vm.error {
+                            ErrorBanner(message: err.localizedDescription) {
+                                Task { await vm.reload() }
+                            }
+                            .listRowSeparator(.hidden)
+                        }
                         if vm.items.isEmpty && vm.didLoadOnce {
                             EmptyStateView(
                                 icon: "bell",
@@ -136,6 +143,7 @@ struct NotificationsView: View {
                 case .profile(let h): ProfileView(handle: h, navigationPath: $path)
                 case .compose(let p): ComposerView(mode: .reply(p))
                 case .hashtag(let t): HashtagView(tag: t)
+                case .search(let q): SearchStackContent(path: $path, initialQuery: q)
                 }
             }
             .task {
@@ -200,6 +208,7 @@ private struct NotificationRow: View {
         case "quote": return "quote.bubble.fill"
         case "mention": return "at"
         case "dm", "message": return "envelope.fill"
+        case "article_reply": return "text.bubble.fill"
         default: return "bell.fill"
         }
     }
@@ -213,7 +222,20 @@ private struct NotificationRow: View {
         case "quote": return "quoted you"
         case "mention": return "mentioned you"
         case "dm", "message": return "sent a message"
+        case "article_reply": return "replied to your article"
         default: return item.type
         }
     }
 }
+
+#if DEBUG
+#Preview("Light") {
+    NotificationsView()
+        .tbPreview(authState: .signedIn(user: .preview), colorScheme: .light)
+}
+
+#Preview("Dark") {
+    NotificationsView()
+        .tbPreview(authState: .signedIn(user: .preview), colorScheme: .dark)
+}
+#endif

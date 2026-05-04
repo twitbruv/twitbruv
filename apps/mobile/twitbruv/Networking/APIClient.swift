@@ -26,6 +26,13 @@ final class APIClient {
         self.session = URLSession(configuration: config)
     }
 
+    #if DEBUG
+    init(baseURL: URL, session: URLSession) {
+        self.baseURL = baseURL
+        self.session = session
+    }
+    #endif
+
     func get<T: Decodable & Sendable>(_ endpoint: Endpoint) async throws -> T {
         try await perform(endpoint, body: nil as EmptyBody?)
     }

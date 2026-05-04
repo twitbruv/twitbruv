@@ -399,6 +399,18 @@ struct ComposerView: View {
     }
 }
 
+#if DEBUG
+#Preview("Light") {
+    ComposerView(mode: .new)
+        .tbPreview(authState: .signedIn(user: .preview), colorScheme: .light)
+}
+
+#Preview("Dark") {
+    ComposerView(mode: .new)
+        .tbPreview(authState: .signedIn(user: .preview), colorScheme: .dark)
+}
+#endif
+
 private struct PollEditor: View {
     @Binding var options: [String]
     @Binding var durationSec: Int

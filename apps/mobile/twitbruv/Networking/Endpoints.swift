@@ -56,6 +56,8 @@ enum API {
         static func mutes(cursor: String?) -> Endpoint {
             .init(.GET, "/api/me/mutes", query: Endpoint.appending(["cursor": cursor]))
         }
+        static func pushRegister() -> Endpoint { .init(.POST, "/api/me/push/register") }
+        static func pushUnregister() -> Endpoint { .init(.DELETE, "/api/me/push/register") }
     }
 
     enum Users {

@@ -15,7 +15,7 @@ enum Config {
         #if DEBUG
         return URL(string: "http://localhost:3001")!
         #else
-        return URL(string: "https://api.twitbruv.app")!
+        return URL(string: "https://api.ak2.dev")!
         #endif
     }
 
@@ -29,7 +29,7 @@ enum Config {
         #if DEBUG
         return URL(string: "http://localhost:3000")!
         #else
-        return URL(string: "https://twitbruv.app")!
+        return URL(string: "https://ak2.dev")!
         #endif
     }
 }

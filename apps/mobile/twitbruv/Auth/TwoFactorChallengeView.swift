@@ -74,3 +74,27 @@ struct TwoFactorChallengeView: View {
         }
     }
 }
+
+#if DEBUG
+#Preview("Light") {
+    NavigationStack {
+        TwoFactorChallengeView()
+    }
+    .tbPreview(
+        authState: .signedOut,
+        colorScheme: .light,
+        pendingTwoFactor: TwoFactorPending(email: "preview@example.com")
+    )
+}
+
+#Preview("Dark") {
+    NavigationStack {
+        TwoFactorChallengeView()
+    }
+    .tbPreview(
+        authState: .signedOut,
+        colorScheme: .dark,
+        pendingTwoFactor: TwoFactorPending(email: "preview@example.com")
+    )
+}
+#endif
