@@ -221,14 +221,14 @@ app.get('/api/m/*', async (c) => {
     key,
     expiresInSeconds: ctx.env.MEDIA_SIGNED_URL_TTL_SEC,
   })
-  // Cache the redirect for nearly the full signed-URL lifetime. Each redirect points to a
-  // freshly-signed URL valid for MEDIA_SIGNED_URL_TTL_SEC. Without a matching cache, the
-  // browser re-asks the proxy on every page paint, gets a different signature, and treats
-  // the result as a new resource — re-downloading the same image bytes. Caching for the
-  // URL's validity (minus a buffer to avoid mid-fetch expiry) lets the browser reuse one
-  // signed URL until it's genuinely close to expiring.
-  const cacheSeconds = Math.max(60, ctx.env.MEDIA_SIGNED_URL_TTL_SEC - 60)
-  c.header('Cache-Control', `public, max-age=${cacheSeconds}`)
+  // Keep redirect caches comfortably shorter than the signed URL they point at. If an
+  // intermediary or browser reuses the 302 after the S3 signature expires, image loads fail
+  // with 403 until the cached redirect is bypassed.
+  const cacheSeconds = Math.max(0, Math.min(300, ctx.env.MEDIA_SIGNED_URL_TTL_SEC - 60))
+  c.header(
+    'Cache-Control',
+    `public, max-age=${cacheSeconds}, s-maxage=${cacheSeconds}, must-revalidate`,
+  )
   return c.redirect(signed, 302)
 })
 app.route('/api/articles', articlesRoute)
