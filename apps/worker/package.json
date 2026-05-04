@@ -16,6 +16,7 @@
     "@workspace/url-unfurl-core": "workspace:*",
     "@workspace/x-unfurl": "workspace:*",
     "@workspace/youtube-unfurl": "workspace:*",
+    "jose": "^6.2.3",
     "pg-boss": "^10.3.2",
     "pino": "^10.3.1",
     "zod": "^4.4.1"

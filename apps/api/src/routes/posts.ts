@@ -20,7 +20,8 @@ import { attachReplyParents } from '../lib/reply-parents.ts'
 import { loadPolls } from '../lib/polls.ts'
 import { linkHashtags } from '../lib/hashtags.ts'
 import { linkMentions } from '../lib/mentions.ts'
-import { notify, invalidateUnreadCounts } from '../lib/notify.ts'
+import { notify, invalidateUnreadCounts, type NotifyInput } from '../lib/notify.ts'
+import { enqueueApnsSendJobs, postPermalink } from '../lib/push-apns.ts'
 import { parseCursor } from '../lib/cursor.ts'
 import { homeFeedCacheKey, profileFeedCacheKey } from './feed.ts'
 import { attachPostUnfurls, runInlineUnfurls } from '../lib/post-unfurls.ts'
@@ -66,6 +67,7 @@ postsRoute.post('/', requireHandle(), async (c) => {
     return c.json({ error: 'invalid_combo', message: 'reply and quote are mutually exclusive' }, 400)
   }
 
+  const webUrl = c.get('ctx').env.PUBLIC_WEB_URL
   const result = await db.transaction(async (tx) => {
     let replyToId: string | null = null
     let rootId: string | null = null
@@ -221,7 +223,7 @@ postsRoute.post('/', requireHandle(), async (c) => {
     // Fan-out notifications. Self-notifications and duplicates (mention of the reply target,
     // for instance) are filtered inside notify() + de-duped here to avoid double rows.
     const notifiedForStructure = new Set<string>()
-    const toNotify: Array<Parameters<typeof notify>[1][number]> = []
+    const toNotify: NotifyInput[] = []
     if (replyTargetAuthorId && replyTargetAuthorId !== session.user.id) {
       toNotify.push({
         userId: replyTargetAuthorId,
@@ -252,12 +254,20 @@ postsRoute.post('/', requireHandle(), async (c) => {
         entityId: post.id,
       })
     }
-    const notified = await notify(tx, toNotify)
-
     const [author] = await tx.select().from(schema.users).where(eq(schema.users.id, post.authorId)).limit(1)
     if (!author) throw new HttpError(500, 'author_missing')
 
-    return { post, author, notified, unfurlJobs }
+    const actorLabel = author.displayName?.trim() || author.handle || 'Someone'
+    const snippet = body.text.trim().slice(0, 120) || 'New post'
+    const deep = postPermalink(webUrl, author.handle, post.id)
+    for (let i = 0; i < toNotify.length; i++) {
+      const entry = toNotify[i]!
+      toNotify[i] = { ...entry, push: { title: actorLabel, body: snippet, deepLink: deep } }
+    }
+
+    const { recipients: notifyRecipients, pushJobs } = await notify(tx, toNotify)
+
+    return { post, author, notifyRecipients, pushJobs, unfurlJobs }
   })
 
   // Invalidate the author's cached home feed so their own new post shows up on refresh,
@@ -267,7 +277,8 @@ postsRoute.post('/', requireHandle(), async (c) => {
   // after the tx commits so a rollback can't leave behind half-fetched rows.
   await Promise.all([
     cache.del(homeFeedCacheKey(session.user.id), profileFeedCacheKey(session.user.id)),
-    invalidateUnreadCounts(cache, result.notified),
+    invalidateUnreadCounts(cache, result.notifyRecipients),
+    enqueueApnsSendJobs(c.get('ctx').boss, db, result.pushJobs),
     runInlineUnfurls(db, c.get('ctx').boss, result.unfurlJobs, {
       youtubeApiKey: c.get('ctx').env.YOUTUBE_API_KEY,
       fxtwitterApiBaseUrl: c.get('ctx').env.FXTWITTER_API_BASE_URL,
@@ -321,6 +332,7 @@ postsRoute.post('/:id/repost', requireHandle(), async (c) => {
   const id = c.req.param('id')
   await rateLimit(c, 'posts.repost')
 
+  const webUrl = c.get('ctx').env.PUBLIC_WEB_URL
   const result = await db.transaction(async (tx) => {
     const [target] = await tx
       .select()
@@ -340,7 +352,7 @@ postsRoute.post('/:id/repost', requireHandle(), async (c) => {
         ),
       )
       .limit(1)
-    if (existing) return { notified: new Set<string>() }
+    if (existing) return { notifyRecipients: new Set<string>(), pushJobs: [] }
 
     await tx.insert(schema.posts).values({
       authorId: session.user.id,
@@ -353,21 +365,39 @@ postsRoute.post('/:id/repost', requireHandle(), async (c) => {
       .set({ repostCount: sql`${schema.posts.repostCount} + 1` })
       .where(eq(schema.posts.id, target.id))
 
-    const notified = await notify(tx, [
+    const [actor] = await tx
+      .select({ displayName: schema.users.displayName, handle: schema.users.handle })
+      .from(schema.users)
+      .where(eq(schema.users.id, session.user.id))
+      .limit(1)
+    const [targetAuthor] = await tx
+      .select({ handle: schema.users.handle })
+      .from(schema.users)
+      .where(eq(schema.users.id, target.authorId))
+      .limit(1)
+    const actorLabel = actor?.displayName?.trim() || actor?.handle || 'Someone'
+
+    const { recipients: notifyRecipients, pushJobs } = await notify(tx, [
       {
         userId: target.authorId,
         actorId: session.user.id,
         kind: 'repost',
         entityType: 'post',
         entityId: target.id,
+        push: {
+          title: actorLabel,
+          body: 'Reposted your post',
+          deepLink: postPermalink(webUrl, targetAuthor?.handle, target.id),
+        },
       },
     ])
-    return { notified }
+    return { notifyRecipients, pushJobs }
   })
 
   await Promise.all([
     cache.del(homeFeedCacheKey(session.user.id), profileFeedCacheKey(session.user.id)),
-    invalidateUnreadCounts(cache, result.notified),
+    invalidateUnreadCounts(cache, result.notifyRecipients),
+    enqueueApnsSendJobs(c.get('ctx').boss, db, result.pushJobs),
   ])
   c.get('ctx').track('post_reposted', session.user.id)
   return c.json({ ok: true })
@@ -409,13 +439,14 @@ postsRoute.post('/:id/like', requireHandle(), async (c) => {
   const id = c.req.param('id')
   await rateLimit(c, 'posts.like')
 
-  const notified = await db.transaction(async (tx) => {
+  const webUrl = c.get('ctx').env.PUBLIC_WEB_URL
+  const likeResult = await db.transaction(async (tx) => {
     const inserted = await tx
       .insert(schema.likes)
       .values({ userId: session.user.id, postId: id })
       .onConflictDoNothing()
       .returning({ postId: schema.likes.postId })
-    if (inserted.length === 0) return new Set<string>()
+    if (inserted.length === 0) return { recipients: new Set<string>(), pushJobs: [] }
 
     await tx
       .update(schema.posts)
@@ -427,7 +458,7 @@ postsRoute.post('/:id/like', requireHandle(), async (c) => {
       .from(schema.posts)
       .where(eq(schema.posts.id, id))
       .limit(1)
-    if (!target) return new Set<string>()
+    if (!target) return { recipients: new Set<string>(), pushJobs: [] }
     await tx
       .delete(schema.notifications)
       .where(
@@ -439,6 +470,17 @@ postsRoute.post('/:id/like', requireHandle(), async (c) => {
           eq(schema.notifications.entityId, id),
         ),
       )
+    const [actor] = await tx
+      .select({ displayName: schema.users.displayName, handle: schema.users.handle })
+      .from(schema.users)
+      .where(eq(schema.users.id, session.user.id))
+      .limit(1)
+    const [postAuthor] = await tx
+      .select({ handle: schema.users.handle })
+      .from(schema.users)
+      .where(eq(schema.users.id, target.authorId))
+      .limit(1)
+    const actorLabel = actor?.displayName?.trim() || actor?.handle || 'Someone'
     return notify(tx, [
       {
         userId: target.authorId,
@@ -446,11 +488,19 @@ postsRoute.post('/:id/like', requireHandle(), async (c) => {
         kind: 'like',
         entityType: 'post',
         entityId: id,
+        push: {
+          title: actorLabel,
+          body: 'Liked your post',
+          deepLink: postPermalink(webUrl, postAuthor?.handle, id),
+        },
       },
     ])
   })
 
-  await invalidateUnreadCounts(c.get('ctx').cache, notified)
+  await Promise.all([
+    invalidateUnreadCounts(c.get('ctx').cache, likeResult.recipients),
+    enqueueApnsSendJobs(c.get('ctx').boss, db, likeResult.pushJobs),
+  ])
   c.get('ctx').track('post_liked', session.user.id)
   return c.json({ ok: true })
 })

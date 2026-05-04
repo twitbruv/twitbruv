@@ -8,6 +8,7 @@ import { requireHandle, type HonoEnv } from '../middleware/session.ts'
 import { parseCursor } from '../lib/cursor.ts'
 import { dmChannel } from '../lib/pubsub.ts'
 import { toMediaDto, type MediaDto } from '../lib/post-dto.ts'
+import { enqueueApnsSendJobs, inboxPermalink } from '../lib/push-apns.ts'
 
 export const dmsRoute = new Hono<HonoEnv>()
 
@@ -825,7 +826,7 @@ dmsRoute.get('/:id/messages', async (c) => {
 // Send a message. Updates the conversation's lastMessageAt and notifies non-self members.
 dmsRoute.post('/:id/messages', async (c) => {
   const session = c.get('session')!
-  const { db, mediaEnv, pubsub, rateLimit } = c.get('ctx')
+  const { db, mediaEnv, pubsub, rateLimit, boss } = c.get('ctx')
   await rateLimit(c, 'dms.send')
   const me = session.user.id
   const conversationId = c.req.param('id')
@@ -932,6 +933,33 @@ dmsRoute.post('/:id/messages', async (c) => {
       pubsub.publish(dmChannel(userId), { type: 'message', conversationId, message: payload }),
     ),
   )
+
+  if (message.otherUserIds.length > 0) {
+    const webUrl = c.get('ctx').env.PUBLIC_WEB_URL
+    const [actor] = await db
+      .select({ displayName: schema.users.displayName, handle: schema.users.handle })
+      .from(schema.users)
+      .where(eq(schema.users.id, me))
+      .limit(1)
+    const actorLabel = actor?.displayName?.trim() || actor?.handle || 'Someone'
+    const preview =
+      body.text?.trim().slice(0, 120) ??
+      (kind === 'media'
+        ? 'Sent a photo'
+        : kind === 'post_share'
+          ? 'Shared a post'
+          : kind === 'article_share'
+            ? 'Shared an article'
+            : 'New message')
+    const dmJobs = message.otherUserIds.map((uid) => ({
+      userId: uid,
+      kind: 'dm' as const,
+      title: actorLabel,
+      body: preview,
+      deepLink: inboxPermalink(webUrl, conversationId),
+    }))
+    await enqueueApnsSendJobs(boss, db, dmJobs)
+  }
 
   c.get('ctx').track('dm_sent', me)
   return c.json({ message: payload })

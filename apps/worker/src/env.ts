@@ -20,6 +20,12 @@ const envSchema = z.object({
   GITHUB_UNFURL_TOKEN: z.string().optional(),
   YOUTUBE_API_KEY: z.string().optional(),
   FXTWITTER_API_BASE_URL: z.string().optional(),
+
+  APNS_KEY_ID: z.string().optional(),
+  APNS_TEAM_ID: z.string().optional(),
+  APNS_BUNDLE_ID: z.string().optional(),
+  APNS_KEY_P8: z.string().optional(),
+  APNS_ENVIRONMENT: z.enum(["sandbox", "production"]).optional(),
 })
 
 export type Env = z.infer<typeof envSchema>

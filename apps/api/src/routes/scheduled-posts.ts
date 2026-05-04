@@ -11,6 +11,8 @@ import { requireHandle, type HonoEnv } from '../middleware/session.ts'
 import { linkHashtags } from '../lib/hashtags.ts'
 import { linkMentions } from '../lib/mentions.ts'
 import { invalidateUnreadCounts, notify } from '../lib/notify.ts'
+import { enqueueApnsSendJobs, postPermalink } from '../lib/push-apns.ts'
+import type { ApnsSendJob } from '../lib/notify.ts'
 import { homeFeedCacheKey } from './feed.ts'
 
 export const scheduledPostsRoute = new Hono<HonoEnv>()
@@ -136,10 +138,13 @@ scheduledPostsRoute.post('/:id/publish', async (c) => {
   await rateLimit(c, 'scheduled.write')
   const id = c.req.param('id')
 
-  const result = await publishScheduled(db, session.user.id, id)
+  const result = await publishScheduled(db, session.user.id, id, c.get('ctx').env.PUBLIC_WEB_URL)
   if (!result.ok) return c.json({ error: result.error }, result.status as never)
 
-  await invalidateUnreadCounts(cache, result.notifyRecipients)
+  await Promise.all([
+    invalidateUnreadCounts(cache, result.notifyRecipients),
+    enqueueApnsSendJobs(c.get('ctx').boss, db, result.pushJobs),
+  ])
   await cache.del(homeFeedCacheKey(session.user.id))
   c.get('ctx').track('scheduled_post_published', session.user.id)
   return c.json({ postId: result.postId })
@@ -172,6 +177,7 @@ interface PublishSuccess {
   ok: true
   postId: string
   notifyRecipients: Set<string>
+  pushJobs: ApnsSendJob[]
 }
 interface PublishError {
   ok: false
@@ -183,6 +189,7 @@ export async function publishScheduled(
   db: import('@workspace/db').Database,
   authorId: string,
   scheduledId: string,
+  publicWebUrl: string,
 ): Promise<PublishSuccess | PublishError> {
   return await db.transaction(async (tx) => {
     const [draft] = await tx
@@ -231,7 +238,16 @@ export async function publishScheduled(
 
     await linkHashtags(tx, post.id, post.text)
     const mentioned = await linkMentions(tx, post.id, authorId, post.text)
-    const notifyRecipients = await notify(
+    const [author] = await tx
+      .select({ displayName: schema.users.displayName, handle: schema.users.handle })
+      .from(schema.users)
+      .where(eq(schema.users.id, authorId))
+      .limit(1)
+    const actorLabel = author?.displayName?.trim() || author?.handle || 'Someone'
+    const snippet = post.text.trim().slice(0, 120) || 'New post'
+    const deep = postPermalink(publicWebUrl, author?.handle, post.id)
+
+    const { recipients: notifyRecipients, pushJobs } = await notify(
       tx,
       mentioned.map((uid) => ({
         userId: uid,
@@ -239,6 +255,7 @@ export async function publishScheduled(
         kind: 'mention' as const,
         entityType: 'post',
         entityId: post.id,
+        push: { title: actorLabel, body: snippet, deepLink: deep },
       })),
     )
 
@@ -247,7 +264,7 @@ export async function publishScheduled(
       .set({ publishedAt: new Date(), publishedPostId: post.id })
       .where(eq(schema.scheduledPosts.id, scheduledId))
 
-    return { ok: true as const, postId: post.id, notifyRecipients }
+    return { ok: true as const, postId: post.id, notifyRecipients, pushJobs }
   })
 }
 

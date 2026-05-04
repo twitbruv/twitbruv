@@ -12,6 +12,7 @@ import { loadRepostTargets } from '../lib/repost-targets.ts'
 import { loadQuoteTargets } from '../lib/quote-targets.ts'
 import { attachReplyParents } from '../lib/reply-parents.ts'
 import { notify, invalidateUnreadCounts } from '../lib/notify.ts'
+import { enqueueApnsSendJobs, profilePermalink } from '../lib/push-apns.ts'
 import { loadPolls } from '../lib/polls.ts'
 import { parseCursor } from '../lib/cursor.ts'
 import { homeFeedCacheKey, profileFeedCacheKey } from './feed.ts'
@@ -530,25 +531,40 @@ usersRoute.post('/:handle/follow', requireHandle(), async (c) => {
   if (!user) return c.json({ error: 'not_found' }, 404)
   if (user.id === session.user.id) return c.json({ error: 'self_follow' }, 400)
 
-  const notified = await db.transaction(async (tx) => {
+  const webUrl = c.get('ctx').env.PUBLIC_WEB_URL
+  const followResult = await db.transaction(async (tx) => {
     const inserted = await tx
       .insert(schema.follows)
       .values({ followerId: session.user.id, followeeId: user.id })
       .onConflictDoNothing()
       .returning({ followerId: schema.follows.followerId })
-    if (inserted.length === 0) return new Set<string>()
+    if (inserted.length === 0) return { recipients: new Set<string>(), pushJobs: [] }
+
+    const [actor] = await tx
+      .select({ displayName: schema.users.displayName, handle: schema.users.handle })
+      .from(schema.users)
+      .where(eq(schema.users.id, session.user.id))
+      .limit(1)
+    const actorLabel = actor?.displayName?.trim() || actor?.handle || 'Someone'
+
     return notify(tx, [
       {
         userId: user.id,
         actorId: session.user.id,
         kind: 'follow',
+        push: {
+          title: actorLabel,
+          body: 'Started following you',
+          deepLink: profilePermalink(webUrl, actor?.handle),
+        },
       },
     ])
   })
 
   await Promise.all([
     cache.del(homeFeedCacheKey(session.user.id)),
-    invalidateUnreadCounts(cache, notified),
+    invalidateUnreadCounts(cache, followResult.recipients),
+    enqueueApnsSendJobs(c.get('ctx').boss, db, followResult.pushJobs),
   ])
   c.get('ctx').track('user_followed', session.user.id)
   return c.json({ ok: true })

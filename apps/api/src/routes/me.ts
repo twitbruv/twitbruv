@@ -7,6 +7,8 @@ import {
   updateExperimentsSchema,
   resolveExperiments,
   type ExperimentPrefs,
+  pushRegisterBodySchema,
+  pushUnregisterBodySchema,
 } from '@workspace/validators'
 import { assetUrl, extractKey } from '@workspace/media/s3'
 import { requireAuth, type HonoEnv } from '../middleware/session.ts'
@@ -105,6 +107,51 @@ meRoute.post('/handle', async (c) => {
   c.get('ctx').track('handle_claimed', session.user.id)
   const priv = await loadExperimentPrefs(db, session.user.id)
   return c.json({ user: toSelfDto(user, c.get('ctx').mediaEnv, priv) })
+})
+
+meRoute.post('/push/register', async (c) => {
+  const session = c.get('session')!
+  const { db, rateLimit } = c.get('ctx')
+  await rateLimit(c, 'me.push-register')
+  const body = pushRegisterBodySchema.parse(await c.req.json())
+  await db
+    .insert(schema.deviceTokens)
+    .values({
+      userId: session.user.id,
+      token: body.token,
+      bundleId: body.bundleId,
+      environment: body.environment,
+      appVersion: body.appVersion ?? null,
+      osVersion: body.osVersion ?? null,
+      lastSeenAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: [schema.deviceTokens.token, schema.deviceTokens.environment],
+      set: {
+        userId: session.user.id,
+        bundleId: body.bundleId,
+        appVersion: body.appVersion ?? null,
+        osVersion: body.osVersion ?? null,
+        lastSeenAt: new Date(),
+      },
+    })
+  return c.json({ ok: true })
+})
+
+meRoute.delete('/push/register', async (c) => {
+  const session = c.get('session')!
+  const { db, rateLimit } = c.get('ctx')
+  await rateLimit(c, 'me.push-register')
+  const body = pushUnregisterBodySchema.parse(await c.req.json())
+  await db
+    .delete(schema.deviceTokens)
+    .where(
+      and(
+        eq(schema.deviceTokens.userId, session.user.id),
+        eq(schema.deviceTokens.token, body.token),
+      ),
+    )
+  return c.json({ ok: true })
 })
 
 // Users I've blocked. Newest first. Used by settings → Privacy so users can audit and
