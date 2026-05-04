@@ -65,6 +65,8 @@
   --shadow-gh-tooltip:
     0 0.5px 0 oklch(1 0 0 / 100%) inset, 0 -0.5px 0 oklch(1 0 0 / 100%) inset,
     0 0 25px oklch(1 0 0 / 100%) inset;
+  /* Mobile island nav / compose: inset hairline (shared light + dark) */
+  --shadow-mobile-island-inset: 0 0 1px 0.5px oklch(1 0 0 / 0.67) inset;
 
   /* ── Like color ── */
   --text-color-like: var(--color-red-9);

@@ -12,6 +12,7 @@ import { Button } from "@workspace/ui/components/button"
 import { authClient } from "../lib/auth"
 import { api } from "../lib/api"
 import { qk } from "../lib/query-keys"
+import { AppMobileIslandNav } from "./app-mobile-island-nav"
 import { AppSidebar } from "./app-sidebar"
 import { LightboxProvider } from "./lightbox-provider"
 import { YouTubePlayerProvider } from "./youtube-player-dialog"
@@ -24,6 +25,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const authed = Boolean(session)
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const isAdminShell = pathname.startsWith("/admin")
+  const showMobileIslandNav = authed && !isAdminShell
 
   const sidebarLeftStyle = {
     left: "max(0px, calc((100vw - 1080px) / 2))",
@@ -39,8 +41,8 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div
               className={
                 isAdminShell
-                  ? "fixed top-0 z-40 h-svh w-[68px]"
-                  : "fixed top-0 z-40 h-svh w-[68px] xl:w-[240px]"
+                  ? "fixed top-0 z-40 hidden h-svh w-[68px] md:block"
+                  : "fixed top-0 z-40 hidden h-svh w-[68px] md:block xl:w-[240px]"
               }
               style={sidebarLeftStyle}
             >
@@ -51,11 +53,19 @@ export function AppShell({ children }: { children: ReactNode }) {
               <div
                 className={
                   isAdminShell
-                    ? "w-[68px] shrink-0"
-                    : "w-[68px] shrink-0 xl:w-[240px]"
+                    ? "hidden w-[68px] shrink-0 md:block"
+                    : "hidden w-[68px] shrink-0 md:block xl:w-[240px]"
                 }
               />
-              <main className="flex min-h-svh flex-1 flex-col">{children}</main>
+              <main
+                className={
+                  showMobileIslandNav
+                    ? "flex min-h-svh min-w-0 flex-1 flex-col pb-32 md:pb-0"
+                    : "flex min-h-svh min-w-0 flex-1 flex-col"
+                }
+              >
+                {children}
+              </main>
               <div
                 className={
                   isAdminShell
@@ -64,6 +74,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 }
               />
             </div>
+            {showMobileIslandNav ? <AppMobileIslandNav /> : null}
           </YouTubePlayerProvider>
         </LightboxProvider>
       </SettingsProvider>

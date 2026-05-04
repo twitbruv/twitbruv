@@ -28,8 +28,8 @@ export function inboxPermalink(webUrl: string, conversationId: string): string {
 }
 
 const defaultPushPrefs: Partial<Record<NotificationKind, boolean>> = {
-  like: false,
-  repost: false,
+  like: true,
+  repost: true,
   reply: true,
   mention: true,
   follow: true,

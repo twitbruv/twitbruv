@@ -160,18 +160,34 @@ export async function handleApnsSendJob(
     return
   }
 
-  const tokens = await db
-    .select()
-    .from(schema.deviceTokens)
-    .where(
-      and(
-        eq(schema.deviceTokens.userId, job.userId),
-        eq(schema.deviceTokens.bundleId, env.APNS_BUNDLE_ID),
-        eq(schema.deviceTokens.environment, env.APNS_ENVIRONMENT)
+  let tokens: (typeof schema.deviceTokens.$inferSelect)[]
+  try {
+    tokens = await db
+      .select()
+      .from(schema.deviceTokens)
+      .where(
+        and(
+          eq(schema.deviceTokens.userId, job.userId),
+          eq(schema.deviceTokens.bundleId, env.APNS_BUNDLE_ID),
+          eq(schema.deviceTokens.environment, env.APNS_ENVIRONMENT)
+        )
       )
-    )
+  } catch (err) {
+    log.error(err, "apns_device_tokens_select_failed")
+    throw err
+  }
 
-  if (tokens.length === 0) return
+  if (tokens.length === 0) {
+    log.info(
+      {
+        userId: job.userId,
+        apnsBundleId: env.APNS_BUNDLE_ID,
+        apnsEnvironment: env.APNS_ENVIRONMENT,
+      },
+      "apns_no_device_tokens"
+    )
+    return
+  }
 
   for (const row of tokens) {
     const r = await sendOne(env, row.token, job, env.APNS_BUNDLE_ID, log)

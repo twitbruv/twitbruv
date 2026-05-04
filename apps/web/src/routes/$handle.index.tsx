@@ -141,7 +141,7 @@ function Profile() {
     .toUpperCase()
 
   return (
-    <section className="relative">
+    <section className="relative w-full">
       <ImageLightbox
         images={user.bannerUrl ? [{ src: user.bannerUrl }] : []}
         title={`${displayName}'s banner`}

@@ -11,8 +11,8 @@ export function GithubProfileSection({
   profile: ConnectedGithubProfile
 }) {
   return (
-    <section className="px-4 pt-2 pb-5">
-      <div className="space-y-1 rounded-2xl bg-subtle p-1">
+    <section className="w-full min-w-0 px-4 pt-2 pb-5">
+      <div className="w-full min-w-0 space-y-1 rounded-2xl bg-subtle p-1">
         <div className="flex flex-wrap items-center gap-2 px-2 pt-1.5">
           <h2 className="text-foreground inline-flex items-center gap-1.5 text-sm font-semibold">
             <GitHubMark />
@@ -29,11 +29,11 @@ export function GithubProfileSection({
           </a>
         </div>
 
-        <div className="rounded-lg bg-base-1 px-2 pt-0.5 pb-2">
+        <div className="w-full max-w-full min-w-0 overflow-hidden rounded-lg bg-base-1 px-2 pt-0.5 pb-2">
           <GithubContributionsHeatmap
             data={profile.contributions}
             stale={profile.stale}
-            className="mt-3"
+            className="mt-3 w-full max-w-full min-w-0"
           />
         </div>
       </div>

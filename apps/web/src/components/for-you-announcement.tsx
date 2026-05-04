@@ -50,19 +50,29 @@ export function ForYouAnnouncement() {
           alt="Introducing the For You feed"
           className="w-full rounded-t-xl"
         />
-        <div className="flex flex-col gap-4 p-4">
+        <div className="flex flex-col gap-5 p-5 sm:p-4">
           <DialogHeader>
-            <DialogTitle>Say goodbye to the Network tab</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-xl/tight font-semibold sm:text-lg/tight">
+              Say goodbye to the Network tab
+            </DialogTitle>
+            <DialogDescription className="text-base/relaxed sm:text-sm/relaxed">
               We've added a personalized feed to your home timeline. You can
               turn it on or off anytime in Settings &rarr; Experiments.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
-            <Button variant="secondary" size="sm" onClick={handleTurnOff}>
+          <DialogFooter className="flex-row justify-end gap-2">
+            <Button
+              variant="secondary"
+              className="flex-[3] sm:flex-none"
+              onClick={handleTurnOff}
+            >
               Turn off
             </Button>
-            <Button variant="primary" size="sm" onClick={handleDismiss}>
+            <Button
+              variant="primary"
+              className="flex-[7] sm:flex-none"
+              onClick={handleDismiss}
+            >
               Dismiss
             </Button>
           </DialogFooter>

@@ -1,7 +1,7 @@
 import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip"
 import { createContext, useContext, useMemo } from "react"
 import { cn } from "@workspace/ui/lib/utils"
-import type { ReactNode } from "react"
+import type { ReactElement, ReactNode } from "react"
 
 // ---------------------------------------------------------------------------
 // Animation config
@@ -165,7 +165,7 @@ export interface TooltipProps {
   /** Delay in ms before the tooltip appears */
   delay?: number
   /** The element that triggers the tooltip */
-  children: ReactNode
+  children: ReactElement
 }
 
 function TooltipImpl({
@@ -185,18 +185,15 @@ function TooltipImpl({
         handle={group.handle}
         payload={label}
         delay={delay}
-      >
-        {children}
-      </TooltipPrimitive.Trigger>
+        render={children}
+      />
     )
   }
 
   return (
     <TooltipPrimitive.Provider delay={delay}>
       <TooltipPrimitive.Root>
-        <TooltipPrimitive.Trigger className="outline-none">
-          {children}
-        </TooltipPrimitive.Trigger>
+        <TooltipPrimitive.Trigger className="outline-none" render={children} />
         <TooltipPrimitive.Portal>
           <TooltipPrimitive.Positioner
             side={side}

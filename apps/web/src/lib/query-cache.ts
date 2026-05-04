@@ -10,6 +10,7 @@ import type {
   ForYouFeedPage,
   HashtagPage,
   NetworkFeedPage,
+  NotificationItem,
   Post,
   Thread,
   ThreadReply,
@@ -18,6 +19,11 @@ import type {
 export type SearchResultsPage = {
   users: Array<{ id: string } & Record<string, unknown>>
   posts: Array<Post>
+}
+
+type NotificationsListPage = {
+  notifications: Array<NotificationItem>
+  nextCursor: string | null
 }
 
 export function patchPostRowDeep(
@@ -108,6 +114,24 @@ function patchSearchResults(
   }
 }
 
+function patchNotificationPages(
+  old: InfiniteData<NotificationsListPage>,
+  postId: string,
+  mapFn: (p: Post) => Post
+): InfiniteData<NotificationsListPage> {
+  return {
+    ...old,
+    pages: old.pages.map((page) => ({
+      ...page,
+      notifications: page.notifications.map((n) =>
+        n.target
+          ? { ...n, target: patchPostRowDeep(n.target, postId, mapFn) }
+          : n
+      ),
+    })),
+  }
+}
+
 export const feedLikePredicate: QueryFilters["predicate"] = (query) => {
   const key = query.queryKey
   if (!Array.isArray(key) || key.length === 0) return false
@@ -175,6 +199,25 @@ export function updatePostEverywhere(
     if (!touches) return data
     return patchThreadData(thread, postId, mapFn)
   })
+
+  qc.setQueriesData(
+    { queryKey: qk.notifications.list(), exact: true },
+    (data) => {
+      if (
+        !data ||
+        typeof data !== "object" ||
+        !("pages" in data) ||
+        !Array.isArray((data as InfiniteData<NotificationsListPage>).pages)
+      ) {
+        return data
+      }
+      return patchNotificationPages(
+        data as InfiniteData<NotificationsListPage>,
+        postId,
+        mapFn
+      )
+    }
+  )
 }
 
 export function removePostEverywhere(qc: QueryClient, postId: string) {

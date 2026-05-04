@@ -389,15 +389,15 @@ export function GithubContributionsHeatmap({
 
   return (
     <>
-      <div className={cn("flex flex-col", className)}>
-        <div className="relative">
+      <div className={cn("flex w-full max-w-full min-w-0 flex-col", className)}>
+        <div className="relative w-full max-w-full min-w-0 overflow-hidden">
           <div
             ref={scrollRef}
             onScroll={updateScrollMasks}
-            className="overflow-x-auto [&::-webkit-scrollbar]:hidden"
+            className="w-full max-w-full min-w-0 overflow-x-auto overscroll-x-contain [&::-webkit-scrollbar]:hidden"
             style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
           >
-            <div className="inline-block min-w-0">
+            <div className="w-max">
               <div
                 className="relative mb-1 h-3.5"
                 style={{ marginLeft: gridInset, width }}

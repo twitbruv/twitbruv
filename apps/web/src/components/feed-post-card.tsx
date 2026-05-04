@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/react-router"
 import { useQueryClient } from "@tanstack/react-query"
-import { useCallback } from "react"
+import { useCallback, useEffect, useRef } from "react"
 import { PostCard } from "@workspace/ui/components/post-card"
 import {
   useTogglePostBookmark,
@@ -10,6 +10,7 @@ import {
 import { api } from "../lib/api"
 import { pickPrimaryMediaUrl } from "../lib/media"
 import { updatePostEverywhere } from "../lib/query-cache"
+import { recordImpression } from "../lib/analytics"
 import { useCompose } from "./compose-provider"
 import { RichText } from "./rich-text"
 import { ArticleCardBlock } from "./post-card"
@@ -114,6 +115,54 @@ export function FeedPostCard({
   const post = outerPost.repostOf ?? outerPost
   const authorHandle = post.author.handle ?? "unknown"
 
+  const impressionRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const el = impressionRef.current
+    if (!el) return
+    let visibleSince: number | null = null
+    let fired = false
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.intersectionRatio >= 0.5) {
+            if (visibleSince === null) visibleSince = Date.now()
+            if (!fired && Date.now() - visibleSince >= 1000) {
+              recordImpression({
+                kind: "impression",
+                subjectType: "post",
+                subjectId: post.id,
+              })
+              fired = true
+              observer.disconnect()
+            }
+          } else {
+            visibleSince = null
+          }
+        }
+      },
+      { threshold: [0, 0.5, 1] }
+    )
+    observer.observe(el)
+    const iv = window.setInterval(() => {
+      if (fired || visibleSince === null) return
+      if (Date.now() - visibleSince >= 1000) {
+        recordImpression({
+          kind: "impression",
+          subjectType: "post",
+          subjectId: post.id,
+        })
+        fired = true
+        observer.disconnect()
+        window.clearInterval(iv)
+      }
+    }, 250)
+    return () => {
+      observer.disconnect()
+      window.clearInterval(iv)
+    }
+  }, [post.id])
+
   const likeMutation = useTogglePostLike(post)
   const repostMutation = useTogglePostRepost(post)
   const bookmarkMutation = useTogglePostBookmark(post)
@@ -163,108 +212,110 @@ export function FeedPostCard({
     : undefined
 
   return (
-    <PostCard
-      author={{
-        handle: authorHandle,
-        displayName: post.author.displayName ?? authorHandle,
-        avatarUrl: post.author.avatarUrl,
-      }}
-      text={post.text}
-      time={relativeTime(post.createdAt)}
-      likes={post.counts.likes}
-      replies={post.counts.replies}
-      reposts={post.counts.reposts}
-      liked={post.viewer?.liked ?? false}
-      reposted={post.viewer?.reposted ?? false}
-      bookmarked={post.viewer?.bookmarked ?? false}
-      media={post.media ? mapMedia(post.media) : undefined}
-      onMediaClick={(index) => {
-        const images = (post.media ?? [])
-          .filter(
-            (m) =>
-              (m.kind === "image" || m.kind === "gif") &&
-              m.processingState === "ready" &&
-              m.variants.length > 0
-          )
-          .map((m) => ({
-            url:
-              pickPrimaryMediaUrl(m, "large") ??
-              pickPrimaryMediaUrl(m, "medium") ??
-              "",
-            alt: m.altText ?? undefined,
-          }))
-          .filter((img) => img.url)
-        if (images.length > 0) {
-          lightbox.open(images, index, <LightboxSidebar post={outerPost} />)
+    <div ref={impressionRef}>
+      <PostCard
+        author={{
+          handle: authorHandle,
+          displayName: post.author.displayName ?? authorHandle,
+          avatarUrl: post.author.avatarUrl,
+        }}
+        text={post.text}
+        time={relativeTime(post.createdAt)}
+        likes={post.counts.likes}
+        replies={post.counts.replies}
+        reposts={post.counts.reposts}
+        liked={post.viewer?.liked ?? false}
+        reposted={post.viewer?.reposted ?? false}
+        bookmarked={post.viewer?.bookmarked ?? false}
+        media={post.media ? mapMedia(post.media) : undefined}
+        onMediaClick={(index) => {
+          const images = (post.media ?? [])
+            .filter(
+              (m) =>
+                (m.kind === "image" || m.kind === "gif") &&
+                m.processingState === "ready" &&
+                m.variants.length > 0
+            )
+            .map((m) => ({
+              url:
+                pickPrimaryMediaUrl(m, "large") ??
+                pickPrimaryMediaUrl(m, "medium") ??
+                "",
+              alt: m.altText ?? undefined,
+            }))
+            .filter((img) => img.url)
+          if (images.length > 0) {
+            lightbox.open(images, index, <LightboxSidebar post={outerPost} />)
+          }
+        }}
+        repostedBy={
+          isRepost
+            ? (outerPost.author.displayName ??
+              outerPost.author.handle ??
+              undefined)
+            : undefined
         }
-      }}
-      repostedBy={
-        isRepost
-          ? (outerPost.author.displayName ??
-            outerPost.author.handle ??
-            undefined)
-          : undefined
-      }
-      quoteOf={quoteOf}
-      truncateText={truncateText}
-      disableHover={disableHover}
-      threadLine={threadLine}
-      belowText={
-        <>
-          {post.cards?.map((card, i) => (
-            <UnfurlBelow
-              key={unfurlCardKey(card, i)}
-              card={card}
-              post={outerPost}
-            />
-          ))}
-          {post.poll && (
-            <PollBlock poll={post.poll} onChange={handlePollChange} />
-          )}
-        </>
-      }
-      onClick={() =>
-        navigate({
-          to: "/$handle/p/$id",
-          params: { handle: authorHandle, id: post.id },
-        })
-      }
-      onLike={() => likeMutation.mutate()}
-      onRepost={() => repostMutation.mutate()}
-      onBookmark={() => bookmarkMutation.mutate()}
-      onQuote={() => compose.open({ quoteOfId: post.id, quoted: post })}
-      onReply={() =>
-        navigate({
-          to: "/$handle/p/$id",
-          params: { handle: authorHandle, id: post.id },
-        })
-      }
-      onAuthorClick={() =>
-        navigate({
-          to: "/$handle",
-          params: { handle: authorHandle },
-        })
-      }
-      onFetchAuthorProfile={async (): Promise<AuthorProfile> => {
-        const { user } = await api.user(authorHandle)
-        return {
-          bio: user.bio,
-          followers: user.counts.followers,
-          following: user.counts.following,
-          isFollowing: user.viewer?.following,
-          onFollowToggle: user.viewer
-            ? async (follow: boolean) => {
-                if (follow) {
-                  await api.follow(authorHandle)
-                } else {
-                  await api.unfollow(authorHandle)
+        quoteOf={quoteOf}
+        truncateText={truncateText}
+        disableHover={disableHover}
+        threadLine={threadLine}
+        belowText={
+          <>
+            {post.cards?.map((card, i) => (
+              <UnfurlBelow
+                key={unfurlCardKey(card, i)}
+                card={card}
+                post={outerPost}
+              />
+            ))}
+            {post.poll && (
+              <PollBlock poll={post.poll} onChange={handlePollChange} />
+            )}
+          </>
+        }
+        onClick={() =>
+          navigate({
+            to: "/$handle/p/$id",
+            params: { handle: authorHandle, id: post.id },
+          })
+        }
+        onLike={() => likeMutation.mutate()}
+        onRepost={() => repostMutation.mutate()}
+        onBookmark={() => bookmarkMutation.mutate()}
+        onQuote={() => compose.open({ quoteOfId: post.id, quoted: post })}
+        onReply={() =>
+          navigate({
+            to: "/$handle/p/$id",
+            params: { handle: authorHandle, id: post.id },
+          })
+        }
+        onAuthorClick={() =>
+          navigate({
+            to: "/$handle",
+            params: { handle: authorHandle },
+          })
+        }
+        onFetchAuthorProfile={async (): Promise<AuthorProfile> => {
+          const { user } = await api.user(authorHandle)
+          return {
+            bio: user.bio,
+            followers: user.counts.followers,
+            following: user.counts.following,
+            isFollowing: user.viewer?.following,
+            onFollowToggle: user.viewer
+              ? async (follow: boolean) => {
+                  if (follow) {
+                    await api.follow(authorHandle)
+                  } else {
+                    await api.unfollow(authorHandle)
+                  }
                 }
-              }
-            : undefined,
-        }
-      }}
-      resolveBruvLikeBurstSrc={resolveBruvLikeBurstSrc}
-      renderPostText={(t) => <RichText text={t} />}
-    />
+              : undefined,
+          }
+        }}
+        resolveBruvLikeBurstSrc={resolveBruvLikeBurstSrc}
+        renderPostText={(t) => <RichText text={t} />}
+      />
+    </div>
   )
 }
