@@ -33,9 +33,15 @@ export function useMentionAutocomplete(args: {
   const active = useMemo(() => getActiveMention(text, caret), [text, caret])
   // Track the START offset of a dismissed @-token (Esc / after-apply) so the
   // popover stays hidden for the rest of that token regardless of further
-  // typing. Cleared automatically once the caret leaves that token (active
-  // becomes null or its start changes).
+  // typing.
   const [dismissedStart, setDismissedStart] = useState<number | null>(null)
+  // Clear the dismissal once the caret leaves the suppressed token; otherwise
+  // a fresh @-token that happens to start at the same offset (e.g. after the
+  // user deleted and retyped) would silently stay suppressed.
+  useEffect(() => {
+    if (dismissedStart == null) return
+    if (!active || active.start !== dismissedStart) setDismissedStart(null)
+  }, [active, dismissedStart])
   const isDismissed = active != null && dismissedStart === active.start
   const eligible =
     !!active && active.query.length >= MIN_QUERY_CHARS && !isDismissed

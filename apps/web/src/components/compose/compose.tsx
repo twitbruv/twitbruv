@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import { cn } from "@workspace/ui/lib/utils"
 import { Avatar } from "@workspace/ui/components/avatar"
@@ -186,6 +186,11 @@ export function Compose({
     caret,
     onApply: handleApplyMention,
   })
+  const mentionListboxId = useId()
+  const activeMentionOptionId =
+    mention.open && mention.users[mention.activeIndex]
+      ? `${mentionListboxId}-opt-${mention.activeIndex}`
+      : undefined
 
   const addFiles = useCallback(
     async (files: FileList | ReadonlyArray<File> | null) => {
@@ -530,9 +535,16 @@ export function Compose({
               placeholder={placeholder}
               rows={1}
               maxLength={POST_MAX_LEN * 2}
+              role="combobox"
+              aria-autocomplete="list"
+              aria-haspopup="listbox"
+              aria-expanded={mention.open}
+              aria-controls={mention.open ? mentionListboxId : undefined}
+              aria-activedescendant={activeMentionOptionId}
               className="w-full resize-none bg-transparent pt-2 text-[15px] leading-relaxed text-primary outline-none placeholder:text-tertiary"
             />
             <MentionPopover
+              listboxId={mentionListboxId}
               open={mention.open}
               users={mention.users}
               activeIndex={mention.activeIndex}
