@@ -14,7 +14,9 @@ import { ComposePoll } from "./compose-poll"
 import { ComposeAttachments } from "./compose-attachments"
 import { ComposeDropZone } from "./compose-drop-zone"
 import { ComposeActionBar } from "./compose-action-bar"
+import { MentionPopover } from "./mention-popover"
 import { useLinkPreview } from "./use-link-preview"
+import { useMentionAutocomplete } from "./use-mention-autocomplete"
 import {
   MAX_ATTACHMENTS,
   createId,
@@ -44,6 +46,7 @@ export function Compose({
   )
 
   const [text, setText] = useState(() => loadDraft(dKey))
+  const [caret, setCaret] = useState(0)
   const [expanded, setExpanded] = useState(
     () => !collapsible || loadDraft(dKey).length > 0
   )
@@ -142,6 +145,7 @@ export function Compose({
   const handleTextChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       setText(e.target.value)
+      setCaret(e.target.selectionStart)
       if (collapsible) setExpanded(true)
     },
     [collapsible]
@@ -155,13 +159,39 @@ export function Compose({
       const next = prev.slice(0, start) + emoji + prev.slice(end)
       queueMicrotask(() => {
         if (!ta) return
-        const caret = start + emoji.length
+        const nextCaret = start + emoji.length
         ta.focus()
-        ta.setSelectionRange(caret, caret)
+        ta.setSelectionRange(nextCaret, nextCaret)
+        setCaret(nextCaret)
       })
       return next
     })
   }, [])
+
+  const handleApplyMention = useCallback(
+    (start: number, end: number, handle: string) => {
+      const ta = textareaRef.current
+      const insertion = `@${handle} `
+      setText((prev) => {
+        const next = prev.slice(0, start) + insertion + prev.slice(end)
+        const nextCaret = start + insertion.length
+        queueMicrotask(() => {
+          if (!ta) return
+          ta.focus()
+          ta.setSelectionRange(nextCaret, nextCaret)
+          setCaret(nextCaret)
+        })
+        return next
+      })
+    },
+    []
+  )
+
+  const mention = useMentionAutocomplete({
+    text,
+    caret,
+    onApply: handleApplyMention,
+  })
 
   const addFiles = useCallback(
     async (files: FileList | ReadonlyArray<File> | null) => {
@@ -317,6 +347,7 @@ export function Compose({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (mention.handleKeyDown(e)) return
       if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault()
         if (canSubmit) {
@@ -327,8 +358,12 @@ export function Compose({
         }
       }
     },
-    [canSubmit, handleSubmit]
+    [mention, canSubmit, handleSubmit]
   )
+
+  const syncCaret = useCallback(() => {
+    setCaret(textareaRef.current?.selectionStart ?? 0)
+  }, [])
 
   const handlePaste = useCallback(
     (e: React.ClipboardEvent) => {
@@ -486,20 +521,31 @@ export function Compose({
         {/* Content */}
         <div className="min-w-0 flex-1">
           {/* Textarea */}
-          <textarea
-            ref={textareaRef}
-            value={text}
-            onChange={handleTextChange}
-            onKeyDown={handleKeyDown}
-            onFocus={() => {
-              if (collapsible) setExpanded(true)
-            }}
-            onPaste={handlePaste}
-            placeholder={placeholder}
-            rows={1}
-            maxLength={POST_MAX_LEN * 2}
-            className="w-full resize-none bg-transparent pt-2 text-[15px] leading-relaxed text-primary outline-none placeholder:text-tertiary"
-          />
+          <div className="relative">
+            <textarea
+              ref={textareaRef}
+              value={text}
+              onChange={handleTextChange}
+              onKeyDown={handleKeyDown}
+              onSelect={syncCaret}
+              onClick={syncCaret}
+              onFocus={() => {
+                if (collapsible) setExpanded(true)
+              }}
+              onPaste={handlePaste}
+              placeholder={placeholder}
+              rows={1}
+              maxLength={POST_MAX_LEN * 2}
+              className="w-full resize-none bg-transparent pt-2 text-[15px] leading-relaxed text-primary outline-none placeholder:text-tertiary"
+            />
+            <MentionPopover
+              open={mention.open}
+              users={mention.users}
+              activeIndex={mention.activeIndex}
+              onHover={mention.setActiveIndex}
+              onSelect={mention.apply}
+            />
+          </div>
 
           {/* Poll */}
           {poll && (
