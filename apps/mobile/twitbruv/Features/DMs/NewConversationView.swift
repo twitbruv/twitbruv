@@ -11,7 +11,9 @@ struct NewConversationView: View {
     @State private var groupName = ""
     @State private var users: [UserSummary] = []
     @State private var isCreating = false
+    @State private var isSearching = false
     @State private var errorMessage: String?
+    @State private var searchTask: Task<Void, Never>?
 
     var body: some View {
         NavigationStack {
@@ -40,7 +42,20 @@ struct NewConversationView: View {
                     TextField("Search by handle", text: $query)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
-                        .onSubmit { Task { await search() } }
+                        .onSubmit { scheduleSearch(immediate: true) }
+                        .onChange(of: query) { _, _ in
+                            scheduleSearch(immediate: false)
+                        }
+                }
+                if isSearching {
+                    Section {
+                        HStack(spacing: 12) {
+                            ProgressView()
+                            Text("Searching…")
+                                .font(TBTypography.meta)
+                                .foregroundStyle(TBColor.textSecondary)
+                        }
+                    }
                 }
                 if !users.isEmpty {
                     Section("Results") {
@@ -90,15 +105,40 @@ struct NewConversationView: View {
                 }
             }
         }
+        .onDisappear {
+            searchTask?.cancel()
+            searchTask = nil
+        }
+    }
+
+    private func scheduleSearch(immediate: Bool) {
+        searchTask?.cancel()
+        searchTask = Task {
+            if !immediate {
+                try? await Task.sleep(for: .milliseconds(250))
+            }
+            await search()
+        }
     }
 
     private func search() async {
         let q = query.trimmingCharacters(in: .whitespaces)
-        guard q.count >= 2 else { return }
+        guard q.count >= 2 else {
+            isSearching = false
+            users = []
+            errorMessage = nil
+            return
+        }
+        isSearching = true
+        errorMessage = nil
         do {
             let response: SearchResponse = try await env.api.get(API.Search.search(q))
+            guard !Task.isCancelled else { return }
             users = response.users
+            isSearching = false
         } catch {
+            guard !Task.isCancelled else { return }
+            isSearching = false
             errorMessage = error.localizedDescription
         }
     }
