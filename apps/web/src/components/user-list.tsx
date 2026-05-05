@@ -6,7 +6,7 @@ import { UsersIcon } from "@heroicons/react/24/solid"
 import { Avatar } from "@workspace/ui/components/avatar"
 import { useInfiniteScrollSentinel } from "../lib/use-infinite-scroll-sentinel"
 import { PageEmpty, PageError, PageLoadingList } from "./page-surface"
-import { VerifiedBadge } from "./verified-badge"
+import { VerifiedBadge, resolveBadgeTier } from "./verified-badge"
 import type { InfiniteData } from "@tanstack/react-query"
 import type { PublicUser, UserListPage } from "../lib/api"
 
@@ -150,7 +150,12 @@ export function UserList({
                     <span className="truncate">
                       {u.displayName || `@${u.handle}`}
                     </span>
-                    {u.isVerified && <VerifiedBadge size={14} role={u.role} />}
+                    {(() => {
+                      const tier = resolveBadgeTier(u)
+                      return tier ? (
+                        <VerifiedBadge size={14} role={tier} />
+                      ) : null
+                    })()}
                   </div>
                   <div className="truncate text-xs text-tertiary">
                     @{u.handle}

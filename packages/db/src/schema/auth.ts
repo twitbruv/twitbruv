@@ -35,6 +35,8 @@ export const users = pgTable(
     birthday: date('birthday'),
     isVerified: boolean('is_verified').notNull().default(false),
     isBot: boolean('is_bot').notNull().default(false),
+    isContributor: boolean('is_contributor').notNull().default(false),
+    contributorCheckedAt: timestamp('contributor_checked_at', { withTimezone: true }),
     role: userRoleEnum('role').notNull().default('user'),
     locale: text('locale').notNull().default('en'),
     timezone: text('timezone'),

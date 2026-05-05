@@ -199,6 +199,7 @@ export function FeedPostCard({
             displayName: q.author.displayName,
             avatarUrl: q.author.avatarUrl,
             isVerified: q.author.isVerified,
+            isContributor: q.author.isContributor,
             role: q.author.role,
           },
           text: q.text,
@@ -221,6 +222,7 @@ export function FeedPostCard({
           displayName: post.author.displayName ?? authorHandle,
           avatarUrl: post.author.avatarUrl,
           isVerified: post.author.isVerified,
+          isContributor: post.author.isContributor,
           role: post.author.role,
         }}
         text={post.text}

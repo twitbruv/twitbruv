@@ -59,6 +59,7 @@ export interface PostDto {
     avatarUrl: string | null
     isVerified: boolean
     isBot: boolean
+    isContributor: boolean
     role: "user" | "admin" | "owner"
   }
   counts: {
@@ -154,6 +155,7 @@ export function toPostDto(
       avatarUrl: env ? assetUrl(env, author.avatarUrl) : author.avatarUrl,
       isVerified: author.isVerified,
       isBot: author.isBot,
+      isContributor: author.isContributor,
       role: author.role,
     },
     counts: {

@@ -181,6 +181,7 @@ meRoute.get('/blocks', async (c) => {
     displayName: r.user.displayName,
     avatarUrl: assetUrl(mediaEnv, r.user.avatarUrl),
     isVerified: r.user.isVerified,
+    isContributor: r.user.isContributor,
     role: r.user.role,
     blockedAt: r.block.createdAt.toISOString(),
   }))
@@ -216,6 +217,7 @@ meRoute.get('/mutes', async (c) => {
     displayName: r.user.displayName,
     avatarUrl: assetUrl(mediaEnv, r.user.avatarUrl),
     isVerified: r.user.isVerified,
+    isContributor: r.user.isContributor,
     role: r.user.role,
     mutedAt: r.mute.createdAt.toISOString(),
     scope: r.mute.scope,
@@ -341,6 +343,7 @@ function toSelfDto(
     birthday: u.birthday,
     isVerified: u.isVerified,
     isBot: u.isBot,
+    isContributor: u.isContributor,
     role: u.role,
     locale: u.locale,
     timezone: u.timezone,

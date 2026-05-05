@@ -13,7 +13,7 @@ import { SegmentedControl } from "@workspace/ui/components/segmented-control"
 import { api } from "../lib/api"
 import { PageEmpty, PageError } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
-import { VerifiedBadge } from "../components/verified-badge"
+import { VerifiedBadge, resolveBadgeTier } from "../components/verified-badge"
 import { subscribeToDmStream } from "../lib/dm-stream"
 import { qk } from "../lib/query-keys"
 import type { DmConversation, DmMember } from "../lib/api"
@@ -193,9 +193,12 @@ function ConversationRow({ conversation }: { conversation: DmConversation }) {
           <div className="flex items-baseline justify-between gap-2">
             <span className="flex min-w-0 items-center gap-1 text-sm font-semibold text-primary">
               <span className="truncate">{title}</span>
-              {peer?.isVerified && (
-                <VerifiedBadge className="size-3.5" role={peer.role} />
-              )}
+              {(() => {
+                const tier = peer ? resolveBadgeTier(peer) : null
+                return tier ? (
+                  <VerifiedBadge className="size-3.5" role={tier} />
+                ) : null
+              })()}
             </span>
             {ts && (
               <time className="shrink-0 text-xs text-tertiary tabular-nums">

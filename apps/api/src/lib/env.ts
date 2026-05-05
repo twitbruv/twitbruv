@@ -77,6 +77,21 @@ const envSchema = z.object({
   // actually work. If unset, posts containing GitHub URLs render fine but without the card.
   GITHUB_UNFURL_TOKEN: z.string().optional(),
 
+  // Comma-separated list of `owner/repo` GitHub repositories whose contributors should
+  // receive the contributor badge. Evaluated when a user connects their GitHub account or
+  // hits Refresh in Settings → Connections. Unset → contributor checks are skipped and the
+  // badge is only granted via admin override.
+  GITHUB_CONTRIBUTOR_REPOS: z
+    .string()
+    .optional()
+    .transform((s) => {
+      if (!s) return [] as string[]
+      return s
+        .split(",")
+        .map((x) => x.trim())
+        .filter((x) => /^[^/\s]+\/[^/\s]+$/.test(x))
+    }),
+
   YOUTUBE_API_KEY: z.string().optional(),
   FXTWITTER_API_BASE_URL: z.string().optional(),
 

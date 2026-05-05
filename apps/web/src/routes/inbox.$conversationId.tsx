@@ -30,7 +30,7 @@ import { ImageLightbox } from "../components/image-lightbox"
 import { PageEmpty, PageError } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
 import { RichText } from "../components/rich-text"
-import { VerifiedBadge } from "../components/verified-badge"
+import { VerifiedBadge, resolveBadgeTier } from "../components/verified-badge"
 import { subscribeToDmStream } from "../lib/dm-stream"
 import {
   MAX_UPLOAD_BYTES,
@@ -1244,7 +1244,10 @@ function ThreadAppHeaderTitle({
         <span className="truncate font-semibold text-primary">
           {p?.displayName || (p?.handle ? `@${p.handle}` : "Conversation")}
         </span>
-        {p?.isVerified && <VerifiedBadge size={14} role={p.role} />}
+        {(() => {
+          const tier = p ? resolveBadgeTier(p) : null
+          return tier ? <VerifiedBadge size={14} role={tier} /> : null
+        })()}
         {p?.handle && (
           <>
             <span className="shrink-0 text-tertiary" aria-hidden>
@@ -1421,9 +1424,12 @@ function GroupSettingsDialog({
                         {m.displayName ||
                           (m.handle ? `@${m.handle}` : m.id.slice(0, 8))}
                       </span>
-                      {m.isVerified && (
-                        <VerifiedBadge size={13} role={m.role} />
-                      )}
+                      {(() => {
+                        const tier = resolveBadgeTier(m)
+                        return tier ? (
+                          <VerifiedBadge size={13} role={tier} />
+                        ) : null
+                      })()}
                       {m.chatRole === "admin" && (
                         <span className="rounded-full bg-base-2 px-1.5 py-0.5 text-[10px] font-medium text-tertiary">
                           admin
@@ -1487,9 +1493,12 @@ function GroupSettingsDialog({
                               {u.displayName ||
                                 (u.handle ? `@${u.handle}` : u.id.slice(0, 8))}
                             </span>
-                            {u.isVerified && (
-                              <VerifiedBadge size={13} role={u.role} />
-                            )}
+                            {(() => {
+                              const tier = resolveBadgeTier(u)
+                              return tier ? (
+                                <VerifiedBadge size={13} role={tier} />
+                              ) : null
+                            })()}
                           </div>
                           {u.handle && (
                             <div className="truncate text-xs text-tertiary">

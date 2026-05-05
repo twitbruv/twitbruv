@@ -24,7 +24,7 @@ import { usePageHeader } from "../components/app-page-header"
 import { PageEmpty, PageLoading } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
 import { PostCard } from "../components/post-card"
-import { VerifiedBadge } from "../components/verified-badge"
+import { VerifiedBadge, resolveBadgeTier } from "../components/verified-badge"
 import { ApiError, api } from "../lib/api"
 import { qk } from "../lib/query-keys"
 import { useMe } from "../lib/me"
@@ -314,9 +314,12 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
                         <span className="truncate">
                           {u.displayName || `@${u.handle}`}
                         </span>
-                        {u.isVerified && (
-                          <VerifiedBadge size={14} role={u.role} />
-                        )}
+                        {(() => {
+                          const tier = resolveBadgeTier(u)
+                          return tier ? (
+                            <VerifiedBadge size={14} role={tier} />
+                          ) : null
+                        })()}
                       </div>
                       <div className="text-xs text-tertiary">@{u.handle}</div>
                       {u.bio && (
@@ -352,9 +355,12 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
                       <span className="truncate">
                         {u.displayName || `@${u.handle}`}
                       </span>
-                      {u.isVerified && (
-                        <VerifiedBadge size={14} role={u.role} />
-                      )}
+                      {(() => {
+                        const tier = resolveBadgeTier(u)
+                        return tier ? (
+                          <VerifiedBadge size={14} role={tier} />
+                        ) : null
+                      })()}
                     </div>
                     <div className="text-xs text-tertiary">@{u.handle}</div>
                     {u.bio && (

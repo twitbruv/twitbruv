@@ -33,7 +33,7 @@ import { usePageHeader } from "../components/app-page-header"
 import { useCompose } from "../components/compose-provider"
 import { PageEmpty } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
-import { VerifiedBadge } from "../components/verified-badge"
+import { VerifiedBadge, resolveBadgeTier } from "../components/verified-badge"
 import { RichText } from "../components/rich-text"
 import { PostEngagementBar } from "../components/post-engagement-bar"
 import { useInfiniteScrollSentinel } from "../lib/use-infinite-scroll-sentinel"
@@ -733,16 +733,18 @@ function ReplyRow({ item }: { item: NotificationItem }) {
                 onClick={(e) => e.stopPropagation()}
               >
                 {actorDisplayName || actorHandle}
-                {actor?.isVerified && (
-                  <VerifiedBadge size={14} role={actor.role} />
-                )}
+                {(() => {
+                  const tier = actor ? resolveBadgeTier(actor) : null
+                  return tier ? <VerifiedBadge size={14} role={tier} /> : null
+                })()}
               </Link>
             ) : (
               <span className="inline-flex items-center gap-1 font-semibold text-primary">
                 {actorDisplayName || "someone"}
-                {actor?.isVerified && (
-                  <VerifiedBadge size={14} role={actor.role} />
-                )}
+                {(() => {
+                  const tier = actor ? resolveBadgeTier(actor) : null
+                  return tier ? <VerifiedBadge size={14} role={tier} /> : null
+                })()}
               </span>
             )}
             {actorHandle && (
@@ -855,16 +857,18 @@ function MentionRow({ item }: { item: NotificationItem }) {
                 onClick={(e) => e.stopPropagation()}
               >
                 {actorDisplayName || actorHandle}
-                {actor?.isVerified && (
-                  <VerifiedBadge size={14} role={actor.role} />
-                )}
+                {(() => {
+                  const tier = actor ? resolveBadgeTier(actor) : null
+                  return tier ? <VerifiedBadge size={14} role={tier} /> : null
+                })()}
               </Link>
             ) : (
               <span className="inline-flex items-center gap-1 font-semibold text-primary">
                 {actorDisplayName || "someone"}
-                {actor?.isVerified && (
-                  <VerifiedBadge size={14} role={actor.role} />
-                )}
+                {(() => {
+                  const tier = actor ? resolveBadgeTier(actor) : null
+                  return tier ? <VerifiedBadge size={14} role={tier} /> : null
+                })()}
               </span>
             )}
             {actorHandle && (
@@ -982,16 +986,18 @@ function NotificationRow({ item }: { item: NotificationItem }) {
                 onClick={(e) => e.stopPropagation()}
               >
                 {actorDisplayName || actorHandle}
-                {item.actor?.isVerified && (
-                  <VerifiedBadge size={14} role={item.actor.role} />
-                )}
+                {(() => {
+                  const tier = item.actor ? resolveBadgeTier(item.actor) : null
+                  return tier ? <VerifiedBadge size={14} role={tier} /> : null
+                })()}
               </Link>
             ) : (
               <span className="inline-flex items-center gap-1 align-middle font-semibold text-primary">
                 {actorDisplayName || "someone"}
-                {item.actor?.isVerified && (
-                  <VerifiedBadge size={14} role={item.actor.role} />
-                )}
+                {(() => {
+                  const tier = item.actor ? resolveBadgeTier(item.actor) : null
+                  return tier ? <VerifiedBadge size={14} role={tier} /> : null
+                })()}
               </span>
             )}
             {actorHandle && (

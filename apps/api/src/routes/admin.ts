@@ -317,6 +317,8 @@ adminRoute.get('/users', async (c) => {
     banExpires: u.banExpires?.toISOString() ?? null,
     shadowBannedAt: u.shadowBannedAt?.toISOString() ?? null,
     isVerified: u.isVerified,
+    isContributor: u.isContributor,
+    contributorCheckedAt: u.contributorCheckedAt?.toISOString() ?? null,
     deletedAt: u.deletedAt?.toISOString() ?? null,
     createdAt: u.createdAt.toISOString(),
     postsCount: postsCountByUser.get(u.id) ?? 0,
@@ -413,6 +415,8 @@ adminRoute.get('/users/:id', async (c) => {
       banExpires: user.banExpires?.toISOString() ?? null,
       shadowBannedAt: user.shadowBannedAt?.toISOString() ?? null,
       isVerified: user.isVerified,
+      isContributor: user.isContributor,
+      contributorCheckedAt: user.contributorCheckedAt?.toISOString() ?? null,
       deletedAt: user.deletedAt?.toISOString() ?? null,
       createdAt: user.createdAt.toISOString(),
       postsCount: postsCountAgg[0]?.c ?? 0,
@@ -917,6 +921,56 @@ adminRoute.post('/users/:id/unverify', async (c) => {
   return c.json({ ok: true })
 })
 
+// Grant the contributor badge manually. Useful for non-code contributors (designers, docs,
+// translations) who won't appear in the GitHub /contributors list, and for testing without
+// a real GitHub connection. Sets contributorCheckedAt to "now" so the audit trail reflects
+// when the override happened.
+adminRoute.post('/users/:id/contributor', async (c) => {
+  const session = c.get('session')!
+  const { db } = c.get('ctx')
+  const id = c.req.param('id')
+  const body = verifySchema.parse(await c.req.json().catch(() => ({})))
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(schema.users)
+      .set({ isContributor: true, contributorCheckedAt: new Date() })
+      .where(eq(schema.users.id, id))
+    await tx.insert(schema.moderationActions).values({
+      moderatorId: session.user.id,
+      subjectType: 'user',
+      subjectId: id,
+      action: 'warn',
+      privateNote: `contributor_grant${body.reason ? `: ${body.reason}` : ''}`,
+    })
+  })
+  c.get('ctx').track('admin_user_contributor_granted', session.user.id)
+  return c.json({ ok: true })
+})
+
+adminRoute.delete('/users/:id/contributor', async (c) => {
+  const session = c.get('session')!
+  const { db } = c.get('ctx')
+  const id = c.req.param('id')
+  const body = verifySchema.parse(await c.req.json().catch(() => ({})))
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(schema.users)
+      .set({ isContributor: false, contributorCheckedAt: new Date() })
+      .where(eq(schema.users.id, id))
+    await tx.insert(schema.moderationActions).values({
+      moderatorId: session.user.id,
+      subjectType: 'user',
+      subjectId: id,
+      action: 'warn',
+      privateNote: `contributor_revoke${body.reason ? `: ${body.reason}` : ''}`,
+    })
+  })
+  c.get('ctx').track('admin_user_contributor_revoked', session.user.id)
+  return c.json({ ok: true })
+})
+
 // Owner-only: forcibly reassign a user's handle. Useful for reclaiming squatted handles or
 // resolving impersonation reports. The handle is freed atomically — if the new handle is
 // taken or reserved we 4xx without touching the row.
@@ -1156,6 +1210,7 @@ adminRoute.get('/posts', async (c) => {
             displayName: r.author.displayName,
             avatarUrl: assetUrl(mediaEnv, r.author.avatarUrl),
             isVerified: r.author.isVerified,
+            isContributor: r.author.isContributor,
             role: r.author.role as Role,
           }
         : null,

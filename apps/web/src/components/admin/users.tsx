@@ -49,7 +49,7 @@ import { useInfiniteScrollSentinel } from "../../lib/use-infinite-scroll-sentine
 import { useMe } from "../../lib/me"
 import { PageError, PageLoading } from "../page-surface"
 import { PageFrame } from "../page-frame"
-import { VerifiedBadge } from "../verified-badge"
+import { VerifiedBadge, resolveBadgeTier } from "../verified-badge"
 import type { ColumnDef } from "@tanstack/react-table"
 import type { AdminUser } from "../../lib/api"
 
@@ -60,6 +60,7 @@ type ActionDialogState =
   | { kind: "ban"; user: AdminUser }
   | { kind: "shadow"; user: AdminUser }
   | { kind: "verify"; user: AdminUser }
+  | { kind: "contributor"; user: AdminUser }
   | { kind: "handle"; user: AdminUser }
   | { kind: "delete"; user: AdminUser }
   | null
@@ -166,16 +167,22 @@ export default function AdminUsers() {
                     onClick={(e) => e.stopPropagation()}
                   >
                     {u.displayName ?? u.handle}
-                    {u.isVerified && (
-                      <VerifiedBadge className="size-3.5" role={u.role} />
-                    )}
+                    {(() => {
+                      const tier = resolveBadgeTier(u)
+                      return tier ? (
+                        <VerifiedBadge className="size-3.5" role={tier} />
+                      ) : null
+                    })()}
                   </Link>
                 ) : (
                   <span className="flex items-center gap-1 text-sm font-semibold">
                     {u.displayName ?? u.email}
-                    {u.isVerified && (
-                      <VerifiedBadge className="size-3.5" role={u.role} />
-                    )}
+                    {(() => {
+                      const tier = resolveBadgeTier(u)
+                      return tier ? (
+                        <VerifiedBadge className="size-3.5" role={tier} />
+                      ) : null
+                    })()}
                   </span>
                 )}
                 {u.handle && (
@@ -400,6 +407,15 @@ export default function AdminUsers() {
                       onClick={() => setDialog({ kind: "verify", user: u })}
                     >
                       {u.isVerified ? "Revoke verified" : "Mark verified"}
+                    </DropdownMenu.Item>
+                    <DropdownMenu.Item
+                      onClick={() =>
+                        setDialog({ kind: "contributor", user: u })
+                      }
+                    >
+                      {u.isContributor
+                        ? "Revoke contributor"
+                        : "Mark contributor"}
                     </DropdownMenu.Item>
                   </DropdownMenu.Group>
                   {isOwner && (
@@ -662,6 +678,21 @@ function ActionDialog({
           ? api.adminUnverify(u.id, reason.trim() || undefined)
           : api.adminVerify(u.id, reason.trim() || undefined),
     },
+    contributor: {
+      title: u.isContributor
+        ? `Revoke contributor badge from ${subject}`
+        : `Grant contributor badge to ${subject}`,
+      description: u.isContributor
+        ? "The contributor badge will be removed. The user can re-acquire it by refreshing their GitHub connection if they're listed as a contributor."
+        : "The user will be marked as a contributor regardless of their GitHub connection state.",
+      submitLabel: u.isContributor ? "Revoke" : "Grant",
+      submitVariant: "outline" as const,
+      showDuration: false,
+      run: () =>
+        u.isContributor
+          ? api.adminRevokeContributor(u.id, reason.trim() || undefined)
+          : api.adminGrantContributor(u.id, reason.trim() || undefined),
+    },
     handle: {
       title: `Change handle for ${subject}`,
       description:
@@ -884,9 +915,12 @@ function UserDetailSheet({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1 text-sm font-semibold">
                     {u.displayName ?? u.handle ?? u.email}
-                    {u.isVerified && (
-                      <VerifiedBadge className="size-3.5" role={u.role} />
-                    )}
+                    {(() => {
+                      const tier = resolveBadgeTier(u)
+                      return tier ? (
+                        <VerifiedBadge className="size-3.5" role={tier} />
+                      ) : null
+                    })()}
                   </div>
                   {u.handle && (
                     <Link
@@ -930,6 +964,16 @@ function UserDetailSheet({
                   <dd className="tracking-wider uppercase">{u.role}</dd>
                   <dt className="text-tertiary">Verified</dt>
                   <dd>{u.isVerified ? "yes" : "no"}</dd>
+                  <dt className="text-tertiary">Contributor</dt>
+                  <dd>
+                    {u.isContributor ? "yes" : "no"}
+                    {u.contributorCheckedAt && (
+                      <span className="ml-1 text-tertiary">
+                        (checked{" "}
+                        {new Date(u.contributorCheckedAt).toLocaleString()})
+                      </span>
+                    )}
+                  </dd>
                   <dt className="text-tertiary">Banned</dt>
                   <dd className={u.banned ? "text-destructive" : ""}>
                     {u.banned

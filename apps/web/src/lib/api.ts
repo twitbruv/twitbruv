@@ -497,6 +497,16 @@ export const api = {
       method: "POST",
       body: JSON.stringify(reason ? { reason } : {}),
     }),
+  adminGrantContributor: (id: string, reason?: string) =>
+    request<{ ok: true }>(`/api/admin/users/${id}/contributor`, {
+      method: "POST",
+      body: JSON.stringify(reason ? { reason } : {}),
+    }),
+  adminRevokeContributor: (id: string, reason?: string) =>
+    request<{ ok: true }>(`/api/admin/users/${id}/contributor`, {
+      method: "DELETE",
+      body: JSON.stringify(reason ? { reason } : {}),
+    }),
   adminReports: (status?: ReportStatus, cursor?: string) => {
     const params = new URLSearchParams()
     if (status) params.set("status", status)
@@ -697,6 +707,7 @@ export interface Post {
     avatarUrl: string | null
     isVerified: boolean
     isBot: boolean
+    isContributor: boolean
     role: "user" | "admin" | "owner"
   }
   counts: {
@@ -802,6 +813,7 @@ export interface UserListMember {
   displayName: string | null
   avatarUrl: string | null
   isVerified: boolean
+  isContributor: boolean
   role: "user" | "admin" | "owner"
   addedAt: string
 }
@@ -862,6 +874,7 @@ export interface PublicUser {
   bannerUrl: string | null
   isVerified: boolean
   isBot: boolean
+  isContributor: boolean
   role: "user" | "admin" | "owner"
   createdAt: string
 }
@@ -892,6 +905,7 @@ export interface BlockedUser {
   displayName: string | null
   avatarUrl: string | null
   isVerified: boolean
+  isContributor: boolean
   role: "user" | "admin" | "owner"
   blockedAt: string
 }
@@ -916,6 +930,7 @@ export interface MutedUser {
   displayName: string | null
   avatarUrl: string | null
   isVerified: boolean
+  isContributor: boolean
   role: "user" | "admin" | "owner"
   mutedAt: string
   scope: "feed" | "notifications" | "both"
@@ -939,6 +954,7 @@ export interface SelfUser {
   birthday: string | null
   isVerified: boolean
   isBot: boolean
+  isContributor: boolean
   role: "user" | "admin" | "owner"
   locale: string
   timezone: string | null
@@ -978,6 +994,7 @@ export interface NotificationItem {
     displayName: string | null
     avatarUrl: string | null
     isVerified: boolean
+    isContributor: boolean
     role: "user" | "admin" | "owner"
   } | null
   /** Hydrated for kinds whose entity is a post (like / repost / reply / mention / quote /
@@ -1032,6 +1049,7 @@ export interface ArticleDto {
     displayName: string | null
     avatarUrl: string | null
     isVerified: boolean
+    isContributor: boolean
     role: "user" | "admin" | "owner"
   }
 }
@@ -1042,6 +1060,7 @@ export interface DmMember {
   displayName: string | null
   avatarUrl: string | null
   isVerified: boolean
+  isContributor: boolean
   role: "user" | "admin" | "owner"
 }
 
@@ -1102,6 +1121,7 @@ export interface InvitePreview {
       displayName: string | null
       avatarUrl: string | null
       isVerified: boolean
+      isContributor: boolean
       role: "user" | "admin" | "owner"
     }>
   }
@@ -1210,6 +1230,7 @@ export interface AdminPost {
     displayName: string | null
     avatarUrl: string | null
     isVerified: boolean
+    isContributor: boolean
     role: "user" | "admin" | "owner"
   } | null
   text: string
@@ -1241,6 +1262,8 @@ export interface AdminUser {
   banExpires: string | null
   shadowBannedAt: string | null
   isVerified: boolean
+  isContributor: boolean
+  contributorCheckedAt: string | null
   deletedAt: string | null
   createdAt: string
   postsCount: number
@@ -1409,8 +1432,18 @@ export interface GithubPinnedRepo {
   primaryLanguage: { name: string; color: string | null } | null
 }
 
+export interface GithubConnectorContributor {
+  isContributor: boolean
+  contributorCheckedAt: string | null
+  repos: Array<string>
+}
+
 export type GithubConnectorMe =
-  | { connected: false; configured: boolean }
+  | {
+      connected: false
+      configured: boolean
+      contributor?: GithubConnectorContributor
+    }
   | {
       connected: true
       configured: true
@@ -1421,6 +1454,7 @@ export type GithubConnectorMe =
       refreshedAt: string | null
       lastFailureAt: string | null
       lastFailureReason: string | null
+      contributor: GithubConnectorContributor
     }
 
 export type GithubProfilePayload =

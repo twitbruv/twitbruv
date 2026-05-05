@@ -15,7 +15,15 @@ import {
   loadOgImage,
   truncate,
 } from "../lib/og-image"
+import { resolveBadgeTier } from "../components/verified-badge"
 import type { PublicProfile } from "../lib/api"
+
+const BADGE_GRADIENT: Record<string, string> = {
+  user: "linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%)",
+  contributor: "linear-gradient(135deg, #d946ef 0%, #a855f7 100%)",
+  admin: "linear-gradient(135deg, #34d399 0%, #10b981 100%)",
+  owner: "linear-gradient(135deg, #fde047 0%, #f59e0b 100%)",
+}
 
 function ProfileCard({
   user,
@@ -63,25 +71,28 @@ function ProfileCard({
             }}
           >
             {truncate(display, 30)}
-            {user.isVerified && (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: 40,
-                  height: 40,
-                  borderRadius: 999,
-                  background:
-                    "linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%)",
-                  fontSize: 28,
-                  fontWeight: 800,
-                  color: "#0a0a0a",
-                }}
-              >
-                ✓
-              </div>
-            )}
+            {(() => {
+              const tier = resolveBadgeTier(user)
+              if (!tier) return null
+              return (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 40,
+                    height: 40,
+                    borderRadius: 999,
+                    background: BADGE_GRADIENT[tier],
+                    fontSize: 28,
+                    fontWeight: 800,
+                    color: "#0a0a0a",
+                  }}
+                >
+                  ✓
+                </div>
+              )
+            })()}
           </div>
           <div style={{ fontSize: 30, color: "rgba(255,255,255,0.6)" }}>
             @{user.handle}
