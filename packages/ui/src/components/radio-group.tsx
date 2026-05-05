@@ -26,7 +26,7 @@ export function RadioGroupItem<TValue>({
       )}
       {...props}
     >
-      <RadioPrimitive.Indicator className="flex items-center justify-center after:size-2 after:rounded-full after:bg-inverse after:content-['']" />
+      <RadioPrimitive.Indicator className="flex h-full w-full items-center justify-center after:size-2 after:rounded-full after:bg-inverse after:content-['']" />
     </RadioPrimitive.Root>
   )
 }

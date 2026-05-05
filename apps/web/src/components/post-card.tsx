@@ -34,7 +34,7 @@ import { ImageLightbox } from "./image-lightbox"
 import { Compose } from "./compose"
 import { PollBlock } from "./poll-block"
 import { PostMenu } from "./post-menu"
-import { VerifiedBadge } from "./verified-badge"
+import { VerifiedBadge, resolveBadgeTier } from "./verified-badge"
 import type {
   ArticleUnfurlCard,
   Post,
@@ -173,9 +173,10 @@ export function QuoteEmbed({ post }: { post: Post }) {
           <div className="flex items-center gap-2 text-xs">
             <span className="flex items-center gap-1 font-semibold text-primary">
               {post.author.displayName || `@${handle ?? "unknown"}`}
-              {post.author.isVerified && (
-                <VerifiedBadge size={13} role={post.author.role} />
-              )}
+              {(() => {
+                const tier = resolveBadgeTier(post.author)
+                return tier ? <VerifiedBadge size={13} role={tier} /> : null
+              })()}
             </span>
             {handle && <span className="text-tertiary">@{handle}</span>}
             <span className="text-tertiary">·</span>
@@ -467,9 +468,10 @@ export function PostCard({
               Reposted by{" "}
               {outerPost.author.displayName || `@${outerPost.author.handle}`}
             </span>
-            {outerPost.author.isVerified && (
-              <VerifiedBadge size={12} role={outerPost.author.role} />
-            )}
+            {(() => {
+              const tier = resolveBadgeTier(outerPost.author)
+              return tier ? <VerifiedBadge size={12} role={tier} /> : null
+            })()}
           </span>
         </Link>
       )}
@@ -508,16 +510,18 @@ export function PostCard({
                 className="flex items-center gap-1 font-semibold text-primary hover:underline"
               >
                 {post.author.displayName || `@${authorHandle}`}
-                {post.author.isVerified && (
-                  <VerifiedBadge size={15} role={post.author.role} />
-                )}
+                {(() => {
+                  const tier = resolveBadgeTier(post.author)
+                  return tier ? <VerifiedBadge size={15} role={tier} /> : null
+                })()}
               </Link>
             ) : (
               <span className="flex items-center gap-1 font-semibold text-primary">
                 {post.author.displayName ?? "unknown"}
-                {post.author.isVerified && (
-                  <VerifiedBadge size={15} role={post.author.role} />
-                )}
+                {(() => {
+                  const tier = resolveBadgeTier(post.author)
+                  return tier ? <VerifiedBadge size={15} role={tier} /> : null
+                })()}
               </span>
             )}
             {authorHandle && (

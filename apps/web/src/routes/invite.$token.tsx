@@ -6,7 +6,7 @@ import { Avatar } from "@workspace/ui/components/avatar"
 import { ApiError, api } from "../lib/api"
 import { authClient } from "../lib/auth"
 import { PageFrame } from "../components/page-frame"
-import { VerifiedBadge } from "../components/verified-badge"
+import { VerifiedBadge, resolveBadgeTier } from "../components/verified-badge"
 import { qk } from "../lib/query-keys"
 import { PageLoading } from "@/components/page-surface"
 
@@ -120,9 +120,10 @@ function InvitePage() {
           </div>
           <h1 className="flex items-center justify-center gap-1.5 text-lg font-semibold">
             {title}
-            {soloPeer?.isVerified && (
-              <VerifiedBadge size={16} role={soloPeer.role} />
-            )}
+            {(() => {
+              const tier = soloPeer ? resolveBadgeTier(soloPeer) : null
+              return tier ? <VerifiedBadge size={16} role={tier} /> : null
+            })()}
           </h1>
           <p className="text-muted-foreground mt-1 text-xs">
             {conv.kind === "group" ? "Group conversation" : "Conversation"} ·{" "}

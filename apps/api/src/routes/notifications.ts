@@ -136,6 +136,7 @@ notificationsRoute.get('/', async (c) => {
           displayName: r.actor.displayName,
           avatarUrl: assetUrl(mediaEnv, r.actor.avatarUrl),
           isVerified: r.actor.isVerified,
+          isContributor: r.actor.isContributor,
           role: r.actor.role,
         }
       : null,

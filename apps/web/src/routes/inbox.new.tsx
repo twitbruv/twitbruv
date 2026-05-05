@@ -10,7 +10,7 @@ import { api } from "../lib/api"
 import { qk } from "../lib/query-keys"
 import { PageError } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
-import { VerifiedBadge } from "../components/verified-badge"
+import { VerifiedBadge, resolveBadgeTier } from "../components/verified-badge"
 import type { PublicUser } from "../lib/api"
 
 export const Route = createFileRoute("/inbox/new")({
@@ -118,9 +118,12 @@ function NewConversation() {
                     {u.displayName ||
                       (u.handle ? `@${u.handle}` : u.id.slice(0, 8))}
                   </span>
-                  {u.isVerified && (
-                    <VerifiedBadge className="size-3" role={u.role} />
-                  )}
+                  {(() => {
+                    const tier = resolveBadgeTier(u)
+                    return tier ? (
+                      <VerifiedBadge className="size-3" role={tier} />
+                    ) : null
+                  })()}
                 </span>
                 <button
                   type="button"
@@ -214,9 +217,12 @@ function NewConversation() {
                         {u.displayName ||
                           (u.handle ? `@${u.handle}` : u.id.slice(0, 8))}
                       </span>
-                      {u.isVerified && (
-                        <VerifiedBadge size={14} role={u.role} />
-                      )}
+                      {(() => {
+                        const tier = resolveBadgeTier(u)
+                        return tier ? (
+                          <VerifiedBadge size={14} role={tier} />
+                        ) : null
+                      })()}
                     </div>
                     {u.handle && (
                       <div className="truncate text-xs text-tertiary">

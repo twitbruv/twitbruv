@@ -24,6 +24,8 @@ interface MeContextValue {
 
 const MeContext = createContext<MeContextValue | null>(null)
 
+const HEARTBEAT_MS = 30_000
+
 export function MeProvider({
   children,
   initialMe,
@@ -68,9 +70,23 @@ export function MeProvider({
     initialDataUpdatedAt:
       initialMe !== undefined && initialMe !== null ? Date.now() : undefined,
     staleTime: 0,
-    refetchInterval: session ? 30_000 : false,
+    refetchInterval: () =>
+      typeof document !== "undefined" && document.visibilityState === "visible"
+        ? HEARTBEAT_MS
+        : false,
     refetchOnWindowFocus: Boolean(session),
   })
+
+  useEffect(() => {
+    if (!session || sessionPending || typeof document === "undefined") return
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void qc.invalidateQueries({ queryKey: qk.me() })
+      }
+    }
+    document.addEventListener("visibilitychange", onVisibility)
+    return () => document.removeEventListener("visibilitychange", onVisibility)
+  }, [session, sessionPending, qc])
 
   const setMe = useCallback(
     (next: MeUpdater) => {

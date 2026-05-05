@@ -12,7 +12,7 @@ import { ImageLightbox } from "../components/image-lightbox"
 import { RichText } from "../components/rich-text"
 import { GithubBlock } from "../components/github-block"
 import { MetaPill } from "../components/meta-pill"
-import { VerifiedBadge } from "../components/verified-badge"
+import { VerifiedBadge, resolveBadgeTier } from "../components/verified-badge"
 import {
   NotFoundPanel,
   PageEmpty,
@@ -195,7 +195,10 @@ function Profile() {
           <div className="mt-1">
             <h1 className="flex items-center gap-1.5 text-2xl font-bold tracking-tight">
               {displayName}
-              {user.isVerified && <VerifiedBadge size={22} role={user.role} />}
+              {(() => {
+                const tier = resolveBadgeTier(user)
+                return tier ? <VerifiedBadge size={22} role={tier} /> : null
+              })()}
             </h1>
             <p className="text-sm text-secondary">@{user.handle}</p>
           </div>

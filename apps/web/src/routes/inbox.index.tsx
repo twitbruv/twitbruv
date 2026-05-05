@@ -11,9 +11,9 @@ import { Skeleton } from "@workspace/ui/components/skeleton"
 import { Avatar } from "@workspace/ui/components/avatar"
 import { SegmentedControl } from "@workspace/ui/components/segmented-control"
 import { api } from "../lib/api"
-import { PageEmpty, PageError } from "../components/page-surface"
+import { PageEmpty, PageError, PageHeader } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
-import { VerifiedBadge } from "../components/verified-badge"
+import { VerifiedBadge, resolveBadgeTier } from "../components/verified-badge"
 import { subscribeToDmStream } from "../lib/dm-stream"
 import { qk } from "../lib/query-keys"
 import type { DmConversation, DmMember } from "../lib/api"
@@ -28,27 +28,25 @@ function InboxList() {
 
   return (
     <PageFrame>
-      <header className="sticky top-0 z-40 border-b border-neutral bg-base-1/90 px-4 py-3 backdrop-blur-md">
-        <div className="mb-3 flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="text-base leading-tight font-semibold text-primary">
-              Messages
-            </h1>
-            <p className="mt-0.5 text-xs text-tertiary">
-              Inbox and message requests
-            </p>
-          </div>
-          <Button
-            size="sm"
-            variant="outline"
-            nativeButton={false}
-            render={<Link to="/inbox/new" />}
-          >
-            <PencilSquareIcon className="size-3.5" />
-            New
-          </Button>
-        </div>
-        <div className="max-w-xs">
+      <div className="sticky top-0 z-40 border-b border-neutral bg-base-1/80 backdrop-blur-md">
+        <PageHeader
+          title="Messages"
+          description="Inbox and message requests"
+          sticky={false}
+          className="border-0 bg-transparent backdrop-blur-none sm:flex-row sm:items-start sm:justify-between"
+          action={
+            <Button
+              size="sm"
+              variant="outline"
+              nativeButton={false}
+              render={<Link to="/inbox/new" />}
+              iconLeft={<PencilSquareIcon className="size-3.5" />}
+            >
+              New
+            </Button>
+          }
+        />
+        <div className="max-w-xs px-4 pb-3">
           <SegmentedControl<Folder>
             layout="fit"
             variant="ghost"
@@ -64,7 +62,7 @@ function InboxList() {
             onValueChange={(value) => setFolder(value)}
           />
         </div>
-      </header>
+      </div>
 
       <ConversationList
         key={folder}
@@ -113,10 +111,13 @@ function ConversationList({
   if (errorMsg) return <PageError message={errorMsg} />
   if (isPending) {
     return (
-      <ul className="divide-y divide-neutral">
+      <div>
         {Array.from({ length: 6 }).map((_, i) => (
-          <li key={i} className="flex items-start gap-3 px-4 py-3.5">
-            <Skeleton className="size-11 shrink-0 rounded-full" />
+          <div
+            key={i}
+            className="flex items-start gap-3 border-b border-neutral px-4 py-3.5"
+          >
+            <Skeleton className="size-10 shrink-0 rounded-full" />
             <div className="min-w-0 flex-1 space-y-2 pt-0.5">
               <div className="flex justify-between gap-3">
                 <Skeleton className="h-4 w-32" />
@@ -124,9 +125,9 @@ function ConversationList({
               </div>
               <Skeleton className="h-3 w-full max-w-sm" />
             </div>
-          </li>
+          </div>
         ))}
-      </ul>
+      </div>
     )
   }
   if (conversations.length === 0) {
@@ -161,11 +162,11 @@ function ConversationList({
     )
   }
   return (
-    <ul className="divide-y divide-neutral">
+    <div>
       {conversations.map((c) => (
         <ConversationRow key={c.id} conversation={c} />
       ))}
-    </ul>
+    </div>
   )
 }
 
@@ -182,20 +183,23 @@ function ConversationRow({ conversation }: { conversation: DmConversation }) {
     !isGroup && !conversation.title ? conversation.members.at(0) : null
 
   return (
-    <li>
+    <div className="border-b border-neutral">
       <Link
         to="/inbox/$conversationId"
         params={{ conversationId: conversation.id }}
-        className="group flex items-start gap-3 px-4 py-3.5 transition-colors hover:bg-base-2/30 focus-visible:bg-base-2/30 focus-visible:outline-none"
+        className="focus-visible:ring-primary flex items-start gap-3 px-4 py-3.5 transition-colors hover:bg-base-2/20 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset"
       >
         <ConversationAvatar conversation={conversation} />
         <div className="min-w-0 flex-1 pt-0.5">
           <div className="flex items-baseline justify-between gap-2">
             <span className="flex min-w-0 items-center gap-1 text-sm font-semibold text-primary">
               <span className="truncate">{title}</span>
-              {peer?.isVerified && (
-                <VerifiedBadge className="size-3.5" role={peer.role} />
-              )}
+              {(() => {
+                const tier = peer ? resolveBadgeTier(peer) : null
+                return tier ? (
+                  <VerifiedBadge className="size-3.5" role={tier} />
+                ) : null
+              })()}
             </span>
             {ts && (
               <time className="shrink-0 text-xs text-tertiary tabular-nums">
@@ -203,18 +207,18 @@ function ConversationRow({ conversation }: { conversation: DmConversation }) {
               </time>
             )}
           </div>
-          <p className="mt-0.5 truncate text-sm text-tertiary">
+          <p className="mt-0.5 truncate text-xs text-tertiary">
             {isGroup && `${conversation.members.length + 1} members · `}
             {preview ?? "No messages yet."}
           </p>
         </div>
         {conversation.unreadCount > 0 && (
-          <span className="ml-1 self-center rounded-full bg-inverse px-2 py-0.5 text-[10px] font-semibold text-inverse tabular-nums">
+          <span className="ml-1 shrink-0 self-center rounded-full bg-inverse px-2 py-0.5 text-[10px] font-semibold text-inverse tabular-nums">
             {conversation.unreadCount}
           </span>
         )}
       </Link>
-    </li>
+    </div>
   )
 }
 
@@ -227,22 +231,22 @@ function ConversationAvatar({
     const a = conversation.members.at(0)
     const b = conversation.members.at(1)
     return (
-      <div className="relative size-11 shrink-0">
+      <div className="relative size-10 shrink-0">
         {a && (
           <Avatar
             initial={initialFor(a)}
             src={a.avatarUrl}
-            className="ring-base-1 absolute top-0 left-0 size-8 ring-2"
+            className="ring-base-1 absolute top-0 left-0 size-7 ring-2"
           />
         )}
         {b && (
           <Avatar
             initial={initialFor(b)}
             src={b.avatarUrl}
-            className="ring-base-1 absolute right-0 bottom-0 size-8 ring-2"
+            className="ring-base-1 absolute right-0 bottom-0 size-7 ring-2"
           />
         )}
-        {!a && !b && <Avatar initial="G" className="size-11" />}
+        {!a && !b && <Avatar initial="G" className="size-10" />}
       </div>
     )
   }
@@ -251,7 +255,7 @@ function ConversationAvatar({
     <Avatar
       initial={other ? initialFor(other) : "?"}
       src={other?.avatarUrl ?? null}
-      className="size-11"
+      className="size-10 shrink-0"
     />
   )
 }

@@ -162,9 +162,15 @@ export function linkSamePageReplies(posts: Array<PostDto>): void {
     if (p.chainPreview) continue
     if (!p.replyToId) continue
     const parent = byId.get(p.replyToId)
-    if (!parent) continue
-    p.chainPreview = { root: parent, omittedCount: 0 }
-    delete p.replyParent
+    if (parent) {
+      p.chainPreview = { root: parent, omittedCount: 0 }
+      delete p.replyParent
+      continue
+    }
+    if (p.replyParent) {
+      p.chainPreview = { root: p.replyParent, omittedCount: 0 }
+      delete p.replyParent
+    }
   }
 }
 

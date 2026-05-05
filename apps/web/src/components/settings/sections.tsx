@@ -24,7 +24,7 @@ import { ApiError, api } from "../../lib/api"
 import { ClaimHandle } from "../claim-handle"
 import { AvatarUpload } from "../avatar-upload"
 import { BannerUpload } from "../banner-upload"
-import { VerifiedBadge } from "../verified-badge"
+import { VerifiedBadge, resolveBadgeTier } from "../verified-badge"
 import { PageLoading } from "../page-surface"
 import {
   SettingsSection,
@@ -780,14 +780,20 @@ function PrivacyList<
                   <span className="truncate">
                     {u.displayName ?? `@${u.handle}`}
                   </span>
-                  {u.isVerified && <VerifiedBadge size={13} role={u.role} />}
+                  {(() => {
+                    const tier = resolveBadgeTier(u)
+                    return tier ? <VerifiedBadge size={13} role={tier} /> : null
+                  })()}
                 </Link>
               ) : (
                 <span className="flex items-center gap-1 text-sm font-medium">
                   <span className="truncate">
                     {u.displayName ?? "Unknown user"}
                   </span>
-                  {u.isVerified && <VerifiedBadge size={13} role={u.role} />}
+                  {(() => {
+                    const tier = resolveBadgeTier(u)
+                    return tier ? <VerifiedBadge size={13} role={tier} /> : null
+                  })()}
                 </span>
               )}
               <p className="text-muted-foreground truncate text-xs">
@@ -1155,9 +1161,58 @@ export function ConnectionsSection({
             Show on my profile
           </label>
         ) : null}
+        {state?.connected === true && state.contributor.repos.length > 0 ? (
+          <ContributorStatus contributor={state.contributor} />
+        ) : null}
         {status ? <p className="mt-2 text-xs text-tertiary">{status}</p> : null}
       </div>
     </section>
+  )
+}
+
+function ContributorStatus({
+  contributor,
+}: {
+  contributor: {
+    isContributor: boolean
+    contributorCheckedAt: string | null
+    repos: Array<string>
+  }
+}) {
+  const repoLabel =
+    contributor.repos.length === 1
+      ? contributor.repos[0]
+      : `any of ${contributor.repos.length} repos`
+  return (
+    <div className="mt-3 flex items-center gap-2 rounded-xl border border-neutral px-3 py-2 text-xs">
+      <VerifiedBadge
+        size={14}
+        role={contributor.isContributor ? "contributor" : undefined}
+        aria-hidden={!contributor.isContributor}
+        className={contributor.isContributor ? "" : "opacity-30"}
+      />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <span className="text-primary">
+          {contributor.isContributor
+            ? `Recognized as a contributor to ${repoLabel}.`
+            : `Not detected as a contributor to ${repoLabel} yet.`}
+        </span>
+        {contributor.contributorCheckedAt ? (
+          <span className="text-tertiary [font-variant-numeric:tabular-nums]">
+            Checked{" "}
+            {new Date(contributor.contributorCheckedAt).toLocaleString(
+              undefined,
+              {
+                month: "short",
+                day: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+              }
+            )}
+          </span>
+        ) : null}
+      </div>
+    </div>
   )
 }
 

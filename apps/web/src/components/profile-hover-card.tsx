@@ -6,7 +6,7 @@ import { PreviewCard } from "@workspace/ui/components/preview-card"
 import { api } from "../lib/api"
 import { qk } from "../lib/query-keys"
 import { useMe } from "../lib/me"
-import { VerifiedBadge } from "./verified-badge"
+import { VerifiedBadge, resolveBadgeTier } from "./verified-badge"
 import type { ReactNode } from "react"
 
 interface ProfileHoverCardProps {
@@ -77,9 +77,10 @@ function ProfileCardInner({ handle }: { handle: string }) {
           className="flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
         >
           {profile.displayName || `@${handle}`}
-          {profile.isVerified && (
-            <VerifiedBadge size={14} role={profile.role} />
-          )}
+          {(() => {
+            const tier = resolveBadgeTier(profile)
+            return tier ? <VerifiedBadge size={14} role={tier} /> : null
+          })()}
         </Link>
         <span className="text-xs text-tertiary">@{handle}</span>
       </div>

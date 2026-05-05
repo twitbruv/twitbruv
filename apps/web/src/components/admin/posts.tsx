@@ -45,7 +45,7 @@ import { qk } from "../../lib/query-keys"
 import { useInfiniteScrollSentinel } from "../../lib/use-infinite-scroll-sentinel"
 import { PageError, PageLoading } from "../page-surface"
 import { PageFrame } from "../page-frame"
-import { VerifiedBadge } from "../verified-badge"
+import { VerifiedBadge, resolveBadgeTier } from "../verified-badge"
 import type { AdminPostFilters } from "../../lib/query-keys"
 import type { ColumnDef } from "@tanstack/react-table"
 import type { AdminPost, AdminPostSort, AdminPostType } from "../../lib/api"
@@ -190,7 +190,7 @@ export default function AdminPosts() {
 
   const posts = useMemo(() => data?.pages.flatMap((p) => p.posts) ?? [], [data])
 
-  const loadError = error instanceof Error ? error.message : "failed to load"
+  const loadError = error ? (error instanceof Error ? error.message : "failed to load") : null
 
   const [busyId, setBusyId] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<AdminPost | null>(null)
@@ -242,9 +242,12 @@ export default function AdminPosts() {
                     <span className="truncate">
                       {a.displayName ?? a.handle}
                     </span>
-                    {a.isVerified && (
-                      <VerifiedBadge className="size-3" role={a.role} />
-                    )}
+                    {(() => {
+                      const tier = resolveBadgeTier(a)
+                      return tier ? (
+                        <VerifiedBadge className="size-3" role={tier} />
+                      ) : null
+                    })()}
                   </Link>
                 ) : (
                   <span className="text-xs font-semibold">

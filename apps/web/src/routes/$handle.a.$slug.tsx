@@ -5,7 +5,7 @@ import { ApiError, api } from "../lib/api"
 import { qk } from "../lib/query-keys"
 import { Editor } from "../components/editor/editor"
 import { PageFrame } from "../components/page-frame"
-import { VerifiedBadge } from "../components/verified-badge"
+import { VerifiedBadge, resolveBadgeTier } from "../components/verified-badge"
 import { authClient } from "../lib/auth"
 import { APP_NAME } from "../lib/env"
 import { buildSeoMeta, canonicalLink, clipDescription } from "../lib/seo"
@@ -163,9 +163,10 @@ function ArticleView() {
               className="text-foreground flex items-center gap-1 font-medium hover:underline"
             >
               {article.author.displayName || `@${article.author.handle}`}
-              {article.author.isVerified && (
-                <VerifiedBadge size={14} role={article.author.role} />
-              )}
+              {(() => {
+                const tier = resolveBadgeTier(article.author)
+                return tier ? <VerifiedBadge size={14} role={tier} /> : null
+              })()}
             </Link>
           )}
           <span>·</span>

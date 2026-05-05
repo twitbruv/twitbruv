@@ -8,6 +8,7 @@ import { requireHandle } from '../../middleware/session.ts'
 import { connectorsEnabled, decryptToken, encryptToken } from '../../lib/connector-crypto.ts'
 import { exchangeCode, revokeGrant } from '../../lib/github-client.ts'
 import { bustCache, getGithubSnapshot } from '../../lib/github-snapshot.ts'
+import { isUserContributor } from '../../lib/github-contributors.ts'
 
 export const githubConnectorRoute = new Hono<HonoEnv>()
 
@@ -182,8 +183,32 @@ githubConnectorRoute.get('/callback', async (c) => {
   await bustCache(ctx, session.user.id)
   await getGithubSnapshot(ctx, session.user.id, { forceRefresh: true }).catch(() => {})
 
+  await syncContributorStatus(ctx, session.user.id, viewerLogin)
+
   return settled({ settings_tab: 'connections', connected: 'github' })
 })
+
+async function syncContributorStatus(
+  ctx: import('../../lib/context.ts').AppContext,
+  userId: string,
+  login: string | null | undefined,
+): Promise<void> {
+  try {
+    const isContributor = await isUserContributor(ctx, login)
+    await ctx.db
+      .update(schema.users)
+      .set({
+        isContributor,
+        contributorCheckedAt: new Date(),
+      })
+      .where(eq(schema.users.id, userId))
+  } catch (err) {
+    ctx.log.warn(
+      { err: err instanceof Error ? err.message : err, userId },
+      'github_contributor_sync_failed',
+    )
+  }
+}
 
 // What the settings page reads to render the current connection state.
 githubConnectorRoute.get('/me', requireHandle(), async (c) => {
@@ -209,7 +234,22 @@ githubConnectorRoute.get('/me', requireHandle(), async (c) => {
       ),
     )
     .limit(1)
-  if (!row) return c.json({ connected: false, configured: true })
+  const [userRow] = await ctx.db
+    .select({
+      isContributor: schema.users.isContributor,
+      contributorCheckedAt: schema.users.contributorCheckedAt,
+    })
+    .from(schema.users)
+    .where(eq(schema.users.id, session.user.id))
+    .limit(1)
+  const contributor = {
+    isContributor: userRow?.isContributor ?? false,
+    contributorCheckedAt:
+      userRow?.contributorCheckedAt?.toISOString() ?? null,
+    repos: ctx.env.GITHUB_CONTRIBUTOR_REPOS ?? [],
+  }
+  if (!row)
+    return c.json({ connected: false, configured: true, contributor })
 
   const meta = (row.metadata ?? {}) as {
     refreshedAt?: string
@@ -226,6 +266,7 @@ githubConnectorRoute.get('/me', requireHandle(), async (c) => {
     refreshedAt: meta.refreshedAt ?? null,
     lastFailureAt: meta.failedAt ?? null,
     lastFailureReason: meta.failureReason ?? null,
+    contributor,
   })
 })
 
@@ -256,6 +297,7 @@ githubConnectorRoute.post('/refresh', requireHandle(), async (c) => {
   await bustCache(ctx, session.user.id)
   const { snapshot } = await getGithubSnapshot(ctx, session.user.id, { forceRefresh: true })
   if (!snapshot) return c.json({ error: 'refresh_failed' }, 502)
+  await syncContributorStatus(ctx, session.user.id, snapshot.login)
   return c.json({ ok: true, refreshedAt: snapshot.refreshedAt, stale: snapshot.stale ?? false })
 })
 
@@ -302,6 +344,10 @@ githubConnectorRoute.delete('/', requireHandle(), async (c) => {
       ),
     )
   await ctx.db.delete(schema.oauthConnections).where(eq(schema.oauthConnections.id, row.id))
+  await ctx.db
+    .update(schema.users)
+    .set({ isContributor: false, contributorCheckedAt: null })
+    .where(eq(schema.users.id, session.user.id))
   await bustCache(ctx, session.user.id)
   return c.json({ ok: true })
 })

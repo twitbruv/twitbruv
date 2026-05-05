@@ -2,6 +2,7 @@ import { Link, createFileRoute, useRouter } from "@tanstack/react-router"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import {
+  ArrowLeftIcon,
   ChatBubbleLeftEllipsisIcon,
   Cog6ToothIcon,
   EllipsisHorizontalIcon,
@@ -30,7 +31,7 @@ import { ImageLightbox } from "../components/image-lightbox"
 import { PageEmpty, PageError } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
 import { RichText } from "../components/rich-text"
-import { VerifiedBadge } from "../components/verified-badge"
+import { VerifiedBadge, resolveBadgeTier } from "../components/verified-badge"
 import { subscribeToDmStream } from "../lib/dm-stream"
 import {
   MAX_UPLOAD_BYTES,
@@ -331,12 +332,7 @@ function Thread() {
         plainTitle: true,
         title: (
           <div className="flex w-full min-w-0 items-center gap-2">
-            <Link
-              to="/inbox"
-              className="shrink-0 text-xs text-tertiary hover:underline"
-            >
-              ← Inbox
-            </Link>
+            <ThreadBackToInbox />
             <span className="text-sm text-tertiary">…</span>
           </div>
         ),
@@ -498,9 +494,9 @@ function Thread() {
   }, [typingAt, conversation, me])
 
   return (
-    <PageFrame className="flex min-h-0 flex-1 flex-col">
+    <PageFrame className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div
-        className="relative flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden bg-base-1"
+        className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-base-1"
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
@@ -514,7 +510,7 @@ function Thread() {
         )}
 
         {appHeader && (
-          <header className="sticky top-0 z-10 flex min-h-14 items-center justify-between gap-3 border-b border-neutral bg-base-1/90 px-3 py-2 backdrop-blur-md sm:px-4">
+          <header className="flex shrink-0 items-center justify-between gap-3 border-b border-neutral bg-base-1/90 px-3 py-2.5 shadow-xs backdrop-blur-md sm:min-h-14 sm:px-4">
             <div className="min-w-0 flex-1">{appHeader.title}</div>
             {appHeader.action && (
               <div className="shrink-0">{appHeader.action}</div>
@@ -547,7 +543,7 @@ function Thread() {
 
         <div
           ref={scrollerRef}
-          className="flex-1 overflow-y-auto px-3 py-4 sm:px-4"
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 sm:px-4"
         >
           {error && <PageError className="mb-3 max-w-prose" message={error} />}
           {messages.length === 0 && !error && (
@@ -559,7 +555,7 @@ function Thread() {
             />
           )}
 
-          <ul className="flex flex-col gap-1.5">
+          <ul className="flex flex-col gap-3">
             {groups.map((group) => (
               <GroupBlock
                 key={group.key}
@@ -597,7 +593,7 @@ function Thread() {
         </div>
 
         {pending && (
-          <div className="flex items-start gap-3 border-t border-neutral bg-base-1/95 px-3 py-3 sm:px-4">
+          <div className="flex shrink-0 items-start gap-3 border-t border-neutral bg-base-1/95 px-3 py-3 sm:px-4">
             <div className="relative shrink-0">
               <img
                 src={pending.previewUrl}
@@ -631,7 +627,7 @@ function Thread() {
         {conversation?.myRequestState !== "pending" && (
           <form
             onSubmit={send}
-            className="flex items-end gap-2 border-t border-neutral bg-base-1/95 px-3 py-3 backdrop-blur-sm sm:px-4"
+            className="flex shrink-0 items-end gap-2 border-t border-neutral bg-base-1/95 px-3 py-3 backdrop-blur-sm sm:px-4"
           >
             <input
               ref={fileInputRef}
@@ -646,6 +642,7 @@ function Thread() {
               aria-label="attach image"
               disabled={sending}
               onClick={() => fileInputRef.current?.click()}
+              className="shrink-0"
             >
               <PaperClipIcon className="size-[18px]" />
             </Button>
@@ -661,11 +658,14 @@ function Thread() {
               rows={1}
               disabled={sending}
               onKeyDown={onKeyDown}
-              className="max-h-40 min-h-10 flex-1 resize-none py-2 text-sm leading-relaxed"
+              className="max-h-40 min-h-10 flex-1 resize-none rounded-xl py-2.5 text-sm leading-relaxed"
             />
             <Button
               type="submit"
+              variant="primary"
+              size="sm"
               disabled={sending || (draft.trim().length === 0 && !pending)}
+              className="shrink-0"
             >
               {sending ? "…" : "Send"}
             </Button>
@@ -721,7 +721,7 @@ function RequestBanner({
   }
 
   return (
-    <div className="border-b border-neutral bg-base-2/50 px-4 py-3">
+    <div className="shrink-0 border-b border-neutral bg-base-2/50 px-4 py-3">
       <div className="flex flex-col gap-3 rounded-lg border border-neutral bg-base-1 px-3 py-3 text-xs shadow-xs sm:flex-row sm:items-center sm:justify-between">
         <p className="max-w-md text-secondary">
           This is a message request. Accept to start the conversation or decline
@@ -801,17 +801,17 @@ function GroupBlock({
   return (
     <>
       {group.daySeparator && (
-        <li className="my-4 flex items-center justify-center">
-          <span className="rounded-full bg-base-2 px-3 py-1 text-[11px] font-medium tracking-wide text-tertiary uppercase">
+        <li className="my-5 flex list-none items-center justify-center px-2">
+          <span className="rounded-full border border-neutral bg-base-2 px-3 py-1.5 text-[11px] font-medium tracking-wide text-tertiary uppercase shadow-xs">
             {group.daySeparator}
           </span>
         </li>
       )}
       <li
-        className={`flex items-end gap-2 ${isMine ? "justify-end" : "justify-start"}`}
+        className={`flex list-none items-end gap-2.5 ${isMine ? "justify-end" : "justify-start"}`}
       >
         {!isMine && (
-          <div className="w-8 shrink-0">
+          <div className="w-9 shrink-0">
             {group.sender && (
               <Avatar
                 initial={(
@@ -822,13 +822,13 @@ function GroupBlock({
                   .slice(0, 1)
                   .toUpperCase()}
                 src={group.sender.avatarUrl}
-                className="size-8"
+                className="size-9"
               />
             )}
           </div>
         )}
         <div
-          className={`flex max-w-[min(78%,42rem)] flex-col gap-0.5 sm:max-w-[70%] ${isMine ? "items-end" : "items-start"}`}
+          className={`flex max-w-[min(82%,42rem)] flex-col gap-1 sm:max-w-[72%] ${isMine ? "items-end" : "items-start"}`}
         >
           {group.messages.map((m, i) => {
             const isFirst = i === 0
@@ -846,8 +846,24 @@ function GroupBlock({
               />
             )
           })}
+          <div
+            className={`flex w-full px-1 ${isMine ? "justify-end" : "justify-start"}`}
+          >
+            <time
+              dateTime={lastMessage.createdAt}
+              className="text-[11px] text-tertiary tabular-nums"
+            >
+              {new Date(lastMessage.createdAt).toLocaleTimeString([], {
+                hour: "numeric",
+                minute: "2-digit",
+              })}
+              {lastMessage.editedAt ? (
+                <span className="text-tertiary"> · edited</span>
+              ) : null}
+            </time>
+          </div>
           {seenBy.length > 0 && (
-            <div className="mt-0.5 flex items-center gap-1 text-[10px] text-tertiary">
+            <div className="mt-0.5 flex items-center gap-1 px-1 text-[10px] text-tertiary">
               <span>Seen</span>
               {seenBy.length > 1 && (
                 <span className="flex -space-x-1">
@@ -917,14 +933,10 @@ function Bubble({
     ? `${isFirst ? "rounded-tr-2xl" : "rounded-tr-md"} ${isLast ? "rounded-br-2xl" : "rounded-br-md"} rounded-l-2xl`
     : `${isFirst ? "rounded-tl-2xl" : "rounded-tl-md"} ${isLast ? "rounded-bl-2xl" : "rounded-bl-md"} rounded-r-2xl`
   const bg = isDeleted
-    ? "bg-base-2/60 text-tertiary italic"
+    ? "border border-neutral bg-base-2/70 text-tertiary italic"
     : isMine
-      ? "bg-primary text-primary-foreground"
-      : "bg-base-2 text-primary"
-  const time = new Date(message.createdAt).toLocaleTimeString([], {
-    hour: "numeric",
-    minute: "2-digit",
-  })
+      ? "border border-neutral-strong bg-inverse text-inverse"
+      : "border border-neutral-strong bg-base-2 text-primary"
 
   const reactionGroups = useMemo(() => {
     const map = new Map<string, { count: number; mine: boolean }>()
@@ -1076,16 +1088,20 @@ function Bubble({
                     node.setSelectionRange(node.value.length, node.value.length)
                   }
                 }}
-                className="bg-base/30 min-h-0 rounded border-0 px-2 py-1 text-primary"
+                className="min-h-0 rounded-lg border-0 bg-base-1 px-2 py-1.5 text-primary shadow-[var(--shadow-field)]"
               />
-              <div className="flex justify-end gap-2 text-[11px]">
+              <div
+                className={`flex justify-end gap-2 text-[11px] ${isMine ? "text-inverse/85" : "text-secondary"}`}
+              >
                 <button
+                  type="button"
                   onClick={() => setEditing(false)}
-                  className="opacity-70 hover:opacity-100"
+                  className="opacity-90 hover:opacity-100"
                 >
                   Cancel
                 </button>
                 <button
+                  type="button"
                   onClick={saveEdit}
                   disabled={busy}
                   className="font-semibold"
@@ -1098,22 +1114,23 @@ function Bubble({
             <>
               {message.media && <MessageImage media={message.media} />}
               {message.text && (
-                <p className="wrap-break-words whitespace-pre-wrap">
+                <p
+                  className={`wrap-break-words whitespace-pre-wrap [&_a]:text-link ${isMine ? "[&_a]:underline-offset-2" : ""}`}
+                >
                   <RichText text={message.text} />
                 </p>
               )}
               {!message.media && !message.text && (
                 <em className="opacity-70">[unsupported]</em>
               )}
+              {message.editedAt && !isLast && (
+                <span
+                  className={`mt-1 block text-[10px] opacity-80 ${isMine ? "text-inverse/75" : "text-tertiary"}`}
+                >
+                  edited
+                </span>
+              )}
             </>
-          )}
-          {isLast && !editing && (
-            <div
-              className={`mt-1 text-[10px] tabular-nums opacity-60 ${isMine ? "text-right" : ""}`}
-            >
-              {time}
-              {message.editedAt && <span className="ml-1">· edited</span>}
-            </div>
           )}
         </div>
 
@@ -1126,7 +1143,7 @@ function Bubble({
                 onClick={() => react(g.emoji)}
                 className={`flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs transition ${
                   g.mine
-                    ? "border-primary/40 bg-primary/10"
+                    ? "border-neutral-strong bg-subtle"
                     : "border-neutral bg-base-1 hover:bg-base-2"
                 }`}
               >
@@ -1149,7 +1166,7 @@ function MessageImage({ media }: { media: PostMedia }) {
     pickPrimaryMediaUrl(media, "large") ?? pickPrimaryMediaUrl(media, "medium")
   if (!url) {
     return (
-      <div className="bg-base/30 my-1 flex h-32 w-48 items-center justify-center rounded-md text-xs">
+      <div className="my-1 flex h-32 w-48 items-center justify-center rounded-md border border-neutral bg-base-2 text-xs text-tertiary">
         {media.processingState === "failed" ? "media failed" : "processing…"}
       </div>
     )
@@ -1175,6 +1192,21 @@ function MessageImage({ media }: { media: PostMedia }) {
   )
 }
 
+function ThreadBackToInbox() {
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      nativeButton={false}
+      render={<Link to="/inbox" />}
+      iconLeft={<ArrowLeftIcon aria-hidden />}
+      className="-ml-1 shrink-0 font-medium"
+    >
+      Inbox
+    </Button>
+  )
+}
+
 function ThreadAppHeaderTitle({
   conversation,
   me,
@@ -1184,14 +1216,7 @@ function ThreadAppHeaderTitle({
   me: string | null
   who: DmMember | null
 }) {
-  const back = (
-    <Link
-      to="/inbox"
-      className="shrink-0 text-xs text-tertiary hover:underline"
-    >
-      ← Inbox
-    </Link>
-  )
+  const back = <ThreadBackToInbox />
   if (conversation.kind === "group") {
     const others = conversation.members.filter((m) => m.id !== me)
     const title =
@@ -1202,9 +1227,9 @@ function ThreadAppHeaderTitle({
         .join(", ")
     const n = conversation.members.length
     return (
-      <div className="flex w-full min-w-0 items-center gap-2">
+      <div className="flex w-full min-w-0 items-center gap-3">
         {back}
-        <div className="relative size-8 shrink-0">
+        <div className="relative size-9 shrink-0">
           {others.slice(0, 2).map((m, i) => (
             <Avatar
               key={m.id}
@@ -1212,18 +1237,18 @@ function ThreadAppHeaderTitle({
                 .slice(0, 1)
                 .toUpperCase()}
               src={m.avatarUrl}
-              className={`ring-base absolute size-6 ring-2 ${
+              className={`ring-base absolute size-7 ring-2 ${
                 i === 0 ? "top-0 left-0" : "right-0 bottom-0"
               }`}
             />
           ))}
         </div>
-        <div className="flex min-w-0 flex-1 items-baseline gap-1.5 overflow-hidden text-sm">
+        <div className="flex min-w-0 flex-1 flex-col gap-0.5 text-sm sm:flex-row sm:items-baseline sm:gap-1.5">
           <span className="min-w-0 truncate font-semibold text-primary">
             {title}
           </span>
           <span className="shrink-0 text-xs text-tertiary">
-            · {n} member{n === 1 ? "" : "s"}
+            {n} member{n === 1 ? "" : "s"}
           </span>
         </div>
       </div>
@@ -1231,33 +1256,33 @@ function ThreadAppHeaderTitle({
   }
   const p = who
   return (
-    <div className="flex w-full min-w-0 items-center gap-2">
+    <div className="flex w-full min-w-0 items-center gap-3">
       {back}
       {p && (
         <Avatar
           initial={(p.displayName || p.handle || "?").slice(0, 1).toUpperCase()}
           src={p.avatarUrl}
-          className="size-8 shrink-0"
+          className="mt-0.5 size-9 shrink-0"
         />
       )}
-      <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden text-sm">
-        <span className="truncate font-semibold text-primary">
-          {p?.displayName || (p?.handle ? `@${p.handle}` : "Conversation")}
-        </span>
-        {p?.isVerified && <VerifiedBadge size={14} role={p.role} />}
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <span className="truncate font-semibold text-primary">
+            {p?.displayName || (p?.handle ? `@${p.handle}` : "Conversation")}
+          </span>
+          {(() => {
+            const tier = p ? resolveBadgeTier(p) : null
+            return tier ? <VerifiedBadge size={14} role={tier} /> : null
+          })()}
+        </div>
         {p?.handle && (
-          <>
-            <span className="shrink-0 text-tertiary" aria-hidden>
-              ·
-            </span>
-            <Link
-              to="/$handle"
-              params={{ handle: p.handle }}
-              className="shrink-0 text-xs text-tertiary hover:underline"
-            >
-              @{p.handle}
-            </Link>
-          </>
+          <Link
+            to="/$handle"
+            params={{ handle: p.handle }}
+            className="w-fit text-xs text-tertiary hover:text-secondary hover:underline"
+          >
+            @{p.handle}
+          </Link>
         )}
       </div>
     </div>
@@ -1421,9 +1446,12 @@ function GroupSettingsDialog({
                         {m.displayName ||
                           (m.handle ? `@${m.handle}` : m.id.slice(0, 8))}
                       </span>
-                      {m.isVerified && (
-                        <VerifiedBadge size={13} role={m.role} />
-                      )}
+                      {(() => {
+                        const tier = resolveBadgeTier(m)
+                        return tier ? (
+                          <VerifiedBadge size={13} role={tier} />
+                        ) : null
+                      })()}
                       {m.chatRole === "admin" && (
                         <span className="rounded-full bg-base-2 px-1.5 py-0.5 text-[10px] font-medium text-tertiary">
                           admin
@@ -1487,9 +1515,12 @@ function GroupSettingsDialog({
                               {u.displayName ||
                                 (u.handle ? `@${u.handle}` : u.id.slice(0, 8))}
                             </span>
-                            {u.isVerified && (
-                              <VerifiedBadge size={13} role={u.role} />
-                            )}
+                            {(() => {
+                              const tier = resolveBadgeTier(u)
+                              return tier ? (
+                                <VerifiedBadge size={13} role={tier} />
+                              ) : null
+                            })()}
                           </div>
                           {u.handle && (
                             <div className="truncate text-xs text-tertiary">

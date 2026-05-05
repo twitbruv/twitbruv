@@ -341,13 +341,34 @@ postsRoute.post('/:id/repost', requireHandle(), async (c) => {
       .limit(1)
     if (!target) throw new HttpError(404, 'not_found')
 
+    // Transitively resolve through repost chains to the original content post
+    // so we never create a repost-of-a-repost chain.
+    let original = target
+    const visited = new Set<string>([target.id])
+    while (original.repostOfId) {
+      if (visited.has(original.repostOfId)) break
+      visited.add(original.repostOfId)
+      const [resolved] = await tx
+        .select()
+        .from(schema.posts)
+        .where(
+          and(
+            eq(schema.posts.id, original.repostOfId),
+            isNull(schema.posts.deletedAt),
+          ),
+        )
+        .limit(1)
+      if (!resolved) throw new HttpError(404, 'not_found')
+      original = resolved
+    }
+
     const [existing] = await tx
       .select({ id: schema.posts.id })
       .from(schema.posts)
       .where(
         and(
           eq(schema.posts.authorId, session.user.id),
-          eq(schema.posts.repostOfId, target.id),
+          eq(schema.posts.repostOfId, original.id),
           isNull(schema.posts.deletedAt),
         ),
       )
@@ -357,13 +378,13 @@ postsRoute.post('/:id/repost', requireHandle(), async (c) => {
     await tx.insert(schema.posts).values({
       authorId: session.user.id,
       text: '',
-      repostOfId: target.id,
+      repostOfId: original.id,
     })
 
     await tx
       .update(schema.posts)
       .set({ repostCount: sql`${schema.posts.repostCount} + 1` })
-      .where(eq(schema.posts.id, target.id))
+      .where(eq(schema.posts.id, original.id))
 
     const [actor] = await tx
       .select({ displayName: schema.users.displayName, handle: schema.users.handle })
@@ -373,21 +394,21 @@ postsRoute.post('/:id/repost', requireHandle(), async (c) => {
     const [targetAuthor] = await tx
       .select({ handle: schema.users.handle })
       .from(schema.users)
-      .where(eq(schema.users.id, target.authorId))
+      .where(eq(schema.users.id, original.authorId))
       .limit(1)
     const actorLabel = actor?.displayName?.trim() || actor?.handle || 'Someone'
 
     const { recipients: notifyRecipients, pushJobs } = await notify(tx, [
       {
-        userId: target.authorId,
+        userId: original.authorId,
         actorId: session.user.id,
         kind: 'repost',
         entityType: 'post',
-        entityId: target.id,
+        entityId: original.id,
         push: {
           title: actorLabel,
           body: 'Reposted your post',
-          deepLink: postPermalink(webUrl, targetAuthor?.handle, target.id),
+          deepLink: postPermalink(webUrl, targetAuthor?.handle, original.id),
         },
       },
     ])

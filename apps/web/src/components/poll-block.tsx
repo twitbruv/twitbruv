@@ -55,12 +55,13 @@ export function PollBlock({
     }
   }
 
-  async function submit() {
-    if (busy || selected.size === 0) return
+  async function submit(opts?: Set<string>) {
+    const toSubmit = opts ?? selected
+    if (busy || toSubmit.size === 0) return
     setBusy(true)
     setError(null)
     try {
-      const optionIds = [...selected]
+      const optionIds = [...toSubmit]
       await api.votePoll(poll.id, optionIds)
       // Optimistically update the poll: bump counts, mark viewer's vote, increment total.
       const optionSet = new Set(optionIds)
@@ -81,7 +82,7 @@ export function PollBlock({
   }
 
   const optionsList = (
-    <ul className="space-y-1.5">
+    <ul className="space-y-2">
       {poll.options.map((opt) => {
         const pct =
           poll.totalVotes > 0 ? (opt.voteCount / poll.totalVotes) * 100 : 0
@@ -91,18 +92,18 @@ export function PollBlock({
         if (showResults) {
           return (
             <li key={opt.id}>
-              <div className="border-border relative overflow-hidden rounded-md border">
+              <div className="relative overflow-hidden rounded-md bg-base-2">
                 <div
-                  className={`absolute inset-y-0 left-0 ${isViewerChoice ? "bg-primary/30" : "bg-muted"}`}
+                  className={`absolute inset-y-0 left-0 transition-all duration-500 ease-out ${isViewerChoice ? "bg-primary/30" : "bg-neutral"}`}
                   style={{ width: `${pct}%` }}
                   aria-hidden
                 />
-                <div className="relative flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                <div className="relative flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
                   <span className="flex items-center gap-2 font-medium">
-                    {isViewerChoice && <span className="text-primary">✓</span>}
                     {opt.text}
+                    {isViewerChoice && <span className="text-primary font-bold">✓</span>}
                   </span>
-                  <span className="text-muted-foreground text-xs tabular-nums">
+                  <span className="text-primary font-medium text-sm tabular-nums">
                     {pct.toFixed(0)}%
                   </span>
                 </div>
@@ -113,8 +114,8 @@ export function PollBlock({
         return (
           <li key={opt.id}>
             <label
-              className={`hover:bg-muted/40 flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm transition ${
-                isSelected ? "border-primary" : "border-border"
+              className={`hover:bg-base-2 flex cursor-pointer items-center gap-3 rounded-md border border-neutral px-3 py-2.5 text-sm transition font-medium ${
+                isSelected ? "border-primary bg-primary/5 text-primary" : ""
               }`}
             >
               {poll.allowMultiple ? (
@@ -136,12 +137,16 @@ export function PollBlock({
   return (
     <div
       data-post-card-ignore-open
-      className="border-border mt-2 rounded-md border p-3"
+      className="mt-3 flex flex-col gap-2"
     >
       {!showResults && !poll.allowMultiple ? (
         <RadioGroup
           value={[...selected][0] ?? ""}
-          onValueChange={(value: string) => setSelected(new Set([value]))}
+          onValueChange={(value: string) => {
+            const next = new Set([value])
+            setSelected(next)
+            void submit(next)
+          }}
           className="contents"
         >
           {optionsList}
@@ -149,20 +154,23 @@ export function PollBlock({
       ) : (
         optionsList
       )}
-      <div className="text-muted-foreground mt-2 flex items-center justify-between text-xs">
+      <div className="text-tertiary flex items-center gap-2 text-sm mt-1">
         <span>
           {poll.totalVotes} {poll.totalVotes === 1 ? "vote" : "votes"} ·{" "}
           {formatTimeLeft(closesAt - now)}
         </span>
-        {!showResults && (
-          <button
-            type="button"
-            onClick={submit}
-            disabled={busy || selected.size === 0}
-            className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-full px-3 py-1 text-xs font-semibold transition disabled:opacity-50"
-          >
-            {busy ? "Voting…" : "Vote"}
-          </button>
+        {!showResults && poll.allowMultiple && (
+          <>
+            <span aria-hidden>·</span>
+            <button
+              type="button"
+              onClick={() => submit()}
+              disabled={busy || selected.size === 0}
+              className="text-primary font-medium hover:underline disabled:opacity-50"
+            >
+              {busy ? "Voting…" : "Vote"}
+            </button>
+          </>
         )}
       </div>
       {error && <p className="text-destructive mt-1 text-xs">{error}</p>}

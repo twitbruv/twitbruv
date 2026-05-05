@@ -26,6 +26,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const isAdminShell = pathname.startsWith("/admin")
   const showMobileIslandNav = authed && !isAdminShell
+  const dmThreadHeightLock =
+    authed &&
+    !isAdminShell &&
+    /^\/inbox\/[^/]+$/.test(pathname) &&
+    pathname !== "/inbox/new"
 
   const sidebarLeftStyle = {
     left: "max(0px, calc((100vw - 1080px) / 2))",
@@ -59,9 +64,13 @@ export function AppShell({ children }: { children: ReactNode }) {
               />
               <main
                 className={
-                  showMobileIslandNav
-                    ? "flex min-h-svh min-w-0 flex-1 flex-col pb-32 md:pb-0"
-                    : "flex min-h-svh min-w-0 flex-1 flex-col"
+                  dmThreadHeightLock
+                    ? showMobileIslandNav
+                      ? "flex h-svh min-h-0 min-w-0 flex-1 flex-col overflow-hidden pb-32 md:pb-0"
+                      : "flex h-svh min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+                    : showMobileIslandNav
+                      ? "flex min-h-svh min-w-0 flex-1 flex-col pb-32 md:pb-0"
+                      : "flex min-h-svh min-w-0 flex-1 flex-col"
                 }
               >
                 {children}
