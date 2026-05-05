@@ -211,8 +211,9 @@ function ConversationRow({ conversation }: { conversation: DmConversation }) {
                 ) : null
               })()}
             </span>
-            {ts && (
+            {ts && conversation.lastMessageAt && (
               <time
+                dateTime={conversation.lastMessageAt}
                 className={`shrink-0 text-xs tabular-nums ${
                   isUnread ? "font-medium text-primary" : "text-tertiary"
                 }`}
