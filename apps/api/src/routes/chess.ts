@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { and, desc, eq, or } from '@workspace/db'
+import { and, desc, eq, isNull, or } from '@workspace/db'
 import { schema } from '@workspace/db'
 import { createChessGameSchema, moveChessSchema } from '@workspace/validators'
 import { requireHandle, type HonoEnv } from '../middleware/session.ts'
@@ -135,6 +135,13 @@ chessRoute.post('/', async (c) => {
   const session = c.get('session')!
   const { db } = c.get('ctx')
   const body = createChessGameSchema.parse(await c.req.json())
+
+  const [opponent] = await db
+    .select({ id: schema.users.id })
+    .from(schema.users)
+    .where(and(eq(schema.users.id, body.opponentId), isNull(schema.users.deletedAt)))
+    .limit(1)
+  if (!opponent) return c.json({ error: 'opponent_not_found' }, 404)
 
   // For simplicity, the creator is white, opponent is black
   // In a real app, you might want to randomize this or have a challenge system
