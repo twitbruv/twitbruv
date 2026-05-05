@@ -341,16 +341,19 @@ postsRoute.post('/:id/repost', requireHandle(), async (c) => {
       .limit(1)
     if (!target) throw new HttpError(404, 'not_found')
 
-    // If the target is itself a repost, resolve to the original content post
+    // Transitively resolve through repost chains to the original content post
     // so we never create a repost-of-a-repost chain.
     let original = target
-    if (target.repostOfId) {
+    const visited = new Set<string>([target.id])
+    while (original.repostOfId) {
+      if (visited.has(original.repostOfId)) break
+      visited.add(original.repostOfId)
       const [resolved] = await tx
         .select()
         .from(schema.posts)
         .where(
           and(
-            eq(schema.posts.id, target.repostOfId),
+            eq(schema.posts.id, original.repostOfId),
             isNull(schema.posts.deletedAt),
           ),
         )
