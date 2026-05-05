@@ -118,7 +118,8 @@ export function createMediaRoute(deps: MediaDeps) {
   const altSchema = z.object({ altText: z.string().trim().max(1000).nullable() })
   route.patch('/:id/alt', requireHandle(), async (c) => {
     const session = c.get('session')!
-    const { db } = c.get('ctx')
+    const { db, rateLimit } = c.get('ctx')
+    await rateLimit(c, 'media.upload')
     const id = c.req.param('id')
     const body = altSchema.parse(await c.req.json())
 
