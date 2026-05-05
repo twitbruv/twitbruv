@@ -330,67 +330,176 @@ private struct ProfileFloatingChrome: View {
     @Binding var showSettings: Bool
     @Binding var reportUser: ReportSubject?
 
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    private let bannerGlassIconSize: CGFloat = 44
+
     var body: some View {
-        HStack(alignment: .center) {
-            if !navigationPath.isEmpty {
-                Button {
-                    navigationPath.removeLast()
-                } label: {
-                    HeroIcon(name: "chevron-left-solid", size: 16)
-                        .foregroundStyle(TBColor.textPrimary)
-                        .frame(width: 40, height: 40)
+        HStack(alignment: .center, spacing: 10) {
+            Group {
+                if !navigationPath.isEmpty {
+                    if reduceTransparency {
+                        Button {
+                            navigationPath.removeLast()
+                        } label: {
+                            HeroIcon(name: "chevron-left-solid", size: 17)
+                                .foregroundStyle(TBColor.textPrimary)
+                                .frame(width: bannerGlassIconSize, height: bannerGlassIconSize)
+                                .background(Circle().fill(TBColor.base2))
+                                .overlay {
+                                    Circle().strokeBorder(TBColor.glassStroke, lineWidth: 0.6)
+                                }
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Back")
+                    } else {
+                        Button {
+                            navigationPath.removeLast()
+                        } label: {
+                            HeroIcon(name: "chevron-left-solid", size: 17)
+                                .foregroundStyle(TBColor.textPrimary)
+                                .frame(width: bannerGlassIconSize, height: bannerGlassIconSize)
+                                .background { Circle().fill(.clear) }
+                                .glassEffect(Glass.clear.interactive(), in: Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Back")
+                    }
                 }
-                .buttonStyle(.plain)
-                .tbGlass(.chrome, in: Circle(), interactive: true, shadow: false)
-                .accessibilityLabel("Back")
             }
             Spacer(minLength: 0)
-            Menu {
-                if isSelf {
+            if reduceTransparency {
+                HStack(spacing: 10) {
                     Button {
-                        showSettings = true
+                        navigationPath.append(FeedRoute.search(initialQuery: ""))
                     } label: {
-                        Label("Settings", hero: "cog-6-tooth-solid")
+                        HeroIcon(name: "magnifying-glass-solid", size: 17)
+                            .foregroundStyle(TBColor.textPrimary)
+                            .frame(width: bannerGlassIconSize, height: bannerGlassIconSize)
+                            .background(Circle().fill(TBColor.base2))
+                            .overlay {
+                                Circle().strokeBorder(TBColor.glassStroke, lineWidth: 0.6)
+                            }
                     }
-                } else {
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Search")
+                    ProfileOverflowMenu(
+                        isSelf: isSelf,
+                        vm: vm,
+                        user: user,
+                        showSettings: $showSettings,
+                        reportUser: $reportUser,
+                        reduceTransparency: true
+                    )
+                }
+            } else {
+                HStack(spacing: 8) {
                     Button {
-                        Task { await vm.setMute(!(user.viewer?.muting == true)) }
+                        navigationPath.append(FeedRoute.search(initialQuery: ""))
                     } label: {
-                        Label(
-                            (user.viewer?.muting == true) ? "Unmute" : "Mute",
-                            hero: "speaker-x-mark-solid"
-                        )
+                        HeroIcon(name: "magnifying-glass-solid", size: 17)
+                            .foregroundStyle(TBColor.textPrimary)
+                            .frame(width: bannerGlassIconSize, height: bannerGlassIconSize)
                     }
-                    Button {
-                        if let h = user.handle {
-                            reportUser = ReportSubject.user(handle: h, id: user.id)
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Search")
+                    ProfileOverflowMenu(
+                        isSelf: isSelf,
+                        vm: vm,
+                        user: user,
+                        showSettings: $showSettings,
+                        reportUser: $reportUser,
+                        reduceTransparency: false
+                    )
+                }
+                .compositingGroup()
+                .padding(.horizontal, 6)
+                .padding(.vertical, 4)
+                .glassEffect(Glass.clear.interactive(), in: .capsule)
+            }
+        }
+    }
+}
+
+private struct ProfileOverflowMenu: View {
+    let isSelf: Bool
+    let vm: ProfileViewModel
+    let user: PublicUser
+    @Binding var showSettings: Bool
+    @Binding var reportUser: ReportSubject?
+    let reduceTransparency: Bool
+
+    private let bannerGlassIconSize: CGFloat = 44
+
+    var body: some View {
+        Group {
+            if reduceTransparency {
+                Menu {
+                    menuContent
+                } label: {
+                    HeroIcon(name: "ellipsis-horizontal-solid", size: 17)
+                        .foregroundStyle(TBColor.textPrimary)
+                        .frame(width: bannerGlassIconSize, height: bannerGlassIconSize)
+                        .background(Circle().fill(TBColor.base2))
+                        .overlay {
+                            Circle().strokeBorder(TBColor.glassStroke, lineWidth: 0.6)
                         }
-                    } label: {
-                        Label("Report", hero: "flag-solid")
-                    }
-                    if user.viewer?.blocking == true {
-                        Button {
-                            Task { await vm.setBlock(false) }
-                        } label: {
-                            Label("Unblock", hero: "hand-raised-solid")
-                        }
-                    } else {
-                        Button(role: .destructive) {
-                            Task { await vm.setBlock(true) }
-                        } label: {
-                            Label("Block", hero: "hand-raised-solid")
-                        }
-                    }
+                }
+                .menuStyle(.button)
+                .buttonStyle(.plain)
+                .accessibilityLabel("More")
+            } else {
+                Menu {
+                    menuContent
+                } label: {
+                    HeroIcon(name: "ellipsis-horizontal-solid", size: 17)
+                        .foregroundStyle(TBColor.textPrimary)
+                        .frame(width: bannerGlassIconSize, height: bannerGlassIconSize)
+                }
+                .menuStyle(.button)
+                .buttonStyle(.plain)
+                .accessibilityLabel("More")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var menuContent: some View {
+        if isSelf {
+            Button {
+                showSettings = true
+            } label: {
+                Label("Settings", hero: "cog-6-tooth-solid")
+            }
+        } else {
+            Button {
+                Task { await vm.setMute(!(user.viewer?.muting == true)) }
+            } label: {
+                Label(
+                    (user.viewer?.muting == true) ? "Unmute" : "Mute",
+                    hero: "speaker-x-mark-solid"
+                )
+            }
+            Button {
+                if let h = user.handle {
+                    reportUser = ReportSubject.user(handle: h, id: user.id)
                 }
             } label: {
-                HeroIcon(name: "ellipsis-horizontal-solid", size: 16)
-                    .foregroundStyle(TBColor.textPrimary)
-                    .frame(height: 40)
-                    .padding(.horizontal, 14)
+                Label("Report", hero: "flag-solid")
             }
-            .buttonStyle(.plain)
-            .tbGlassCapsule(.chrome, interactive: true, shadow: false)
-            .accessibilityLabel("More")
+            if user.viewer?.blocking == true {
+                Button {
+                    Task { await vm.setBlock(false) }
+                } label: {
+                    Label("Unblock", hero: "hand-raised-solid")
+                }
+            } else {
+                Button(role: .destructive) {
+                    Task { await vm.setBlock(true) }
+                } label: {
+                    Label("Block", hero: "hand-raised-solid")
+                }
+            }
         }
     }
 }
@@ -408,9 +517,9 @@ private struct ProfileHeader: View {
         max(0, bannerNavUnderlap)
     }
 
-    private let bannerHeight: CGFloat = 180
-    private let avatarSize: CGFloat = 64
-    private let avatarLift: CGFloat = 40
+    private let bannerHeight: CGFloat = 240
+    private let avatarSize: CGFloat = 72
+    private let avatarLift: CGFloat = 48
 
     private var joinedLine: String? {
         guard let d = user.createdAt else { return nil }
@@ -447,12 +556,16 @@ private struct ProfileHeader: View {
                     Rectangle()
                         .fill(
                             LinearGradient(
-                                colors: [Color.black.opacity(0.12), Color.clear],
+                                colors: [
+                                    Color.black.opacity(0.22),
+                                    Color.black.opacity(0.06),
+                                    Color.clear,
+                                ],
                                 startPoint: .bottom,
                                 endPoint: .top
                             )
                         )
-                        .frame(height: 48)
+                        .frame(height: 72)
                 }
 
             HStack(alignment: .bottom, spacing: 10) {
@@ -483,13 +596,14 @@ private struct ProfileHeader: View {
     }
 
     private var detailsBand: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .center, spacing: 6) {
                 Text(user.displayName ?? user.handle ?? "—")
-                    .font(TBTypography.pageTitle)
+                    .font(.system(size: 28, weight: .bold))
                     .foregroundStyle(TBColor.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
                 if user.isVerified == true {
-                    HeroIcon(name: "check-badge-solid", size: 18)
+                    HeroIcon(name: "check-badge-solid", size: 20)
                         .foregroundStyle(TBColor.accent)
                 }
             }
@@ -501,14 +615,19 @@ private struct ProfileHeader: View {
             if let bio = user.bio, !bio.isEmpty {
                 Text(bio)
                     .font(TBTypography.bodySecondary)
-                    .foregroundStyle(TBColor.textPrimary)
+                    .foregroundStyle(TBColor.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             metaLine
-            websiteGlobeRow
+            socialLinksRow
             ProfileMetricsRow(user: user, onFollowers: onFollowers, onFollowing: onFollowing)
+            Rectangle()
+                .fill(TBColor.borderNeutral.opacity(0.45))
+                .frame(height: 0.5)
+                .padding(.top, 6)
         }
         .padding(.horizontal, TBLayout.pagePadding)
-        .padding(.top, 16)
+        .padding(.top, 12)
     }
 
     @ViewBuilder
@@ -540,14 +659,21 @@ private struct ProfileHeader: View {
     }
 
     @ViewBuilder
-    private var websiteGlobeRow: some View {
+    private var socialLinksRow: some View {
         if let raw = user.websiteUrl?.trimmingCharacters(in: .whitespaces), !raw.isEmpty,
            let url = profileWebsiteURL(from: raw)
         {
-            Link(destination: url) {
-                HeroIcon(name: "globe-alt-solid", size: 18)
-                    .foregroundStyle(TBColor.textSecondary)
+            HStack(spacing: 12) {
+                Link(destination: url) {
+                    HeroIcon(name: "globe-alt-solid", size: 18)
+                        .foregroundStyle(TBColor.textSecondary)
+                        .frame(width: 36, height: 36)
+                        .background(
+                            Circle().fill(TBColor.subtleFill.opacity(0.55))
+                        )
+                }
             }
+            .padding(.top, 2)
         }
     }
 }
@@ -584,7 +710,7 @@ private struct ProfileActionsRow: View {
                 let blocking = user.viewer?.blocking == true
                 TBButton(
                     title: following ? "Following" : "Follow",
-                    style: following ? .outline : .primary,
+                    style: following ? .outline : .promote,
                     expands: false,
                     isDisabled: blocking
                 ) {
@@ -593,13 +719,13 @@ private struct ProfileActionsRow: View {
                 Button {
                     Task { await startDM() }
                 } label: {
-                    HeroIcon(name: "envelope-solid", size: 16)
-                        .foregroundStyle(TBColor.textPrimary)
-                        .frame(width: 36, height: 36)
+                    HeroIcon(name: "envelope-solid", size: 17)
+                        .foregroundStyle(.white)
+                        .frame(width: 40, height: 40)
                 }
                 .buttonStyle(.plain)
                 .disabled(blocking)
-                .tbGlass(.chrome, in: Circle(), interactive: true, shadow: false)
+                .background(Circle().fill(Color.black.opacity(0.5)))
             }
         }
     }

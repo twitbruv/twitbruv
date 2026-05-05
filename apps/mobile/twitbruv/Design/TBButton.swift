@@ -3,6 +3,7 @@ import SwiftUI
 struct TBButton: View {
     enum Style {
         case primary
+        case promote
         case outline
         case secondary
         case transparent
@@ -48,7 +49,7 @@ struct TBButton: View {
 
     private var usesOpaqueBackground: Bool {
         switch style {
-        case .primary, .danger:
+        case .primary, .promote, .danger:
             return true
         default:
             return false
@@ -57,7 +58,7 @@ struct TBButton: View {
 
     private var horizontalPadding: CGFloat {
         switch style {
-        case .primary, .outline, .secondary, .danger, .dangerLight:
+        case .primary, .promote, .outline, .secondary, .danger, .dangerLight:
             return 14
         case .transparent:
             return 10
@@ -69,6 +70,8 @@ struct TBButton: View {
             switch style {
             case .primary:
                 TBColor.inverse.opacity(0.88)
+            case .promote:
+                TBColor.warn.opacity(0.95)
             case .outline:
                 Color.clear
             case .secondary:
@@ -87,6 +90,8 @@ struct TBButton: View {
         let base: Color = switch style {
         case .primary:
             TBColor.textOnInverse
+        case .promote:
+            Color.white
         case .outline, .secondary:
             TBColor.textPrimary
         case .transparent:
@@ -105,7 +110,7 @@ private struct ButtonGlassModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         switch style {
-        case .primary, .danger:
+        case .primary, .promote, .danger:
             content
                 .clipShape(Capsule(style: .continuous))
                 .shadow(
