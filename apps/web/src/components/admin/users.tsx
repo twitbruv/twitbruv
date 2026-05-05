@@ -117,7 +117,11 @@ export default function AdminUsers() {
 
   const users = useMemo(() => data?.pages.flatMap((p) => p.users) ?? [], [data])
 
-  const loadError = error ? (error instanceof Error ? error.message : "failed to load") : null
+  const loadError = error
+    ? error instanceof Error
+      ? error.message
+      : "failed to load"
+    : null
 
   const [busyId, setBusyId] = useState<string | null>(null)
   const [dialog, setDialog] = useState<ActionDialogState>(null)
@@ -871,7 +875,11 @@ function UserDetailSheet({
     enabled: !!userId,
   })
 
-  const sheetErr = error ? (error instanceof Error ? error.message : "failed to load") : null
+  const sheetErr = error
+    ? error instanceof Error
+      ? error.message
+      : "failed to load"
+    : null
 
   const open = !!userId
   const u = detail?.user

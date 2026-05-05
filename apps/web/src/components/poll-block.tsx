@@ -101,9 +101,11 @@ export function PollBlock({
                 <div className="relative flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
                   <span className="flex items-center gap-2 font-medium">
                     {opt.text}
-                    {isViewerChoice && <span className="text-primary font-bold">✓</span>}
+                    {isViewerChoice && (
+                      <span className="font-bold text-primary">✓</span>
+                    )}
                   </span>
-                  <span className="text-primary font-medium text-sm tabular-nums">
+                  <span className="text-sm font-medium text-primary tabular-nums">
                     {pct.toFixed(0)}%
                   </span>
                 </div>
@@ -114,7 +116,7 @@ export function PollBlock({
         return (
           <li key={opt.id}>
             <label
-              className={`hover:bg-base-2 flex cursor-pointer items-center gap-3 rounded-md border border-neutral px-3 py-2.5 text-sm transition font-medium ${
+              className={`flex cursor-pointer items-center gap-3 rounded-md border border-neutral px-3 py-2.5 text-sm font-medium transition hover:bg-base-2 ${
                 isSelected ? "border-primary bg-primary/5 text-primary" : ""
               }`}
             >
@@ -135,10 +137,7 @@ export function PollBlock({
   )
 
   return (
-    <div
-      data-post-card-ignore-open
-      className="mt-3 flex flex-col gap-2"
-    >
+    <div data-post-card-ignore-open className="mt-3 flex flex-col gap-2">
       {!showResults && !poll.allowMultiple ? (
         <RadioGroup
           value={[...selected][0] ?? ""}
@@ -154,7 +153,7 @@ export function PollBlock({
       ) : (
         optionsList
       )}
-      <div className="text-tertiary flex items-center gap-2 text-sm mt-1">
+      <div className="mt-1 flex items-center gap-2 text-sm text-tertiary">
         <span>
           {poll.totalVotes} {poll.totalVotes === 1 ? "vote" : "votes"} ·{" "}
           {formatTimeLeft(closesAt - now)}
@@ -166,7 +165,7 @@ export function PollBlock({
               type="button"
               onClick={() => submit()}
               disabled={busy || selected.size === 0}
-              className="text-primary font-medium hover:underline disabled:opacity-50"
+              className="font-medium text-primary hover:underline disabled:opacity-50"
             >
               {busy ? "Voting…" : "Vote"}
             </button>
