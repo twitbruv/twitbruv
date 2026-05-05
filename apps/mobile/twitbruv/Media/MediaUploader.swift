@@ -38,8 +38,8 @@ actor MediaUploader {
             throw APIError.invalidResponse
         }
 
-        try await api.sendVoid(API.Media.finalize(intent.id))
-        return try await pollUntilReady(id: intent.id)
+        try await api.sendVoid(API.Media.finalize(intent.mediaId))
+        return try await pollUntilReady(id: intent.mediaId)
     }
 
     private func pollUntilReady(id: String) async throws -> Media {

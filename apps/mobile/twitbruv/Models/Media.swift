@@ -44,7 +44,7 @@ struct MediaIntentBody: Codable, Sendable {
 }
 
 struct MediaIntentResponse: Codable, Sendable {
-    let id: String
+    let mediaId: String
     let uploadUrl: String
     let uploadHeaders: [String: String]?
     let key: String?
