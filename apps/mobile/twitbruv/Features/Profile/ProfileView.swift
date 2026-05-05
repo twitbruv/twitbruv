@@ -7,6 +7,7 @@ final class ProfileViewModel {
     let handle: String
     let api: APIClient
     var user: PublicUser?
+    var githubProfile: GithubProfilePayload?
     var error: APIError?
 
     init(handle: String, api: APIClient) {
@@ -16,8 +17,12 @@ final class ProfileViewModel {
 
     func load() async {
         do {
-            let response: ProfileResponse = try await api.get(API.Users.get(handle))
+            async let userReq: ProfileResponse = api.get(API.Users.get(handle))
+            async let githubReq: GithubProfilePayload? = (try? api.get(API.Users.github(handle)))
+            
+            let (response, ghProfile) = try await (userReq, githubReq)
             user = response.user
+            githubProfile = ghProfile
         } catch let e as APIError {
             self.error = e
         } catch {
@@ -508,9 +513,10 @@ private struct ProfileHeader: View {
     let onFollowers: () -> Void
     let onFollowing: () -> Void
 
-    private let bannerHeight: CGFloat = 140
-    private let avatarSize: CGFloat = 72
-    private let avatarLift: CGFloat = 36
+    private let bannerHeight: CGFloat = 220
+    private let bannerSafeAreaPad: CGFloat = 60
+    private let avatarSize: CGFloat = 80
+    private let avatarLift: CGFloat = 40
 
     private var joinedLine: String? {
         guard let d = user.createdAt else { return nil }
@@ -527,47 +533,35 @@ private struct ProfileHeader: View {
     }
 
     private var heroBand: some View {
-        VStack(spacing: 0) {
-            GeometryReader { geo in
-                let minY = geo.frame(in: .global).minY
-                let isScrolledDown = minY > 0
-                let stretchHeight = isScrolledDown ? geo.size.height + minY : geo.size.height
-                let stretchOffset = isScrolledDown ? -minY : 0
-
-                Color.clear
-                    .background {
-                        AsyncImage(url: user.bannerUrl.flatMap(URL.init(string:))) { phase in
-                            switch phase {
-                            case .success(let img):
-                                img.resizable().scaledToFill()
-                            default:
-                                TBColor.base2
-                            }
-                        }
-                    }
-                    .frame(width: geo.size.width, height: stretchHeight)
-                    .clipped()
-                    .overlay(alignment: .bottom) {
-                        Rectangle()
-                            .fill(
-                                LinearGradient(
-                                    colors: [
-                                        Color.black.opacity(0.22),
-                                        Color.black.opacity(0.06),
-                                        Color.clear,
-                                    ],
-                                    startPoint: .bottom,
-                                    endPoint: .top
-                                )
-                            )
-                            .frame(height: 72)
-                    }
-                    .offset(y: stretchOffset)
+        ZStack(alignment: .bottomLeading) {
+            AsyncImage(url: user.bannerUrl.flatMap(URL.init(string:))) { phase in
+                switch phase {
+                case .success(let img):
+                    img.resizable().scaledToFill()
+                default:
+                    TBColor.base2
+                }
             }
-            .frame(height: bannerHeight)
-            .zIndex(1)
+            .frame(maxWidth: .infinity)
+            .frame(height: bannerHeight + bannerSafeAreaPad)
+            .clipped()
+            .overlay(alignment: .bottom) {
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.black.opacity(0.3),
+                                Color.black.opacity(0.1),
+                                Color.clear,
+                            ],
+                            startPoint: .bottom,
+                            endPoint: .top
+                        )
+                    )
+                    .frame(height: 72)
+            }
 
-            HStack(alignment: .top, spacing: 0) {
+            HStack(alignment: .bottom, spacing: 0) {
                 AvatarView(
                     urlString: user.avatarUrl,
                     size: avatarSize,
@@ -577,9 +571,8 @@ private struct ProfileHeader: View {
                     Circle()
                         .strokeBorder(TBColor.base1, lineWidth: 4)
                 }
-                .offset(y: -avatarLift)
-                .padding(.bottom, -avatarLift)
                 .padding(.leading, TBLayout.pagePadding)
+                .offset(y: avatarLift)
 
                 Spacer(minLength: 8)
 
@@ -590,10 +583,12 @@ private struct ProfileHeader: View {
                     onEditProfile: onEditProfile
                 )
                 .padding(.trailing, TBLayout.pagePadding)
-                .padding(.top, 12)
+                .padding(.bottom, 12)
             }
-            .zIndex(2)
         }
+        .frame(height: bannerHeight + bannerSafeAreaPad)
+        .padding(.bottom, avatarLift)
+        .padding(.top, -bannerSafeAreaPad)
     }
 
     private var detailsBand: some View {
@@ -621,6 +616,10 @@ private struct ProfileHeader: View {
             }
             metaLine
             socialLinksRow
+            if let githubProfile = vm.githubProfile, githubProfile.connected {
+                GithubProfileSection(profile: githubProfile)
+                    .padding(.top, 4)
+            }
             ProfileMetricsRow(user: user, onFollowers: onFollowers, onFollowing: onFollowing)
             Rectangle()
                 .fill(TBColor.borderNeutral.opacity(0.45))

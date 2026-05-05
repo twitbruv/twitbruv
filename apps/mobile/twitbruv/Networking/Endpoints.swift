@@ -105,6 +105,9 @@ enum API {
         static func unmute(_ handle: String) -> Endpoint {
             .init(.DELETE, "/api/users/\(handle)/mute")
         }
+        static func github(_ handle: String) -> Endpoint {
+            .init(.GET, "/api/users/\(handle)/github")
+        }
     }
 
     enum Feed {

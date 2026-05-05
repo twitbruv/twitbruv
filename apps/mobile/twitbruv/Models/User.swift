@@ -76,3 +76,49 @@ struct UsersListResponse: Codable, Sendable {
 struct SuggestedUsersResponse: Codable, Sendable {
     let users: [UserSummary]
 }
+
+struct GithubContributionDay: Codable, Sendable, Hashable {
+    let date: String
+    let count: Int
+    let color: String
+}
+
+struct GithubContributionWeek: Codable, Sendable, Hashable {
+    let days: [GithubContributionDay]
+}
+
+struct GithubContributions: Codable, Sendable, Hashable {
+    let totalContributions: Int
+    let weeks: [GithubContributionWeek]
+}
+
+struct GithubLanguage: Codable, Sendable, Hashable {
+    let name: String
+    let color: String?
+}
+
+struct GithubPinnedRepo: Codable, Sendable, Identifiable, Hashable {
+    let id: String
+    let name: String
+    let nameWithOwner: String
+    let description: String?
+    let url: String
+    let stars: Int
+    let forks: Int
+    let primaryLanguage: GithubLanguage?
+}
+
+struct GithubProfilePayload: Codable, Sendable, Hashable {
+    let connected: Bool
+    let login: String?
+    let name: String?
+    let htmlUrl: String?
+    let avatarUrl: String?
+    let followers: Int?
+    let following: Int?
+    let publicRepos: Int?
+    let contributions: GithubContributions?
+    let pinned: [GithubPinnedRepo]?
+    let refreshedAt: String?
+    let stale: Bool?
+}
