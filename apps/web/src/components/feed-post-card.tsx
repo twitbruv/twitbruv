@@ -56,6 +56,7 @@ function relativeTime(iso: string): string {
   const d = new Date(iso).getTime()
   const diff = Date.now() - d
   const s = Math.floor(diff / 1000)
+  if (s < 1) return "now"
   if (s < 60) return `${s}s`
   const m = Math.floor(s / 60)
   if (m < 60) return `${m}m`
