@@ -1,9 +1,8 @@
+import { CheckIcon } from "@heroicons/react/16/solid"
 import { useEffect, useState } from "react"
+import { Button } from "@workspace/ui/components/button"
 import { Checkbox } from "@workspace/ui/components/checkbox"
-import {
-  RadioGroup,
-  RadioGroupItem,
-} from "@workspace/ui/components/radio-group"
+import { cn } from "@workspace/ui/lib/utils"
 import { ApiError, api } from "../lib/api"
 import { authClient } from "../lib/auth"
 import type { PollDto } from "../lib/api"
@@ -31,7 +30,7 @@ export function PollBlock({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<Set<string>>(new Set())
-  // Recompute closed-state on a 30s tick so the UI flips when the poll expires.
+  const [animate, setAnimate] = useState(false)
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     const iv = window.setInterval(() => setNow(Date.now()), 30_000)
@@ -41,29 +40,29 @@ export function PollBlock({
   const closesAt = new Date(poll.closesAt).getTime()
   const closed = poll.closed || closesAt <= now
   const hasVoted = (poll.viewerVoteOptionIds?.length ?? 0) > 0
-  // Show results if voted, closed, or the viewer is anonymous (no point hiding from them).
   const showResults = closed || hasVoted || !session
 
-  function toggle(optionId: string) {
-    if (poll.allowMultiple) {
-      const next = new Set(selected)
-      if (next.has(optionId)) next.delete(optionId)
-      else next.add(optionId)
-      setSelected(next)
-    } else {
-      setSelected(new Set([optionId]))
+  useEffect(() => {
+    if (showResults && !animate) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => setAnimate(true))
+      })
     }
+  }, [showResults, animate])
+
+  function toggleMulti(optionId: string) {
+    const next = new Set(selected)
+    if (next.has(optionId)) next.delete(optionId)
+    else next.add(optionId)
+    setSelected(next)
   }
 
-  async function submit(opts?: Set<string>) {
-    const toSubmit = opts ?? selected
-    if (busy || toSubmit.size === 0) return
+  async function vote(optionIds: Array<string>) {
+    if (busy || optionIds.length === 0) return
     setBusy(true)
     setError(null)
     try {
-      const optionIds = [...toSubmit]
       await api.votePoll(poll.id, optionIds)
-      // Optimistically update the poll: bump counts, mark viewer's vote, increment total.
       const optionSet = new Set(optionIds)
       onChange?.({
         ...poll,
@@ -81,99 +80,102 @@ export function PollBlock({
     }
   }
 
-  const optionsList = (
-    <ul className="space-y-2">
-      {poll.options.map((opt) => {
-        const pct =
-          poll.totalVotes > 0 ? (opt.voteCount / poll.totalVotes) * 100 : 0
-        const isViewerChoice =
-          poll.viewerVoteOptionIds?.includes(opt.id) ?? false
-        const isSelected = selected.has(opt.id)
-        if (showResults) {
-          return (
-            <li key={opt.id}>
-              <div className="relative overflow-hidden rounded-md bg-base-2">
+  return (
+    <div data-post-card-ignore-open className="mt-2">
+      <div className="flex flex-col gap-1.5">
+        {poll.options.map((opt) => {
+          const pct =
+            poll.totalVotes > 0 ? (opt.voteCount / poll.totalVotes) * 100 : 0
+          const isViewerChoice =
+            poll.viewerVoteOptionIds?.includes(opt.id) ?? false
+
+          if (showResults) {
+            return (
+              <div
+                key={opt.id}
+                className="relative overflow-hidden rounded-lg border border-transparent"
+              >
                 <div
-                  className={`absolute inset-y-0 left-0 transition-all duration-500 ease-out ${isViewerChoice ? "bg-primary/30" : "bg-neutral"}`}
-                  style={{ width: `${pct}%` }}
+                  className={cn(
+                    "absolute inset-y-0 left-0 rounded-lg transition-all duration-500 ease-out-expo",
+                    isViewerChoice ? "bg-inverse/10" : "bg-subtle"
+                  )}
+                  style={{ width: animate ? `${pct}%` : "0%" }}
                   aria-hidden
                 />
-                <div className="relative flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
-                  <span className="flex items-center gap-2 font-medium">
+                <div className="relative flex items-center justify-between gap-3 px-3 py-2">
+                  <span className="flex items-center gap-2 text-sm font-medium text-primary">
+                    {isViewerChoice && (
+                      <CheckIcon className="size-4 shrink-0 text-primary" />
+                    )}
                     {opt.text}
-                    {isViewerChoice && <span className="text-primary font-bold">✓</span>}
                   </span>
-                  <span className="text-primary font-medium text-sm tabular-nums">
+                  <span className="shrink-0 text-sm text-tertiary tabular-nums">
                     {pct.toFixed(0)}%
                   </span>
                 </div>
               </div>
-            </li>
-          )
-        }
-        return (
-          <li key={opt.id}>
-            <label
-              className={`hover:bg-base-2 flex cursor-pointer items-center gap-3 rounded-md border border-neutral px-3 py-2.5 text-sm transition font-medium ${
-                isSelected ? "border-primary bg-primary/5 text-primary" : ""
-              }`}
-            >
-              {poll.allowMultiple ? (
+            )
+          }
+
+          if (poll.allowMultiple) {
+            const isSelected = selected.has(opt.id)
+            return (
+              <label
+                key={opt.id}
+                className={cn(
+                  "flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2 text-sm text-primary transition-colors duration-150",
+                  isSelected
+                    ? "border-neutral-strong bg-subtle"
+                    : "border-neutral bg-base-2 hover:bg-subtle"
+                )}
+              >
                 <Checkbox
                   checked={isSelected}
-                  onCheckedChange={() => toggle(opt.id)}
+                  onCheckedChange={() => toggleMulti(opt.id)}
                 />
-              ) : (
-                <RadioGroupItem value={opt.id} />
-              )}
-              <span>{opt.text}</span>
-            </label>
-          </li>
-        )
-      })}
-    </ul>
-  )
+                <span>{opt.text}</span>
+              </label>
+            )
+          }
 
-  return (
-    <div
-      data-post-card-ignore-open
-      className="mt-3 flex flex-col gap-2"
-    >
-      {!showResults && !poll.allowMultiple ? (
-        <RadioGroup
-          value={[...selected][0] ?? ""}
-          onValueChange={(value: string) => {
-            const next = new Set([value])
-            setSelected(next)
-            void submit(next)
-          }}
-          className="contents"
-        >
-          {optionsList}
-        </RadioGroup>
-      ) : (
-        optionsList
-      )}
-      <div className="text-tertiary flex items-center gap-2 text-sm mt-1">
-        <span>
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              disabled={busy}
+              onClick={() => vote([opt.id])}
+              className={cn(
+                "rounded-lg border border-neutral bg-base-2 px-3 py-2 text-left text-sm text-primary transition-colors duration-150",
+                "hover:border-neutral-strong hover:bg-subtle",
+                "active:scale-[0.99]",
+                "disabled:pointer-events-none disabled:opacity-50"
+              )}
+            >
+              {opt.text}
+            </button>
+          )
+        })}
+      </div>
+      <div className="mt-2 flex items-center justify-between">
+        <span className="text-sm text-tertiary">
           {poll.totalVotes} {poll.totalVotes === 1 ? "vote" : "votes"} ·{" "}
           {formatTimeLeft(closesAt - now)}
         </span>
         {!showResults && poll.allowMultiple && (
-          <>
-            <span aria-hidden>·</span>
-            <button
-              type="button"
-              onClick={() => submit()}
-              disabled={busy || selected.size === 0}
-              className="text-primary font-medium hover:underline disabled:opacity-50"
-            >
-              {busy ? "Voting…" : "Vote"}
-            </button>
-          </>
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            onClick={() => vote([...selected])}
+            disabled={busy || selected.size === 0}
+            loading={busy}
+          >
+            Vote
+          </Button>
         )}
       </div>
-      {error && <p className="text-destructive mt-1 text-xs">{error}</p>}
+      {error && <p className="mt-1 text-sm text-danger">{error}</p>}
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { ChartBarIcon, PhotoIcon } from "@heroicons/react/24/solid"
+import { ChartBarIcon, PhotoIcon } from "@heroicons/react/16/solid"
 import { cn } from "@workspace/ui/lib/utils"
 import { Button } from "@workspace/ui/components/button"
 import { DropdownMenu } from "@workspace/ui/components/dropdown-menu"

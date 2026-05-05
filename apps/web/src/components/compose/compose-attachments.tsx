@@ -1,4 +1,4 @@
-import { XMarkIcon } from "@heroicons/react/24/solid"
+import { XMarkIcon } from "@heroicons/react/16/solid"
 import { Button } from "@workspace/ui/components/button"
 import { Spinner } from "@workspace/ui/components/spinner"
 import { cn } from "@workspace/ui/lib/utils"
