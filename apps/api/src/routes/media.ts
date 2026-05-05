@@ -123,11 +123,19 @@ export function createMediaRoute(deps: MediaDeps) {
     const body = altSchema.parse(await c.req.json())
 
     // Owner-only — alt text is part of the upload's authored content.
-    const [media] = await db.select().from(schema.media).where(eq(schema.media.id, id)).limit(1)
+    // Fold the ownership check into the WHERE clause so callers can't probe
+    // existence by comparing 404 vs 403 status codes.
+    const [media] = await db
+      .select()
+      .from(schema.media)
+      .where(and(eq(schema.media.id, id), eq(schema.media.ownerId, session.user.id)))
+      .limit(1)
     if (!media) return c.json({ error: 'not_found' }, 404)
-    if (media.ownerId !== session.user.id) return c.json({ error: 'forbidden' }, 403)
 
-    await db.update(schema.media).set({ altText: body.altText }).where(eq(schema.media.id, id))
+    await db
+      .update(schema.media)
+      .set({ altText: body.altText })
+      .where(and(eq(schema.media.id, id), eq(schema.media.ownerId, session.user.id)))
     return c.json({ ok: true })
   })
 
