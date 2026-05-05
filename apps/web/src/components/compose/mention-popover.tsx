@@ -1,8 +1,10 @@
+import { cn } from "@workspace/ui/lib/utils"
 import { Avatar } from "@workspace/ui/components/avatar"
 import {
   VerifiedBadge,
   resolveBadgeTier,
 } from "../../components/verified-badge"
+import { initialFor } from "../../components/user-list"
 import type { PublicUser } from "../../lib/api"
 
 interface MentionPopoverProps {
@@ -37,15 +39,13 @@ export function MentionPopover({
                   onSelect(u)
                 }}
                 onMouseEnter={() => onHover(i)}
-                className={
-                  "flex w-full items-center gap-3 px-3 py-2.5 text-left transition" +
-                  (isActive ? " bg-base-1" : " hover:bg-base-2/30")
-                }
+                className={cn(
+                  "flex w-full items-center gap-3 px-3 py-2.5 text-left transition",
+                  isActive ? "bg-base-1" : "hover:bg-base-2/30"
+                )}
               >
                 <Avatar
-                  initial={(u.displayName || u.handle || "?")
-                    .slice(0, 1)
-                    .toUpperCase()}
+                  initial={initialFor(u)}
                   src={u.avatarUrl}
                   className="size-9"
                 />

@@ -78,12 +78,6 @@ export function Compose({
     }
   }, [autoFocus])
 
-  useEffect(() => {
-    if (autoFocus && textareaRef.current) {
-      textareaRef.current.focus()
-    }
-  }, [autoFocus])
-
   // ── Derived state ──────────────────────────────────────────────────
 
   const readyMediaIds = attachments

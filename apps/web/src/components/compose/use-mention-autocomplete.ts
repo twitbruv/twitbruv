@@ -6,7 +6,10 @@ import type { PublicUser } from "../../lib/api"
 
 const MIN_QUERY_CHARS = 2
 const MAX_RESULTS = 6
-const TOKEN_RE = /^[A-Za-z0-9_.]*$/
+const QUERY_DEBOUNCE_MS = 200
+// Mirrors handleSchema in packages/validators/src/users.ts and the server-side
+// mention regex in apps/api/src/lib/mentions.ts. Keep in sync.
+const TOKEN_RE = /^[A-Za-z0-9_]*$/
 
 type ActiveMention = { start: number; query: string }
 
@@ -28,27 +31,48 @@ export function useMentionAutocomplete(args: {
   const { text, caret, onApply } = args
 
   const active = useMemo(() => getActiveMention(text, caret), [text, caret])
-  const [dismissedQuery, setDismissedQuery] = useState<string | null>(null)
-  const isDismissed = active && dismissedQuery === active.query
-  const enabled =
+  // Track the START offset of a dismissed @-token (Esc / after-apply) so the
+  // popover stays hidden for the rest of that token regardless of further
+  // typing. Cleared automatically once the caret leaves that token (active
+  // becomes null or its start changes).
+  const [dismissedStart, setDismissedStart] = useState<number | null>(null)
+  const isDismissed = active != null && dismissedStart === active.start
+  const eligible =
     !!active && active.query.length >= MIN_QUERY_CHARS && !isDismissed
 
+  // Debounce the query string fed to TanStack Query so rapid typing doesn't
+  // burn the shared `reads.search` rate-limit bucket (60/min) on every
+  // keystroke. The `active`/`eligible` signals stay reactive — only the
+  // network fetch is deferred.
+  const [debouncedQuery, setDebouncedQuery] = useState<string | null>(null)
+  useEffect(() => {
+    if (!eligible) {
+      setDebouncedQuery(null)
+      return
+    }
+    const id = setTimeout(
+      () => setDebouncedQuery(active.query),
+      QUERY_DEBOUNCE_MS
+    )
+    return () => clearTimeout(id)
+  }, [eligible, active?.query])
+
   const { data } = useQuery({
-    queryKey: qk.search(active?.query ?? ""),
-    queryFn: () => api.search(active!.query),
-    enabled,
+    queryKey: qk.search(debouncedQuery ?? ""),
+    queryFn: () => api.search(debouncedQuery!),
+    enabled: eligible && debouncedQuery != null,
     staleTime: 30_000,
   })
 
   const users = useMemo<Array<PublicUser>>(
     () =>
-      enabled
+      eligible
         ? (data?.users ?? []).filter((u) => u.handle).slice(0, MAX_RESULTS)
         : [],
-    [enabled, data]
+    [eligible, data]
   )
 
-  const open = enabled && users.length > 0
+  const open = eligible && users.length > 0
 
   const [activeIndex, setActiveIndex] = useState(0)
   useEffect(() => {
@@ -59,7 +83,9 @@ export function useMentionAutocomplete(args: {
     (user: PublicUser) => {
       if (!active || !user.handle) return
       onApply(active.start, caret, user.handle)
-      setDismissedQuery(active.query)
+      // Suppress the popover for the just-replaced token until the caret
+      // (which updates async via the parent's queueMicrotask) catches up.
+      setDismissedStart(active.start)
     },
     [active, caret, onApply]
   )
@@ -78,13 +104,17 @@ export function useMentionAutocomplete(args: {
         return true
       }
       if (e.key === "Enter" || e.key === "Tab") {
+        // Let Cmd/Ctrl+Enter fall through so the parent can submit the post.
+        if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) return false
         e.preventDefault()
-        apply(users[activeIndex])
+        // `open` already guarantees users.length > 0; fall back to first row
+        // if activeIndex is somehow stale across a result-set shrink.
+        apply(users[activeIndex] ?? users[0])
         return true
       }
       if (e.key === "Escape") {
         e.preventDefault()
-        setDismissedQuery(active.query)
+        setDismissedStart(active.start)
         return true
       }
       return false
