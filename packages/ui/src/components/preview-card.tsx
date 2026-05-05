@@ -50,12 +50,12 @@ function PreviewCardTrigger({
 // ---------------------------------------------------------------------------
 
 export interface PreviewCardContentProps {
-  /** Side relative to the trigger */
   side?: "top" | "bottom" | "left" | "right"
-  /** Alignment relative to the trigger */
   align?: "start" | "center" | "end"
-  /** Offset from the trigger in px */
   sideOffset?: number
+  /** Wider than default `clipping-ancestors` so popovers aren’t squashed in virtual/scroll layouts. */
+  collisionBoundary?: Element | "clipping-ancestors"
+  positionMethod?: "absolute" | "fixed"
   className?: string
   children: ReactNode
 }
@@ -64,6 +64,8 @@ function PreviewCardContent({
   side = "bottom",
   align = "start",
   sideOffset = 8,
+  collisionBoundary,
+  positionMethod,
   className,
   children,
 }: PreviewCardContentProps) {
@@ -73,6 +75,8 @@ function PreviewCardContent({
         side={side}
         align={align}
         sideOffset={sideOffset}
+        {...(collisionBoundary !== undefined ? { collisionBoundary } : {})}
+        {...(positionMethod !== undefined ? { positionMethod } : {})}
         className="isolate z-50"
       >
         <PreviewCardPrimitive.Popup

@@ -33,6 +33,7 @@ import { usePageHeader } from "../components/app-page-header"
 import { useCompose } from "../components/compose-provider"
 import { PageEmpty } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
+import { ProfileHoverCard } from "../components/profile-hover-card"
 import { VerifiedBadge } from "../components/verified-badge"
 import { RichText } from "../components/rich-text"
 import { PostEngagementBar } from "../components/post-engagement-bar"
@@ -657,7 +658,6 @@ function GroupedFollowRow({ items }: { items: Array<NotificationItem> }) {
 }
 
 function ReplyRow({ item }: { item: NotificationItem }) {
-  const navigate = useNavigate()
   const actor = item.actor
   const actorDisplayName = actor?.displayName ?? null
   const actorHandle = actor?.handle ?? null
@@ -677,22 +677,6 @@ function ReplyRow({ item }: { item: NotificationItem }) {
         ? [fallbackHandle]
         : []
 
-  function openPost(e: React.MouseEvent | React.KeyboardEvent) {
-    if ("target" in e && (e.target as HTMLElement).closest("a, button")) return
-    if (!replyTarget?.author.handle || !replyTarget.id) return
-    navigate({
-      to: "/$handle/p/$id",
-      params: { handle: replyTarget.author.handle, id: replyTarget.id },
-    })
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault()
-      openPost(e)
-    }
-  }
-
   const avatarEl = (
     <Avatar
       initial={actorInitial}
@@ -703,40 +687,40 @@ function ReplyRow({ item }: { item: NotificationItem }) {
 
   return (
     <div
-      role="button"
-      tabIndex={0}
-      onClick={openPost}
-      onKeyDown={handleKeyDown}
-      className={`focus-visible:ring-primary cursor-pointer border-b border-neutral px-4 py-3.5 transition-colors hover:bg-base-2/20 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset ${!item.readAt ? "bg-subtle" : ""}`}
+      className={`border-b border-neutral px-4 py-3.5 transition-colors hover:bg-base-2/20 ${!item.readAt ? "bg-subtle" : ""}`}
     >
       <div className="flex items-start gap-3">
         {actorHandle ? (
-          <Link
-            to="/$handle"
-            params={{ handle: actorHandle }}
-            className="shrink-0 rounded-full transition hover:opacity-80"
-            onClick={(e) => e.stopPropagation()}
-            aria-label={`View @${actorHandle}`}
-          >
-            {avatarEl}
-          </Link>
+          <ProfileHoverCard handle={actorHandle}>
+            <Link
+              to="/$handle"
+              params={{ handle: actorHandle }}
+              className="shrink-0 rounded-full transition hover:opacity-80"
+              onClick={(e) => e.stopPropagation()}
+              aria-label={`View @${actorHandle}`}
+            >
+              {avatarEl}
+            </Link>
+          </ProfileHoverCard>
         ) : (
           avatarEl
         )}
         <div className="min-w-0 flex-1 text-sm">
           <div className="flex items-center gap-1.5">
             {actorHandle ? (
-              <Link
-                to="/$handle"
-                params={{ handle: actorHandle }}
-                className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {actorDisplayName || actorHandle}
-                {actor?.isVerified && (
-                  <VerifiedBadge size={14} role={actor.role} />
-                )}
-              </Link>
+              <ProfileHoverCard handle={actorHandle}>
+                <Link
+                  to="/$handle"
+                  params={{ handle: actorHandle }}
+                  className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {actorDisplayName || actorHandle}
+                  {actor?.isVerified && (
+                    <VerifiedBadge size={14} role={actor.role} />
+                  )}
+                </Link>
+              </ProfileHoverCard>
             ) : (
               <span className="inline-flex items-center gap-1 font-semibold text-primary">
                 {actorDisplayName || "someone"}
@@ -745,9 +729,7 @@ function ReplyRow({ item }: { item: NotificationItem }) {
                 )}
               </span>
             )}
-            {actorHandle && (
-              <span className="text-tertiary">@{actorHandle}</span>
-            )}
+            {actorHandle && <span className="text-tertiary">@{actorHandle}</span>}
             <span className="text-xs text-tertiary">
               · {formatShortTime(item.createdAt)}
             </span>
@@ -790,7 +772,6 @@ function ReplyRow({ item }: { item: NotificationItem }) {
 }
 
 function MentionRow({ item }: { item: NotificationItem }) {
-  const navigate = useNavigate()
   const actor = item.actor
   const actorDisplayName = actor?.displayName ?? null
   const actorHandle = actor?.handle ?? null
@@ -798,22 +779,6 @@ function MentionRow({ item }: { item: NotificationItem }) {
     .slice(0, 1)
     .toUpperCase()
   const mentionTarget = item.target
-
-  function openPost(e: React.MouseEvent | React.KeyboardEvent) {
-    if ("target" in e && (e.target as HTMLElement).closest("a, button")) return
-    if (!mentionTarget?.author.handle || !mentionTarget.id) return
-    navigate({
-      to: "/$handle/p/$id",
-      params: { handle: mentionTarget.author.handle, id: mentionTarget.id },
-    })
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault()
-      openPost(e)
-    }
-  }
 
   const avatarEl = (
     <Avatar
@@ -825,40 +790,40 @@ function MentionRow({ item }: { item: NotificationItem }) {
 
   return (
     <div
-      role="button"
-      tabIndex={0}
-      onClick={openPost}
-      onKeyDown={handleKeyDown}
-      className={`focus-visible:ring-primary cursor-pointer border-b border-neutral px-4 py-3.5 transition-colors hover:bg-base-2/20 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset ${!item.readAt ? "bg-subtle" : ""}`}
+      className={`border-b border-neutral px-4 py-3.5 transition-colors hover:bg-base-2/20 ${!item.readAt ? "bg-subtle" : ""}`}
     >
       <div className="flex items-start gap-3">
         {actorHandle ? (
-          <Link
-            to="/$handle"
-            params={{ handle: actorHandle }}
-            className="shrink-0 rounded-full transition hover:opacity-80"
-            onClick={(e) => e.stopPropagation()}
-            aria-label={`View @${actorHandle}`}
-          >
-            {avatarEl}
-          </Link>
+          <ProfileHoverCard handle={actorHandle}>
+            <Link
+              to="/$handle"
+              params={{ handle: actorHandle }}
+              className="shrink-0 rounded-full transition hover:opacity-80"
+              onClick={(e) => e.stopPropagation()}
+              aria-label={`View @${actorHandle}`}
+            >
+              {avatarEl}
+            </Link>
+          </ProfileHoverCard>
         ) : (
           avatarEl
         )}
         <div className="min-w-0 flex-1 text-sm">
           <div className="flex items-center gap-1.5">
             {actorHandle ? (
-              <Link
-                to="/$handle"
-                params={{ handle: actorHandle }}
-                className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {actorDisplayName || actorHandle}
-                {actor?.isVerified && (
-                  <VerifiedBadge size={14} role={actor.role} />
-                )}
-              </Link>
+              <ProfileHoverCard handle={actorHandle}>
+                <Link
+                  to="/$handle"
+                  params={{ handle: actorHandle }}
+                  className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {actorDisplayName || actorHandle}
+                  {actor?.isVerified && (
+                    <VerifiedBadge size={14} role={actor.role} />
+                  )}
+                </Link>
+              </ProfileHoverCard>
             ) : (
               <span className="inline-flex items-center gap-1 font-semibold text-primary">
                 {actorDisplayName || "someone"}
@@ -960,32 +925,36 @@ function NotificationRow({ item }: { item: NotificationItem }) {
           <Icon className={`size-5.5 ${iconClass}`} />
         </div>
         {actorHandle ? (
-          <Link
-            to="/$handle"
-            params={{ handle: actorHandle }}
-            className="shrink-0 rounded-full transition hover:opacity-80"
-            onClick={(e) => e.stopPropagation()}
-            aria-label={`View @${actorHandle}`}
-          >
-            {avatarEl}
-          </Link>
+          <ProfileHoverCard handle={actorHandle}>
+            <Link
+              to="/$handle"
+              params={{ handle: actorHandle }}
+              className="shrink-0 rounded-full transition hover:opacity-80"
+              onClick={(e) => e.stopPropagation()}
+              aria-label={`View @${actorHandle}`}
+            >
+              {avatarEl}
+            </Link>
+          </ProfileHoverCard>
         ) : (
           avatarEl
         )}
         <div className="min-w-0 flex-1 text-sm">
           <p>
             {actorHandle ? (
-              <Link
-                to="/$handle"
-                params={{ handle: actorHandle }}
-                className="inline-flex items-center gap-1 align-middle font-semibold text-primary hover:underline"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {actorDisplayName || actorHandle}
-                {item.actor?.isVerified && (
-                  <VerifiedBadge size={14} role={item.actor.role} />
-                )}
-              </Link>
+              <ProfileHoverCard handle={actorHandle}>
+                <Link
+                  to="/$handle"
+                  params={{ handle: actorHandle }}
+                  className="inline-flex items-center gap-1 align-middle font-semibold text-primary hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {actorDisplayName || actorHandle}
+                  {item.actor?.isVerified && (
+                    <VerifiedBadge size={14} role={item.actor.role} />
+                  )}
+                </Link>
+              </ProfileHoverCard>
             ) : (
               <span className="inline-flex items-center gap-1 align-middle font-semibold text-primary">
                 {actorDisplayName || "someone"}
