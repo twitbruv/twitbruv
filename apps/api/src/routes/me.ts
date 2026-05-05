@@ -175,7 +175,7 @@ meRoute.get("/blocks", async (c) => {
   const session = c.get("session")!
   const { db, mediaEnv } = c.get("ctx")
   const limit = Math.min(Number(c.req.query("limit") ?? 50), 100)
-  const cursor = c.req.query("cursor")
+  const cursor = parseCursor(c.req.query("cursor"))
 
   const rows = await db
     .select({ user: schema.users, block: schema.blocks })
@@ -185,7 +185,7 @@ meRoute.get("/blocks", async (c) => {
       and(
         eq(schema.blocks.blockerId, session.user.id),
         isNull(schema.users.deletedAt),
-        cursor ? lt(schema.blocks.createdAt, new Date(cursor)) : undefined
+        cursor ? lt(schema.blocks.createdAt, cursor) : undefined
       )
     )
     .orderBy(desc(schema.blocks.createdAt))
@@ -213,7 +213,7 @@ meRoute.get("/mutes", async (c) => {
   const session = c.get("session")!
   const { db, mediaEnv } = c.get("ctx")
   const limit = Math.min(Number(c.req.query("limit") ?? 50), 100)
-  const cursor = c.req.query("cursor")
+  const cursor = parseCursor(c.req.query("cursor"))
 
   const rows = await db
     .select({ user: schema.users, mute: schema.mutes })
@@ -223,7 +223,7 @@ meRoute.get("/mutes", async (c) => {
       and(
         eq(schema.mutes.muterId, session.user.id),
         isNull(schema.users.deletedAt),
-        cursor ? lt(schema.mutes.createdAt, new Date(cursor)) : undefined
+        cursor ? lt(schema.mutes.createdAt, cursor) : undefined
       )
     )
     .orderBy(desc(schema.mutes.createdAt))
