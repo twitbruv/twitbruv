@@ -87,10 +87,6 @@ struct ProfileView: View {
     @State private var reportTarget: Post?
     @State private var reportUser: ReportSubject?
 
-    private var profileBannerTopUnderlap: CGFloat {
-        TBLayout.profileBannerNavUnderlap(topSafeArea: 59, navChrome: 0)
-    }
-
     var body: some View {
         ZStack(alignment: .top) {
             Group {
@@ -117,7 +113,7 @@ struct ProfileView: View {
                     reportUser: $reportUser
                 )
                 .padding(.horizontal, TBLayout.pagePadding)
-                .padding(.top, profileBannerTopUnderlap + 4)
+                .padding(.top, TBLayout.profileFloatingChromeTopPadding)
             }
         }
         .navigationDestination(for: FeedRoute.self) { route in
@@ -152,7 +148,7 @@ struct ProfileView: View {
             switch route {
             case .conversation(let id):
                 ConversationView(conversationId: id)
-                    .toolbarVisibility(.automatic, for: .navigationBar)
+                    .toolbarVisibility(.hidden, for: .navigationBar)
             case .invite(let token):
                 InviteAcceptView(token: token)
                     .toolbarVisibility(.automatic, for: .navigationBar)
@@ -221,7 +217,6 @@ struct ProfileView: View {
                 ProfileHeader(
                     user: user,
                     vm: vm,
-                    bannerNavUnderlap: profileBannerTopUnderlap,
                     navigationPath: $navigationPath,
                     onEditProfile: { showEditProfile = true },
                     onFollowers: { showFollowers = true },
@@ -299,6 +294,7 @@ struct ProfileView: View {
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .background(Color.clear)
+        .ignoresSafeArea(edges: .top)
         .refreshable {
             await vm.load()
             await postsLoader?.reload()
@@ -507,19 +503,14 @@ private struct ProfileOverflowMenu: View {
 private struct ProfileHeader: View {
     let user: PublicUser
     let vm: ProfileViewModel
-    var bannerNavUnderlap: CGFloat = 0
     @Binding var navigationPath: NavigationPath
     let onEditProfile: () -> Void
     let onFollowers: () -> Void
     let onFollowing: () -> Void
 
-    private var bannerPull: CGFloat {
-        max(0, bannerNavUnderlap)
-    }
-
-    private let bannerHeight: CGFloat = 240
+    private let bannerHeight: CGFloat = 140
     private let avatarSize: CGFloat = 72
-    private let avatarLift: CGFloat = 48
+    private let avatarLift: CGFloat = 36
 
     private var joinedLine: String? {
         guard let d = user.createdAt else { return nil }
@@ -536,39 +527,47 @@ private struct ProfileHeader: View {
     }
 
     private var heroBand: some View {
-        ZStack(alignment: .bottomLeading) {
-            Color.clear
-                .frame(maxWidth: .infinity)
-                .frame(height: bannerHeight + bannerPull)
-                .offset(y: -bannerPull)
-                .background {
-                    AsyncImage(url: user.bannerUrl.flatMap(URL.init(string:))) { phase in
-                        switch phase {
-                        case .success(let img):
-                            img.resizable().scaledToFill()
-                        default:
-                            TBColor.base2
+        VStack(spacing: 0) {
+            GeometryReader { geo in
+                let minY = geo.frame(in: .global).minY
+                let isScrolledDown = minY > 0
+                let stretchHeight = isScrolledDown ? geo.size.height + minY : geo.size.height
+                let stretchOffset = isScrolledDown ? -minY : 0
+
+                Color.clear
+                    .background {
+                        AsyncImage(url: user.bannerUrl.flatMap(URL.init(string:))) { phase in
+                            switch phase {
+                            case .success(let img):
+                                img.resizable().scaledToFill()
+                            default:
+                                TBColor.base2
+                            }
                         }
                     }
-                }
-                .clipped()
-                .overlay(alignment: .bottom) {
-                    Rectangle()
-                        .fill(
-                            LinearGradient(
-                                colors: [
-                                    Color.black.opacity(0.22),
-                                    Color.black.opacity(0.06),
-                                    Color.clear,
-                                ],
-                                startPoint: .bottom,
-                                endPoint: .top
+                    .frame(width: geo.size.width, height: stretchHeight)
+                    .clipped()
+                    .overlay(alignment: .bottom) {
+                        Rectangle()
+                            .fill(
+                                LinearGradient(
+                                    colors: [
+                                        Color.black.opacity(0.22),
+                                        Color.black.opacity(0.06),
+                                        Color.clear,
+                                    ],
+                                    startPoint: .bottom,
+                                    endPoint: .top
+                                )
                             )
-                        )
-                        .frame(height: 72)
-                }
+                            .frame(height: 72)
+                    }
+                    .offset(y: stretchOffset)
+            }
+            .frame(height: bannerHeight)
+            .zIndex(1)
 
-            HStack(alignment: .bottom, spacing: 10) {
+            HStack(alignment: .top, spacing: 0) {
                 AvatarView(
                     urlString: user.avatarUrl,
                     size: avatarSize,
@@ -576,8 +575,10 @@ private struct ProfileHeader: View {
                 )
                 .overlay {
                     Circle()
-                        .strokeBorder(TBColor.base1, lineWidth: 3)
+                        .strokeBorder(TBColor.base1, lineWidth: 4)
                 }
+                .offset(y: -avatarLift)
+                .padding(.bottom, -avatarLift)
                 .padding(.leading, TBLayout.pagePadding)
 
                 Spacer(minLength: 8)
@@ -589,10 +590,10 @@ private struct ProfileHeader: View {
                     onEditProfile: onEditProfile
                 )
                 .padding(.trailing, TBLayout.pagePadding)
+                .padding(.top, 12)
             }
+            .zIndex(2)
         }
-        .frame(maxWidth: .infinity)
-        .frame(height: bannerHeight + avatarLift)
     }
 
     private var detailsBand: some View {
@@ -686,15 +687,21 @@ private func profileWebsiteURL(from raw: String) -> URL? {
 private struct ProfileActionsRow: View {
     @Environment(AppEnvironment.self) private var env
     @Environment(AuthStore.self) private var auth
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     let vm: ProfileViewModel
     let user: PublicUser
     @Binding var navigationPath: NavigationPath
     let onEditProfile: () -> Void
 
+    private let dmGlassButtonSize: CGFloat = 44
+
+    private var viewerFollowing: Bool { user.viewer?.following == true }
+    private var viewerBlocking: Bool { user.viewer?.blocking == true }
+
     var body: some View {
+        let isMe = auth.currentUser?.handle == user.handle
         HStack(spacing: 8) {
-            let isMe = auth.currentUser?.handle == user.handle
             if isMe {
                 Button(action: onEditProfile) {
                     Text("Edit profile")
@@ -706,26 +713,36 @@ private struct ProfileActionsRow: View {
                 }
                 .buttonStyle(.plain)
             } else {
-                let following = user.viewer?.following == true
-                let blocking = user.viewer?.blocking == true
                 TBButton(
-                    title: following ? "Following" : "Follow",
-                    style: following ? .outline : .promote,
+                    title: viewerFollowing ? "Following" : "Follow",
+                    style: viewerFollowing ? .outline : .promote,
                     expands: false,
-                    isDisabled: blocking
+                    isDisabled: viewerBlocking
                 ) {
-                    Task { await vm.setFollow(!following) }
+                    Task { await vm.setFollow(!viewerFollowing) }
                 }
                 Button {
                     Task { await startDM() }
                 } label: {
-                    HeroIcon(name: "envelope-solid", size: 17)
-                        .foregroundStyle(.white)
-                        .frame(width: 40, height: 40)
+                    if reduceTransparency {
+                        HeroIcon(name: "envelope-solid", size: 17)
+                            .foregroundStyle(TBColor.textPrimary)
+                            .frame(width: dmGlassButtonSize, height: dmGlassButtonSize)
+                            .background(Circle().fill(TBColor.base2))
+                            .overlay {
+                                Circle().strokeBorder(TBColor.glassStroke, lineWidth: 0.6)
+                            }
+                    } else {
+                        HeroIcon(name: "envelope-solid", size: 17)
+                            .foregroundStyle(TBColor.textPrimary)
+                            .frame(width: dmGlassButtonSize, height: dmGlassButtonSize)
+                            .background { Circle().fill(.clear) }
+                            .glassEffect(Glass.clear.interactive(), in: Circle())
+                    }
                 }
                 .buttonStyle(.plain)
-                .disabled(blocking)
-                .background(Circle().fill(Color.black.opacity(0.5)))
+                .disabled(viewerBlocking)
+                .accessibilityLabel("Message")
             }
         }
     }

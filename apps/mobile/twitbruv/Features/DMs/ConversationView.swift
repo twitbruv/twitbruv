@@ -1,6 +1,7 @@
 import SwiftUI
 import Observation
 import os
+import PhotosUI
 
 @Observable
 @MainActor
@@ -146,15 +147,28 @@ final class ConversationViewModel {
     }
 }
 
+private struct DMScrollHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
 struct ConversationView: View {
     @Environment(AppEnvironment.self) private var env
     @Environment(AuthStore.self) private var auth
+    @Environment(\.dismiss) private var dismiss
+
     let conversationId: String
 
     @State private var vm: ConversationViewModel?
     @State private var draft: String = ""
     @State private var showSettings = false
     @State private var reactionTarget: Message?
+    @State private var scrollHeight: CGFloat = 0
+    @State private var picker = PhotoPickerController()
+    @State private var pickerItems: [PhotosPickerItem] = []
+    @State private var isSending = false
 
     private var conversationTitle: String {
         guard let conv = vm?.conversation else { return "Direct message" }
@@ -171,27 +185,75 @@ struct ConversationView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            messagesList
-            DMComposeBar(
-                text: $draft,
-                onSend: { Task { await vm?.send(text: draft, mediaId: nil); draft = "" } },
-                onTyping: { vm?.sendTyping() }
-            )
-        }
-        .background(Color.clear)
-        .navigationTitle(conversationTitle)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    showSettings = true
-                } label: {
-                    HeroIcon(name: "information-circle-solid", size: 18)
-                        .foregroundStyle(TBColor.accent)
+        messagesList
+            .safeAreaInset(edge: .top, spacing: 0) {
+                ConversationThreadHeader(
+                    title: conversationTitle,
+                    onBack: { dismiss() },
+                    onInfo: { showSettings = true }
+                )
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                VStack(spacing: 0) {
+                    if !picker.picked.isEmpty {
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack {
+                                ForEach(picker.picked) { p in
+                                    if let img = UIImage(data: p.data) {
+                                        Image(uiImage: img)
+                                            .resizable()
+                                            .scaledToFill()
+                                            .frame(width: 72, height: 72)
+                                            .clipShape(RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous))
+                                            .overlay(alignment: .topTrailing) {
+                                                Button {
+                                                    picker.remove(id: p.id)
+                                                    pickerItems.removeAll { _ in true }
+                                                } label: {
+                                                    HeroIcon(name: "x-circle-solid", size: 22)
+                                                        .foregroundStyle(TBColor.inverse)
+                                                }
+                                                .padding(2)
+                                            }
+                                    }
+                                }
+                            }
+                            .padding(.horizontal, TBLayout.pagePadding)
+                            .padding(.top, 8)
+                        }
+                    }
+                    DMComposeBar(
+                        text: $draft,
+                        pickerItems: $pickerItems,
+                        onSend: {
+                            Task {
+                                isSending = true
+                                defer { isSending = false }
+                                var mediaId: String?
+                                if let photo = picker.picked.first {
+                                    let uploader = MediaUploader(api: env.api)
+                                    if let media = try? await uploader.upload(data: photo.data, mimeType: photo.mime) {
+                                        mediaId = media.id
+                                    }
+                                }
+                                await vm?.send(text: draft, mediaId: mediaId)
+                                draft = ""
+                                picker.clear()
+                                pickerItems = []
+                            }
+                        },
+                        onTyping: { vm?.sendTyping() },
+                        isSending: isSending
+                    )
+                    .onChange(of: pickerItems) { _, items in
+                        Task { await picker.ingest(items) }
+                    }
                 }
             }
-        }
+        .background(TBColor.base1.ignoresSafeArea())
+        .toolbarVisibility(.hidden, for: .navigationBar)
+        .toolbar(.hidden, for: .tabBar)
+        .preference(key: MainChromePreference.HideComposeFab.self, value: true)
         .sheet(isPresented: $showSettings) {
             if let conv = vm?.conversation {
                 GroupSettingsView(conversation: conv)
@@ -214,57 +276,108 @@ struct ConversationView: View {
     private var messagesList: some View {
         if let vm {
             ScrollViewReader { proxy in
-                List {
-                    if vm.nextCursor != nil {
-                        Button("Load older") {
-                            Task { await vm.loadOlder() }
-                        }
-                        .listRowSeparator(.hidden)
-                    }
-                    ForEach(vm.messages) { msg in
-                        MessageBubble(
-                            message: msg,
-                            isMine: msg.senderId == auth.currentUser?.id
-                        )
-                        .listRowInsets(EdgeInsets(top: 4, leading: 12, bottom: 4, trailing: 12))
-                        .listRowSeparator(.hidden)
-                        .contextMenu {
-                            Button {
-                                reactionTarget = msg
-                            } label: {
-                                Label("React", hero: "face-smile-solid")
-                            }
-                            if msg.senderId == env.auth.currentUser?.id {
-                                Button(role: .destructive) {
-                                    Task { await vm.deleteMessage(msg.id) }
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 10) {
+                        if vm.nextCursor != nil {
+                            HStack {
+                                Spacer(minLength: 0)
+                                Button {
+                                    Task { await vm.loadOlder() }
                                 } label: {
-                                    Label("Delete", hero: "trash-solid")
+                                    HStack(spacing: 8) {
+                                        if vm.isLoading {
+                                            ProgressView()
+                                                .tint(TBColor.accent)
+                                                .scaleEffect(0.85)
+                                        }
+                                        Text("Earlier messages")
+                                            .font(TBTypography.caption.weight(.medium))
+                                            .foregroundStyle(TBColor.accent)
+                                    }
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .tbGlassCapsule(.card, shadow: false)
+                                }
+                                .buttonStyle(.plain)
+                                .disabled(vm.isLoading)
+                                Spacer(minLength: 0)
+                            }
+                            .padding(.bottom, 4)
+                            .id("__load_older")
+                        }
+
+                        ForEach(Array(vm.messages.enumerated()), id: \.element.id) { index, msg in
+                            let isLastForSender: Bool = {
+                                if index == vm.messages.count - 1 { return true }
+                                return vm.messages[index + 1].senderId != msg.senderId
+                            }()
+                            MessageBubble(
+                                message: msg,
+                                isMine: msg.senderId == auth.currentUser?.id,
+                                showTimestamp: isLastForSender
+                            )
+                            .padding(.horizontal, TBLayout.pagePadding - 4)
+                            .contextMenu {
+                                Button {
+                                    reactionTarget = msg
+                                } label: {
+                                    Label("React", hero: "face-smile-solid")
+                                }
+                                if msg.senderId == env.auth.currentUser?.id {
+                                    Button(role: .destructive) {
+                                        Task { await vm.deleteMessage(msg.id) }
+                                    } label: {
+                                        Label("Delete", hero: "trash-solid")
+                                    }
                                 }
                             }
+                            .id(msg.id)
                         }
-                        .id(msg.id)
-                    }
-                    if !vm.typing.isEmpty {
-                        Text("typing…")
-                            .font(TBTypography.caption)
-                            .foregroundStyle(TBColor.textTertiary)
-                            .listRowSeparator(.hidden)
-                    }
-                }
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
-                .background(Color.clear)
-                .onChange(of: vm.messages.count) { _, _ in
-                    if let last = vm.messages.last?.id {
-                        withAnimation {
-                            proxy.scrollTo(last, anchor: .bottom)
+
+                        if !vm.typing.isEmpty {
+                            Text("Typing…")
+                                .font(TBTypography.caption.weight(.medium))
+                                .foregroundStyle(TBColor.textSecondary)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 8)
+                                .tbGlassCapsule(.card, shadow: false)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, TBLayout.pagePadding - 4)
+                                .padding(.top, 4)
                         }
                     }
+                    .frame(maxWidth: .infinity, minHeight: scrollHeight, alignment: .bottom)
+                    .padding(.vertical, 10)
                 }
+                .background(
+                    GeometryReader { geo in
+                        Color.clear.preference(key: DMScrollHeightKey.self, value: geo.size.height)
+                    }
+                )
+                .onPreferenceChange(DMScrollHeightKey.self) { height in
+                    if abs(scrollHeight - height) > 1 {
+                        scrollHeight = height
+                    }
+                }
+                .scrollDismissesKeyboard(.interactively)
+                .scrollIndicators(.hidden)
                 .sheet(item: $reactionTarget) { target in
                     ReactionPicker { emoji in
                         Task { await vm.toggleReaction(emoji, on: target.id) }
                         reactionTarget = nil
+                    }
+                }
+                .onChange(of: vm.messages.count) { _, _ in
+                    guard let last = vm.messages.last?.id else { return }
+                    withAnimation(.easeOut(duration: 0.22)) {
+                        proxy.scrollTo(last, anchor: .bottom)
+                    }
+                }
+                .onAppear {
+                    if let last = vm.messages.last?.id {
+                        DispatchQueue.main.async {
+                            proxy.scrollTo(last, anchor: .bottom)
+                        }
                     }
                 }
             }
@@ -277,29 +390,95 @@ struct ConversationView: View {
     }
 }
 
+private struct ConversationThreadHeader: View {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
+    let title: String
+    let onBack: () -> Void
+    let onInfo: () -> Void
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Button(action: onBack) {
+                if reduceTransparency {
+                    HeroIcon(name: "chevron-left-solid", size: 20)
+                        .foregroundStyle(TBColor.textPrimary)
+                        .frame(width: 44, height: 44)
+                        .background(Circle().fill(TBColor.base2))
+                        .overlay {
+                            Circle().strokeBorder(TBColor.glassStroke, lineWidth: 0.6)
+                        }
+                } else {
+                    HeroIcon(name: "chevron-left-solid", size: 20)
+                        .foregroundStyle(TBColor.textPrimary)
+                        .frame(width: 44, height: 44)
+                        .background { Circle().fill(.clear) }
+                        .glassEffect(Glass.clear.interactive(), in: Circle())
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Back")
+
+            Text(title)
+                .font(TBTypography.cardTitle.weight(.semibold))
+                .foregroundStyle(TBColor.textPrimary)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity)
+
+            Button(action: onInfo) {
+                if reduceTransparency {
+                    HeroIcon(name: "information-circle-solid", size: 20)
+                        .foregroundStyle(TBColor.textPrimary)
+                        .frame(width: 44, height: 44)
+                        .background(Circle().fill(TBColor.base2))
+                        .overlay {
+                            Circle().strokeBorder(TBColor.glassStroke, lineWidth: 0.6)
+                        }
+                } else {
+                    HeroIcon(name: "information-circle-solid", size: 20)
+                        .foregroundStyle(TBColor.textPrimary)
+                        .frame(width: 44, height: 44)
+                        .background { Circle().fill(.clear) }
+                        .glassEffect(Glass.clear.interactive(), in: Circle())
+                }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Conversation details")
+        }
+        .padding(.horizontal, TBLayout.pagePadding - 10)
+        .padding(.vertical, 6)
+        .background {
+            if reduceTransparency {
+                TBColor.base1
+            } else {
+                Color.clear
+            }
+        }
+    }
+}
+
 private struct MessageBubble: View {
     let message: Message
     let isMine: Bool
+    let showTimestamp: Bool
+
+    private let bubbleRadius: CGFloat = 20
 
     var body: some View {
-        HStack {
-            if isMine { Spacer(minLength: 60) }
-            VStack(alignment: isMine ? .trailing : .leading, spacing: 4) {
+        HStack(alignment: .bottom, spacing: 0) {
+            if isMine { Spacer(minLength: 48) }
+            VStack(alignment: isMine ? .trailing : .leading, spacing: 5) {
                 if let text = message.text, !text.isEmpty {
                     Text(text)
                         .font(TBTypography.bodySecondary)
-                        .padding(10)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 11)
                         .background(
-                            isMine ? TBColor.inverse : TBColor.glassCardTint,
-                            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        )
-                        .tbGlass(
-                            isMine ? .prominent : .card,
-                            in: RoundedRectangle(cornerRadius: 14, style: .continuous),
-                            shadow: false
+                            isMine ? Color.blue : TBColor.base2,
+                            in: RoundedRectangle(cornerRadius: bubbleRadius, style: .continuous)
                         )
                         .foregroundStyle(
-                            isMine ? TBColor.textOnInverse : TBColor.textPrimary
+                            isMine ? .white : TBColor.textPrimary
                         )
                 }
                 if let media = message.media, let url = media.bestURL {
@@ -312,7 +491,7 @@ private struct MessageBubble: View {
                         }
                     }
                     .frame(maxWidth: 240, maxHeight: 240)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: bubbleRadius, style: .continuous))
                 }
                 if let reactions = message.reactions, !reactions.isEmpty {
                     HStack(spacing: 4) {
@@ -324,50 +503,111 @@ private struct MessageBubble: View {
                         }
                     }
                 }
-                Text(message.createdAt.relativeShort)
-                    .font(TBTypography.micro)
-                    .foregroundStyle(TBColor.textTertiary)
+                if showTimestamp {
+                    Text(message.createdAt.conversationTimeLabel)
+                        .font(TBTypography.micro)
+                        .foregroundStyle(TBColor.textTertiary)
+                }
             }
-            if !isMine { Spacer(minLength: 60) }
+            if !isMine { Spacer(minLength: 48) }
         }
     }
 }
 
 struct DMComposeBar: View {
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+
     @Binding var text: String
+    @Binding var pickerItems: [PhotosPickerItem]
     var onSend: () -> Void
     var onTyping: () -> Void
+    var isSending: Bool = false
+
+    private let attachmentDiameter: CGFloat = 36
+    private let sendDiameter: CGFloat = 28
 
     var body: some View {
-        HStack(spacing: 8) {
-            TextField("Message", text: $text, axis: .vertical)
-                .lineLimit(1...5)
-                .font(TBTypography.bodySecondary)
-                .foregroundStyle(TBColor.textPrimary)
-                .padding(8)
-                .tbGlass(
-                    .field,
-                    in: RoundedRectangle(cornerRadius: 18, style: .continuous),
-                    interactive: true,
-                    shadow: false
-                )
-                .onChange(of: text) { _, _ in onTyping() }
-            Button {
-                onSend()
-            } label: {
-                HeroIcon(name: "arrow-up-circle-solid", size: 28)
-                    .foregroundStyle(TBColor.accent)
+        HStack(alignment: .bottom, spacing: 10) {
+            PhotosPicker(
+                selection: $pickerItems,
+                maxSelectionCount: 1,
+                matching: .images
+            ) {
+                HeroIcon(name: "plus-solid", size: 20)
+                    .foregroundStyle(TBColor.textPrimary)
+                    .frame(width: attachmentDiameter, height: attachmentDiameter)
             }
-            .disabled(text.trimmingCharacters(in: .whitespaces).isEmpty)
+            .buttonStyle(.plain)
+            .background {
+                Group {
+                    if reduceTransparency {
+                        Circle()
+                            .fill(TBColor.base2)
+                            .overlay {
+                                Circle().strokeBorder(TBColor.glassStroke, lineWidth: 0.6)
+                            }
+                    } else {
+                        Circle().fill(.clear).glassEffect(
+                            Glass.clear.interactive(),
+                            in: Circle()
+                        )
+                    }
+                }
+                .allowsHitTesting(false)
+            }
+            .padding(.bottom, 2)
+
+            HStack(alignment: .bottom, spacing: 4) {
+                TextField("Message", text: $text, axis: .vertical)
+                    .lineLimit(1...6)
+                    .font(TBTypography.bodySecondary)
+                    .foregroundStyle(TBColor.textPrimary)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .onChange(of: text) { _, _ in onTyping() }
+
+                let canSend = (!text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !pickerItems.isEmpty) && !isSending
+                Button {
+                    if canSend { onSend() }
+                } label: {
+                    if isSending {
+                        ProgressView()
+                            .tint(.white)
+                            .scaleEffect(0.6)
+                            .frame(width: sendDiameter, height: sendDiameter)
+                    } else {
+                        Image(systemName: "arrow.up")
+                            .font(.system(size: 14, weight: .semibold))
+                            .foregroundStyle(canSend ? .white : TBColor.textTertiary)
+                            .frame(width: sendDiameter, height: sendDiameter)
+                            .contentShape(Circle())
+                    }
+                }
+                .buttonStyle(.plain)
+                .disabled(!canSend)
+                .background {
+                    Circle()
+                        .fill(canSend ? TBColor.success : TBColor.borderNeutral)
+                }
+                .padding(.trailing, 6)
+                .padding(.bottom, 6)
+            }
+            .tbGlass(
+                .field,
+                in: RoundedRectangle(cornerRadius: 22, style: .continuous),
+                interactive: true,
+                shadow: false
+            )
         }
         .padding(.horizontal, TBLayout.pagePadding)
         .padding(.vertical, 8)
-        .background(.ultraThinMaterial)
-        .background(TBColor.glassChromeTint)
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(TBColor.glassStroke)
-                .frame(height: 0.5)
+        .background {
+            if reduceTransparency {
+                TBColor.base1
+            } else {
+                Color.clear
+            }
         }
     }
 }

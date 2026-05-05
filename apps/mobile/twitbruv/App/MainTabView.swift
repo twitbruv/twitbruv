@@ -4,6 +4,7 @@ import UIKit
 struct MainTabView: View {
     @State private var selection: AppTab = .home
     @State private var showCompose = false
+    @State private var suppressComposeFab = false
 
     var body: some View {
         TabView(selection: $selection) {
@@ -37,15 +38,20 @@ struct MainTabView: View {
                 tbTabLabel("Profile", icon: "user-circle-solid")
             }
         }
+        .onPreferenceChange(MainChromePreference.HideComposeFab.self) { hidden in
+            suppressComposeFab = hidden
+        }
         .overlay(alignment: .bottom) {
             DevSeedToast()
         }
         .overlay(alignment: .bottomTrailing) {
-            ComposeLiquidGlassFAB {
-                showCompose = true
+            if !suppressComposeFab {
+                ComposeLiquidGlassFAB {
+                    showCompose = true
+                }
+                .padding(.trailing, TBLayout.pagePadding)
+                .padding(.bottom, TBLayout.composeFabBottomPadding)
             }
-            .padding(.trailing, TBLayout.pagePadding)
-            .padding(.bottom, TBLayout.composeFabBottomPadding)
         }
         .sheet(isPresented: $showCompose) {
             ComposerView(mode: .new)

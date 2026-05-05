@@ -126,12 +126,19 @@ final class OAuthCoordinator: NSObject, ASWebAuthenticationPresentationContextPr
         for session: ASWebAuthenticationSession
     ) -> ASPresentationAnchor {
         DispatchQueue.main.sync {
-            let scene = UIApplication.shared.connectedScenes
-                .compactMap { $0 as? UIWindowScene }
-                .first(where: { $0.activationState == .foregroundActive })
-            if let key = scene?.keyWindow { return key }
-            if let scene { return ASPresentationAnchor(windowScene: scene) }
-            return UIWindow()
+            let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+            let windowScene =
+                scenes.first(where: { $0.activationState == .foregroundActive }) ?? scenes.first
+            guard let windowScene else {
+                fatalError("No UIWindowScene available for OAuth presentation anchor")
+            }
+            if let key = windowScene.windows.first(where: \.isKeyWindow) {
+                return key
+            }
+            if let first = windowScene.windows.first {
+                return first
+            }
+            return UIWindow(windowScene: windowScene)
         }
     }
 }

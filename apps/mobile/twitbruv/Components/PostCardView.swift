@@ -312,12 +312,20 @@ extension Date {
     var relativeShort: String {
         let now = Date()
         let delta = max(0, now.timeIntervalSince(self))
-        if delta < 60 { return "\(Int(delta))s" }
+        if delta < 1 { return "now" }
+        if delta < 60 { return "\(max(1, Int(floor(delta))))s" }
         if delta < 3600 { return "\(Int(delta / 60))m" }
         if delta < 86_400 { return "\(Int(delta / 3600))h" }
         if delta < 86_400 * 7 { return "\(Int(delta / 86_400))d" }
         let f = DateFormatter()
         f.dateFormat = "MMM d"
         return f.string(from: self)
+    }
+
+    var conversationTimeLabel: String {
+        let f = RelativeDateTimeFormatter()
+        f.unitsStyle = .abbreviated
+        f.dateTimeStyle = .numeric
+        return f.localizedString(for: self, relativeTo: Date())
     }
 }

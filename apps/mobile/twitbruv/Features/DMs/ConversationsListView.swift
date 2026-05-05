@@ -108,7 +108,7 @@ struct ConversationsListView: View {
                         .background(Color.clear)
                 }
             }
-            .toolbar(path.isEmpty ? .hidden : .automatic, for: .navigationBar)
+            .toolbarVisibility(.hidden, for: .navigationBar)
             .sheet(isPresented: $showNew) {
                 NewConversationView { conv in
                     showNew = false
@@ -121,7 +121,9 @@ struct ConversationsListView: View {
             .navigationDestination(for: DMRoute.self) { route in
                 switch route {
                 case .conversation(let id): ConversationView(conversationId: id)
-                case .invite(let token): InviteAcceptView(token: token)
+                case .invite(let token):
+                    InviteAcceptView(token: token)
+                        .toolbarVisibility(.visible, for: .navigationBar)
                 }
             }
             .task {

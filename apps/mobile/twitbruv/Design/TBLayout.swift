@@ -24,6 +24,7 @@ enum TBLayout {
     static let feedScrollCollapseBucketPoints: CGFloat = 28
     static let headerHeight: CGFloat = 48
     static let avatarFeed: CGFloat = 40
+    static let profileFloatingChromeTopPadding: CGFloat = 8
     static let easeOutExpo = Animation.timingCurve(0.16, 1, 0.3, 1, duration: 0.15)
     static func profileBannerNavUnderlap(topSafeArea: CGFloat, navChrome: CGFloat = 52)
         -> CGFloat
