@@ -145,37 +145,36 @@ export function Compose({
     [collapsible]
   )
 
-  const handleInsertEmoji = useCallback((emoji: string) => {
-    const ta = textareaRef.current
-    setText((prev) => {
-      const start = ta?.selectionStart ?? prev.length
-      const end = ta?.selectionEnd ?? prev.length
-      const next = prev.slice(0, start) + emoji + prev.slice(end)
+  // setText updaters are kept pure (Strict Mode double-invokes them in dev);
+  // caret/focus work happens in a microtask after the commit.
+  const handleInsertEmoji = useCallback(
+    (emoji: string) => {
+      const ta = textareaRef.current
+      const start = ta?.selectionStart ?? text.length
+      const end = ta?.selectionEnd ?? text.length
+      const nextCaret = start + emoji.length
+      setText((prev) => prev.slice(0, start) + emoji + prev.slice(end))
       queueMicrotask(() => {
         if (!ta) return
-        const nextCaret = start + emoji.length
         ta.focus()
         ta.setSelectionRange(nextCaret, nextCaret)
         setCaret(nextCaret)
       })
-      return next
-    })
-  }, [])
+    },
+    [text]
+  )
 
   const handleApplyMention = useCallback(
     (start: number, end: number, handle: string) => {
       const ta = textareaRef.current
       const insertion = `@${handle} `
-      setText((prev) => {
-        const next = prev.slice(0, start) + insertion + prev.slice(end)
-        const nextCaret = start + insertion.length
-        queueMicrotask(() => {
-          if (!ta) return
-          ta.focus()
-          ta.setSelectionRange(nextCaret, nextCaret)
-          setCaret(nextCaret)
-        })
-        return next
+      const nextCaret = start + insertion.length
+      setText((prev) => prev.slice(0, start) + insertion + prev.slice(end))
+      queueMicrotask(() => {
+        if (!ta) return
+        ta.focus()
+        ta.setSelectionRange(nextCaret, nextCaret)
+        setCaret(nextCaret)
       })
     },
     []
