@@ -574,7 +574,8 @@ usersRoute.post('/:handle/follow', requireHandle(), async (c) => {
 
 usersRoute.delete('/:handle/follow', requireHandle(), async (c) => {
   const session = c.get('session')!
-  const { db, cache } = c.get('ctx')
+  const { db, cache, rateLimit } = c.get('ctx')
+  await rateLimit(c, 'users.follow')
   const user = await resolveHandle(db, c.req.param('handle'))
   if (!user) return c.json({ error: 'not_found' }, 404)
 
@@ -616,7 +617,8 @@ usersRoute.post('/:handle/block', requireHandle(), async (c) => {
 
 usersRoute.delete('/:handle/block', requireHandle(), async (c) => {
   const session = c.get('session')!
-  const { db, cache } = c.get('ctx')
+  const { db, cache, rateLimit } = c.get('ctx')
+  await rateLimit(c, 'users.block')
   const user = await resolveHandle(db, c.req.param('handle'))
   if (!user) return c.json({ error: 'not_found' }, 404)
 
@@ -656,7 +658,8 @@ usersRoute.post('/:handle/mute', requireHandle(), async (c) => {
 
 usersRoute.delete('/:handle/mute', requireHandle(), async (c) => {
   const session = c.get('session')!
-  const { db, cache } = c.get('ctx')
+  const { db, cache, rateLimit } = c.get('ctx')
+  await rateLimit(c, 'users.mute')
   const user = await resolveHandle(db, c.req.param('handle'))
   if (!user) return c.json({ error: 'not_found' }, 404)
 
