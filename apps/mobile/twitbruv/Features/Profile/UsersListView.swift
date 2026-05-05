@@ -17,7 +17,7 @@ struct UsersListView: View {
                     List {
                         if loader.items.isEmpty && loader.didLoadOnce {
                             EmptyStateView(
-                                icon: "person.2",
+                                icon: "users-solid",
                                 title: "No accounts to show"
                             )
                             .listRowSeparator(.hidden)
@@ -60,6 +60,7 @@ struct UsersListView: View {
                 case .thread(let id): ThreadView(postId: id)
                 case .profile(let h): ProfileView(handle: h, navigationPath: $navigationPath)
                 case .compose(let p): ComposerView(mode: .reply(p))
+                case .quote(let target): ComposerView(mode: .quote(target))
                 case .hashtag(let t): HashtagView(tag: t)
                 case .search(let q): SearchStackContent(path: $navigationPath, initialQuery: q)
                 }

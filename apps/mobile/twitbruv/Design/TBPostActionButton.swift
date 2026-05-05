@@ -1,16 +1,18 @@
 import SwiftUI
 
 struct TBPostActionButton: View {
+    /// Heroicon asset name, e.g. `heart-outline`, `bookmark-solid`.
     let icon: String
     let count: Int
     var isActive: Bool = false
     var activeColor: Color = TBColor.accent
+    var iconSize: CGFloat = 16
     var action: () -> Void
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 6) {
-                Image(systemName: icon)
+                HeroIcon(name: icon, size: iconSize)
                 if count > 0 {
                     Text(TBPostActionButton.formatCount(count))
                         .monospacedDigit()

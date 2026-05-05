@@ -173,7 +173,7 @@ struct ConversationView: View {
                 Button {
                     showSettings = true
                 } label: {
-                    Image(systemName: "info.circle")
+                    HeroIcon(name: "information-circle-solid", size: 18)
                         .foregroundStyle(TBColor.accent)
                 }
             }
@@ -218,13 +218,13 @@ struct ConversationView: View {
                             Button {
                                 reactionTarget = msg
                             } label: {
-                                Label("React", systemImage: "face.smiling")
+                                Label("React", hero: "face-smile-solid")
                             }
                             if msg.senderId == env.auth.currentUser?.id {
                                 Button(role: .destructive) {
                                     Task { await vm.deleteMessage(msg.id) }
                                 } label: {
-                                    Label("Delete", systemImage: "trash")
+                                    Label("Delete", hero: "trash-solid")
                                 }
                             }
                         }
@@ -341,9 +341,7 @@ struct DMComposeBar: View {
             Button {
                 onSend()
             } label: {
-                Image(systemName: "arrow.up.circle.fill")
-                    .font(.title)
-                    .symbolRenderingMode(.hierarchical)
+                HeroIcon(name: "arrow-up-circle-solid", size: 28)
                     .foregroundStyle(TBColor.accent)
             }
             .disabled(text.trimmingCharacters(in: .whitespaces).isEmpty)

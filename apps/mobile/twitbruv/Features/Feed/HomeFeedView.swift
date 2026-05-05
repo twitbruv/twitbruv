@@ -39,6 +39,9 @@ struct HomeFeedView: View {
                         onReply: { post in
                             path.append(FeedRoute.compose(replyTo: post))
                         },
+                        onQuote: { post in
+                            path.append(FeedRoute.quote(target: post))
+                        },
                         onReport: { post in
                             reportTarget = post
                         },
@@ -70,6 +73,8 @@ struct HomeFeedView: View {
                     ProfileView(handle: handle, navigationPath: $path)
                 case .compose(let replyTo):
                     ComposerView(mode: .reply(replyTo))
+                case .quote(let target):
+                    ComposerView(mode: .quote(target))
                 case .hashtag(let tag):
                     HashtagView(tag: tag)
                 case .search(let initialQuery):
@@ -138,6 +143,7 @@ enum FeedRoute: Hashable {
     case thread(id: String)
     case profile(handle: String)
     case compose(replyTo: Post)
+    case quote(target: Post)
     case hashtag(tag: String)
     case search(initialQuery: String)
 }

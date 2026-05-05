@@ -95,7 +95,7 @@ struct ReportSheet: View {
                     }
 
                     if sent {
-                        Label("Report submitted", systemImage: "checkmark.circle.fill")
+                        Label("Report submitted", hero: "check-circle-solid")
                             .font(TBTypography.meta.weight(.medium))
                             .foregroundStyle(TBColor.success)
                     }

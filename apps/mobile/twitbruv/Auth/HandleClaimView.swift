@@ -10,8 +10,7 @@ struct HandleClaimView: View {
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
-            Image(systemName: "person.text.rectangle")
-                .font(.system(size: 56))
+            HeroIcon(name: "identification-solid", size: 56)
                 .foregroundStyle(TBColor.accent)
             Text("Pick a handle")
                 .font(TBTypography.pageTitle)

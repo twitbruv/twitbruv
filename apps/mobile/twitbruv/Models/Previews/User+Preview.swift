@@ -84,7 +84,6 @@ extension PublicUser {
             isVerified: false,
             isBot: false,
             role: nil,
-            timezone: nil,
             counts: PublicUser.Counts(followers: 42, following: 30, posts: 15),
             viewer: PublicUser.ViewerFlags(
                 following: true,

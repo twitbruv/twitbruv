@@ -10,31 +10,31 @@ struct MainTabView: View {
             Tab(value: AppTab.home) {
                 HomeFeedView()
             } label: {
-                tbTabLabel("Home", systemImage: "house.fill")
+                tbTabLabel("Home", icon: "home-solid")
             }
 
             Tab(value: AppTab.search) {
                 SearchView()
             } label: {
-                tbTabLabel("Search", systemImage: "magnifyingglass")
+                tbTabLabel("Search", icon: "magnifying-glass-solid")
             }
 
             Tab(value: AppTab.notifications) {
                 NotificationsView()
             } label: {
-                tbTabLabel("Notifications", systemImage: "bell.fill")
+                tbTabLabel("Notifications", icon: "bell-solid")
             }
 
             Tab(value: AppTab.dms) {
                 ConversationsListView()
             } label: {
-                tbTabLabel("Messages", systemImage: "envelope.fill")
+                tbTabLabel("Messages", icon: "envelope-solid")
             }
 
             Tab(value: AppTab.me) {
                 MyProfileView()
             } label: {
-                tbTabLabel("Profile", systemImage: "person.crop.circle.fill")
+                tbTabLabel("Profile", icon: "user-circle-solid")
             }
         }
         .overlay(alignment: .bottom) {
@@ -55,22 +55,19 @@ struct MainTabView: View {
         }
     }
 
-    private func tbTabLabel(_ title: String, systemImage: String) -> some View {
-        let config = UIImage.SymbolConfiguration(
-            pointSize: TBLayout.tabBarIconPointSize,
-            weight: .thin
-        )
-        let icon = UIImage(systemName: systemImage, withConfiguration: config)
-
-        return Label {
+    private func tbTabLabel(_ title: String, icon: String) -> some View {
+        Label {
             Text(title)
                 .font(.system(size: TBLayout.tabBarTitlePointSize, weight: .thin))
         } icon: {
-            if let icon {
-                Image(uiImage: icon)
-            } else {
-                Image(systemName: systemImage)
-            }
+            Image(icon)
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .frame(
+                    width: TBLayout.tabBarIconPointSize,
+                    height: TBLayout.tabBarIconPointSize
+                )
         }
     }
 }
@@ -91,8 +88,7 @@ private struct ComposeLiquidGlassFAB: View {
     var body: some View {
         Button(action: action) {
             if reduceTransparency {
-                Image(systemName: "square.and.pencil")
-                    .font(.system(size: TBLayout.composeFabIconPointSize, weight: .semibold))
+                HeroIcon(name: "pencil-square-solid", size: TBLayout.composeFabIconPointSize)
                     .foregroundStyle(TBColor.accent)
                     .frame(width: TBLayout.composeFabSize, height: TBLayout.composeFabSize)
                     .background(Circle().fill(TBColor.base2))
@@ -100,8 +96,7 @@ private struct ComposeLiquidGlassFAB: View {
                         Circle().strokeBorder(TBColor.glassStroke, lineWidth: 0.6)
                     }
             } else {
-                Image(systemName: "square.and.pencil")
-                    .font(.system(size: TBLayout.composeFabIconPointSize, weight: .semibold))
+                HeroIcon(name: "pencil-square-solid", size: TBLayout.composeFabIconPointSize)
                     .foregroundStyle(TBColor.accent)
                     .frame(width: TBLayout.composeFabSize, height: TBLayout.composeFabSize)
                     .background { Circle().fill(.clear) }

@@ -27,7 +27,7 @@ struct ScheduledPostsView: View {
 
             if items.isEmpty && !isLoading {
                 EmptyStateView(
-                    icon: "calendar",
+                    icon: "calendar-solid",
                     title: kind == "draft" ? "No drafts yet" : "No scheduled posts",
                     message: nil
                 )
@@ -39,10 +39,10 @@ struct ScheduledPostsView: View {
                     .swipeActions(edge: .trailing) {
                         Button(role: .destructive) {
                             Task { await delete(item) }
-                        } label: { Label("Delete", systemImage: "trash") }
+                        } label: { Label("Delete", hero: "trash-solid") }
                         Button {
                             Task { await publish(item) }
-                        } label: { Label("Publish", systemImage: "paperplane") }
+                        } label: { Label("Publish", hero: "paper-airplane-solid") }
                             .tint(TBColor.success)
                     }
                     .onTapGesture {
@@ -102,7 +102,7 @@ private struct ScheduledRow: View {
                 if let date = item.scheduledAt {
                     Label(
                         date.formatted(date: .abbreviated, time: .shortened),
-                        systemImage: "calendar"
+                        hero: "calendar-solid"
                     )
                 }
                 Spacer()

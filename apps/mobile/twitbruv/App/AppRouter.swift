@@ -61,8 +61,7 @@ private struct MaintenanceFullView: View {
     @Environment(AppEnvironment.self) private var env
     var body: some View {
         VStack(spacing: 16) {
-            Image(systemName: "wrench.and.screwdriver")
-                .font(.system(size: 40, weight: .medium))
+            HeroIcon(name: "wrench-screwdriver-outline", size: 40)
                 .foregroundStyle(TBColor.textTertiary)
             Text("Maintenance")
                 .font(TBTypography.pageTitle)

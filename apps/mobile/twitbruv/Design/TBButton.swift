@@ -132,14 +132,14 @@ private struct ButtonGlassModifier: ViewModifier {
 }
 
 struct TBIconButton: View {
-    let systemName: String
+    /// Heroicon asset name, e.g. `chevron-left-solid`.
+    let icon: String
     var accessibilityLabel: String
     var action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            Image(systemName: systemName)
-                .font(.system(size: 18, weight: .medium))
+            HeroIcon(name: icon, size: 18)
                 .foregroundStyle(TBColor.textSecondary)
                 .frame(width: TBLayout.hitTarget, height: TBLayout.hitTarget)
                 .tbGlass(.chrome, in: Circle(), interactive: false, shadow: false)

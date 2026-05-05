@@ -4,6 +4,7 @@ struct PostCardView: View {
     let post: Post
     var onLike: (() -> Void)?
     var onRepost: (() -> Void)?
+    var onQuote: (() -> Void)?
     var onBookmark: (() -> Void)?
     var onReply: (() -> Void)?
     var onTapAuthor: (() -> Void)?
@@ -15,8 +16,7 @@ struct PostCardView: View {
                 HStack(spacing: 12) {
                     HStack {
                         Spacer()
-                        Image(systemName: "arrow.2.squarepath")
-                            .font(.system(size: 12, weight: .semibold))
+                        HeroIcon(name: "arrow-path-rounded-square-solid", size: 12)
                     }
                     .frame(width: TBLayout.hitTarget)
                     Text("@\(post.author.handle ?? "—") reposted")
@@ -28,7 +28,7 @@ struct PostCardView: View {
             let displayed = post.repostOf?.value ?? post
 
             if displayed.pinned == true {
-                Label("Pinned", systemImage: "pin.fill")
+                Label("Pinned", hero: "map-pin-solid")
                     .font(TBTypography.caption.weight(.semibold))
                     .foregroundStyle(TBColor.textTertiary)
             }
@@ -51,8 +51,7 @@ struct PostCardView: View {
                             .font(TBTypography.meta.weight(.semibold))
                             .foregroundStyle(TBColor.textPrimary)
                         if displayed.author.isVerified == true {
-                            Image(systemName: "checkmark.seal.fill")
-                                .font(.caption2)
+                            HeroIcon(name: "check-badge-solid", size: 13)
                                 .foregroundStyle(TBColor.accent)
                         }
                         if let handle = displayed.author.handle {
@@ -69,7 +68,7 @@ struct PostCardView: View {
                         Menu {
                             menu(for: displayed)
                         } label: {
-                            Image(systemName: "ellipsis")
+                            HeroIcon(name: "ellipsis-horizontal-solid", size: 18)
                                 .foregroundStyle(TBColor.textTertiary)
                                 .frame(width: 24, height: 24)
                                 .contentShape(.rect)
@@ -125,42 +124,14 @@ struct PostCardView: View {
 
     @ViewBuilder
     private func actionBar(displayed: Post) -> some View {
-        HStack(spacing: 0) {
-            TBPostActionButton(
-                icon: "bubble.left",
-                count: displayed.counts.replies,
-                isActive: false,
-                activeColor: TBColor.accent,
-                action: { onReply?() }
-            )
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            TBPostActionButton(
-                icon: "arrow.2.squarepath",
-                count: displayed.counts.reposts,
-                isActive: displayed.viewer?.reposted == true,
-                activeColor: TBColor.accent,
-                action: { onRepost?() }
-            )
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            TBPostActionButton(
-                icon: displayed.viewer?.liked == true ? "heart.fill" : "heart",
-                count: displayed.counts.likes,
-                isActive: displayed.viewer?.liked == true,
-                activeColor: TBColor.like,
-                action: { onLike?() }
-            )
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            TBPostActionButton(
-                icon: displayed.viewer?.bookmarked == true ? "bookmark.fill" : "bookmark",
-                count: displayed.counts.bookmarks,
-                isActive: displayed.viewer?.bookmarked == true,
-                activeColor: TBColor.accent,
-                action: { onBookmark?() }
-            )
-        }
+        PostEngagementBar(
+            post: displayed,
+            onReply: { onReply?() },
+            onRepost: { onRepost?() },
+            onQuote: { onQuote?() },
+            onLike: { onLike?() },
+            onBookmark: { onBookmark?() }
+        )
         .padding(.top, 10)
     }
 
@@ -169,20 +140,20 @@ struct PostCardView: View {
         Button {
             onMenuAction?(.copyLink(displayed.id))
         } label: {
-            Label("Copy link", systemImage: "link")
+            Label("Copy link", hero: "link-solid")
         }
         if displayed.author.handle != nil {
             Button {
                 onMenuAction?(.viewProfile(displayed.author.handle ?? ""))
             } label: {
-                Label("View profile", systemImage: "person.crop.circle")
+                Label("View profile", hero: "user-circle-solid")
             }
         }
         Divider()
         Button(role: .destructive) {
             onMenuAction?(.report(displayed.id))
         } label: {
-            Label("Report", systemImage: "flag")
+            Label("Report", hero: "flag-solid")
         }
     }
 }

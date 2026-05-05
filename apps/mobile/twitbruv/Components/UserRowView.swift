@@ -22,8 +22,7 @@ struct UserRowView<Trailing: View>: View {
                         .font(TBTypography.body.weight(.semibold))
                         .foregroundStyle(TBColor.textPrimary)
                     if user.isVerified == true {
-                        Image(systemName: "checkmark.seal.fill")
-                            .font(.caption)
+                        HeroIcon(name: "check-badge-solid", size: 14)
                             .foregroundStyle(TBColor.accent)
                     }
                 }

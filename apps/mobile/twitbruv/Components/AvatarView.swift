@@ -41,8 +41,7 @@ struct AvatarView: View {
                     .font(.system(size: size * 0.45, weight: .semibold))
                     .foregroundStyle(TBColor.textTertiary)
             } else {
-                Image(systemName: "person.fill")
-                    .font(.system(size: size * 0.5))
+                HeroIcon(name: "user-solid", size: size * 0.55)
                     .foregroundStyle(TBColor.textTertiary)
             }
         }

@@ -9,7 +9,7 @@ struct RateLimitToast: View {
         Group {
             if let notice = env.rateLimit, remaining > 0 {
                 HStack(spacing: 12) {
-                    Image(systemName: "hourglass")
+                    HeroIcon(name: "clock-solid", size: 18)
                         .foregroundStyle(TBColor.warn)
                     VStack(alignment: .leading) {
                         Text("Slow down")
@@ -26,7 +26,7 @@ struct RateLimitToast: View {
                     Button {
                         env.clearRateLimit()
                     } label: {
-                        Image(systemName: "xmark.circle.fill")
+                        HeroIcon(name: "x-circle-solid", size: 18)
                             .foregroundStyle(TBColor.textTertiary)
                     }
                 }
@@ -76,7 +76,7 @@ struct MaintenanceBannerView: View {
         Group {
             if env.isMaintenance {
                 HStack(spacing: 8) {
-                    Image(systemName: "wrench.and.screwdriver.fill")
+                    HeroIcon(name: "wrench-screwdriver-solid", size: 14)
                         .foregroundStyle(TBColor.textTertiary)
                     Text("Maintenance — some actions may fail.")
                         .font(TBTypography.caption.weight(.medium))

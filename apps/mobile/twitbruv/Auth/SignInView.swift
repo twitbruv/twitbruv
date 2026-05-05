@@ -96,8 +96,7 @@ struct SignInView: View {
                 .font(TBTypography.bodySecondary)
                 .foregroundStyle(TBColor.accent)
             Spacer()
-            Image(systemName: "chevron.right")
-                .font(.system(size: 12, weight: .semibold))
+            HeroIcon(name: "chevron-right-solid", size: 12)
                 .foregroundStyle(TBColor.textTertiary)
         }
         .padding(.vertical, 4)

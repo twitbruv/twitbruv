@@ -12,8 +12,7 @@ struct TBEmptyState: View {
                     .fill(TBColor.glassCardTint)
                     .frame(width: 56, height: 56)
                     .tbGlass(.card, in: Circle(), shadow: false)
-                Image(systemName: icon)
-                    .font(.system(size: 22, weight: .medium))
+                HeroIcon(name: icon, size: 22)
                     .foregroundStyle(TBColor.textTertiary)
             }
             Text(title)

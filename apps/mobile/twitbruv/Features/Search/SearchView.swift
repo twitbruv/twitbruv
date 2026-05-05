@@ -133,7 +133,7 @@ struct SearchStackContent: View {
                                         Button(role: .destructive) {
                                             Task { await vm.deleteSaved(s.id) }
                                         } label: {
-                                            Image(systemName: "trash")
+                                            HeroIcon(name: "trash-solid", size: 16)
                                         }
                                         .buttonStyle(.plain)
                                     }
@@ -175,7 +175,7 @@ struct SearchStackContent: View {
                         if vm.users.isEmpty && vm.posts.isEmpty && !vm.isSearching {
                             Section {
                                 EmptyStateView(
-                                    icon: "magnifyingglass",
+                                    icon: "magnifying-glass-solid",
                                     title: "No results"
                                 )
                             }
@@ -201,7 +201,7 @@ struct SearchStackContent: View {
                             Button {
                                 Task { await vm.saveCurrent() }
                             } label: {
-                                Image(systemName: "bookmark")
+                                HeroIcon(name: "bookmark-outline", size: 18)
                             }
                         }
                     }
@@ -226,6 +226,8 @@ struct SearchStackContent: View {
                 ProfileView(handle: h, navigationPath: $path)
             case .compose(let p):
                 ComposerView(mode: .reply(p))
+            case .quote(let target):
+                ComposerView(mode: .quote(target))
             case .hashtag(let t):
                 HashtagView(tag: t)
             case .search(let q):
@@ -306,6 +308,8 @@ struct HashtagView: View {
                 ProfileView(handle: h, navigationPath: $path)
             case .compose(let p):
                 ComposerView(mode: .reply(p))
+            case .quote(let target):
+                ComposerView(mode: .quote(target))
             case .hashtag(let t):
                 HashtagView(tag: t)
             case .search(let q):

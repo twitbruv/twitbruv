@@ -17,8 +17,7 @@ struct EmailVerifyPendingView: View {
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
-            Image(systemName: "envelope.badge")
-                .font(.system(size: 56))
+            HeroIcon(name: "envelope-open-solid", size: 56)
                 .foregroundStyle(TBColor.accent)
 
             Text("Verify your email")

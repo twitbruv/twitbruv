@@ -12,8 +12,7 @@ struct OAuthSignInView: View {
     var body: some View {
         VStack(spacing: 24) {
             Spacer()
-            Image(systemName: "lock.shield")
-                .font(.system(size: 48))
+            HeroIcon(name: "shield-check-solid", size: 48)
                 .foregroundStyle(TBColor.accent)
             Text("Sign in with \(provider.capitalized)")
                 .font(TBTypography.pageTitle)

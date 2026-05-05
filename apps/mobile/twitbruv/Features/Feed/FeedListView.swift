@@ -8,6 +8,7 @@ struct FeedListView<TopInset: View>: View {
     var onSelectPost: (Post) -> Void
     var onSelectAuthor: (String) -> Void
     var onReply: ((Post) -> Void)? = nil
+    var onQuote: ((Post) -> Void)? = nil
     var onReport: ((Post) -> Void)? = nil
     var scrollCollapsesTopInset: Bool = false
     var collapseInsetResetToken: AnyHashable? = nil
@@ -33,6 +34,7 @@ struct FeedListView<TopInset: View>: View {
         onSelectPost: @escaping (Post) -> Void,
         onSelectAuthor: @escaping (String) -> Void,
         onReply: ((Post) -> Void)? = nil,
+        onQuote: ((Post) -> Void)? = nil,
         onReport: ((Post) -> Void)? = nil,
         scrollCollapsesTopInset: Bool = false,
         collapseInsetResetToken: AnyHashable? = nil,
@@ -44,6 +46,7 @@ struct FeedListView<TopInset: View>: View {
         self.onSelectPost = onSelectPost
         self.onSelectAuthor = onSelectAuthor
         self.onReply = onReply
+        self.onQuote = onQuote
         self.onReport = onReport
         self.scrollCollapsesTopInset = scrollCollapsesTopInset
         self.collapseInsetResetToken = collapseInsetResetToken
@@ -63,7 +66,7 @@ struct FeedListView<TopInset: View>: View {
                 Section {
                     #if DEBUG
                     EmptyStateView(
-                        icon: "rectangle.stack",
+                        icon: "rectangle-stack-solid",
                         title: emptyTitle,
                         message: emptyMessage,
                         actionTitle: "Seed local data",
@@ -77,7 +80,7 @@ struct FeedListView<TopInset: View>: View {
                     .listRowSeparator(.hidden)
                     #else
                     EmptyStateView(
-                        icon: "rectangle.stack",
+                        icon: "rectangle-stack-solid",
                         title: emptyTitle,
                         message: emptyMessage,
                         actionTitle: nil,
@@ -92,6 +95,7 @@ struct FeedListView<TopInset: View>: View {
                         post: post,
                         onLike: { Task { await actions?.toggleLike(post) } },
                         onRepost: { Task { await actions?.toggleRepost(post) } },
+                        onQuote: { onQuote?(post) },
                         onBookmark: { Task { await actions?.toggleBookmark(post) } },
                         onReply: { onReply?(post) },
                         onTapAuthor: {
@@ -252,6 +256,7 @@ extension FeedListView where TopInset == EmptyView {
         onSelectPost: @escaping (Post) -> Void,
         onSelectAuthor: @escaping (String) -> Void,
         onReply: ((Post) -> Void)? = nil,
+        onQuote: ((Post) -> Void)? = nil,
         onReport: ((Post) -> Void)? = nil
     ) {
         self.init(
@@ -261,6 +266,7 @@ extension FeedListView where TopInset == EmptyView {
             onSelectPost: onSelectPost,
             onSelectAuthor: onSelectAuthor,
             onReply: onReply,
+            onQuote: onQuote,
             onReport: onReport,
             scrollCollapsesTopInset: false,
             collapseInsetResetToken: nil,

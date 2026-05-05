@@ -24,7 +24,7 @@ struct NewConversationView: View {
                                 Button(role: .destructive) {
                                     selected.removeAll { $0.id == user.id }
                                 } label: {
-                                    Image(systemName: "minus.circle")
+                                    HeroIcon(name: "minus-circle-outline", size: 18)
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -55,7 +55,7 @@ struct NewConversationView: View {
                                 HStack {
                                     UserRowView(user: user)
                                     if selected.contains(where: { $0.id == user.id }) {
-                                        Image(systemName: "checkmark")
+                                        HeroIcon(name: "check-solid", size: 16)
                                             .foregroundStyle(TBColor.accent)
                                     }
                                 }

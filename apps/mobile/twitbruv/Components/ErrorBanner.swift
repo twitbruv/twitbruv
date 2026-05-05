@@ -6,7 +6,7 @@ struct ErrorBanner: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "exclamationmark.triangle.fill")
+            HeroIcon(name: "exclamation-triangle-solid", size: 20)
                 .foregroundStyle(TBColor.warn)
             VStack(alignment: .leading, spacing: 4) {
                 Text("Something went wrong")

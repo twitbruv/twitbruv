@@ -45,7 +45,7 @@ struct ConversationsListView: View {
                     List {
                         if vm.conversations.isEmpty && vm.didLoadOnce {
                             EmptyStateView(
-                                icon: "envelope",
+                                icon: "envelope-solid",
                                 title: vm.folder == "requests"
                                     ? "No pending requests"
                                     : "No conversations yet"
@@ -85,7 +85,7 @@ struct ConversationsListView: View {
                             Button {
                                 showNew = true
                             } label: {
-                                Image(systemName: "square.and.pencil")
+                                HeroIcon(name: "pencil-square-solid", size: 18)
                                     .foregroundStyle(TBColor.accent)
                             }
                             .padding(.trailing, TBLayout.glassBarOuterMargin)

@@ -20,6 +20,7 @@ struct BookmarksView: View {
                             path.append(FeedRoute.profile(handle: handle))
                         },
                         onReply: { post in path.append(FeedRoute.compose(replyTo: post)) },
+                        onQuote: { post in path.append(FeedRoute.quote(target: post)) },
                         onReport: { post in reportTarget = post }
                     )
                 } else {
@@ -42,6 +43,7 @@ struct BookmarksView: View {
                 case .thread(let id): ThreadView(postId: id)
                 case .profile(let handle): ProfileView(handle: handle, navigationPath: $path)
                 case .compose(let replyTo): ComposerView(mode: .reply(replyTo))
+                case .quote(let target): ComposerView(mode: .quote(target))
                 case .hashtag(let tag): HashtagView(tag: tag)
                 case .search(let q): SearchStackContent(path: $path, initialQuery: q)
                 }

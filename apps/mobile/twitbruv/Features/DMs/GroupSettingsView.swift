@@ -35,7 +35,7 @@ struct GroupSettingsView: View {
                                 Button(role: .destructive) {
                                     Task { await revokeInvite(invite) }
                                 } label: {
-                                    Image(systemName: "trash")
+                                    HeroIcon(name: "trash-solid", size: 16)
                                 }
                                 .buttonStyle(.plain)
                             }

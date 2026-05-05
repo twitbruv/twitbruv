@@ -35,7 +35,7 @@ struct MediaCarouselView: View {
                     case .failure:
                         ZStack {
                             TBColor.base2
-                            Image(systemName: "photo")
+                            HeroIcon(name: "photo-solid", size: 24)
                                 .foregroundStyle(TBColor.textTertiary)
                         }
                     @unknown default:

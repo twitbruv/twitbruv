@@ -130,6 +130,9 @@ struct ProfileView: View {
             case .compose(let replyTo):
                 ComposerView(mode: .reply(replyTo))
                     .toolbarVisibility(.automatic, for: .navigationBar)
+            case .quote(let target):
+                ComposerView(mode: .quote(target))
+                    .toolbarVisibility(.automatic, for: .navigationBar)
             case .hashtag(let tag):
                 HashtagView(tag: tag)
                     .toolbarVisibility(.automatic, for: .navigationBar)
@@ -333,8 +336,7 @@ private struct ProfileFloatingChrome: View {
                 Button {
                     navigationPath.removeLast()
                 } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 16, weight: .semibold))
+                    HeroIcon(name: "chevron-left-solid", size: 16)
                         .foregroundStyle(TBColor.textPrimary)
                         .frame(width: 40, height: 40)
                 }
@@ -348,7 +350,7 @@ private struct ProfileFloatingChrome: View {
                     Button {
                         showSettings = true
                     } label: {
-                        Label("Settings", systemImage: "gearshape")
+                        Label("Settings", hero: "cog-6-tooth-solid")
                     }
                 } else {
                     Button {
@@ -356,7 +358,7 @@ private struct ProfileFloatingChrome: View {
                     } label: {
                         Label(
                             (user.viewer?.muting == true) ? "Unmute" : "Mute",
-                            systemImage: "speaker.slash"
+                            hero: "speaker-x-mark-solid"
                         )
                     }
                     Button {
@@ -364,25 +366,24 @@ private struct ProfileFloatingChrome: View {
                             reportUser = ReportSubject.user(handle: h, id: user.id)
                         }
                     } label: {
-                        Label("Report", systemImage: "flag")
+                        Label("Report", hero: "flag-solid")
                     }
                     if user.viewer?.blocking == true {
                         Button {
                             Task { await vm.setBlock(false) }
                         } label: {
-                            Label("Unblock", systemImage: "hand.raised")
+                            Label("Unblock", hero: "hand-raised-solid")
                         }
                     } else {
                         Button(role: .destructive) {
                             Task { await vm.setBlock(true) }
                         } label: {
-                            Label("Block", systemImage: "hand.raised")
+                            Label("Block", hero: "hand-raised-solid")
                         }
                     }
                 }
             } label: {
-                Image(systemName: "ellipsis")
-                    .font(.system(size: 16, weight: .semibold))
+                HeroIcon(name: "ellipsis-horizontal-solid", size: 16)
                     .foregroundStyle(TBColor.textPrimary)
                     .frame(height: 40)
                     .padding(.horizontal, 14)
@@ -488,7 +489,7 @@ private struct ProfileHeader: View {
                     .font(TBTypography.pageTitle)
                     .foregroundStyle(TBColor.textPrimary)
                 if user.isVerified == true {
-                    Image(systemName: "checkmark.seal.fill")
+                    HeroIcon(name: "check-badge-solid", size: 18)
                         .foregroundStyle(TBColor.accent)
                 }
             }
@@ -514,12 +515,11 @@ private struct ProfileHeader: View {
     private var metaLine: some View {
         let loc = user.location?.trimmingCharacters(in: .whitespaces) ?? ""
         let hasLoc = !loc.isEmpty
-        let secondary = localTimeString ?? joinedLine
+        let secondary = joinedLine
         if hasLoc || secondary != nil {
             HStack(spacing: 6) {
                 if hasLoc {
-                    Image(systemName: "mappin.and.ellipse")
-                        .font(.system(size: 12, weight: .medium))
+                    HeroIcon(name: "map-pin-solid", size: 12)
                 }
                 Group {
                     if hasLoc, let s = secondary {
@@ -545,8 +545,7 @@ private struct ProfileHeader: View {
            let url = profileWebsiteURL(from: raw)
         {
             Link(destination: url) {
-                Image(systemName: "globe")
-                    .font(.system(size: 18, weight: .medium))
+                HeroIcon(name: "globe-alt-solid", size: 18)
                     .foregroundStyle(TBColor.textSecondary)
             }
         }
@@ -594,8 +593,7 @@ private struct ProfileActionsRow: View {
                 Button {
                     Task { await startDM() }
                 } label: {
-                    Image(systemName: "envelope.fill")
-                        .font(.system(size: 16, weight: .medium))
+                    HeroIcon(name: "envelope-solid", size: 16)
                         .foregroundStyle(TBColor.textPrimary)
                         .frame(width: 36, height: 36)
                 }

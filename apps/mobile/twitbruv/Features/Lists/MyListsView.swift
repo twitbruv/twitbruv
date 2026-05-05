@@ -14,7 +14,7 @@ struct MyListsView: View {
         List {
             if lists.isEmpty && !isLoading {
                 EmptyStateView(
-                    icon: "list.bullet.rectangle",
+                    icon: "queue-list-solid",
                     title: "No lists yet",
                     message: "Create a list to organize accounts you follow."
                 )
@@ -25,7 +25,7 @@ struct MyListsView: View {
                     ListDetailView(list: list)
                 } label: {
                     HStack {
-                        Image(systemName: "list.bullet.rectangle")
+                        HeroIcon(name: "queue-list-solid", size: 18)
                             .foregroundStyle(TBColor.accent)
                         VStack(alignment: .leading) {
                             Text(list.name)
@@ -48,7 +48,7 @@ struct MyListsView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button { showCreate = true } label: {
-                    Image(systemName: "plus")
+                    HeroIcon(name: "plus-solid", size: 18)
                         .foregroundStyle(TBColor.accent)
                 }
             }
@@ -192,7 +192,7 @@ struct ListDetailView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button { showAdd = true } label: {
-                    Image(systemName: "person.crop.circle.badge.plus")
+                    HeroIcon(name: "user-plus-solid", size: 18)
                         .foregroundStyle(TBColor.accent)
                 }
             }
@@ -255,7 +255,7 @@ struct AddMembersSheet: View {
                             HStack {
                                 UserRowView(user: user)
                                 if selected.contains(user.id) {
-                                    Image(systemName: "checkmark")
+                                    HeroIcon(name: "check-solid", size: 16)
                                         .foregroundStyle(TBColor.accent)
                                 }
                             }

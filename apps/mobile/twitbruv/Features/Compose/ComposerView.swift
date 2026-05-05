@@ -85,7 +85,7 @@ struct ComposerView: View {
                             maxSelectionCount: 4,
                             matching: .images
                         ) {
-                            Label("Add photos", systemImage: "photo.on.rectangle")
+                            Label("Add photos", hero: "photo-solid")
                                 .font(TBTypography.meta.weight(.medium))
                                 .foregroundStyle(TBColor.textPrimary)
                         }
@@ -107,11 +107,8 @@ struct ComposerView: View {
                                                     Button {
                                                         picker.remove(id: p.id)
                                                     } label: {
-                                                        Image(systemName: "xmark.circle.fill")
-                                                            .foregroundStyle(
-                                                                TBColor.textOnInverse,
-                                                                TBColor.inverse
-                                                            )
+                                                        HeroIcon(name: "x-circle-solid", size: 22)
+                                                            .foregroundStyle(TBColor.inverse)
                                                     }
                                                     .padding(2)
                                                 }
@@ -437,7 +434,7 @@ private struct PollEditor: View {
                     Button {
                         options.remove(at: idx)
                     } label: {
-                        Image(systemName: "minus.circle.fill")
+                        HeroIcon(name: "minus-circle-solid", size: 18)
                             .foregroundStyle(TBColor.danger)
                     }
                     .buttonStyle(.plain)
@@ -448,7 +445,7 @@ private struct PollEditor: View {
             Button {
                 options.append("")
             } label: {
-                Label("Add option", systemImage: "plus")
+                Label("Add option", hero: "plus-solid")
                     .font(TBTypography.meta.weight(.medium))
                     .foregroundStyle(TBColor.accent)
             }
