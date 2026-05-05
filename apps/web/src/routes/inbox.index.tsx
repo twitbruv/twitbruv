@@ -40,8 +40,8 @@ function InboxList() {
               variant="outline"
               nativeButton={false}
               render={<Link to="/inbox/new" />}
+              iconLeft={<PencilSquareIcon />}
             >
-              <PencilSquareIcon className="size-3.5" />
               New
             </Button>
           }
@@ -233,7 +233,7 @@ function ConversationRow({ conversation }: { conversation: DmConversation }) {
         {isUnread && (
           <span
             aria-hidden
-            className="ml-1 flex size-5 shrink-0 items-center justify-center self-center rounded-full bg-inverse px-1.5 text-[10px] font-semibold text-inverse tabular-nums"
+            className="ml-1 inline-flex h-5 min-w-5 shrink-0 items-center justify-center self-center rounded-full bg-inverse px-1.5 text-[10px] font-semibold text-inverse tabular-nums"
           >
             {conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}
           </span>
