@@ -109,6 +109,7 @@ export function ProfileActions({
         />
         <DropdownMenu.Content align="end" sideOffset={4} className="w-40">
           <DropdownMenu.Item
+            icon={<SpeakerXMarkIcon className="size-3.5" />}
             onClick={() =>
               run(
                 "mute",
@@ -118,15 +119,17 @@ export function ProfileActions({
               )
             }
           >
-            <SpeakerXMarkIcon className="size-3.5" />
-            <span>{v.muting ? "Unmute" : "Mute feed"}</span>
+            {v.muting ? "Unmute" : "Mute feed"}
           </DropdownMenu.Item>
-          <DropdownMenu.Item onClick={() => setReportOpen(true)}>
-            <FlagIcon className="size-3.5" />
-            <span>Report</span>
+          <DropdownMenu.Item
+            icon={<FlagIcon className="size-3.5" />}
+            onClick={() => setReportOpen(true)}
+          >
+            Report
           </DropdownMenu.Item>
           <DropdownMenu.Item
             variant="danger"
+            icon={<NoSymbolIcon className="size-3.5" />}
             onClick={() => {
               if (!v.blocking && !confirm(`Block @${h}?`)) return
               run(
@@ -137,8 +140,7 @@ export function ProfileActions({
               )
             }}
           >
-            <NoSymbolIcon className="size-3.5" />
-            <span>{v.blocking ? "Unblock" : "Block"}</span>
+            {v.blocking ? "Unblock" : "Block"}
           </DropdownMenu.Item>
         </DropdownMenu.Content>
       </DropdownMenu.Root>

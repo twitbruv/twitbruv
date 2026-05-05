@@ -40,7 +40,7 @@ function InboxList() {
               variant="outline"
               nativeButton={false}
               render={<Link to="/inbox/new" />}
-              iconLeft={<PencilSquareIcon />}
+              iconLeft={<PencilSquareIcon className="size-3.5" />}
             >
               New
             </Button>

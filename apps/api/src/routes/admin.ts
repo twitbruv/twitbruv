@@ -1,5 +1,5 @@
-import { Hono, type Context } from 'hono'
-import { z } from 'zod'
+import { Hono, type Context } from "hono"
+import { z } from "zod"
 import {
   and,
   asc,
@@ -14,114 +14,129 @@ import {
   lt,
   or,
   sql,
-} from '@workspace/db'
-import { schema } from '@workspace/db'
-import { assetUrl } from '@workspace/media/s3'
-import { adminSetUserHandleSchema } from '@workspace/validators'
-import { requireAdmin, requireOwner, type HonoEnv, type Role } from '../middleware/session.ts'
-import { parseCursor } from '../lib/cursor.ts'
-import { isReservedHandle } from '../lib/handles.ts'
-import { getOnlineCount, getOnlineUserIds } from '../lib/presence.ts'
+} from "@workspace/db"
+import { schema } from "@workspace/db"
+import { assetUrl } from "@workspace/media/s3"
+import { adminSetUserHandleSchema } from "@workspace/validators"
+import {
+  requireAdmin,
+  requireOwner,
+  type HonoEnv,
+  type Role,
+} from "../middleware/session.ts"
+import { parseCursor } from "../lib/cursor.ts"
+import { isReservedHandle } from "../lib/handles.ts"
+import { getOnlinePresence } from "../lib/presence.ts"
 
 export const adminRoute = new Hono<HonoEnv>()
 
 // Every endpoint here requires admin or owner. Owner-only operations layer on requireOwner().
-adminRoute.use('*', requireAdmin())
+adminRoute.use("*", requireAdmin())
 
 // Aggregate counters for the admin dashboard stat cards. All groups run in parallel as a
 // single Promise.all; within each query every branch is a partial-index-friendly count(*)
 // filter so we get a wide picture from a small number of round-trips. `active` users excludes
 // banned, shadowbanned, and deleted users so the four moderation buckets sum to the total.
-adminRoute.get('/stats', async (c) => {
-  const { db } = c.get('ctx')
+adminRoute.get("/stats", async (c) => {
+  const { db } = c.get("ctx")
   const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
 
-  const [userRows, reportRows, postRows, engagementRows, socialRows, messagingRows] =
-    await Promise.all([
+  const [
+    userRows,
+    reportRows,
+    postRows,
+    engagementRows,
+    socialRows,
+    messagingRows,
+  ] = await Promise.all([
+    db
+      .select({
+        total: sql<number>`count(*)::int`,
+        active: sql<number>`count(*) filter (where ${schema.users.banned} = false and ${schema.users.shadowBannedAt} is null and ${schema.users.deletedAt} is null)::int`,
+        banned: sql<number>`count(*) filter (where ${schema.users.banned} = true)::int`,
+        shadowBanned: sql<number>`count(*) filter (where ${schema.users.shadowBannedAt} is not null)::int`,
+        deleted: sql<number>`count(*) filter (where ${schema.users.deletedAt} is not null)::int`,
+        verified: sql<number>`count(*) filter (where ${schema.users.isVerified} = true)::int`,
+        admins: sql<number>`count(*) filter (where ${schema.users.role} in ('admin','owner'))::int`,
+        newToday: sql<number>`count(*) filter (where ${gte(schema.users.createdAt, dayAgo)})::int`,
+        newThisWeek: sql<number>`count(*) filter (where ${gte(schema.users.createdAt, weekAgo)})::int`,
+      })
+      .from(schema.users),
+    db
+      .select({
+        open: sql<number>`count(*) filter (where ${schema.reports.status} = 'open')::int`,
+        triaged: sql<number>`count(*) filter (where ${schema.reports.status} = 'triaged')::int`,
+        actioned: sql<number>`count(*) filter (where ${schema.reports.status} = 'actioned')::int`,
+        dismissed: sql<number>`count(*) filter (where ${schema.reports.status} = 'dismissed')::int`,
+        total: sql<number>`count(*)::int`,
+      })
+      .from(schema.reports),
+    // Posts taxonomy: replies, reposts, and quotes are all rows in `posts` distinguished by
+    // the foreign keys they set. `original` excludes all three so the buckets partition the
+    // (non-deleted) total. Impressions/likes/reposts/bookmarks/replies are summed off the
+    // counter columns on the post row so we don't have to scan likes/bookmarks tables.
+    db
+      .select({
+        total: sql<number>`count(*) filter (where ${schema.posts.deletedAt} is null)::int`,
+        deleted: sql<number>`count(*) filter (where ${schema.posts.deletedAt} is not null)::int`,
+        original: sql<number>`count(*) filter (where ${schema.posts.deletedAt} is null and ${schema.posts.replyToId} is null and ${schema.posts.repostOfId} is null and ${schema.posts.quoteOfId} is null)::int`,
+        replies: sql<number>`count(*) filter (where ${schema.posts.deletedAt} is null and ${schema.posts.replyToId} is not null)::int`,
+        reposts: sql<number>`count(*) filter (where ${schema.posts.deletedAt} is null and ${schema.posts.repostOfId} is not null)::int`,
+        quotes: sql<number>`count(*) filter (where ${schema.posts.deletedAt} is null and ${schema.posts.quoteOfId} is not null)::int`,
+        sensitive: sql<number>`count(*) filter (where ${schema.posts.deletedAt} is null and ${schema.posts.sensitive} = true)::int`,
+        edited: sql<number>`count(*) filter (where ${schema.posts.deletedAt} is null and ${schema.posts.editedAt} is not null)::int`,
+        newToday: sql<number>`count(*) filter (where ${gte(schema.posts.createdAt, dayAgo)} and ${schema.posts.deletedAt} is null)::int`,
+        newThisWeek: sql<number>`count(*) filter (where ${gte(schema.posts.createdAt, weekAgo)} and ${schema.posts.deletedAt} is null)::int`,
+        // Impressions live only on the post row (no relation table to sum from). bigint cast
+        // keeps us safe past 2.1B aggregate impressions; ::text preserves precision in
+        // transit (sum() returns numeric in PG) and we parse back to Number client-side.
+        totalImpressions: sql<string>`coalesce(sum(${schema.posts.impressionCount}) filter (where ${schema.posts.deletedAt} is null), 0)::bigint::text`,
+      })
+      .from(schema.posts),
+    // Counts off the relation tables for canonical totals (the post-counter sums above
+    // double-count if a post is both repost and quote, etc.). These are partial-index
+    // friendly count(*) queries on small composite keys.
+    Promise.all([
+      db.select({ count: sql<number>`count(*)::int` }).from(schema.likes),
+      db.select({ count: sql<number>`count(*)::int` }).from(schema.bookmarks),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(schema.likes)
+        .where(gte(schema.likes.createdAt, dayAgo)),
+    ]).then(([likes, bookmarks, likesToday]) => ({
+      likes: likes[0]?.count ?? 0,
+      bookmarks: bookmarks[0]?.count ?? 0,
+      likesToday: likesToday[0]?.count ?? 0,
+    })),
+    Promise.all([
+      db.select({ count: sql<number>`count(*)::int` }).from(schema.follows),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(schema.follows)
+        .where(gte(schema.follows.createdAt, dayAgo)),
+      db.select({ count: sql<number>`count(*)::int` }).from(schema.blocks),
+      db.select({ count: sql<number>`count(*)::int` }).from(schema.mutes),
+    ]).then(([follows, followsToday, blocks, mutes]) => ({
+      follows: follows[0]?.count ?? 0,
+      followsToday: followsToday[0]?.count ?? 0,
+      blocks: blocks[0]?.count ?? 0,
+      mutes: mutes[0]?.count ?? 0,
+    })),
+    Promise.all([
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(schema.conversations),
       db
         .select({
-          total: sql<number>`count(*)::int`,
-          active: sql<number>`count(*) filter (where ${schema.users.banned} = false and ${schema.users.shadowBannedAt} is null and ${schema.users.deletedAt} is null)::int`,
-          banned: sql<number>`count(*) filter (where ${schema.users.banned} = true)::int`,
-          shadowBanned: sql<number>`count(*) filter (where ${schema.users.shadowBannedAt} is not null)::int`,
-          deleted: sql<number>`count(*) filter (where ${schema.users.deletedAt} is not null)::int`,
-          verified: sql<number>`count(*) filter (where ${schema.users.isVerified} = true)::int`,
-          admins: sql<number>`count(*) filter (where ${schema.users.role} in ('admin','owner'))::int`,
-          newToday: sql<number>`count(*) filter (where ${gte(schema.users.createdAt, dayAgo)})::int`,
-          newThisWeek: sql<number>`count(*) filter (where ${gte(schema.users.createdAt, weekAgo)})::int`,
+          count: sql<number>`count(*) filter (where ${schema.messages.deletedAt} is null)::int`,
         })
-        .from(schema.users),
-      db
-        .select({
-          open: sql<number>`count(*) filter (where ${schema.reports.status} = 'open')::int`,
-          triaged: sql<number>`count(*) filter (where ${schema.reports.status} = 'triaged')::int`,
-          actioned: sql<number>`count(*) filter (where ${schema.reports.status} = 'actioned')::int`,
-          dismissed: sql<number>`count(*) filter (where ${schema.reports.status} = 'dismissed')::int`,
-          total: sql<number>`count(*)::int`,
-        })
-        .from(schema.reports),
-      // Posts taxonomy: replies, reposts, and quotes are all rows in `posts` distinguished by
-      // the foreign keys they set. `original` excludes all three so the buckets partition the
-      // (non-deleted) total. Impressions/likes/reposts/bookmarks/replies are summed off the
-      // counter columns on the post row so we don't have to scan likes/bookmarks tables.
-      db
-        .select({
-          total: sql<number>`count(*) filter (where ${schema.posts.deletedAt} is null)::int`,
-          deleted: sql<number>`count(*) filter (where ${schema.posts.deletedAt} is not null)::int`,
-          original: sql<number>`count(*) filter (where ${schema.posts.deletedAt} is null and ${schema.posts.replyToId} is null and ${schema.posts.repostOfId} is null and ${schema.posts.quoteOfId} is null)::int`,
-          replies: sql<number>`count(*) filter (where ${schema.posts.deletedAt} is null and ${schema.posts.replyToId} is not null)::int`,
-          reposts: sql<number>`count(*) filter (where ${schema.posts.deletedAt} is null and ${schema.posts.repostOfId} is not null)::int`,
-          quotes: sql<number>`count(*) filter (where ${schema.posts.deletedAt} is null and ${schema.posts.quoteOfId} is not null)::int`,
-          sensitive: sql<number>`count(*) filter (where ${schema.posts.deletedAt} is null and ${schema.posts.sensitive} = true)::int`,
-          edited: sql<number>`count(*) filter (where ${schema.posts.deletedAt} is null and ${schema.posts.editedAt} is not null)::int`,
-          newToday: sql<number>`count(*) filter (where ${gte(schema.posts.createdAt, dayAgo)} and ${schema.posts.deletedAt} is null)::int`,
-          newThisWeek: sql<number>`count(*) filter (where ${gte(schema.posts.createdAt, weekAgo)} and ${schema.posts.deletedAt} is null)::int`,
-          // Impressions live only on the post row (no relation table to sum from). bigint cast
-          // keeps us safe past 2.1B aggregate impressions; ::text preserves precision in
-          // transit (sum() returns numeric in PG) and we parse back to Number client-side.
-          totalImpressions: sql<string>`coalesce(sum(${schema.posts.impressionCount}) filter (where ${schema.posts.deletedAt} is null), 0)::bigint::text`,
-        })
-        .from(schema.posts),
-      // Counts off the relation tables for canonical totals (the post-counter sums above
-      // double-count if a post is both repost and quote, etc.). These are partial-index
-      // friendly count(*) queries on small composite keys.
-      Promise.all([
-        db.select({ count: sql<number>`count(*)::int` }).from(schema.likes),
-        db.select({ count: sql<number>`count(*)::int` }).from(schema.bookmarks),
-        db
-          .select({ count: sql<number>`count(*)::int` })
-          .from(schema.likes)
-          .where(gte(schema.likes.createdAt, dayAgo)),
-      ]).then(([likes, bookmarks, likesToday]) => ({
-        likes: likes[0]?.count ?? 0,
-        bookmarks: bookmarks[0]?.count ?? 0,
-        likesToday: likesToday[0]?.count ?? 0,
-      })),
-      Promise.all([
-        db.select({ count: sql<number>`count(*)::int` }).from(schema.follows),
-        db
-          .select({ count: sql<number>`count(*)::int` })
-          .from(schema.follows)
-          .where(gte(schema.follows.createdAt, dayAgo)),
-        db.select({ count: sql<number>`count(*)::int` }).from(schema.blocks),
-        db.select({ count: sql<number>`count(*)::int` }).from(schema.mutes),
-      ]).then(([follows, followsToday, blocks, mutes]) => ({
-        follows: follows[0]?.count ?? 0,
-        followsToday: followsToday[0]?.count ?? 0,
-        blocks: blocks[0]?.count ?? 0,
-        mutes: mutes[0]?.count ?? 0,
-      })),
-      Promise.all([
-        db.select({ count: sql<number>`count(*)::int` }).from(schema.conversations),
-        db
-          .select({ count: sql<number>`count(*) filter (where ${schema.messages.deletedAt} is null)::int` })
-          .from(schema.messages),
-      ]).then(([conversations, messages]) => ({
-        conversations: conversations[0]?.count ?? 0,
-        messages: messages[0]?.count ?? 0,
-      })),
-    ])
+        .from(schema.messages),
+    ]).then(([conversations, messages]) => ({
+      conversations: conversations[0]?.count ?? 0,
+      messages: messages[0]?.count ?? 0,
+    })),
+  ])
 
   const userRow = userRows[0]
   const reportRow = reportRows[0]
@@ -187,10 +202,9 @@ adminRoute.get('/stats', async (c) => {
 // small sample of who they are. Backed by a Redis sorted set written by the /api/me
 // heartbeat, so it costs one ZREMRANGEBYSCORE + ZCARD (+ ZREVRANGE + a small user lookup)
 // per call — cheap enough to poll from the admin dashboard.
-adminRoute.get('/online', async (c) => {
-  const { db, mediaEnv, cache } = c.get('ctx')
-  const count = await getOnlineCount(cache)
-  const ids = count > 0 ? await getOnlineUserIds(cache, 12) : []
+adminRoute.get("/online", async (c) => {
+  const { db, mediaEnv, cache } = c.get("ctx")
+  const { count, ids, redisOk } = await getOnlinePresence(cache, 12)
   let sample: Array<{
     id: string
     handle: string | null
@@ -206,9 +220,7 @@ adminRoute.get('/online', async (c) => {
         avatarUrl: schema.users.avatarUrl,
       })
       .from(schema.users)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .where(sql`${schema.users.id} = any(${ids as any})`)
-    // Preserve the heartbeat-recency order from Redis; the SQL `IN` result is unordered.
+      .where(inArray(schema.users.id, ids))
     const byId = new Map(rows.map((r) => [r.id, r]))
     sample = ids
       .map((id) => byId.get(id))
@@ -220,7 +232,11 @@ adminRoute.get('/online', async (c) => {
         avatarUrl: assetUrl(mediaEnv, r.avatarUrl),
       }))
   }
-  return c.json({ count, sample })
+  return c.json({
+    count,
+    sample,
+    presenceUnavailable: !redisOk,
+  })
 })
 
 const listQuery = z.object({
@@ -233,14 +249,16 @@ const listQuery = z.object({
 })
 
 // List/search users. Cursor is the ISO timestamp of the previous page's last createdAt.
-adminRoute.get('/users', async (c) => {
-  const { db, mediaEnv } = c.get('ctx')
+adminRoute.get("/users", async (c) => {
+  const { db, mediaEnv } = c.get("ctx")
   const { q, cursor, limit } = listQuery.parse(c.req.query())
 
   const filters: Array<unknown> = []
   if (q) {
     const like = `%${q.replace(/[\\%_]/g, (ch) => `\\${ch}`)}%`
-    filters.push(or(ilike(schema.users.email, like), ilike(schema.users.handle, like)))
+    filters.push(
+      or(ilike(schema.users.email, like), ilike(schema.users.handle, like))
+    )
   }
   const parsedCursor = parseCursor(cursor)
   if (parsedCursor) filters.push(lt(schema.users.createdAt, parsedCursor))
@@ -249,7 +267,9 @@ adminRoute.get('/users', async (c) => {
     .select()
     .from(schema.users)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .where(filters.length > 0 ? (and(...(filters as Array<any>)) as any) : undefined)
+    .where(
+      filters.length > 0 ? (and(...(filters as Array<any>)) as any) : undefined
+    )
     .orderBy(desc(schema.users.createdAt))
     .limit(limit)
 
@@ -259,46 +279,52 @@ adminRoute.get('/users', async (c) => {
   let followersByUser = new Map<string, number>()
   let followingByUser = new Map<string, number>()
   if (ids.length > 0) {
-    const [openReportsRows, postsRows, followerRows, followingRows] = await Promise.all([
-      db
-        .select({
-          subjectId: schema.reports.subjectId,
-          c: sql<number>`count(*)::int`,
-        })
-        .from(schema.reports)
-        .where(
-          and(
-            eq(schema.reports.subjectType, 'user'),
-            eq(schema.reports.status, 'open'),
-            inArray(schema.reports.subjectId, ids),
-          ),
-        )
-        .groupBy(schema.reports.subjectId),
-      db
-        .select({
-          authorId: schema.posts.authorId,
-          c: sql<number>`count(*)::int`,
-        })
-        .from(schema.posts)
-        .where(and(isNull(schema.posts.deletedAt), inArray(schema.posts.authorId, ids)))
-        .groupBy(schema.posts.authorId),
-      db
-        .select({
-          followeeId: schema.follows.followeeId,
-          c: sql<number>`count(*)::int`,
-        })
-        .from(schema.follows)
-        .where(inArray(schema.follows.followeeId, ids))
-        .groupBy(schema.follows.followeeId),
-      db
-        .select({
-          followerId: schema.follows.followerId,
-          c: sql<number>`count(*)::int`,
-        })
-        .from(schema.follows)
-        .where(inArray(schema.follows.followerId, ids))
-        .groupBy(schema.follows.followerId),
-    ])
+    const [openReportsRows, postsRows, followerRows, followingRows] =
+      await Promise.all([
+        db
+          .select({
+            subjectId: schema.reports.subjectId,
+            c: sql<number>`count(*)::int`,
+          })
+          .from(schema.reports)
+          .where(
+            and(
+              eq(schema.reports.subjectType, "user"),
+              eq(schema.reports.status, "open"),
+              inArray(schema.reports.subjectId, ids)
+            )
+          )
+          .groupBy(schema.reports.subjectId),
+        db
+          .select({
+            authorId: schema.posts.authorId,
+            c: sql<number>`count(*)::int`,
+          })
+          .from(schema.posts)
+          .where(
+            and(
+              isNull(schema.posts.deletedAt),
+              inArray(schema.posts.authorId, ids)
+            )
+          )
+          .groupBy(schema.posts.authorId),
+        db
+          .select({
+            followeeId: schema.follows.followeeId,
+            c: sql<number>`count(*)::int`,
+          })
+          .from(schema.follows)
+          .where(inArray(schema.follows.followeeId, ids))
+          .groupBy(schema.follows.followeeId),
+        db
+          .select({
+            followerId: schema.follows.followerId,
+            c: sql<number>`count(*)::int`,
+          })
+          .from(schema.follows)
+          .where(inArray(schema.follows.followerId, ids))
+          .groupBy(schema.follows.followerId),
+      ])
     openReportsByUser = new Map(openReportsRows.map((r) => [r.subjectId, r.c]))
     postsCountByUser = new Map(postsRows.map((r) => [r.authorId, r.c]))
     followersByUser = new Map(followerRows.map((r) => [r.followeeId, r.c]))
@@ -327,17 +353,23 @@ adminRoute.get('/users', async (c) => {
     openReportsCount: openReportsByUser.get(u.id) ?? 0,
   }))
   const nextCursor =
-    rows.length === limit ? rows[rows.length - 1]!.createdAt.toISOString() : null
+    rows.length === limit
+      ? rows[rows.length - 1]!.createdAt.toISOString()
+      : null
   return c.json({ users: items, nextCursor })
 })
 
 // Detailed view: user + recent posts + open reports filed against them.
-adminRoute.get('/users/:id', async (c) => {
-  const { db, mediaEnv } = c.get('ctx')
-  const id = c.req.param('id')
+adminRoute.get("/users/:id", async (c) => {
+  const { db, mediaEnv } = c.get("ctx")
+  const id = c.req.param("id")
 
-  const [user] = await db.select().from(schema.users).where(eq(schema.users.id, id)).limit(1)
-  if (!user) return c.json({ error: 'not_found' }, 404)
+  const [user] = await db
+    .select()
+    .from(schema.users)
+    .where(eq(schema.users.id, id))
+    .limit(1)
+  if (!user) return c.json({ error: "not_found" }, 404)
 
   const [
     recentPosts,
@@ -358,7 +390,12 @@ adminRoute.get('/users/:id', async (c) => {
     db
       .select()
       .from(schema.reports)
-      .where(and(eq(schema.reports.subjectType, 'user'), eq(schema.reports.subjectId, id)))
+      .where(
+        and(
+          eq(schema.reports.subjectType, "user"),
+          eq(schema.reports.subjectId, id)
+        )
+      )
       .orderBy(desc(schema.reports.createdAt))
       .limit(20),
     db
@@ -366,16 +403,18 @@ adminRoute.get('/users/:id', async (c) => {
       .from(schema.moderationActions)
       .where(
         and(
-          eq(schema.moderationActions.subjectType, 'user'),
-          eq(schema.moderationActions.subjectId, id),
-        ),
+          eq(schema.moderationActions.subjectType, "user"),
+          eq(schema.moderationActions.subjectId, id)
+        )
       )
       .orderBy(desc(schema.moderationActions.createdAt))
       .limit(20),
     db
       .select({ c: sql<number>`count(*)::int` })
       .from(schema.posts)
-      .where(and(eq(schema.posts.authorId, id), isNull(schema.posts.deletedAt))),
+      .where(
+        and(eq(schema.posts.authorId, id), isNull(schema.posts.deletedAt))
+      ),
     db
       .select({ c: sql<number>`count(*)::int` })
       .from(schema.follows)
@@ -389,15 +428,20 @@ adminRoute.get('/users/:id', async (c) => {
       .from(schema.reports)
       .where(
         and(
-          eq(schema.reports.subjectType, 'user'),
+          eq(schema.reports.subjectType, "user"),
           eq(schema.reports.subjectId, id),
-          eq(schema.reports.status, 'open'),
-        ),
+          eq(schema.reports.status, "open")
+        )
       ),
     db
       .select({ c: sql<number>`count(*)::int` })
       .from(schema.reports)
-      .where(and(eq(schema.reports.subjectType, 'user'), eq(schema.reports.subjectId, id))),
+      .where(
+        and(
+          eq(schema.reports.subjectType, "user"),
+          eq(schema.reports.subjectId, id)
+        )
+      ),
   ])
 
   return c.json({
@@ -460,13 +504,13 @@ const banSchema = z.object({
 
 // Ban a user. Sets the better-auth `banned` flag so the session middleware will treat them as
 // logged out on the next request, and records the action in moderation_actions for audit.
-adminRoute.post('/users/:id/ban', async (c) => {
-  const session = c.get('session')!
-  const { db } = c.get('ctx')
-  const id = c.req.param('id')
+adminRoute.post("/users/:id/ban", async (c) => {
+  const session = c.get("session")!
+  const { db } = c.get("ctx")
+  const id = c.req.param("id")
   const body = banSchema.parse(await c.req.json().catch(() => ({})))
 
-  if (id === session.user.id) return c.json({ error: 'cannot_ban_self' }, 400)
+  if (id === session.user.id) return c.json({ error: "cannot_ban_self" }, 400)
   // Owner-only protection: admins can't ban other admins or owners. Owner can ban anyone except self.
   await guardTargetRank(c, id)
 
@@ -477,28 +521,32 @@ adminRoute.post('/users/:id/ban', async (c) => {
   await db.transaction(async (tx) => {
     await tx
       .update(schema.users)
-      .set({ banned: true, banReason: body.reason ?? null, banExpires: expires })
+      .set({
+        banned: true,
+        banReason: body.reason ?? null,
+        banExpires: expires,
+      })
       .where(eq(schema.users.id, id))
     // Wipe sessions so the user is kicked from any open tabs immediately.
     await tx.delete(schema.sessions).where(eq(schema.sessions.userId, id))
     await tx.insert(schema.moderationActions).values({
       moderatorId: session.user.id,
-      subjectType: 'user',
+      subjectType: "user",
       subjectId: id,
-      action: body.durationHours ? 'suspend' : 'shadowban',
+      action: body.durationHours ? "suspend" : "shadowban",
       publicReason: body.reason ?? null,
       durationHours: body.durationHours ?? null,
     })
   })
 
-  c.get('ctx').track('admin_user_banned', session.user.id)
+  c.get("ctx").track("admin_user_banned", session.user.id)
   return c.json({ ok: true })
 })
 
-adminRoute.post('/users/:id/unban', async (c) => {
-  const session = c.get('session')!
-  const { db } = c.get('ctx')
-  const id = c.req.param('id')
+adminRoute.post("/users/:id/unban", async (c) => {
+  const session = c.get("session")!
+  const { db } = c.get("ctx")
+  const id = c.req.param("id")
 
   await db.transaction(async (tx) => {
     await tx
@@ -507,12 +555,12 @@ adminRoute.post('/users/:id/unban', async (c) => {
       .where(eq(schema.users.id, id))
     await tx.insert(schema.moderationActions).values({
       moderatorId: session.user.id,
-      subjectType: 'user',
+      subjectType: "user",
       subjectId: id,
-      action: 'unban',
+      action: "unban",
     })
   })
-  c.get('ctx').track('admin_user_unbanned', session.user.id)
+  c.get("ctx").track("admin_user_unbanned", session.user.id)
   return c.json({ ok: true })
 })
 
@@ -521,13 +569,14 @@ const shadowSchema = z.object({
 })
 
 // Shadowban: their content stays visible to them but hidden from everyone else. No session wipe.
-adminRoute.post('/users/:id/shadowban', async (c) => {
-  const session = c.get('session')!
-  const { db } = c.get('ctx')
-  const id = c.req.param('id')
+adminRoute.post("/users/:id/shadowban", async (c) => {
+  const session = c.get("session")!
+  const { db } = c.get("ctx")
+  const id = c.req.param("id")
   const body = shadowSchema.parse(await c.req.json().catch(() => ({})))
 
-  if (id === session.user.id) return c.json({ error: 'cannot_shadowban_self' }, 400)
+  if (id === session.user.id)
+    return c.json({ error: "cannot_shadowban_self" }, 400)
   await guardTargetRank(c, id)
 
   await db.transaction(async (tx) => {
@@ -537,20 +586,20 @@ adminRoute.post('/users/:id/shadowban', async (c) => {
       .where(eq(schema.users.id, id))
     await tx.insert(schema.moderationActions).values({
       moderatorId: session.user.id,
-      subjectType: 'user',
+      subjectType: "user",
       subjectId: id,
-      action: 'shadowban',
+      action: "shadowban",
       publicReason: body.reason ?? null,
     })
   })
-  c.get('ctx').track('admin_user_shadowbanned', session.user.id)
+  c.get("ctx").track("admin_user_shadowbanned", session.user.id)
   return c.json({ ok: true })
 })
 
-adminRoute.post('/users/:id/unshadowban', async (c) => {
-  const session = c.get('session')!
-  const { db } = c.get('ctx')
-  const id = c.req.param('id')
+adminRoute.post("/users/:id/unshadowban", async (c) => {
+  const session = c.get("session")!
+  const { db } = c.get("ctx")
+  const id = c.req.param("id")
 
   await db.transaction(async (tx) => {
     await tx
@@ -559,45 +608,46 @@ adminRoute.post('/users/:id/unshadowban', async (c) => {
       .where(eq(schema.users.id, id))
     await tx.insert(schema.moderationActions).values({
       moderatorId: session.user.id,
-      subjectType: 'user',
+      subjectType: "user",
       subjectId: id,
-      action: 'unban',
+      action: "unban",
     })
   })
-  c.get('ctx').track('admin_user_unshadowbanned', session.user.id)
+  c.get("ctx").track("admin_user_unshadowbanned", session.user.id)
   return c.json({ ok: true })
 })
 
-const roleSchema = z.object({ role: z.enum(['user', 'admin', 'owner']) })
+const roleSchema = z.object({ role: z.enum(["user", "admin", "owner"]) })
 
 // Owner-only: assign roles. Admins can't promote/demote anyone.
-adminRoute.post('/users/:id/role', requireOwner(), async (c) => {
-  const session = c.get('session')!
-  const { db } = c.get('ctx')
-  const id = c.req.param('id')
+adminRoute.post("/users/:id/role", requireOwner(), async (c) => {
+  const session = c.get("session")!
+  const { db } = c.get("ctx")
+  const id = c.req.param("id")
   const { role } = roleSchema.parse(await c.req.json())
-  if (id === session.user.id) return c.json({ error: 'cannot_change_own_role' }, 400)
+  if (id === session.user.id)
+    return c.json({ error: "cannot_change_own_role" }, 400)
 
   await db.update(schema.users).set({ role }).where(eq(schema.users.id, id))
   await db.insert(schema.moderationActions).values({
     moderatorId: session.user.id,
-    subjectType: 'user',
+    subjectType: "user",
     subjectId: id,
-    action: 'warn',
+    action: "warn",
     privateNote: `role -> ${role}`,
   })
-  c.get('ctx').track('admin_user_role_set', session.user.id, { role })
+  c.get("ctx").track("admin_user_role_set", session.user.id, { role })
   return c.json({ ok: true })
 })
 
 const reportsQuery = z.object({
-  status: z.enum(['open', 'triaged', 'actioned', 'dismissed']).optional(),
+  status: z.enum(["open", "triaged", "actioned", "dismissed"]).optional(),
   cursor: z.string().optional(),
   limit: z.coerce.number().min(1).max(100).default(40),
 })
 
-adminRoute.get('/reports', async (c) => {
-  const { db, mediaEnv } = c.get('ctx')
+adminRoute.get("/reports", async (c) => {
+  const { db, mediaEnv } = c.get("ctx")
   const { status, cursor, limit } = reportsQuery.parse(c.req.query())
 
   const filters: Array<unknown> = []
@@ -610,15 +660,25 @@ adminRoute.get('/reports', async (c) => {
     .from(schema.reports)
     .leftJoin(schema.users, eq(schema.users.id, schema.reports.reporterId))
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .where(filters.length > 0 ? (and(...(filters as Array<any>)) as any) : undefined)
+    .where(
+      filters.length > 0 ? (and(...(filters as Array<any>)) as any) : undefined
+    )
     .orderBy(desc(schema.reports.createdAt))
     .limit(limit)
 
   const postSubjectIds = [
-    ...new Set(rows.filter((r) => r.report.subjectType === 'post').map((r) => r.report.subjectId)),
+    ...new Set(
+      rows
+        .filter((r) => r.report.subjectType === "post")
+        .map((r) => r.report.subjectId)
+    ),
   ]
   const userSubjectIds = [
-    ...new Set(rows.filter((r) => r.report.subjectType === 'user').map((r) => r.report.subjectId)),
+    ...new Set(
+      rows
+        .filter((r) => r.report.subjectType === "user")
+        .map((r) => r.report.subjectId)
+    ),
   ]
 
   const [postPreviewRows, userPreviewRows] = await Promise.all([
@@ -633,7 +693,7 @@ adminRoute.get('/reports', async (c) => {
           .leftJoin(schema.users, eq(schema.users.id, schema.posts.authorId))
           .where(inArray(schema.posts.id, postSubjectIds))
       : Promise.resolve(
-          [] as Array<{ id: string; text: string; handle: string | null }>,
+          [] as Array<{ id: string; text: string; handle: string | null }>
         ),
     userSubjectIds.length > 0
       ? db
@@ -649,7 +709,7 @@ adminRoute.get('/reports', async (c) => {
             id: string
             handle: string | null
             displayName: string | null
-          }>,
+          }>
         ),
   ])
 
@@ -665,29 +725,29 @@ adminRoute.get('/reports', async (c) => {
   const items = rows.map((r) => {
     const rep = r.report
     let subjectPreview:
-      | { kind: 'post'; authorHandle: string | null; textPreview: string }
-      | { kind: 'user'; handle: string | null; displayName: string | null }
-      | { kind: 'other'; subjectType: string }
-    if (rep.subjectType === 'post') {
+      | { kind: "post"; authorHandle: string | null; textPreview: string }
+      | { kind: "user"; handle: string | null; displayName: string | null }
+      | { kind: "other"; subjectType: string }
+    if (rep.subjectType === "post") {
       const pr = postPrevById.get(rep.subjectId)
       subjectPreview = pr
         ? {
-            kind: 'post',
+            kind: "post",
             authorHandle: pr.handle,
             textPreview: previewSlice(pr.text, 120),
           }
-        : { kind: 'other', subjectType: rep.subjectType }
-    } else if (rep.subjectType === 'user') {
+        : { kind: "other", subjectType: rep.subjectType }
+    } else if (rep.subjectType === "user") {
       const ur = userPrevById.get(rep.subjectId)
       subjectPreview = ur
         ? {
-            kind: 'user',
+            kind: "user",
             handle: ur.handle,
             displayName: ur.displayName,
           }
-        : { kind: 'other', subjectType: rep.subjectType }
+        : { kind: "other", subjectType: rep.subjectType }
     } else {
-      subjectPreview = { kind: 'other', subjectType: rep.subjectType }
+      subjectPreview = { kind: "other", subjectType: rep.subjectType }
     }
 
     return {
@@ -711,13 +771,15 @@ adminRoute.get('/reports', async (c) => {
     }
   })
   const nextCursor =
-    rows.length === limit ? rows[rows.length - 1]!.report.createdAt.toISOString() : null
+    rows.length === limit
+      ? rows[rows.length - 1]!.report.createdAt.toISOString()
+      : null
   return c.json({ reports: items, nextCursor })
 })
 
-adminRoute.get('/reports/:id', async (c) => {
-  const { db, mediaEnv } = c.get('ctx')
-  const id = c.req.param('id')
+adminRoute.get("/reports/:id", async (c) => {
+  const { db, mediaEnv } = c.get("ctx")
+  const id = c.req.param("id")
 
   const [row] = await db
     .select({ report: schema.reports, reporter: schema.users })
@@ -726,14 +788,14 @@ adminRoute.get('/reports/:id', async (c) => {
     .where(eq(schema.reports.id, id))
     .limit(1)
 
-  if (!row) return c.json({ error: 'not_found' }, 404)
+  if (!row) return c.json({ error: "not_found" }, 404)
 
   const r = row.report
   const reporter = row.reporter
 
   let subject:
     | {
-        type: 'post'
+        type: "post"
         post: {
           id: string
           text: string
@@ -750,7 +812,7 @@ adminRoute.get('/reports/:id', async (c) => {
         }
       }
     | {
-        type: 'user'
+        type: "user"
         user: {
           id: string
           handle: string | null
@@ -759,10 +821,10 @@ adminRoute.get('/reports/:id', async (c) => {
           banned: boolean
         }
       }
-    | { type: 'unknown'; subjectType: string; subjectId: string }
+    | { type: "unknown"; subjectType: string; subjectId: string }
     | null = null
 
-  if (r.subjectType === 'post') {
+  if (r.subjectType === "post") {
     const [postRow] = await db
       .select({ post: schema.posts, author: schema.users })
       .from(schema.posts)
@@ -771,7 +833,7 @@ adminRoute.get('/reports/:id', async (c) => {
       .limit(1)
     if (postRow) {
       subject = {
-        type: 'post',
+        type: "post",
         post: {
           id: postRow.post.id,
           text: postRow.post.text,
@@ -790,7 +852,7 @@ adminRoute.get('/reports/:id', async (c) => {
         },
       }
     }
-  } else if (r.subjectType === 'user') {
+  } else if (r.subjectType === "user") {
     const [u] = await db
       .select()
       .from(schema.users)
@@ -798,7 +860,7 @@ adminRoute.get('/reports/:id', async (c) => {
       .limit(1)
     if (u) {
       subject = {
-        type: 'user',
+        type: "user",
         user: {
           id: u.id,
           handle: u.handle,
@@ -809,7 +871,11 @@ adminRoute.get('/reports/:id', async (c) => {
       }
     }
   } else {
-    subject = { type: 'unknown', subjectType: r.subjectType, subjectId: r.subjectId }
+    subject = {
+      type: "unknown",
+      subjectType: r.subjectType,
+      subjectId: r.subjectId,
+    }
   }
 
   const linkedModerationActionsRows = await db
@@ -851,14 +917,14 @@ adminRoute.get('/reports/:id', async (c) => {
 })
 
 const resolveSchema = z.object({
-  status: z.enum(['triaged', 'actioned', 'dismissed']),
+  status: z.enum(["triaged", "actioned", "dismissed"]),
   resolutionNote: z.string().trim().max(1000).optional(),
 })
 
-adminRoute.patch('/reports/:id', async (c) => {
-  const session = c.get('session')!
-  const { db } = c.get('ctx')
-  const id = c.req.param('id')
+adminRoute.patch("/reports/:id", async (c) => {
+  const session = c.get("session")!
+  const { db } = c.get("ctx")
+  const id = c.req.param("id")
   const body = resolveSchema.parse(await c.req.json())
 
   await db
@@ -870,7 +936,7 @@ adminRoute.patch('/reports/:id', async (c) => {
       resolvedAt: new Date(),
     })
     .where(eq(schema.reports.id, id))
-  c.get('ctx').track('admin_report_resolved', session.user.id)
+  c.get("ctx").track("admin_report_resolved", session.user.id)
   return c.json({ ok: true })
 })
 
@@ -881,43 +947,49 @@ const verifySchema = z.object({
 // Grant a verified badge. Idempotent — re-running on an already-verified user just records
 // another audit entry. Uses the existing `warn` mod action with a privateNote so we don't
 // have to extend the mod_action enum (and its DB migration) for a one-bit flag toggle.
-adminRoute.post('/users/:id/verify', async (c) => {
-  const session = c.get('session')!
-  const { db } = c.get('ctx')
-  const id = c.req.param('id')
+adminRoute.post("/users/:id/verify", async (c) => {
+  const session = c.get("session")!
+  const { db } = c.get("ctx")
+  const id = c.req.param("id")
   const body = verifySchema.parse(await c.req.json().catch(() => ({})))
 
   await db.transaction(async (tx) => {
-    await tx.update(schema.users).set({ isVerified: true }).where(eq(schema.users.id, id))
+    await tx
+      .update(schema.users)
+      .set({ isVerified: true })
+      .where(eq(schema.users.id, id))
     await tx.insert(schema.moderationActions).values({
       moderatorId: session.user.id,
-      subjectType: 'user',
+      subjectType: "user",
       subjectId: id,
-      action: 'warn',
-      privateNote: `verify_grant${body.reason ? `: ${body.reason}` : ''}`,
+      action: "warn",
+      privateNote: `verify_grant${body.reason ? `: ${body.reason}` : ""}`,
     })
   })
-  c.get('ctx').track('admin_user_verified', session.user.id)
+  c.get("ctx").track("admin_user_verified", session.user.id)
   return c.json({ ok: true })
 })
 
-adminRoute.post('/users/:id/unverify', async (c) => {
-  const session = c.get('session')!
-  const { db } = c.get('ctx')
-  const id = c.req.param('id')
+adminRoute.post("/users/:id/unverify", async (c) => {
+  const session = c.get("session")!
+  const { db } = c.get("ctx")
+  const id = c.req.param("id")
   const body = verifySchema.parse(await c.req.json().catch(() => ({})))
 
   await db.transaction(async (tx) => {
-    await tx.update(schema.users).set({ isVerified: false }).where(eq(schema.users.id, id))
+    await tx
+      .update(schema.users)
+      .set({ isVerified: false })
+      .where(eq(schema.users.id, id))
     await tx.insert(schema.moderationActions).values({
       moderatorId: session.user.id,
-      subjectType: 'user',
+      subjectType: "user",
       subjectId: id,
-      action: 'warn',
-      privateNote: `verify_revoke${body.reason ? `: ${body.reason}` : ''}`,
+      action: "warn",
+      privateNote: `verify_revoke${body.reason ? `: ${body.reason}` : ""}`,
     })
   })
-  c.get('ctx').track('admin_user_unverified', session.user.id)
+  c.get("ctx").track("admin_user_unverified", session.user.id)
   return c.json({ ok: true })
 })
 
@@ -925,10 +997,10 @@ adminRoute.post('/users/:id/unverify', async (c) => {
 // translations) who won't appear in the GitHub /contributors list, and for testing without
 // a real GitHub connection. Sets contributorCheckedAt to "now" so the audit trail reflects
 // when the override happened.
-adminRoute.post('/users/:id/contributor', async (c) => {
-  const session = c.get('session')!
-  const { db } = c.get('ctx')
-  const id = c.req.param('id')
+adminRoute.post("/users/:id/contributor", async (c) => {
+  const session = c.get("session")!
+  const { db } = c.get("ctx")
+  const id = c.req.param("id")
   const body = verifySchema.parse(await c.req.json().catch(() => ({})))
 
   await db.transaction(async (tx) => {
@@ -938,20 +1010,20 @@ adminRoute.post('/users/:id/contributor', async (c) => {
       .where(eq(schema.users.id, id))
     await tx.insert(schema.moderationActions).values({
       moderatorId: session.user.id,
-      subjectType: 'user',
+      subjectType: "user",
       subjectId: id,
-      action: 'warn',
-      privateNote: `contributor_grant${body.reason ? `: ${body.reason}` : ''}`,
+      action: "warn",
+      privateNote: `contributor_grant${body.reason ? `: ${body.reason}` : ""}`,
     })
   })
-  c.get('ctx').track('admin_user_contributor_granted', session.user.id)
+  c.get("ctx").track("admin_user_contributor_granted", session.user.id)
   return c.json({ ok: true })
 })
 
-adminRoute.delete('/users/:id/contributor', async (c) => {
-  const session = c.get('session')!
-  const { db } = c.get('ctx')
-  const id = c.req.param('id')
+adminRoute.delete("/users/:id/contributor", async (c) => {
+  const session = c.get("session")!
+  const { db } = c.get("ctx")
+  const id = c.req.param("id")
   const body = verifySchema.parse(await c.req.json().catch(() => ({})))
 
   await db.transaction(async (tx) => {
@@ -961,35 +1033,35 @@ adminRoute.delete('/users/:id/contributor', async (c) => {
       .where(eq(schema.users.id, id))
     await tx.insert(schema.moderationActions).values({
       moderatorId: session.user.id,
-      subjectType: 'user',
+      subjectType: "user",
       subjectId: id,
-      action: 'warn',
-      privateNote: `contributor_revoke${body.reason ? `: ${body.reason}` : ''}`,
+      action: "warn",
+      privateNote: `contributor_revoke${body.reason ? `: ${body.reason}` : ""}`,
     })
   })
-  c.get('ctx').track('admin_user_contributor_revoked', session.user.id)
+  c.get("ctx").track("admin_user_contributor_revoked", session.user.id)
   return c.json({ ok: true })
 })
 
 // Owner-only: forcibly reassign a user's handle. Useful for reclaiming squatted handles or
 // resolving impersonation reports. The handle is freed atomically — if the new handle is
 // taken or reserved we 4xx without touching the row.
-adminRoute.post('/users/:id/handle', requireOwner(), async (c) => {
-  const session = c.get('session')!
-  const { db } = c.get('ctx')
-  const id = c.req.param('id')
-  const { handle, reason } =
-    adminSetUserHandleSchema.parse(await c.req.json())
+adminRoute.post("/users/:id/handle", requireOwner(), async (c) => {
+  const session = c.get("session")!
+  const { db } = c.get("ctx")
+  const id = c.req.param("id")
+  const { handle, reason } = adminSetUserHandleSchema.parse(await c.req.json())
   const normalized = handle.toLowerCase()
 
-  if (isReservedHandle(normalized)) return c.json({ error: 'reserved_handle' }, 400)
+  if (isReservedHandle(normalized))
+    return c.json({ error: "reserved_handle" }, 400)
 
   const [target] = await db
     .select({ handle: schema.users.handle })
     .from(schema.users)
     .where(eq(schema.users.id, id))
     .limit(1)
-  if (!target) return c.json({ error: 'not_found' }, 404)
+  if (!target) return c.json({ error: "not_found" }, 404)
 
   // citext column ⇒ case-insensitive comparison. Allow rewriting to the same handle with a
   // different case (e.g. fix capitalisation), but skip the conflict check in that case.
@@ -999,7 +1071,7 @@ adminRoute.post('/users/:id/handle', requireOwner(), async (c) => {
       .from(schema.users)
       .where(eq(schema.users.handle, handle))
       .limit(1)
-    if (existing.length > 0) return c.json({ error: 'handle_taken' }, 409)
+    if (existing.length > 0) return c.json({ error: "handle_taken" }, 409)
   }
 
   await db.transaction(async (tx) => {
@@ -1009,24 +1081,24 @@ adminRoute.post('/users/:id/handle', requireOwner(), async (c) => {
       .where(eq(schema.users.id, id))
     await tx.insert(schema.moderationActions).values({
       moderatorId: session.user.id,
-      subjectType: 'user',
+      subjectType: "user",
       subjectId: id,
-      action: 'warn',
-      privateNote: `handle_change: ${target.handle ?? '∅'} -> ${handle}${reason ? ` (${reason})` : ''}`,
+      action: "warn",
+      privateNote: `handle_change: ${target.handle ?? "∅"} -> ${handle}${reason ? ` (${reason})` : ""}`,
     })
   })
-  c.get('ctx').track('admin_user_handle_set', session.user.id)
+  c.get("ctx").track("admin_user_handle_set", session.user.id)
   return c.json({ ok: true })
 })
 
 const POST_SORTS = [
-  'created',
-  'likes',
-  'reposts',
-  'replies',
-  'quotes',
-  'bookmarks',
-  'impressions',
+  "created",
+  "likes",
+  "reposts",
+  "replies",
+  "quotes",
+  "bookmarks",
+  "impressions",
 ] as const
 type PostSort = (typeof POST_SORTS)[number]
 
@@ -1034,11 +1106,11 @@ const postsListQuery = z.object({
   q: z.string().trim().max(80).optional(),
   cursor: z.string().max(80).optional(),
   limit: z.coerce.number().min(1).max(100).default(40),
-  sort: z.enum(POST_SORTS).default('created'),
-  order: z.enum(['asc', 'desc']).default('desc'),
-  type: z.enum(['any', 'original', 'reply', 'repost', 'quote']).default('any'),
-  visibility: z.enum(['any', 'public', 'followers', 'unlisted']).default('any'),
-  status: z.enum(['any', 'active', 'deleted', 'sensitive']).default('any'),
+  sort: z.enum(POST_SORTS).default("created"),
+  order: z.enum(["asc", "desc"]).default("desc"),
+  type: z.enum(["any", "original", "reply", "repost", "quote"]).default("any"),
+  visibility: z.enum(["any", "public", "followers", "unlisted"]).default("any"),
+  status: z.enum(["any", "active", "deleted", "sensitive"]).default("any"),
 })
 
 // Stat columns are integers (impressionCount is a bigint stored as number) and tie often, so
@@ -1047,20 +1119,23 @@ const postsListQuery = z.object({
 // is the deterministic tiebreaker.
 function parsePostCursor(raw: string | undefined, sort: PostSort) {
   if (!raw) return undefined
-  const sep = raw.indexOf('~')
+  const sep = raw.indexOf("~")
   if (sep < 0) return undefined
   const value = raw.slice(0, sep)
   const id = raw.slice(sep + 1)
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return undefined
-  if (sort === 'created') {
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)
+  )
+    return undefined
+  if (sort === "created") {
     const date = parseCursor(value)
     if (!date) return undefined
-    return { kind: 'date' as const, date, id }
+    return { kind: "date" as const, date, id }
   }
   if (!/^\d{1,20}$/.test(value)) return undefined
   const num = Number(value)
   if (!Number.isFinite(num) || num < 0) return undefined
-  return { kind: 'number' as const, num, id }
+  return { kind: "number" as const, num, id }
 }
 
 function getCursorValue(
@@ -1073,33 +1148,32 @@ function getCursorValue(
     quoteCount: number
     bookmarkCount: number
     impressionCount: number
-  },
+  }
 ): string {
   switch (sort) {
-    case 'created':
+    case "created":
       return last.createdAt.toISOString()
-    case 'likes':
+    case "likes":
       return String(last.likeCount)
-    case 'reposts':
+    case "reposts":
       return String(last.repostCount)
-    case 'replies':
+    case "replies":
       return String(last.replyCount)
-    case 'quotes':
+    case "quotes":
       return String(last.quoteCount)
-    case 'bookmarks':
+    case "bookmarks":
       return String(last.bookmarkCount)
-    case 'impressions':
+    case "impressions":
       return String(last.impressionCount)
   }
 }
 
 // List/search posts with sort + filter for the admin panel. Joins author for the table cell.
 // Pagination uses a `<value>~<uuid>` cursor for stable ordering when stat values tie.
-adminRoute.get('/posts', async (c) => {
-  const { db, mediaEnv } = c.get('ctx')
-  const { q, cursor, limit, sort, order, type, visibility, status } = postsListQuery.parse(
-    c.req.query(),
-  )
+adminRoute.get("/posts", async (c) => {
+  const { db, mediaEnv } = c.get("ctx")
+  const { q, cursor, limit, sort, order, type, visibility, status } =
+    postsListQuery.parse(c.req.query())
 
   const sortColumns = {
     created: schema.posts.createdAt,
@@ -1111,53 +1185,60 @@ adminRoute.get('/posts', async (c) => {
     impressions: schema.posts.impressionCount,
   } as const
   const sortCol = sortColumns[sort]
-  const dir = order === 'asc' ? asc : desc
-  const cmp = order === 'asc' ? gt : lt
+  const dir = order === "asc" ? asc : desc
+  const cmp = order === "asc" ? gt : lt
 
   const filters: Array<unknown> = []
 
   if (q) {
     const like = `%${q.replace(/[\\%_]/g, (ch) => `\\${ch}`)}%`
-    filters.push(or(ilike(schema.posts.text, like), ilike(schema.users.handle, like)))
+    filters.push(
+      or(ilike(schema.posts.text, like), ilike(schema.users.handle, like))
+    )
   }
 
-  if (type === 'original') {
+  if (type === "original") {
     filters.push(
       and(
         isNull(schema.posts.replyToId),
         isNull(schema.posts.repostOfId),
-        isNull(schema.posts.quoteOfId),
-      ),
+        isNull(schema.posts.quoteOfId)
+      )
     )
-  } else if (type === 'reply') {
+  } else if (type === "reply") {
     filters.push(isNotNull(schema.posts.replyToId))
-  } else if (type === 'repost') {
+  } else if (type === "repost") {
     filters.push(isNotNull(schema.posts.repostOfId))
-  } else if (type === 'quote') {
+  } else if (type === "quote") {
     filters.push(isNotNull(schema.posts.quoteOfId))
   }
 
-  if (visibility !== 'any') filters.push(eq(schema.posts.visibility, visibility))
+  if (visibility !== "any")
+    filters.push(eq(schema.posts.visibility, visibility))
 
-  if (status === 'active') filters.push(isNull(schema.posts.deletedAt))
-  else if (status === 'deleted') filters.push(isNotNull(schema.posts.deletedAt))
-  else if (status === 'sensitive') filters.push(eq(schema.posts.sensitive, true))
+  if (status === "active") filters.push(isNull(schema.posts.deletedAt))
+  else if (status === "deleted") filters.push(isNotNull(schema.posts.deletedAt))
+  else if (status === "sensitive")
+    filters.push(eq(schema.posts.sensitive, true))
 
   const parsed = parsePostCursor(cursor, sort)
   if (parsed) {
-    if (parsed.kind === 'date') {
+    if (parsed.kind === "date") {
       filters.push(
         or(
           cmp(schema.posts.createdAt, parsed.date),
-          and(eq(schema.posts.createdAt, parsed.date), cmp(schema.posts.id, parsed.id)),
-        ),
+          and(
+            eq(schema.posts.createdAt, parsed.date),
+            cmp(schema.posts.id, parsed.id)
+          )
+        )
       )
     } else {
       filters.push(
         or(
           cmp(sortCol, parsed.num),
-          and(eq(sortCol, parsed.num), cmp(schema.posts.id, parsed.id)),
-        ),
+          and(eq(sortCol, parsed.num), cmp(schema.posts.id, parsed.id))
+        )
       )
     }
   }
@@ -1167,7 +1248,9 @@ adminRoute.get('/posts', async (c) => {
     .from(schema.posts)
     .leftJoin(schema.users, eq(schema.users.id, schema.posts.authorId))
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .where(filters.length > 0 ? (and(...(filters as Array<any>)) as any) : undefined)
+    .where(
+      filters.length > 0 ? (and(...(filters as Array<any>)) as any) : undefined
+    )
     .orderBy(dir(sortCol), dir(schema.posts.id))
     .limit(limit)
 
@@ -1182,23 +1265,26 @@ adminRoute.get('/posts', async (c) => {
       })
       .from(schema.reports)
       .where(
-        and(eq(schema.reports.subjectType, 'post'), inArray(schema.reports.subjectId, postIds)),
+        and(
+          eq(schema.reports.subjectType, "post"),
+          inArray(schema.reports.subjectId, postIds)
+        )
       )
       .groupBy(schema.reports.subjectId)
     reportsByPost = new Map(
-      aggRows.map((x) => [x.subjectId, { open: x.open, total: x.total }]),
+      aggRows.map((x) => [x.subjectId, { open: x.open, total: x.total }])
     )
   }
 
   const items = rows.map((r) => {
     const p = r.post
-    const postType: 'original' | 'reply' | 'repost' | 'quote' = p.repostOfId
-      ? 'repost'
+    const postType: "original" | "reply" | "repost" | "quote" = p.repostOfId
+      ? "repost"
       : p.quoteOfId
-        ? 'quote'
+        ? "quote"
         : p.replyToId
-          ? 'reply'
-          : 'original'
+          ? "reply"
+          : "original"
     const repStats = reportsByPost.get(p.id)
     return {
       id: p.id,
@@ -1242,11 +1328,14 @@ adminRoute.get('/posts', async (c) => {
 })
 
 // Soft-delete a post via mod action. Distinct from author delete: records who/why for audit.
-adminRoute.delete('/posts/:id', async (c) => {
-  const session = c.get('session')!
-  const { db } = c.get('ctx')
-  const id = c.req.param('id')
-  const body = (await c.req.json().catch(() => ({}))) as { reason?: string; reportId?: string }
+adminRoute.delete("/posts/:id", async (c) => {
+  const session = c.get("session")!
+  const { db } = c.get("ctx")
+  const id = c.req.param("id")
+  const body = (await c.req.json().catch(() => ({}))) as {
+    reason?: string
+    reportId?: string
+  }
 
   await db.transaction(async (tx) => {
     await tx
@@ -1255,14 +1344,14 @@ adminRoute.delete('/posts/:id', async (c) => {
       .where(eq(schema.posts.id, id))
     await tx.insert(schema.moderationActions).values({
       moderatorId: session.user.id,
-      subjectType: 'post',
+      subjectType: "post",
       subjectId: id,
-      action: 'delete',
+      action: "delete",
       publicReason: body.reason ?? null,
       reportId: body.reportId ?? null,
     })
   })
-  c.get('ctx').track('admin_post_deleted', session.user.id)
+  c.get("ctx").track("admin_post_deleted", session.user.id)
   return c.json({ ok: true })
 })
 
@@ -1274,21 +1363,22 @@ const deleteUserSchema = z.object({
 // profile lookups, and search (every read path filters on isNull(deletedAt)). Sessions are
 // wiped so the account is logged out everywhere on the next request. Reversible by clearing
 // deletedAt directly in the DB if needed.
-adminRoute.delete('/users/:id', requireOwner(), async (c) => {
-  const session = c.get('session')!
-  const { db } = c.get('ctx')
-  const id = c.req.param('id')
+adminRoute.delete("/users/:id", requireOwner(), async (c) => {
+  const session = c.get("session")!
+  const { db } = c.get("ctx")
+  const id = c.req.param("id")
   const body = deleteUserSchema.parse(await c.req.json().catch(() => ({})))
 
-  if (id === session.user.id) return c.json({ error: 'cannot_delete_self' }, 400)
+  if (id === session.user.id)
+    return c.json({ error: "cannot_delete_self" }, 400)
 
   const [target] = await db
     .select({ deletedAt: schema.users.deletedAt })
     .from(schema.users)
     .where(eq(schema.users.id, id))
     .limit(1)
-  if (!target) return c.json({ error: 'not_found' }, 404)
-  if (target.deletedAt) return c.json({ error: 'already_deleted' }, 409)
+  if (!target) return c.json({ error: "not_found" }, 404)
+  if (target.deletedAt) return c.json({ error: "already_deleted" }, 409)
 
   await db.transaction(async (tx) => {
     await tx
@@ -1298,35 +1388,36 @@ adminRoute.delete('/users/:id', requireOwner(), async (c) => {
     await tx.delete(schema.sessions).where(eq(schema.sessions.userId, id))
     await tx.insert(schema.moderationActions).values({
       moderatorId: session.user.id,
-      subjectType: 'user',
+      subjectType: "user",
       subjectId: id,
-      action: 'delete',
+      action: "delete",
       publicReason: body.reason ?? null,
     })
   })
-  c.get('ctx').track('admin_user_deleted', session.user.id)
+  c.get("ctx").track("admin_user_deleted", session.user.id)
   return c.json({ ok: true })
 })
 
 // Prevent admins from acting on other admins or owners. Owners can act on anyone (except self,
 // which is checked separately in the caller).
 async function guardTargetRank(c: Context<HonoEnv>, targetId: string) {
-  const session = c.get('session')!
-  const { db } = c.get('ctx')
-  if (session.user.role === 'owner') return
+  const session = c.get("session")!
+  const { db } = c.get("ctx")
+  if (session.user.role === "owner") return
   const [target] = await db
     .select({ role: schema.users.role })
     .from(schema.users)
     .where(eq(schema.users.id, targetId))
     .limit(1)
   if (!target) return
-  if (target.role === 'admin' || target.role === 'owner') {
-    throw new ForbiddenError('admins cannot act on other admins or owners')
+  if (target.role === "admin" || target.role === "owner") {
+    throw new ForbiddenError("admins cannot act on other admins or owners")
   }
 }
 
 class ForbiddenError extends Error {}
 adminRoute.onError((err, c) => {
-  if (err instanceof ForbiddenError) return c.json({ error: 'forbidden', message: err.message }, 403)
+  if (err instanceof ForbiddenError)
+    return c.json({ error: "forbidden", message: err.message }, 403)
   throw err
 })

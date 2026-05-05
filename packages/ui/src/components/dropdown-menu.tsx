@@ -136,7 +136,9 @@ function DropdownMenuItem({
       disabled={disabled}
       render={<Menu.Item icon={icon} variant={variant} className={className} />}
     >
-      <span className="relative z-[1]">{children}</span>
+      <span className="relative z-[1] flex flex-1 items-center gap-2">
+        {children}
+      </span>
     </BaseMenu.Item>
   )
 }

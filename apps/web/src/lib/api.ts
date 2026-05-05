@@ -1202,6 +1202,7 @@ export interface AdminStats {
 
 export interface AdminOnline {
   count: number
+  presenceUnavailable?: boolean
   sample: Array<{
     id: string
     handle: string | null

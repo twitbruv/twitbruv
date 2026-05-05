@@ -66,16 +66,16 @@ type ActionDialogState =
   | null
 
 const COLUMN_WIDTHS: Record<string, string> = {
-  user: "20%",
-  email: "17%",
-  posts: "6%",
-  followers: "6%",
-  following: "6%",
-  reports: "6%",
-  joined: "9%",
-  role: "8%",
-  status: "14%",
-  actions: "8%",
+  user: "18%",
+  email: "15%",
+  posts: "7%",
+  followers: "9%",
+  following: "9%",
+  reports: "8%",
+  joined: "10%",
+  role: "7%",
+  status: "12%",
+  actions: "5%",
 }
 
 function compactNum(n: number): string {
@@ -284,11 +284,11 @@ export default function AdminUsers() {
                       variant="transparent"
                       disabled={busyId === u.id}
                       className="-ml-2 h-7 gap-1 text-xs tracking-wider uppercase"
+                      iconRight={<ChevronDownIcon className="size-3" />}
                     />
                   }
                 >
                   {u.role}
-                  <ChevronDownIcon className="size-3" />
                 </DropdownMenu.Trigger>
                 <DropdownMenu.Content align="start">
                   <DropdownMenu.Group>
