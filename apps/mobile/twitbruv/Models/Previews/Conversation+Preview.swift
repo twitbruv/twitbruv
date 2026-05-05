@@ -42,14 +42,13 @@ extension Conversation {
     static var previewDirect: Conversation {
         Conversation(
             id: PreviewConst.conversationId,
-            kind: "direct",
+            kind: "dm",
             name: nil,
             members: [.previewPeer],
             lastMessage: .previewOutbound,
             lastMessageAt: Date(),
             unreadCount: 1,
             requestState: nil,
-            isGroup: false,
             avatarUrl: nil,
             createdAt: Date()
         )

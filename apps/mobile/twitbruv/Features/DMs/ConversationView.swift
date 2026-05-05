@@ -156,6 +156,20 @@ struct ConversationView: View {
     @State private var showSettings = false
     @State private var reactionTarget: Message?
 
+    private var conversationTitle: String {
+        guard let conv = vm?.conversation else { return "Direct message" }
+        if let name = conv.name, !name.isEmpty { return name }
+        if conv.isGroup, let members = conv.members, !members.isEmpty {
+            return members.prefix(3)
+                .map { $0.displayName ?? $0.handle ?? "—" }
+                .joined(separator: ", ")
+        }
+        if let m = conv.members?.first {
+            return m.displayName ?? m.handle ?? "Direct message"
+        }
+        return "Direct message"
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             messagesList
@@ -166,7 +180,7 @@ struct ConversationView: View {
             )
         }
         .background(Color.clear)
-        .navigationTitle(vm?.conversation?.name ?? "Direct message")
+        .navigationTitle(conversationTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {

@@ -137,19 +137,20 @@ private struct ConversationRow: View {
 
     private var displayName: String {
         if let name = conv.name, !name.isEmpty { return name }
+        if conv.isGroup, let members = conv.members, !members.isEmpty {
+            // Comma-joined member names if no group title set
+            let parts = members.prefix(3).map { $0.displayName ?? $0.handle ?? "—" }
+            return parts.joined(separator: ", ")
+        }
         if let m = conv.members?.first {
             return m.displayName ?? m.handle ?? "Conversation"
         }
         return "Conversation"
     }
 
-    private var avatarURL: String? {
-        conv.avatarUrl ?? conv.members?.first?.avatarUrl
-    }
-
     var body: some View {
         HStack(spacing: 12) {
-            AvatarView(urlString: avatarURL, size: 44, fallbackInitial: displayName)
+            ConversationAvatar(conversation: conv, size: 44)
             VStack(alignment: .leading, spacing: 2) {
                 HStack {
                     Text(displayName)
