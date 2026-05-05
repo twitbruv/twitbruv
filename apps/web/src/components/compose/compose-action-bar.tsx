@@ -1,4 +1,10 @@
-import { ChartBarIcon, PhotoIcon } from "@heroicons/react/24/solid"
+import {
+  ChartBarIcon,
+  FaceSmileIcon,
+  PhotoIcon,
+} from "@heroicons/react/24/solid"
+import { Popover } from "@base-ui/react/popover"
+import { EmojiPicker } from "frimousse"
 import { cn } from "@workspace/ui/lib/utils"
 import { Button } from "@workspace/ui/components/button"
 import { DropdownMenu } from "@workspace/ui/components/dropdown-menu"
@@ -6,6 +12,45 @@ import { Tooltip } from "@workspace/ui/components/tooltip"
 import { POST_MAX_LEN } from "@workspace/validators"
 import { CharacterRing } from "./character-ring"
 import { MAX_ATTACHMENTS, REPLY_OPTIONS } from "./types"
+import type {
+  EmojiPickerListCategoryHeaderProps,
+  EmojiPickerListEmojiProps,
+  EmojiPickerListRowProps,
+} from "frimousse"
+
+// Hoisted so frimousse's per-row React.memo isn't busted on every parent render.
+const EmojiCategoryHeader = ({
+  category,
+  ...props
+}: EmojiPickerListCategoryHeaderProps) => (
+  <div
+    {...props}
+    className="bg-base-2 px-3 pt-3 pb-1.5 text-xs font-medium text-tertiary"
+  >
+    {category.label}
+  </div>
+)
+
+const EmojiRow = ({ children, ...props }: EmojiPickerListRowProps) => (
+  <div {...props} className="scroll-my-1.5 px-1.5">
+    {children}
+  </div>
+)
+
+const EmojiButton = ({ emoji, ...props }: EmojiPickerListEmojiProps) => (
+  <button
+    {...props}
+    className="flex size-8 items-center justify-center rounded-md text-lg data-[active]:bg-base-1"
+  >
+    {emoji.emoji}
+  </button>
+)
+
+const EMOJI_LIST_COMPONENTS = {
+  CategoryHeader: EmojiCategoryHeader,
+  Row: EmojiRow,
+  Emoji: EmojiButton,
+}
 
 interface ComposeActionBarProps {
   expanded: boolean
@@ -22,6 +67,7 @@ interface ComposeActionBarProps {
   buttonLabel: string
   onAddFiles: (files: FileList | ReadonlyArray<File> | null) => void
   onStartPoll: () => void
+  onInsertEmoji: (emoji: string) => void
 }
 
 export function ComposeActionBar({
@@ -39,6 +85,7 @@ export function ComposeActionBar({
   buttonLabel,
   onAddFiles,
   onStartPoll,
+  onInsertEmoji,
 }: ComposeActionBarProps) {
   const currentReply = REPLY_OPTIONS.find((o) => o.value === replyRestriction)!
   const ReplyIcon = currentReply.icon
@@ -104,6 +151,54 @@ export function ComposeActionBar({
                   iconLeft={<ChartBarIcon className="size-4" />}
                 />
               </Tooltip>
+
+              {/* Emoji button */}
+              <Popover.Root>
+                <Tooltip label="Add emoji">
+                  <Popover.Trigger
+                    render={
+                      <Button
+                        type="button"
+                        variant="transparent"
+                        size="sm"
+                        aria-label="Add emoji"
+                        iconLeft={<FaceSmileIcon className="size-4" />}
+                      />
+                    }
+                  />
+                </Tooltip>
+                <Popover.Portal>
+                  <Popover.Positioner
+                    sideOffset={6}
+                    align="start"
+                    className="z-50"
+                  >
+                    <Popover.Popup className="overflow-hidden rounded-xl border border-neutral shadow-sm outline-none">
+                      <EmojiPicker.Root
+                        className="isolate flex h-[368px] w-[320px] flex-col bg-base-2"
+                        onEmojiSelect={({ emoji }) => onInsertEmoji(emoji)}
+                      >
+                        <EmojiPicker.Search
+                          className="z-10 mx-2 mt-2 appearance-none rounded-md border border-neutral bg-base-1 px-2.5 py-2 text-sm text-primary outline-none placeholder:text-tertiary"
+                          placeholder="Search emoji…"
+                        />
+                        <EmojiPicker.Viewport className="relative flex-1 outline-none">
+                          <EmojiPicker.Loading className="absolute inset-0 flex items-center justify-center text-sm text-tertiary">
+                            Loading…
+                          </EmojiPicker.Loading>
+                          <EmojiPicker.Empty className="absolute inset-0 flex items-center justify-center text-sm text-tertiary">
+                            No emoji found.
+                          </EmojiPicker.Empty>
+                          <EmojiPicker.List
+                            className="pb-1.5 select-none"
+                            components={EMOJI_LIST_COMPONENTS}
+                          />
+                        </EmojiPicker.Viewport>
+                      </EmojiPicker.Root>
+                    </Popover.Popup>
+                  </Popover.Positioner>
+                </Popover.Portal>
+              </Popover.Root>
             </Tooltip.Group>
 
             {/* Reply restriction */}

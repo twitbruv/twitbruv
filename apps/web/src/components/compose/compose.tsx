@@ -147,6 +147,22 @@ export function Compose({
     [collapsible]
   )
 
+  const handleInsertEmoji = useCallback((emoji: string) => {
+    const ta = textareaRef.current
+    setText((prev) => {
+      const start = ta?.selectionStart ?? prev.length
+      const end = ta?.selectionEnd ?? prev.length
+      const next = prev.slice(0, start) + emoji + prev.slice(end)
+      queueMicrotask(() => {
+        if (!ta) return
+        const caret = start + emoji.length
+        ta.focus()
+        ta.setSelectionRange(caret, caret)
+      })
+      return next
+    })
+  }, [])
+
   const addFiles = useCallback(
     async (files: FileList | ReadonlyArray<File> | null) => {
       if (!files) return
@@ -602,6 +618,7 @@ export function Compose({
             buttonLabel={buttonLabel()}
             onAddFiles={addFiles}
             onStartPoll={startPoll}
+            onInsertEmoji={handleInsertEmoji}
           />
         </div>
       </form>
