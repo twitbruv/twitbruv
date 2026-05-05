@@ -51,8 +51,8 @@ export function resolveBadgeTier(
 ): VerifiedBadgeRole | null {
   if (!user) return null
   const role = user.role ?? "user"
-  if (role === "owner" && user.isVerified) return "owner"
-  if (role === "admin" && user.isVerified) return "admin"
+  if (role === "owner") return "owner"
+  if (role === "admin") return "admin"
   if (user.isContributor) return "contributor"
   if (user.isVerified) return "user"
   return null

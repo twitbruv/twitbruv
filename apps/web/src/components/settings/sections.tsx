@@ -1187,7 +1187,8 @@ function ContributorStatus({
     <div className="mt-3 flex items-center gap-2 rounded-xl border border-neutral px-3 py-2 text-xs">
       <VerifiedBadge
         size={14}
-        role={contributor.isContributor ? "contributor" : "user"}
+        role={contributor.isContributor ? "contributor" : undefined}
+        aria-hidden={!contributor.isContributor}
         className={contributor.isContributor ? "" : "opacity-30"}
       />
       <div className="flex min-w-0 flex-1 flex-col">
