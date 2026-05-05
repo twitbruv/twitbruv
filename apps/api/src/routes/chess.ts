@@ -136,6 +136,10 @@ chessRoute.post('/', async (c) => {
   const { db } = c.get('ctx')
   const body = createChessGameSchema.parse(await c.req.json())
 
+  if (body.opponentId === session.user.id) {
+    return c.json({ error: 'self_challenge' }, 400)
+  }
+
   // Validate opponent and create the game in one transaction with FOR UPDATE on
   // the user row, so a concurrent soft-delete can't slip in between the check
   // and the insert.
