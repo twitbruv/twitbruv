@@ -385,43 +385,45 @@ private struct NotificationRow: View {
     let actions: NotificationActions
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            HeroIcon(name: icon, size: 20)
-                .foregroundStyle(iconColor)
-                .frame(width: 28, height: 28)
-            VStack(alignment: .leading, spacing: 4) {
-                if let actor = item.actor {
-                    HStack(spacing: 6) {
-                        ActorHeader(actor: actor, onSelectProfile: actions.openProfile)
+        TappableRow(action: tapAction) {
+            HStack(alignment: .top, spacing: 10) {
+                HeroIcon(name: icon, size: 20)
+                    .foregroundStyle(iconColor)
+                    .frame(width: 28, height: 28)
+                VStack(alignment: .leading, spacing: 4) {
+                    if let actor = item.actor {
+                        HStack(spacing: 6) {
+                            ActorHeader(actor: actor, onSelectProfile: actions.openProfile)
+                            Text(verb)
+                                .font(TBTypography.meta)
+                                .foregroundStyle(TBColor.textSecondary)
+                        }
+                    } else {
                         Text(verb)
                             .font(TBTypography.meta)
+                            .foregroundStyle(TBColor.textPrimary)
+                    }
+                    if let post = item.post, !post.text.isEmpty {
+                        Text(post.text)
+                            .font(TBTypography.caption)
+                            .lineLimit(2)
                             .foregroundStyle(TBColor.textSecondary)
                     }
-                } else {
-                    Text(verb)
-                        .font(TBTypography.meta)
-                        .foregroundStyle(TBColor.textPrimary)
+                    Text(item.createdAt.relativeShort)
+                        .font(TBTypography.micro)
+                        .foregroundStyle(TBColor.textTertiary)
                 }
-                if let post = item.post, !post.text.isEmpty {
-                    Text(post.text)
-                        .font(TBTypography.caption)
-                        .lineLimit(2)
-                        .foregroundStyle(TBColor.textSecondary)
-                }
-                Text(item.createdAt.relativeShort)
-                    .font(TBTypography.micro)
-                    .foregroundStyle(TBColor.textTertiary)
             }
+            .padding(.horizontal, TBLayout.pagePadding)
+            .padding(.vertical, 8)
         }
-        .padding(.horizontal, TBLayout.pagePadding)
-        .padding(.vertical, 8)
-        .contentShape(.rect)
-        .onTapGesture {
-            if let id = item.post?.id {
-                actions.openPost(id)
-            } else if let handle = item.actor?.handle {
-                actions.openProfile(handle)
-            }
+    }
+
+    private func tapAction() {
+        if let id = item.post?.id {
+            actions.openPost(id)
+        } else if let handle = item.actor?.handle {
+            actions.openProfile(handle)
         }
     }
 
@@ -471,35 +473,35 @@ private struct GroupedLikeRow: View {
     var body: some View {
         let lead = items[0].actor
         let othersCount = items.count - 1
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .center, spacing: 10) {
-                HeroIcon(name: "heart-solid", size: 20)
-                    .foregroundStyle(TBColor.like)
-                    .frame(width: 28, height: 28)
-                AvatarRow(items: items, onSelectProfile: actions.openProfile)
-            }
-            VStack(alignment: .leading, spacing: 4) {
-                Text(
-                    "\(Text(leadName(lead)).fontWeight(.semibold).foregroundColor(TBColor.textPrimary)) and \(othersCount) other\(othersCount == 1 ? "" : "s") liked your post"
-                )
-                .font(TBTypography.meta)
-                .foregroundColor(TBColor.textSecondary)
-                if !target.text.isEmpty {
-                    Text(target.text)
-                        .font(TBTypography.caption)
-                        .lineLimit(2)
-                        .foregroundStyle(TBColor.textSecondary)
+        TappableRow(action: { actions.openPost(target.id) }) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .center, spacing: 10) {
+                    HeroIcon(name: "heart-solid", size: 20)
+                        .foregroundStyle(TBColor.like)
+                        .frame(width: 28, height: 28)
+                    AvatarRow(items: items, onSelectProfile: actions.openProfile)
                 }
-                Text(items[0].createdAt.relativeShort)
-                    .font(TBTypography.micro)
-                    .foregroundStyle(TBColor.textTertiary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(
+                        "\(Text(leadName(lead)).fontWeight(.semibold).foregroundColor(TBColor.textPrimary)) and \(othersCount) other\(othersCount == 1 ? "" : "s") liked your post"
+                    )
+                    .font(TBTypography.meta)
+                    .foregroundColor(TBColor.textSecondary)
+                    if !target.text.isEmpty {
+                        Text(target.text)
+                            .font(TBTypography.caption)
+                            .lineLimit(2)
+                            .foregroundStyle(TBColor.textSecondary)
+                    }
+                    Text(items[0].createdAt.relativeShort)
+                        .font(TBTypography.micro)
+                        .foregroundStyle(TBColor.textTertiary)
+                }
+                .padding(.leading, 38)
             }
-            .padding(.leading, 38)
+            .padding(.horizontal, TBLayout.pagePadding)
+            .padding(.vertical, 8)
         }
-        .padding(.horizontal, TBLayout.pagePadding)
-        .padding(.vertical, 8)
-        .contentShape(.rect)
-        .onTapGesture { actions.openPost(target.id) }
     }
 
     private func leadName(_ actor: UserSummary?) -> String {
@@ -516,41 +518,30 @@ private struct GroupedFollowRow: View {
     var body: some View {
         let lead = items[0].actor
         let othersCount = items.count - 1
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .center, spacing: 10) {
-                HeroIcon(name: "user-plus-solid", size: 20)
-                    .foregroundStyle(TBColor.accent)
-                    .frame(width: 28, height: 28)
-                AvatarRow(items: items, onSelectProfile: actions.openProfile)
-            }
-            VStack(alignment: .leading, spacing: 4) {
-                Group {
-                    if let leadHandle = lead?.handle {
-                        Button { actions.openProfile(leadHandle) } label: {
-                            Text(
-                                "\(Text(lead?.displayName ?? leadHandle).fontWeight(.semibold).foregroundColor(TBColor.textPrimary)) and \(othersCount) other\(othersCount == 1 ? "" : "s") followed you"
-                            )
-                            .font(TBTypography.meta)
-                            .foregroundColor(TBColor.textSecondary)
-                            .multilineTextAlignment(.leading)
-                        }
-                        .buttonStyle(.plain)
-                    } else {
-                        Text(
-                            "\(Text(lead?.displayName ?? "someone").fontWeight(.semibold).foregroundColor(TBColor.textPrimary)) and \(othersCount) other\(othersCount == 1 ? "" : "s") followed you"
-                        )
-                        .font(TBTypography.meta)
-                        .foregroundColor(TBColor.textSecondary)
-                    }
+        TappableRow(action: { if let h = lead?.handle { actions.openProfile(h) } }) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .center, spacing: 10) {
+                    HeroIcon(name: "user-plus-solid", size: 20)
+                        .foregroundStyle(TBColor.accent)
+                        .frame(width: 28, height: 28)
+                    AvatarRow(items: items, onSelectProfile: actions.openProfile)
                 }
-                Text(items[0].createdAt.relativeShort)
-                    .font(TBTypography.micro)
-                    .foregroundStyle(TBColor.textTertiary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(
+                        "\(Text(lead?.displayName ?? lead?.handle ?? "someone").fontWeight(.semibold).foregroundColor(TBColor.textPrimary)) and \(othersCount) other\(othersCount == 1 ? "" : "s") followed you"
+                    )
+                    .font(TBTypography.meta)
+                    .foregroundColor(TBColor.textSecondary)
+                    .multilineTextAlignment(.leading)
+                    Text(items[0].createdAt.relativeShort)
+                        .font(TBTypography.micro)
+                        .foregroundStyle(TBColor.textTertiary)
+                }
+                .padding(.leading, 38)
             }
-            .padding(.leading, 38)
+            .padding(.horizontal, TBLayout.pagePadding)
+            .padding(.vertical, 8)
         }
-        .padding(.horizontal, TBLayout.pagePadding)
-        .padding(.vertical, 8)
     }
 }
 
@@ -562,45 +553,43 @@ private struct ReplyRow: View {
 
     var body: some View {
         let target = item.post
-        HStack(alignment: .top, spacing: 10) {
-            HeroIcon(name: "chat-bubble-left-solid", size: 20)
-                .foregroundStyle(TBColor.accent)
-                .frame(width: 28, height: 28)
-            VStack(alignment: .leading, spacing: 6) {
-                ActorHeader(actor: item.actor, onSelectProfile: actions.openProfile)
-                if let parentHandle = target?.replyParent?.value.author.handle {
-                    Text(
-                        "Replying to \(Text("@\(parentHandle)").foregroundColor(TBColor.accent))"
-                    )
-                    .font(TBTypography.caption)
-                    .foregroundColor(TBColor.textSecondary)
+        TappableRow(action: { if let id = target?.id { actions.openPost(id) } }) {
+            HStack(alignment: .top, spacing: 10) {
+                HeroIcon(name: "chat-bubble-left-solid", size: 20)
+                    .foregroundStyle(TBColor.accent)
+                    .frame(width: 28, height: 28)
+                VStack(alignment: .leading, spacing: 6) {
+                    ActorHeader(actor: item.actor, onSelectProfile: actions.openProfile)
+                    if let parentHandle = target?.replyParent?.value.author.handle {
+                        Text(
+                            "Replying to \(Text("@\(parentHandle)").foregroundColor(TBColor.accent))"
+                        )
+                        .font(TBTypography.caption)
+                        .foregroundColor(TBColor.textSecondary)
+                    }
+                    if let target, !target.text.isEmpty {
+                        Text(target.text)
+                            .font(TBTypography.meta)
+                            .foregroundStyle(TBColor.textPrimary)
+                    }
+                    if let target {
+                        PostEngagementBar(
+                            post: target,
+                            onReply: { actions.reply(target) },
+                            onRepost: { actions.repost(target) },
+                            onQuote: { actions.quote(target) },
+                            onLike: { actions.like(target) },
+                            onBookmark: { actions.bookmark(target) }
+                        )
+                        .padding(.top, 4)
+                    }
+                    Text(item.createdAt.relativeShort)
+                        .font(TBTypography.micro)
+                        .foregroundStyle(TBColor.textTertiary)
                 }
-                if let target, !target.text.isEmpty {
-                    Text(target.text)
-                        .font(TBTypography.meta)
-                        .foregroundStyle(TBColor.textPrimary)
-                }
-                if let target {
-                    PostEngagementBar(
-                        post: target,
-                        onReply: { actions.reply(target) },
-                        onRepost: { actions.repost(target) },
-                        onQuote: { actions.quote(target) },
-                        onLike: { actions.like(target) },
-                        onBookmark: { actions.bookmark(target) }
-                    )
-                    .padding(.top, 4)
-                }
-                Text(item.createdAt.relativeShort)
-                    .font(TBTypography.micro)
-                    .foregroundStyle(TBColor.textTertiary)
             }
-        }
-        .padding(.horizontal, TBLayout.pagePadding)
-        .padding(.vertical, 8)
-        .contentShape(.rect)
-        .onTapGesture {
-            if let id = target?.id { actions.openPost(id) }
+            .padding(.horizontal, TBLayout.pagePadding)
+            .padding(.vertical, 8)
         }
     }
 }
@@ -613,38 +602,36 @@ private struct MentionRow: View {
 
     var body: some View {
         let target = item.post
-        HStack(alignment: .top, spacing: 10) {
-            HeroIcon(name: "at-symbol-solid", size: 20)
-                .foregroundStyle(TBColor.accent)
-                .frame(width: 28, height: 28)
-            VStack(alignment: .leading, spacing: 6) {
-                ActorHeader(actor: item.actor, onSelectProfile: actions.openProfile)
-                if let target, !target.text.isEmpty {
-                    Text(target.text)
-                        .font(TBTypography.meta)
-                        .foregroundStyle(TBColor.textPrimary)
+        TappableRow(action: { if let id = target?.id { actions.openPost(id) } }) {
+            HStack(alignment: .top, spacing: 10) {
+                HeroIcon(name: "at-symbol-solid", size: 20)
+                    .foregroundStyle(TBColor.accent)
+                    .frame(width: 28, height: 28)
+                VStack(alignment: .leading, spacing: 6) {
+                    ActorHeader(actor: item.actor, onSelectProfile: actions.openProfile)
+                    if let target, !target.text.isEmpty {
+                        Text(target.text)
+                            .font(TBTypography.meta)
+                            .foregroundStyle(TBColor.textPrimary)
+                    }
+                    if let target {
+                        PostEngagementBar(
+                            post: target,
+                            onReply: { actions.reply(target) },
+                            onRepost: { actions.repost(target) },
+                            onQuote: { actions.quote(target) },
+                            onLike: { actions.like(target) },
+                            onBookmark: { actions.bookmark(target) }
+                        )
+                        .padding(.top, 4)
+                    }
+                    Text(item.createdAt.relativeShort)
+                        .font(TBTypography.micro)
+                        .foregroundStyle(TBColor.textTertiary)
                 }
-                if let target {
-                    PostEngagementBar(
-                        post: target,
-                        onReply: { actions.reply(target) },
-                        onRepost: { actions.repost(target) },
-                        onQuote: { actions.quote(target) },
-                        onLike: { actions.like(target) },
-                        onBookmark: { actions.bookmark(target) }
-                    )
-                    .padding(.top, 4)
-                }
-                Text(item.createdAt.relativeShort)
-                    .font(TBTypography.micro)
-                    .foregroundStyle(TBColor.textTertiary)
             }
-        }
-        .padding(.horizontal, TBLayout.pagePadding)
-        .padding(.vertical, 8)
-        .contentShape(.rect)
-        .onTapGesture {
-            if let id = target?.id { actions.openPost(id) }
+            .padding(.horizontal, TBLayout.pagePadding)
+            .padding(.vertical, 8)
         }
     }
 }

@@ -53,12 +53,11 @@ struct ConversationsListView: View {
                             .listRowSeparator(.hidden)
                         }
                         ForEach(vm.conversations) { conv in
-                            Button {
+                            TappableRow(action: {
                                 path.append(DMRoute.conversation(id: conv.id))
-                            } label: {
+                            }) {
                                 ConversationRow(conv: conv)
                             }
-                            .buttonStyle(.plain)
                         }
                     }
                     .listStyle(.plain)
@@ -85,9 +84,18 @@ struct ConversationsListView: View {
                             Button {
                                 showNew = true
                             } label: {
-                                HeroIcon(name: "pencil-square-solid", size: 18)
+                                HeroIcon(name: "pencil-square-solid", size: 16)
                                     .foregroundStyle(TBColor.accent)
+                                    .frame(width: 36, height: 36)
+                                    .tbGlass(
+                                        .chrome,
+                                        in: Circle(),
+                                        interactive: true,
+                                        shadow: false
+                                    )
                             }
+                            .buttonStyle(TBSquishButtonStyle())
+                            .accessibilityLabel("New conversation")
                             .padding(.trailing, TBLayout.glassBarOuterMargin)
                         }
                         .padding(.top, 6)

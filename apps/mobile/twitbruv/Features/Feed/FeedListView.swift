@@ -91,22 +91,22 @@ struct FeedListView<TopInset: View>: View {
                 }
             } else {
                 ForEach(loader.items) { post in
-                    PostCardView(
-                        post: post,
-                        onLike: { Task { await actions?.toggleLike(post) } },
-                        onRepost: { Task { await actions?.toggleRepost(post) } },
-                        onQuote: { onQuote?(post) },
-                        onBookmark: { Task { await actions?.toggleBookmark(post) } },
-                        onReply: { onReply?(post) },
-                        onTapAuthor: {
-                            if let h = post.author.handle { onSelectAuthor(h) }
-                        },
-                        onMenuAction: { action in
-                            handleMenu(action: action, post: post)
-                        }
-                    )
-                    .contentShape(.rect)
-                    .onTapGesture { onSelectPost(post) }
+                    TappableRow(action: { onSelectPost(post) }) {
+                        PostCardView(
+                            post: post,
+                            onLike: { Task { await actions?.toggleLike(post) } },
+                            onRepost: { Task { await actions?.toggleRepost(post) } },
+                            onQuote: { onQuote?(post) },
+                            onBookmark: { Task { await actions?.toggleBookmark(post) } },
+                            onReply: { onReply?(post) },
+                            onTapAuthor: {
+                                if let h = post.author.handle { onSelectAuthor(h) }
+                            },
+                            onMenuAction: { action in
+                                handleMenu(action: action, post: post)
+                            }
+                        )
+                    }
                     .listRowInsets(EdgeInsets())
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
@@ -202,7 +202,7 @@ struct FeedListView<TopInset: View>: View {
         .refreshable {
             await loader.reload()
         }
-        .task {
+        .task(id: ObjectIdentifier(loader)) {
             if actions == nil { actions = PostActions(api: env.api) }
             await loader.loadInitial()
         }

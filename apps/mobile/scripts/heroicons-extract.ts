@@ -88,10 +88,6 @@ function pascalToKebab(s: string): string {
   return s.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase()
 }
 
-function camelToKebab(s: string): string {
-  return s.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase()
-}
-
 interface SvgAttrs {
   fill?: string
   stroke?: string
@@ -99,7 +95,9 @@ interface SvgAttrs {
 }
 
 function extractSvgAttrs(js: string): SvgAttrs {
-  const m = js.match(/createElement\("svg",\s*Object\.assign\(\{([\s\S]*?)\},\s*props\)/)
+  const m = js.match(
+    /createElement\("svg",\s*Object\.assign\(\{([\s\S]*?)\},\s*props\)/
+  )
   if (!m) return {}
   const block = m[1]
   const out: SvgAttrs = {}
@@ -197,11 +195,7 @@ fs.mkdirSync(OUTPUT_DIR, { recursive: true })
 // callers reference assets by bare name (e.g. `Image("heart-solid")`).
 fs.writeFileSync(
   path.join(OUTPUT_DIR, "Contents.json"),
-  JSON.stringify(
-    { info: { author: "xcode", version: 1 } },
-    null,
-    2
-  ) + "\n"
+  JSON.stringify({ info: { author: "xcode", version: 1 } }, null, 2) + "\n"
 )
 
 let written = 0
@@ -230,7 +224,10 @@ for (const { name, variant } of ICONS) {
   const dir = path.join(OUTPUT_DIR, `${assetName}.imageset`)
   fs.mkdirSync(dir, { recursive: true })
   fs.writeFileSync(path.join(dir, `${assetName}.svg`), svg)
-  fs.writeFileSync(path.join(dir, "Contents.json"), makeContentsJson(`${assetName}.svg`))
+  fs.writeFileSync(
+    path.join(dir, "Contents.json"),
+    makeContentsJson(`${assetName}.svg`)
+  )
   written++
 }
 
