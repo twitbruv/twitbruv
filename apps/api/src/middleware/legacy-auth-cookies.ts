@@ -34,6 +34,10 @@ function clearCookieHeader(name: string, domain?: string): string {
   return attrs.join("; ")
 }
 
+function normalizeCookieDomainScope(value: string): string {
+  return value.trim().toLowerCase().replace(/^\./, "")
+}
+
 function requestIsHttps(c: {
   req: { header: (n: string) => string | undefined; url: string }
 }): boolean {
@@ -43,10 +47,9 @@ function requestIsHttps(c: {
       .split(",")
       .map((t) => t.trim().toLowerCase())
       .filter(Boolean)
-    if (tokens.length > 0) {
-      if (tokens.some((t) => t === "https")) return true
-      if (tokens.some((t) => t === "http")) return false
-    }
+    const firstToken = tokens[0]
+    if (firstToken === "https") return true
+    if (firstToken === "http") return false
   }
   try {
     return new URL(c.req.url).protocol === "https:"
@@ -71,11 +74,13 @@ export function legacyAuthCookieCleanupMiddleware(
       c.header("Set-Cookie", clearCookieHeader(name), { append: true })
     }
 
-    const activeCookieDomain = env.AUTH_COOKIE_DOMAIN?.trim().toLowerCase()
+    const activeNormalized = env.AUTH_COOKIE_DOMAIN
+      ? normalizeCookieDomainScope(env.AUTH_COOKIE_DOMAIN)
+      : ""
     for (const domain of env.AUTH_LEGACY_COOKIE_DOMAINS) {
       if (
-        activeCookieDomain &&
-        domain.toLowerCase() === activeCookieDomain
+        activeNormalized &&
+        normalizeCookieDomainScope(domain) === activeNormalized
       ) {
         continue
       }
