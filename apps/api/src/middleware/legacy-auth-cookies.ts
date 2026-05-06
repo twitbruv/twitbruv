@@ -37,9 +37,17 @@ function clearCookieHeader(name: string, domain?: string): string {
 function requestIsHttps(c: {
   req: { header: (n: string) => string | undefined; url: string }
 }): boolean {
-  const xf = c.req.header("x-forwarded-proto")
-  if (xf === "https") return true
-  if (xf === "http") return false
+  const xf = c.req.header("x-forwarded-proto")?.trim()
+  if (xf) {
+    const tokens = xf
+      .split(",")
+      .map((t) => t.trim().toLowerCase())
+      .filter(Boolean)
+    if (tokens.length > 0) {
+      if (tokens.some((t) => t === "https")) return true
+      if (tokens.some((t) => t === "http")) return false
+    }
+  }
   try {
     return new URL(c.req.url).protocol === "https:"
   } catch {
@@ -63,7 +71,14 @@ export function legacyAuthCookieCleanupMiddleware(
       c.header("Set-Cookie", clearCookieHeader(name), { append: true })
     }
 
+    const activeCookieDomain = env.AUTH_COOKIE_DOMAIN?.trim().toLowerCase()
     for (const domain of env.AUTH_LEGACY_COOKIE_DOMAINS) {
+      if (
+        activeCookieDomain &&
+        domain.toLowerCase() === activeCookieDomain
+      ) {
+        continue
+      }
       for (const name of names) {
         c.header("Set-Cookie", clearCookieHeader(name, domain), {
           append: true,
