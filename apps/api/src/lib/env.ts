@@ -23,173 +23,206 @@ function optionalTrimmedString<T extends z.ZodTypeAny>(schema: T) {
   }, schema.optional())
 }
 
-const envSchema = z.object({
-  DATABASE_URL: z.string().url(),
-  BETTER_AUTH_SECRET: z.string().min(16),
-  BETTER_AUTH_URL: z.string().url().default("http://localhost:3001"),
-  AUTH_TRUSTED_ORIGINS: z
-    .string()
-    .default(DEFAULT_AUTH_TRUSTED_ORIGINS)
-    .transform((s) =>
-      s
-        .split(",")
-        .map((x) => x.trim())
-        .filter(Boolean)
+const envSchema = z
+  .object({
+    DATABASE_URL: z.string().url(),
+    BETTER_AUTH_SECRET: z.string().min(16),
+    BETTER_AUTH_URL: z.string().url().default("http://localhost:3001"),
+    AUTH_TRUSTED_ORIGINS: z
+      .string()
+      .default(DEFAULT_AUTH_TRUSTED_ORIGINS)
+      .transform((s) =>
+        s
+          .split(",")
+          .map((x) => x.trim())
+          .filter(Boolean)
+      ),
+    AUTH_COOKIE_DOMAIN: z.string().optional(),
+    // After switching to a wildcard AUTH_COOKIE_DOMAIN (e.g. `.ak2.dev`), stale host-only or
+    // old Domain=* cookies can duplicate session_token and break get-session when session_data
+    // expires (Better Auth #9233). When true, responses include Set-Cookie lines that expire
+    // those obsolete scopes. See middleware/legacy-auth-cookies.ts.
+    AUTH_LEGACY_AUTH_COOKIE_CLEANUP: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((v) => v === "true"),
+    // Optional comma list of legacy `Domain=` values to clear (e.g. `api.ak2.dev`) in addition
+    // to host-only cookies on the API host.
+    AUTH_LEGACY_COOKIE_DOMAINS: z
+      .string()
+      .optional()
+      .transform((s) => {
+        if (!s) return [] as string[]
+        return s
+          .split(",")
+          .map((x) => x.trim())
+          .filter(Boolean)
+      }),
+    PASSKEY_RP_ID: z.optional(
+      z.preprocess(
+        (v) => {
+          if (typeof v !== "string") return undefined
+          const t = v.trim()
+          return t.length === 0 ? undefined : t
+        },
+        z.union([z.string(), z.undefined()])
+      )
     ),
-  AUTH_COOKIE_DOMAIN: z.string().optional(),
-  PASSKEY_RP_ID: z.optional(
-    z.preprocess(
-      (v) => {
-        if (typeof v !== "string") return undefined
-        const t = v.trim()
-        return t.length === 0 ? undefined : t
-      },
-      z.union([z.string(), z.undefined()])
-    )
-  ),
 
-  PORT: z.coerce.number().default(3001),
-  NODE_ENV: z
-    .enum(["development", "test", "production"])
-    .default("development"),
-  LOG_LEVEL: z.string().default("info"),
+    PORT: z.coerce.number().default(3001),
+    NODE_ENV: z
+      .enum(["development", "test", "production"])
+      .default("development"),
+    LOG_LEVEL: z.string().default("info"),
 
-  PUBLIC_WEB_URL: z.string().url().default("http://localhost:3000"),
-  APP_NAME: z.string().default("twotter"),
+    PUBLIC_WEB_URL: z.string().url().default("http://localhost:3000"),
+    APP_NAME: z.string().default("twotter"),
 
-  EMAIL_FROM: z.string().default("twotter <noreply@localhost>"),
-  RESEND_API_KEY: z.string().optional(),
+    EMAIL_FROM: z.string().default("twotter <noreply@localhost>"),
+    RESEND_API_KEY: z.string().optional(),
 
-  GITHUB_CLIENT_ID: z.string().optional(),
-  GITHUB_CLIENT_SECRET: z.string().optional(),
-  GITLAB_CLIENT_ID: z.string().optional(),
-  GITLAB_CLIENT_SECRET: z.string().optional(),
-  GOOGLE_CLIENT_ID: z.string().optional(),
-  GOOGLE_CLIENT_SECRET: z.string().optional(),
+    GITHUB_CLIENT_ID: z.string().optional(),
+    GITHUB_CLIENT_SECRET: z.string().optional(),
+    GITLAB_CLIENT_ID: z.string().optional(),
+    GITLAB_CLIENT_SECRET: z.string().optional(),
+    GOOGLE_CLIENT_ID: z.string().optional(),
+    GOOGLE_CLIENT_SECRET: z.string().optional(),
 
-  // "Connect GitHub" OAuth App — separate from the login provider above so that linking your
-  // GitHub for profile display can never overwrite the token better-auth uses to log you in.
-  GITHUB_CONNECT_CLIENT_ID: z.string().optional(),
-  GITHUB_CONNECT_CLIENT_SECRET: z.string().optional(),
+    // "Connect GitHub" OAuth App — separate from the login provider above so that linking your
+    // GitHub for profile display can never overwrite the token better-auth uses to log you in.
+    GITHUB_CONNECT_CLIENT_ID: z.string().optional(),
+    GITHUB_CONNECT_CLIENT_SECRET: z.string().optional(),
 
-  // Shared GitHub PAT (or App installation token) used to enrich post cards for GitHub URLs.
-  // 5000 req/hr authenticated vs 60/hr unauthenticated — required to make the unfurl pipeline
-  // actually work. If unset, posts containing GitHub URLs render fine but without the card.
-  GITHUB_UNFURL_TOKEN: z.string().optional(),
+    // Shared GitHub PAT (or App installation token) used to enrich post cards for GitHub URLs.
+    // 5000 req/hr authenticated vs 60/hr unauthenticated — required to make the unfurl pipeline
+    // actually work. If unset, posts containing GitHub URLs render fine but without the card.
+    GITHUB_UNFURL_TOKEN: z.string().optional(),
 
-  // Comma-separated list of `owner/repo` GitHub repositories whose contributors should
-  // receive the contributor badge. Evaluated when a user connects their GitHub account or
-  // hits Refresh in Settings → Connections. Unset → contributor checks are skipped and the
-  // badge is only granted via admin override.
-  GITHUB_CONTRIBUTOR_REPOS: z
-    .string()
-    .optional()
-    .transform((s) => {
-      if (!s) return [] as string[]
-      return s
-        .split(",")
-        .map((x) => x.trim())
-        .filter((x) => /^[^/\s]+\/[^/\s]+$/.test(x))
-    }),
+    // Comma-separated list of `owner/repo` GitHub repositories whose contributors should
+    // receive the contributor badge. Evaluated when a user connects their GitHub account or
+    // hits Refresh in Settings → Connections. Unset → contributor checks are skipped and the
+    // badge is only granted via admin override.
+    GITHUB_CONTRIBUTOR_REPOS: z
+      .string()
+      .optional()
+      .transform((s) => {
+        if (!s) return [] as string[]
+        return s
+          .split(",")
+          .map((x) => x.trim())
+          .filter((x) => /^[^/\s]+\/[^/\s]+$/.test(x))
+      }),
 
-  YOUTUBE_API_KEY: z.string().optional(),
-  FXTWITTER_API_BASE_URL: z.string().optional(),
+    YOUTUBE_API_KEY: z.string().optional(),
+    FXTWITTER_API_BASE_URL: z.string().optional(),
 
-  // Symmetric key for at-rest encryption of connector OAuth tokens (oauth_connections table).
-  // Must be 32 raw bytes encoded as base64 — anything shorter is rejected at boot. Rotation
-  // story is versioned by the ciphertext prefix `v1:` (see lib/connector-crypto.ts).
-  CONNECTORS_ENCRYPTION_KEY: z
-    .string()
-    .optional()
-    .refine(
-      (v) => {
-        if (!v) return true
-        try {
-          return Buffer.from(v, "base64").length === 32
-        } catch {
-          return false
+    // Symmetric key for at-rest encryption of connector OAuth tokens (oauth_connections table).
+    // Must be 32 raw bytes encoded as base64 — anything shorter is rejected at boot. Rotation
+    // story is versioned by the ciphertext prefix `v1:` (see lib/connector-crypto.ts).
+    CONNECTORS_ENCRYPTION_KEY: z
+      .string()
+      .optional()
+      .refine(
+        (v) => {
+          if (!v) return true
+          try {
+            return Buffer.from(v, "base64").length === 32
+          } catch {
+            return false
+          }
+        },
+        {
+          message: "CONNECTORS_ENCRYPTION_KEY must decode to 32 bytes (base64)",
         }
-      },
-      { message: "CONNECTORS_ENCRYPTION_KEY must decode to 32 bytes (base64)" }
+      ),
+
+    REDIS_URL: z.string(),
+
+    S3_ENDPOINT: z.string().url(),
+    S3_REGION: z.string().default("auto"),
+    S3_ACCESS_KEY_ID: z.string(),
+    S3_SECRET_ACCESS_KEY: z.string(),
+    S3_BUCKET: z.string(),
+    S3_PUBLIC_URL: z.string().url(),
+
+    // How long signed S3 GET URLs minted by the /api/m/* proxy stay valid. Short TTL minimizes
+    // damage if a signed URL leaks (e.g. is accidentally pasted into chat or a referer log).
+    // Default 15min — long enough to survive a slow page load + image decode, short enough that
+    // the URL is dead before most leak vectors find it.
+    MEDIA_SIGNED_URL_TTL_SEC: z.coerce
+      .number()
+      .int()
+      .min(60)
+      .max(3600)
+      .default(900),
+
+    // Add HSTS header in production. Off by default for dev (where requests come over http://localhost).
+    // Enabling in prod opts the browser into HTTPS-only for this origin for 1 year, blocking
+    // downgrade attacks. Only set this once you are sure HTTPS is permanent for the domain.
+    ENABLE_HSTS: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((v) => v === "true"),
+
+    // Hard kill switch. When true, every request (except /healthz and /readyz) is short-circuited
+    // with a 503 + `{ error: "maintenance" }` so the app can be locked down at runtime without a
+    // redeploy when abuse is in progress. The client detects the 503 and renders a maintenance
+    // screen over the whole UI.
+    MAINTENANCE_MODE: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((v) => v === "true"),
+    // Human-readable banner shown on the maintenance screen. Kept on the server so it can be
+    // updated without a client redeploy.
+    MAINTENANCE_MESSAGE: z
+      .string()
+      .default("We're temporarily down for maintenance. Check back shortly."),
+
+    // Databuddy server-side analytics API key (format: dbdy_xxx). Optional — if unset,
+    // server-side event tracking is silently disabled.
+    DATABUDDY_API_KEY: z.string().optional(),
+    // Databuddy website/client ID — must match the VITE_PUBLIC_DATABUDDY_CLIENT_ID used
+    // on the frontend so server-side events are scoped to the same website.
+    DATABUDDY_WEBSITE_ID: z.string().optional(),
+
+    // OpenAI API key for the /v1/moderations endpoint used to pre-publish-screen posts.
+    // Optional — when unset, moderation is disabled and every post is accepted (with a
+    // one-time warning at boot). Network errors / timeouts also fail open. Whitespace
+    // is trimmed and empty strings are coerced to undefined so a misformatted env var
+    // (e.g. `OPENAI_API_KEY= `) is treated as unset rather than a bogus key.
+    OPENAI_API_KEY: z.optional(
+      z.preprocess(
+        (v) => {
+          if (typeof v !== "string") return v
+          const trimmed = v.trim()
+          return trimmed.length === 0 ? undefined : trimmed
+        },
+        z.union([z.string(), z.undefined()])
+      )
     ),
 
-  REDIS_URL: z.string(),
-
-  S3_ENDPOINT: z.string().url(),
-  S3_REGION: z.string().default("auto"),
-  S3_ACCESS_KEY_ID: z.string(),
-  S3_SECRET_ACCESS_KEY: z.string(),
-  S3_BUCKET: z.string(),
-  S3_PUBLIC_URL: z.string().url(),
-
-  // How long signed S3 GET URLs minted by the /api/m/* proxy stay valid. Short TTL minimizes
-  // damage if a signed URL leaks (e.g. is accidentally pasted into chat or a referer log).
-  // Default 15min — long enough to survive a slow page load + image decode, short enough that
-  // the URL is dead before most leak vectors find it.
-  MEDIA_SIGNED_URL_TTL_SEC: z.coerce
-    .number()
-    .int()
-    .min(60)
-    .max(3600)
-    .default(900),
-
-  // Add HSTS header in production. Off by default for dev (where requests come over http://localhost).
-  // Enabling in prod opts the browser into HTTPS-only for this origin for 1 year, blocking
-  // downgrade attacks. Only set this once you are sure HTTPS is permanent for the domain.
-  ENABLE_HSTS: z
-    .enum(["true", "false"])
-    .default("false")
-    .transform((v) => v === "true"),
-
-  // Hard kill switch. When true, every request (except /healthz and /readyz) is short-circuited
-  // with a 503 + `{ error: "maintenance" }` so the app can be locked down at runtime without a
-  // redeploy when abuse is in progress. The client detects the 503 and renders a maintenance
-  // screen over the whole UI.
-  MAINTENANCE_MODE: z
-    .enum(["true", "false"])
-    .default("false")
-    .transform((v) => v === "true"),
-  // Human-readable banner shown on the maintenance screen. Kept on the server so it can be
-  // updated without a client redeploy.
-  MAINTENANCE_MESSAGE: z
-    .string()
-    .default("We're temporarily down for maintenance. Check back shortly."),
-
-  // Databuddy server-side analytics API key (format: dbdy_xxx). Optional — if unset,
-  // server-side event tracking is silently disabled.
-  DATABUDDY_API_KEY: z.string().optional(),
-  // Databuddy website/client ID — must match the VITE_PUBLIC_DATABUDDY_CLIENT_ID used
-  // on the frontend so server-side events are scoped to the same website.
-  DATABUDDY_WEBSITE_ID: z.string().optional(),
-
-  // OpenAI API key for the /v1/moderations endpoint used to pre-publish-screen posts.
-  // Optional — when unset, moderation is disabled and every post is accepted (with a
-  // one-time warning at boot). Network errors / timeouts also fail open. Whitespace
-  // is trimmed and empty strings are coerced to undefined so a misformatted env var
-  // (e.g. `OPENAI_API_KEY= `) is treated as unset rather than a bogus key.
-  OPENAI_API_KEY: z.optional(
-    z.preprocess(
-      (v) => {
-        if (typeof v !== "string") return v
-        const trimmed = v.trim()
-        return trimmed.length === 0 ? undefined : trimmed
-      },
-      z.union([z.string(), z.undefined()])
-    )
-  ),
-
-  // Internal ranker service used by the For You feed. All three vars are optional so the API
-  // boots and serves every existing feed even when feed-ranker isn't deployed yet — in that
-  // case /api/feed/for-you transparently falls back to a blended chrono feed on page 1.
-  FEED_RANKER_URL: optionalTrimmedString(z.string().url()),
-  FEED_RANKER_TOKEN: optionalTrimmedString(z.string().min(16)),
-  // Hard ceiling on the ranker call. The product budget is roughly p95 < 120ms; we kill the
-  // request past that and fall back rather than letting a slow ranker drag the API timeline.
-  FEED_RANKER_TIMEOUT_MS: z.coerce.number().int().min(20).max(2000).default(120),
-}).refine((env) => Boolean(env.FEED_RANKER_URL) === Boolean(env.FEED_RANKER_TOKEN), {
-  message: "FEED_RANKER_URL and FEED_RANKER_TOKEN must be provided together",
-  path: ["FEED_RANKER_URL"],
-})
+    // Internal ranker service used by the For You feed. All three vars are optional so the API
+    // boots and serves every existing feed even when feed-ranker isn't deployed yet — in that
+    // case /api/feed/for-you transparently falls back to a blended chrono feed on page 1.
+    FEED_RANKER_URL: optionalTrimmedString(z.string().url()),
+    FEED_RANKER_TOKEN: optionalTrimmedString(z.string().min(16)),
+    // Hard ceiling on the ranker call. The product budget is roughly p95 < 120ms; we kill the
+    // request past that and fall back rather than letting a slow ranker drag the API timeline.
+    FEED_RANKER_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(20)
+      .max(2000)
+      .default(120),
+  })
+  .refine(
+    (env) => Boolean(env.FEED_RANKER_URL) === Boolean(env.FEED_RANKER_TOKEN),
+    {
+      message:
+        "FEED_RANKER_URL and FEED_RANKER_TOKEN must be provided together",
+      path: ["FEED_RANKER_URL"],
+    }
+  )
 
 export type Env = z.infer<typeof envSchema>
 
