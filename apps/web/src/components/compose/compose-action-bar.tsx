@@ -2,7 +2,7 @@ import {
   ChartBarIcon,
   FaceSmileIcon,
   PhotoIcon,
-} from "@heroicons/react/24/solid"
+} from "@heroicons/react/16/solid"
 import { Popover } from "@base-ui/react/popover"
 import { EmojiPicker } from "frimousse"
 import { cn } from "@workspace/ui/lib/utils"
