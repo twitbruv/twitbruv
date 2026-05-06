@@ -107,7 +107,9 @@ function PreviewCardGroup<TPayload>({
               sideOffset={sideOffset}
               className={groupPositionerClasses}
             >
-              <PreviewCardPrimitive.Popup className={cn(groupPopupClasses, width)}>
+              <PreviewCardPrimitive.Popup
+                className={cn(groupPopupClasses, width)}
+              >
                 <PreviewCardPrimitive.Viewport className={viewportClasses}>
                   {payload !== undefined && renderContent(payload)}
                 </PreviewCardPrimitive.Viewport>
@@ -124,8 +126,9 @@ function PreviewCardGroup<TPayload>({
 // PreviewCard.Root
 // ---------------------------------------------------------------------------
 
-export interface PreviewCardRootProps
-  extends ComponentProps<typeof PreviewCardPrimitive.Root> {}
+export interface PreviewCardRootProps extends ComponentProps<
+  typeof PreviewCardPrimitive.Root
+> {}
 
 function PreviewCardRoot({ children, ...props }: PreviewCardRootProps) {
   return (
@@ -137,8 +140,9 @@ function PreviewCardRoot({ children, ...props }: PreviewCardRootProps) {
 // PreviewCard.Trigger
 // ---------------------------------------------------------------------------
 
-export interface PreviewCardTriggerProps
-  extends ComponentProps<typeof PreviewCardPrimitive.Trigger> {
+export interface PreviewCardTriggerProps extends ComponentProps<
+  typeof PreviewCardPrimitive.Trigger
+> {
   /** Delay in ms before the card appears on hover. Default 600. */
   delay?: number
   /** Delay in ms before the card closes after leaving. Default 300. */

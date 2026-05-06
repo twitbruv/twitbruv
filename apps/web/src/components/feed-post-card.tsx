@@ -9,9 +9,10 @@ import {
 } from "../lib/mutations/posts"
 import { api } from "../lib/api"
 import { pickPrimaryMediaUrl } from "../lib/media"
-import { updatePostEverywhere } from "../lib/query-cache"
+import { removePostEverywhere, updatePostEverywhere } from "../lib/query-cache"
 import { recordImpression } from "../lib/analytics"
 import { useCompose } from "./compose-provider"
+import { PostMenu } from "./post-menu"
 import { RichText } from "./rich-text"
 import { ArticleCardBlock } from "./post-card"
 import { GithubCardBlock } from "./github-card"
@@ -321,6 +322,22 @@ export function FeedPostCard({
         }}
         resolveBruvLikeBurstSrc={resolveBruvLikeBurstSrc}
         renderPostText={(t) => <RichText text={t} />}
+        renderMenu={() => (
+          <PostMenu
+            post={post}
+            isRepost={isRepost}
+            onChange={(next) =>
+              updatePostEverywhere(queryClient, post.id, () => next)
+            }
+            onRemove={() => removePostEverywhere(queryClient, post.id)}
+            onStartEdit={() =>
+              navigate({
+                to: "/$handle/p/$id",
+                params: { handle: authorHandle, id: post.id },
+              })
+            }
+          />
+        )}
       />
     </div>
   )

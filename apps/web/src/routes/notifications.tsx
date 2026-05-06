@@ -259,8 +259,6 @@ function Notifications() {
 
   const hasUnread = items.some((n) => !n.readAt)
 
-
-
   return (
     <PageFrame>
       <div className="flex items-center justify-between px-4 py-3">
@@ -277,10 +275,7 @@ function Notifications() {
       {isPending ? (
         <div>
           {Array.from({ length: 5 }).map((_, i) => (
-            <div
-              key={i}
-              className="flex items-start gap-3 px-4 py-3"
-            >
+            <div key={i} className="flex items-start gap-3 px-4 py-3">
               <Skeleton className="size-10 shrink-0 rounded-full" />
               <div className="flex-1 space-y-2">
                 <Skeleton className="h-4 w-2/3" />
@@ -558,9 +553,7 @@ function AvatarRow({ items }: { items: Array<NotificationItem> }) {
         {items.slice(0, 8).map((item) => {
           const handle = item.actor?.handle
           if (handle) {
-            const initial = (
-              item.actor?.displayName ?? handle
-            )
+            const initial = (item.actor?.displayName ?? handle)
               .slice(0, 1)
               .toUpperCase()
             return (
@@ -574,7 +567,7 @@ function AvatarRow({ items }: { items: Array<NotificationItem> }) {
                     onClick={(e) => e.stopPropagation()}
                   />
                 }
-                className="rounded-full outline-none transition hover:opacity-80"
+                className="rounded-full transition outline-none hover:opacity-80"
                 aria-label={`View @${handle}`}
                 onPointerEnter={() => {
                   if (!profiles.has(handle)) {
@@ -599,11 +592,7 @@ function AvatarRow({ items }: { items: Array<NotificationItem> }) {
             .toUpperCase()
           return (
             <span key={item.id}>
-              <Avatar
-                initial={initial}
-                src={item.actor?.avatarUrl}
-                size="md"
-              />
+              <Avatar initial={initial} src={item.actor?.avatarUrl} size="md" />
             </span>
           )
         })}
@@ -678,7 +667,9 @@ function GroupedLikeRow({
                 {leadDisplayName || "someone"}
               </span>
             )}
-            {leadHandle && <span className="text-tertiary"> @{leadHandle}</span>}
+            {leadHandle && (
+              <span className="text-tertiary"> @{leadHandle}</span>
+            )}
             <span className="text-secondary">
               {" "}
               and {items.length - 1} other{items.length - 1 !== 1 ? "s" : ""}{" "}
@@ -702,11 +693,7 @@ function GroupedFollowRow({ items }: { items: Array<NotificationItem> }) {
   const leadHandle = lead.actor?.handle ?? null
 
   return (
-    <Hover
-      borderRadius="rounded-2xl"
-      background="bg-subtle/50"
-      fullWidth
-    >
+    <Hover borderRadius="rounded-2xl" background="bg-subtle/50" fullWidth>
       <div className="w-full px-4 py-3">
         <div className="flex items-center gap-3">
           <div className="flex w-10 shrink-0 justify-center">
@@ -729,7 +716,9 @@ function GroupedFollowRow({ items }: { items: Array<NotificationItem> }) {
                 {leadDisplayName || "someone"}
               </span>
             )}
-            {leadHandle && <span className="text-tertiary"> @{leadHandle}</span>}
+            {leadHandle && (
+              <span className="text-tertiary"> @{leadHandle}</span>
+            )}
             <span className="text-secondary">
               {" "}
               and {items.length - 1} other{items.length - 1 !== 1 ? "s" : ""}{" "}
@@ -814,8 +803,18 @@ function ReplyRow({ item }: { item: NotificationItem }) {
                 role: actor?.role,
               }}
               time={formatShortTime(item.createdAt)}
-              onAuthorClick={actorHandle ? () => navigate({ to: "/$handle", params: { handle: actorHandle } }) : undefined}
-              onFetchAuthorProfile={actorHandle ? fetchAuthorProfile(actorHandle) : undefined}
+              onAuthorClick={
+                actorHandle
+                  ? () =>
+                      navigate({
+                        to: "/$handle",
+                        params: { handle: actorHandle },
+                      })
+                  : undefined
+              }
+              onFetchAuthorProfile={
+                actorHandle ? fetchAuthorProfile(actorHandle) : undefined
+              }
               className="pr-8"
             />
             {replyToHandles.length > 0 && (
@@ -910,8 +909,18 @@ function MentionRow({ item }: { item: NotificationItem }) {
                 role: actor?.role,
               }}
               time={formatShortTime(item.createdAt)}
-              onAuthorClick={actorHandle ? () => navigate({ to: "/$handle", params: { handle: actorHandle } }) : undefined}
-              onFetchAuthorProfile={actorHandle ? fetchAuthorProfile(actorHandle) : undefined}
+              onAuthorClick={
+                actorHandle
+                  ? () =>
+                      navigate({
+                        to: "/$handle",
+                        params: { handle: actorHandle },
+                      })
+                  : undefined
+              }
+              onFetchAuthorProfile={
+                actorHandle ? fetchAuthorProfile(actorHandle) : undefined
+              }
               className="pr-8"
             />
             {mentionTarget?.text && (
@@ -1027,9 +1036,7 @@ function NotificationRow({ item }: { item: NotificationItem }) {
                 {leadName}
               </Link>
             ) : (
-              <span className="font-semibold text-primary">
-                {leadName}
-              </span>
+              <span className="font-semibold text-primary">{leadName}</span>
             )}
             {actorHandle && (
               <span className="text-tertiary"> @{actorHandle}</span>

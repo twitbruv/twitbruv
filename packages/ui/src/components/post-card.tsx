@@ -101,6 +101,8 @@ export interface PostCardProps {
   onAuthorClick?: () => void
   resolveBruvLikeBurstSrc?: () => string | undefined
   renderPostText?: (text: string) => ReactNode
+  /** Render slot for the three-dot menu. Replaces the decorative ellipsis button. */
+  renderMenu?: () => ReactNode
 }
 
 function clickedInteractiveElement(target: EventTarget | null) {
@@ -144,6 +146,7 @@ export function PostCard({
   onAuthorClick,
   resolveBruvLikeBurstSrc,
   renderPostText,
+  renderMenu,
 }: PostCardProps) {
   const showLineTop = threadLine === "top" || threadLine === "both"
   const showLineBottom = threadLine === "bottom" || threadLine === "both"
@@ -287,13 +290,19 @@ export function PostCard({
           {/* Content column */}
           <div className="relative min-w-0 flex-1">
             {/* Menu button (absolute, top right) */}
-            <Button
-              variant="transparent"
-              size="sm"
-              iconLeft={<EllipsisHorizontalIcon />}
-              onClick={(e) => e.stopPropagation()}
-              className="absolute top-0 right-0 opacity-0 transition-opacity group-hover/h:opacity-100"
-            />
+            {renderMenu ? (
+              <div className="absolute top-0 right-0 opacity-0 transition-opacity group-hover/h:opacity-100">
+                {renderMenu()}
+              </div>
+            ) : (
+              <Button
+                variant="transparent"
+                size="sm"
+                iconLeft={<EllipsisHorizontalIcon />}
+                onClick={(e) => e.stopPropagation()}
+                className="absolute top-0 right-0 opacity-0 transition-opacity group-hover/h:opacity-100"
+              />
+            )}
 
             {/* Header: name, handle, time */}
             <div className="flex items-baseline gap-1.5 pr-8 text-sm">

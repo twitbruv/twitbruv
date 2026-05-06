@@ -51,11 +51,7 @@ export function ProfileContent({
           params={{ handle }}
           onClick={(e) => e.stopPropagation()}
         >
-          <Avatar
-            initial={displayName[0]}
-            src={profile.avatarUrl}
-            size="xl"
-          />
+          <Avatar initial={displayName[0]} src={profile.avatarUrl} size="xl" />
         </Link>
         {isFollowing !== undefined && (
           <Button
@@ -150,7 +146,9 @@ function useProfileFetch(handle: string) {
   const onOpen = useCallback(
     (open: boolean) => {
       if (open && !profile) {
-        fetchProfile(handle).then(setProfile).catch(() => {})
+        fetchProfile(handle)
+          .then(setProfile)
+          .catch(() => {})
       }
     },
     [handle, profile]
@@ -231,7 +229,7 @@ export function AvatarWithHoverCard({
           />
         }
         className={cn(
-          "rounded-full outline-none transition hover:opacity-80",
+          "rounded-full transition outline-none hover:opacity-80",
           className
         )}
         aria-label={`View @${handle}`}

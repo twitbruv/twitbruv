@@ -482,7 +482,7 @@ export function Compose({
             placeholder={placeholder}
             rows={1}
             maxLength={POST_MAX_LEN * 2}
-            className="w-full resize-none bg-transparent pt-2 text-[15px] leading-relaxed text-primary outline-none placeholder:text-tertiary"
+            className="w-full resize-none overflow-hidden bg-transparent pt-2 text-[15px] leading-relaxed text-primary outline-none placeholder:text-tertiary"
           />
 
           {/* Poll */}
