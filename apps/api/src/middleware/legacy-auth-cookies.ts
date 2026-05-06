@@ -64,10 +64,8 @@ export function legacyAuthCookieCleanupMiddleware(
     }
 
     for (const domain of env.AUTH_LEGACY_COOKIE_DOMAINS) {
-      const trimmed = domain.trim()
-      if (!trimmed) continue
       for (const name of names) {
-        c.header("Set-Cookie", clearCookieHeader(name, trimmed), {
+        c.header("Set-Cookie", clearCookieHeader(name, domain), {
           append: true,
         })
       }
