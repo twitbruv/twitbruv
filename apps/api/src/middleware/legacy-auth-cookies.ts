@@ -10,6 +10,9 @@ import type { HonoEnv } from "./session.ts"
  *
  * Emitting Max-Age=0 for obsolete scopes deletes stale jar entries; cookies scoped with
  * AUTH_COOKIE_DOMAIN are different records and are not cleared by these lines.
+ *
+ * Host-only expiry runs only when AUTH_COOKIE_DOMAIN is set — otherwise live sessions may be
+ * host-only and clearing them would log everyone out.
  */
 const BASE_AUTH_COOKIE_NAMES = [
   "session_token",
@@ -70,8 +73,10 @@ export function legacyAuthCookieCleanupMiddleware(
       cookieHeaderName(secureRequest, s)
     )
 
-    for (const name of names) {
-      c.header("Set-Cookie", clearCookieHeader(name), { append: true })
+    if (env.AUTH_COOKIE_DOMAIN?.trim()) {
+      for (const name of names) {
+        c.header("Set-Cookie", clearCookieHeader(name), { append: true })
+      }
     }
 
     const activeNormalized = env.AUTH_COOKIE_DOMAIN
