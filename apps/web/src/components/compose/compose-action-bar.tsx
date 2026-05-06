@@ -183,6 +183,7 @@ export function ComposeActionBar({
                           <MagnifyingGlassIcon className="size-4 shrink-0 text-tertiary" />
                           <EmojiPicker.Search
                             className="flex h-9 w-full appearance-none bg-transparent text-sm text-primary outline-none placeholder:text-tertiary [&::-webkit-search-cancel-button]:cursor-pointer"
+                            aria-label="Search emoji"
                             placeholder="Search emoji…"
                           />
                         </div>
