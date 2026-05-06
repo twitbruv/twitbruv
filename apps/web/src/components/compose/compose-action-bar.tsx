@@ -1,6 +1,7 @@
 import {
   ChartBarIcon,
   FaceSmileIcon,
+  MagnifyingGlassIcon,
   PhotoIcon,
 } from "@heroicons/react/16/solid"
 import { Popover } from "@base-ui/react/popover"
@@ -25,14 +26,14 @@ const EmojiCategoryHeader = ({
 }: EmojiPickerListCategoryHeaderProps) => (
   <div
     {...props}
-    className="bg-base-2 px-3 pt-3 pb-1.5 text-xs font-medium text-tertiary"
+    className="bg-base-2 px-3 pt-3 pb-2 text-xs leading-none text-tertiary"
   >
     {category.label}
   </div>
 )
 
 const EmojiRow = ({ children, ...props }: EmojiPickerListRowProps) => (
-  <div {...props} className="scroll-my-1.5 px-1.5">
+  <div {...props} className="scroll-my-1 px-1">
     {children}
   </div>
 )
@@ -40,7 +41,7 @@ const EmojiRow = ({ children, ...props }: EmojiPickerListRowProps) => (
 const EmojiButton = ({ emoji, ...props }: EmojiPickerListEmojiProps) => (
   <button
     {...props}
-    className="flex size-8 items-center justify-center rounded-md text-lg data-[active]:bg-base-1"
+    className="flex size-7 items-center justify-center rounded-md text-base data-[active]:bg-base-1"
   >
     {emoji.emoji}
   </button>
@@ -173,15 +174,18 @@ export function ComposeActionBar({
                     align="start"
                     className="z-50"
                   >
-                    <Popover.Popup className="overflow-hidden rounded-xl border border-neutral shadow-sm outline-none">
+                    <Popover.Popup className="overflow-hidden rounded-xl border border-neutral bg-base-2 shadow-sm outline-none">
                       <EmojiPicker.Root
-                        className="isolate flex h-[368px] w-[320px] flex-col bg-base-2"
+                        className="isolate flex h-[320px] w-fit flex-col"
                         onEmojiSelect={({ emoji }) => onInsertEmoji(emoji)}
                       >
-                        <EmojiPicker.Search
-                          className="z-10 mx-2 mt-2 appearance-none rounded-md border border-neutral bg-base-1 px-2.5 py-2 text-sm text-primary outline-none placeholder:text-tertiary"
-                          placeholder="Search emoji…"
-                        />
+                        <div className="flex h-10 items-center gap-2 border-b border-neutral px-3">
+                          <MagnifyingGlassIcon className="size-4 shrink-0 text-tertiary" />
+                          <EmojiPicker.Search
+                            className="flex h-9 w-full appearance-none bg-transparent text-sm text-primary outline-none placeholder:text-tertiary [&::-webkit-search-cancel-button]:cursor-pointer"
+                            placeholder="Search emoji…"
+                          />
+                        </div>
                         <EmojiPicker.Viewport className="relative flex-1 outline-none">
                           <EmojiPicker.Loading className="absolute inset-0 flex items-center justify-center text-sm text-tertiary">
                             Loading…
@@ -190,7 +194,7 @@ export function ComposeActionBar({
                             No emoji found.
                           </EmojiPicker.Empty>
                           <EmojiPicker.List
-                            className="pb-1.5 select-none"
+                            className="pb-1 select-none"
                             components={EMOJI_LIST_COMPONENTS}
                           />
                         </EmojiPicker.Viewport>
