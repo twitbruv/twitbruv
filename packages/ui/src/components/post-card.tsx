@@ -26,16 +26,12 @@ import {
 } from "@workspace/ui/components/verified-badge"
 import type { CSSProperties, ReactNode } from "react"
 
-/** Extra profile data for the author hover card */
-export interface AuthorProfile {
-  bio: string | null
-  followers: number
-  following: number
-  /** Whether the current user follows this author. Undefined if not signed in or viewing own profile. */
-  isFollowing?: boolean
-  /** Called when the follow/unfollow button is clicked. Receives the desired follow state (true = follow, false = unfollow). */
-  onFollowToggle?: (follow: boolean) => Promise<void>
-}
+import type { AuthorHeaderProfile as AuthorProfile } from "./author-header"
+
+export type {
+  AuthorHeaderProfile as AuthorProfile,
+  AuthorHeaderAuthor,
+} from "./author-header"
 
 export type PostMedia =
   | { type: "image"; url: string; alt?: string }
@@ -367,7 +363,7 @@ export function PostCard({
             <p
               ref={textRef}
               className={cn(
-                "mt-0.5 text-sm leading-relaxed whitespace-pre-wrap text-primary",
+                "-m-1 mt-0.5 p-1 text-sm leading-relaxed whitespace-pre-wrap text-primary",
                 truncateText && "line-clamp-5"
               )}
             >
