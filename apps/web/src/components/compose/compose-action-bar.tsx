@@ -1,8 +1,10 @@
+import { useRef, useState } from "react"
 import {
   ChartBarIcon,
   FaceSmileIcon,
   MagnifyingGlassIcon,
   PhotoIcon,
+  XMarkIcon,
 } from "@heroicons/react/16/solid"
 import { Popover } from "@base-ui/react/popover"
 import { EmojiPicker } from "frimousse"
@@ -51,6 +53,62 @@ const EMOJI_LIST_COMPONENTS = {
   CategoryHeader: EmojiCategoryHeader,
   Row: EmojiRow,
   Emoji: EmojiButton,
+}
+
+function EmojiPickerPopup({
+  onInsertEmoji,
+}: {
+  onInsertEmoji: (emoji: string) => void
+}) {
+  const [search, setSearch] = useState("")
+  const searchRef = useRef<HTMLInputElement>(null)
+
+  return (
+    <EmojiPicker.Root
+      className="isolate flex h-[320px] w-fit flex-col"
+      onEmojiSelect={({ emoji }) => onInsertEmoji(emoji)}
+    >
+      <div className="flex h-10 items-center gap-2 border-b border-neutral pr-1.5 pl-3">
+        <MagnifyingGlassIcon className="size-4 shrink-0 text-tertiary" />
+        <EmojiPicker.Search
+          ref={searchRef}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className={cn(
+            "flex h-9 w-full appearance-none bg-transparent text-sm text-primary outline-none placeholder:text-tertiary",
+            "[&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
+          )}
+          aria-label="Search emoji"
+          placeholder="Search emoji…"
+        />
+        {search.length > 0 && (
+          <Button
+            type="button"
+            variant="transparent"
+            size="sm"
+            aria-label="Clear search"
+            onClick={() => {
+              setSearch("")
+              searchRef.current?.focus()
+            }}
+            iconLeft={<XMarkIcon className="size-4" />}
+          />
+        )}
+      </div>
+      <EmojiPicker.Viewport className="relative flex-1 outline-none">
+        <EmojiPicker.Loading className="absolute inset-0 flex items-center justify-center text-sm text-tertiary">
+          Loading…
+        </EmojiPicker.Loading>
+        <EmojiPicker.Empty className="absolute inset-0 flex items-center justify-center text-sm text-tertiary">
+          No emoji found.
+        </EmojiPicker.Empty>
+        <EmojiPicker.List
+          className="pb-1 select-none"
+          components={EMOJI_LIST_COMPONENTS}
+        />
+      </EmojiPicker.Viewport>
+    </EmojiPicker.Root>
+  )
 }
 
 interface ComposeActionBarProps {
@@ -175,31 +233,7 @@ export function ComposeActionBar({
                     className="z-50"
                   >
                     <Popover.Popup className="overflow-hidden rounded-xl border border-neutral bg-base-2 shadow-sm outline-none">
-                      <EmojiPicker.Root
-                        className="isolate flex h-[320px] w-fit flex-col"
-                        onEmojiSelect={({ emoji }) => onInsertEmoji(emoji)}
-                      >
-                        <div className="flex h-10 items-center gap-2 border-b border-neutral px-3">
-                          <MagnifyingGlassIcon className="size-4 shrink-0 text-tertiary" />
-                          <EmojiPicker.Search
-                            className="flex h-9 w-full appearance-none bg-transparent text-sm text-primary outline-none placeholder:text-tertiary [&::-webkit-search-cancel-button]:cursor-pointer"
-                            aria-label="Search emoji"
-                            placeholder="Search emoji…"
-                          />
-                        </div>
-                        <EmojiPicker.Viewport className="relative flex-1 outline-none">
-                          <EmojiPicker.Loading className="absolute inset-0 flex items-center justify-center text-sm text-tertiary">
-                            Loading…
-                          </EmojiPicker.Loading>
-                          <EmojiPicker.Empty className="absolute inset-0 flex items-center justify-center text-sm text-tertiary">
-                            No emoji found.
-                          </EmojiPicker.Empty>
-                          <EmojiPicker.List
-                            className="pb-1 select-none"
-                            components={EMOJI_LIST_COMPONENTS}
-                          />
-                        </EmojiPicker.Viewport>
-                      </EmojiPicker.Root>
+                      <EmojiPickerPopup onInsertEmoji={onInsertEmoji} />
                     </Popover.Popup>
                   </Popover.Positioner>
                 </Popover.Portal>
