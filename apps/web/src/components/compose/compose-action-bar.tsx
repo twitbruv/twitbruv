@@ -232,7 +232,17 @@ export function ComposeActionBar({
                     align="start"
                     className="z-50"
                   >
-                    <Popover.Popup className="overflow-hidden rounded-xl border border-neutral bg-base-2 shadow-sm outline-none">
+                    <Popover.Popup
+                      // Mirrors Menu.Panel's open/close animation.
+                      className={cn(
+                        "overflow-hidden rounded-xl border border-neutral bg-base-2 shadow-sm outline-none",
+                        "origin-[var(--transform-origin)] will-change-[transform,opacity]",
+                        "transition-[transform,scale,opacity] duration-200 ease-out-expo",
+                        "data-[starting-style]:scale-[0.96] data-[starting-style]:opacity-0",
+                        "data-[ending-style]:scale-[0.96] data-[ending-style]:opacity-0 data-[ending-style]:duration-150",
+                        "motion-reduce:transition-none"
+                      )}
+                    >
                       <EmojiPickerPopup onInsertEmoji={onInsertEmoji} />
                     </Popover.Popup>
                   </Popover.Positioner>
