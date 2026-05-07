@@ -18,7 +18,9 @@ export type AdminUsersFilters = {
 export const qk = {
   me: () => ["me"] as const,
 
-  user: (handle: string) => ["user", handle] as const,
+  // Server stores handles lowercase; normalize so mixed-case URLs and
+  // mention text share one cache entry instead of duplicating fetches.
+  user: (handle: string) => ["user", handle.toLowerCase()] as const,
 
   userPosts: (handle: string) => ["userPosts", handle] as const,
 

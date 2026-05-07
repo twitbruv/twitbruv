@@ -521,7 +521,6 @@ export function Compose({
         <div className="min-w-0 flex-1">
           {/* Textarea */}
           <div className="relative">
-            <ComposeTextHighlight text={text} />
             <textarea
               ref={textareaRef}
               value={text}
@@ -542,11 +541,9 @@ export function Compose({
               aria-expanded={mention.open}
               aria-controls={mention.open ? mentionListboxId : undefined}
               aria-activedescendant={activeMentionOptionId}
-              // Text is painted by ComposeTextHighlight underneath; an
-              // explicit caret-color is needed because text-transparent
-              // would otherwise hide the caret too.
-              className="relative w-full resize-none bg-transparent pt-2 text-[15px] leading-relaxed text-transparent caret-[var(--text-color-primary)] outline-none placeholder:text-tertiary"
+              className="w-full resize-none bg-transparent pt-2 text-[15px] leading-relaxed text-transparent caret-[var(--text-color-primary)] outline-none placeholder:text-tertiary"
             />
+            <ComposeTextHighlight text={text} />
             <MentionPopover
               listboxId={mentionListboxId}
               open={mention.open}
