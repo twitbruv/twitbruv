@@ -35,6 +35,21 @@ export function MentionPopover({
         {users.map((u, i) => {
           const tier = resolveBadgeTier(u)
           const isActive = i === activeIndex
+          // Avoid showing the same string twice when displayName == handle.
+          // Strip a leading @ so e.g. displayName "@alice" / handle "alice"
+          // doesn't sneak past the comparison.
+          const trimmedName = u.displayName?.trim() ?? ""
+          const normalizedName = trimmedName.replace(/^@+/, "").toLowerCase()
+          const normalizedHandle = (u.handle ?? "")
+            .replace(/^@+/, "")
+            .toLowerCase()
+          const hasDistinctName =
+            normalizedName.length > 0 &&
+            (!u.handle || normalizedName !== normalizedHandle)
+          let primary: string
+          if (hasDistinctName) primary = trimmedName
+          else if (u.handle) primary = `@${u.handle}`
+          else primary = u.id
           return (
             <li
               key={u.id}
@@ -58,12 +73,10 @@ export function MentionPopover({
               />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1 text-sm font-medium text-primary">
-                  <span className="truncate">
-                    {u.displayName || (u.handle ? `@${u.handle}` : u.id)}
-                  </span>
+                  <span className="truncate">{primary}</span>
                   {tier && <VerifiedBadge size={14} role={tier} />}
                 </div>
-                {u.handle && (
+                {hasDistinctName && u.handle && (
                   <div className="truncate text-xs text-tertiary">
                     @{u.handle}
                   </div>
