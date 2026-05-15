@@ -82,7 +82,8 @@ export function createMediaRoute(deps: MediaDeps) {
 
   route.post('/:id/finalize', requireHandle(), async (c) => {
     const session = c.get('session')!
-    const { db } = c.get('ctx')
+    const { db, rateLimit } = c.get('ctx')
+    await rateLimit(c, 'media.upload')
     const id = c.req.param('id')
 
     const [media] = await db
