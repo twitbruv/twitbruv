@@ -177,7 +177,8 @@ listsRoute.patch('/:id', requireHandle(), async (c) => {
 // pinned lists to the top, so this single boolean controls profile ordering.
 listsRoute.post('/:id/pin', requireHandle(), async (c) => {
   const session = c.get('session')!
-  const { db } = c.get('ctx')
+  const { db, rateLimit } = c.get('ctx')
+  await rateLimit(c, 'lists.write')
   const id = c.req.param('id')
   const [row] = await db
     .update(schema.userLists)
@@ -192,7 +193,8 @@ listsRoute.post('/:id/pin', requireHandle(), async (c) => {
 
 listsRoute.delete('/:id/pin', requireHandle(), async (c) => {
   const session = c.get('session')!
-  const { db } = c.get('ctx')
+  const { db, rateLimit } = c.get('ctx')
+  await rateLimit(c, 'lists.write')
   const id = c.req.param('id')
   const [row] = await db
     .update(schema.userLists)
