@@ -44,6 +44,7 @@
     "agentation": "^3.0.2",
     "better-auth": "^1.6.9",
     "chess.js": "^1.4.0",
+    "frimousse": "^0.3.0",
     "lexical": "^0.44.0",
     "motion": "^12.38.0",
     "nitro": "latest",

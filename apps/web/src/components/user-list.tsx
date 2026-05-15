@@ -16,7 +16,7 @@ const useIsoLayoutEffect =
 const ESTIMATED_ROW_HEIGHT = 76
 const ESTIMATED_BIO_BUMP = 32
 
-function initialFor(user: PublicUser): string {
+export function initialFor(user: PublicUser): string {
   return (user.displayName || user.handle || "?").slice(0, 1).toUpperCase()
 }
 
