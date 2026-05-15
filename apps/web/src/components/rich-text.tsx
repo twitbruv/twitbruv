@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router"
 import { LinkPill } from "./link-card"
-import { ProfileHoverCard } from "./profile-hover-card"
+import { MentionLink } from "./mention-link"
 import type { ReactNode } from "react"
 
 type Part =
@@ -27,20 +27,6 @@ export function linkifyText(text: string): Array<Part> {
   return parts
 }
 
-export function Mention({ handle }: { handle: string }) {
-  return (
-    <ProfileHoverCard handle={handle}>
-      <Link
-        to="/$handle"
-        params={{ handle }}
-        className="text-sky-500 hover:underline"
-      >
-        @{handle}
-      </Link>
-    </ProfileHoverCard>
-  )
-}
-
 export function RichText({ text }: { text: string }): ReactNode {
   const parts = linkifyText(text)
   return (
@@ -60,7 +46,11 @@ export function RichText({ text }: { text: string }): ReactNode {
           )
         }
         if (p.type === "mention") {
-          return <Mention key={i} handle={p.value.slice(1)} />
+          return (
+            <MentionLink key={i} handle={p.value.slice(1)}>
+              {p.value}
+            </MentionLink>
+          )
         }
         return <LinkPill key={i} url={p.value} />
       })}

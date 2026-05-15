@@ -26,16 +26,12 @@ import {
 } from "@workspace/ui/components/verified-badge"
 import type { CSSProperties, ReactNode } from "react"
 
-/** Extra profile data for the author hover card */
-export interface AuthorProfile {
-  bio: string | null
-  followers: number
-  following: number
-  /** Whether the current user follows this author. Undefined if not signed in or viewing own profile. */
-  isFollowing?: boolean
-  /** Called when the follow/unfollow button is clicked. Receives the desired follow state (true = follow, false = unfollow). */
-  onFollowToggle?: (follow: boolean) => Promise<void>
-}
+import type { AuthorHeaderProfile as AuthorProfile } from "./author-header"
+
+export type {
+  AuthorHeaderProfile as AuthorProfile,
+  AuthorHeaderAuthor,
+} from "./author-header"
 
 export type PostMedia =
   | { type: "image"; url: string; alt?: string }
@@ -105,6 +101,8 @@ export interface PostCardProps {
   onAuthorClick?: () => void
   resolveBruvLikeBurstSrc?: () => string | undefined
   renderPostText?: (text: string) => ReactNode
+  /** Render slot for the three-dot menu. Replaces the decorative ellipsis button. */
+  renderMenu?: () => ReactNode
 }
 
 function clickedInteractiveElement(target: EventTarget | null) {
@@ -148,6 +146,7 @@ export function PostCard({
   onAuthorClick,
   resolveBruvLikeBurstSrc,
   renderPostText,
+  renderMenu,
 }: PostCardProps) {
   const showLineTop = threadLine === "top" || threadLine === "both"
   const showLineBottom = threadLine === "bottom" || threadLine === "both"
@@ -291,13 +290,19 @@ export function PostCard({
           {/* Content column */}
           <div className="relative min-w-0 flex-1">
             {/* Menu button (absolute, top right) */}
-            <Button
-              variant="transparent"
-              size="sm"
-              iconLeft={<EllipsisHorizontalIcon />}
-              onClick={(e) => e.stopPropagation()}
-              className="absolute top-0 right-0 opacity-0 transition-opacity group-hover/h:opacity-100"
-            />
+            {renderMenu ? (
+              <div className="absolute top-0 right-0 opacity-0 transition-opacity group-hover/h:opacity-100">
+                {renderMenu()}
+              </div>
+            ) : (
+              <Button
+                variant="transparent"
+                size="sm"
+                iconLeft={<EllipsisHorizontalIcon />}
+                onClick={(e) => e.stopPropagation()}
+                className="absolute top-0 right-0 opacity-0 transition-opacity group-hover/h:opacity-100"
+              />
+            )}
 
             {/* Header: name, handle, time */}
             <div className="flex items-baseline gap-1.5 pr-8 text-sm">
@@ -367,7 +372,7 @@ export function PostCard({
             <p
               ref={textRef}
               className={cn(
-                "mt-0.5 text-sm leading-relaxed whitespace-pre-wrap text-primary",
+                "-m-1 mt-0.5 p-1 text-sm leading-relaxed whitespace-pre-wrap text-primary",
                 truncateText && "line-clamp-5"
               )}
             >

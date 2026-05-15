@@ -22,22 +22,30 @@ import {
   ChatBubbleOvalLeftIcon,
   HeartIcon,
   UserPlusIcon,
-} from "@heroicons/react/24/solid"
+} from "@heroicons/react/16/solid"
 import { Button } from "@workspace/ui/components/button"
 import { Skeleton } from "@workspace/ui/components/skeleton"
 import { Avatar } from "@workspace/ui/components/avatar"
+import { Hover } from "@workspace/ui/components/hover"
+import { AuthorHeader } from "@workspace/ui/components/author-header"
+import { PreviewCard } from "@workspace/ui/components/preview-card"
+import {
+  AvatarWithHoverCard,
+  MentionLink,
+  ProfileContent,
+  fetchProfile,
+} from "../components/mention-link"
 import { api } from "../lib/api"
 import { qk } from "../lib/query-keys"
 import { authClient } from "../lib/auth"
-import { usePageHeader } from "../components/app-page-header"
 import { useCompose } from "../components/compose-provider"
 import { PageEmpty } from "../components/page-surface"
 import { PageFrame } from "../components/page-frame"
-import { VerifiedBadge, resolveBadgeTier } from "../components/verified-badge"
 import { RichText } from "../components/rich-text"
 import { PostEngagementBar } from "../components/post-engagement-bar"
 import { useInfiniteScrollSentinel } from "../lib/use-infinite-scroll-sentinel"
 import type { InfiniteData } from "@tanstack/react-query"
+import type { AuthorHeaderProfile } from "@workspace/ui/components/author-header"
 import type { NotificationItem, Post } from "../lib/api"
 
 export const Route = createFileRoute("/notifications")({
@@ -162,6 +170,26 @@ function findScrollParent(el: HTMLElement | null): HTMLElement | null {
 const useIsoLayoutEffect =
   typeof window === "undefined" ? useEffect : useLayoutEffect
 
+function fetchAuthorProfile(
+  handle: string
+): () => Promise<AuthorHeaderProfile> {
+  return async () => {
+    const { user } = await api.user(handle)
+    return {
+      bio: user.bio,
+      followers: user.counts.followers,
+      following: user.counts.following,
+      isFollowing: user.viewer?.following,
+      onFollowToggle: user.viewer
+        ? async (follow: boolean) => {
+            if (follow) await api.follow(handle)
+            else await api.unfollow(handle)
+          }
+        : undefined,
+    }
+  }
+}
+
 function Notifications() {
   const router = useRouter()
   const { data: session, isPending: sessionPending } = authClient.useSession()
@@ -231,10 +259,10 @@ function Notifications() {
 
   const hasUnread = items.some((n) => !n.readAt)
 
-  const appHeader = useMemo(
-    () => ({
-      title: "Notifications" as const,
-      action: (
+  return (
+    <PageFrame>
+      <div className="flex items-center justify-between px-4 py-3">
+        <h1 className="text-lg font-semibold text-primary">Notifications</h1>
         <Button
           size="sm"
           variant="transparent"
@@ -243,21 +271,11 @@ function Notifications() {
         >
           Mark all read
         </Button>
-      ),
-    }),
-    [hasUnread, markAllRead]
-  )
-  usePageHeader(appHeader)
-
-  return (
-    <PageFrame>
+      </div>
       {isPending ? (
         <div>
           {Array.from({ length: 5 }).map((_, i) => (
-            <div
-              key={i}
-              className="flex items-start gap-3 border-b border-neutral px-4 py-3"
-            >
+            <div key={i} className="flex items-start gap-3 px-4 py-3">
               <Skeleton className="size-10 shrink-0 rounded-full" />
               <div className="flex-1 space-y-2">
                 <Skeleton className="h-4 w-2/3" />
@@ -267,7 +285,7 @@ function Notifications() {
           ))}
         </div>
       ) : error ? (
-        <p className="text-destructive p-4 text-sm">{error.message}</p>
+        <p className="p-4 text-sm text-danger">{error.message}</p>
       ) : items.length === 0 ? (
         <PageEmpty
           icon={<BellIcon />}
@@ -503,35 +521,83 @@ function GroupedNotificationRow({ group }: { group: GroupedNotification }) {
 }
 
 function AvatarRow({ items }: { items: Array<NotificationItem> }) {
+  const [profiles, setProfiles] = useState<
+    Map<string, Awaited<ReturnType<typeof fetchProfile>>>
+  >(() => new Map())
+
+  const renderContent = useCallback(
+    (handle: string) => {
+      const profile = profiles.get(handle)
+      if (profile) return <ProfileContent handle={handle} profile={profile} />
+      return (
+        <div className="flex items-center justify-center p-6">
+          <div className="border-t-primary size-5 animate-spin rounded-full border-2 border-neutral" />
+        </div>
+      )
+    },
+    [profiles]
+  )
+
   return (
-    <div
-      className="flex items-center gap-1.5"
-      onClick={(event) => event.stopPropagation()}
+    <PreviewCard.Group<string>
+      renderContent={renderContent}
+      side="bottom"
+      align="center"
+      sideOffset={8}
+      width="w-72"
     >
-      {items.slice(0, 8).map((item) => {
-        const initial = (item.actor?.displayName ?? item.actor?.handle ?? "·")
-          .slice(0, 1)
-          .toUpperCase()
-        const handle = item.actor?.handle
-        const avatar = (
-          <Avatar initial={initial} src={item.actor?.avatarUrl} size="md" />
-        )
-        if (handle) {
+      <div
+        className="flex items-center gap-1.5"
+        onClick={(event) => event.stopPropagation()}
+      >
+        {items.slice(0, 8).map((item) => {
+          const handle = item.actor?.handle
+          if (handle) {
+            const initial = (item.actor?.displayName ?? handle)
+              .slice(0, 1)
+              .toUpperCase()
+            return (
+              <PreviewCard.Trigger
+                key={item.id}
+                payload={handle}
+                render={
+                  <Link
+                    to="/$handle"
+                    params={{ handle }}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                }
+                className="rounded-full transition outline-none hover:opacity-80"
+                aria-label={`View @${handle}`}
+                onPointerEnter={() => {
+                  if (!profiles.has(handle)) {
+                    fetchProfile(handle)
+                      .then((p) =>
+                        setProfiles((prev) => new Map(prev).set(handle, p))
+                      )
+                      .catch(() => {})
+                  }
+                }}
+              >
+                <Avatar
+                  initial={initial}
+                  src={item.actor?.avatarUrl}
+                  size="md"
+                />
+              </PreviewCard.Trigger>
+            )
+          }
+          const initial = (item.actor?.displayName ?? "·")
+            .slice(0, 1)
+            .toUpperCase()
           return (
-            <Link
-              key={item.id}
-              to="/$handle"
-              params={{ handle }}
-              className="rounded-full transition hover:opacity-80"
-              aria-label={`View @${handle}`}
-            >
-              {avatar}
-            </Link>
+            <span key={item.id}>
+              <Avatar initial={initial} src={item.actor?.avatarUrl} size="md" />
+            </span>
           )
-        }
-        return <span key={item.id}>{avatar}</span>
-      })}
-    </div>
+        })}
+      </div>
+    </PreviewCard.Group>
   )
 }
 
@@ -546,7 +612,6 @@ function GroupedLikeRow({
   const lead = items[0]
   const leadDisplayName = lead.actor?.displayName ?? null
   const leadHandle = lead.actor?.handle ?? null
-  const isUnread = items.some((n) => !n.readAt)
 
   const canOpenPost = Boolean(target.author.handle && target.id)
 
@@ -567,49 +632,58 @@ function GroupedLikeRow({
   }
 
   return (
-    <div
-      role={canOpenPost ? "button" : undefined}
-      tabIndex={canOpenPost ? 0 : undefined}
-      onClick={canOpenPost ? openPost : undefined}
-      onKeyDown={canOpenPost ? handleKeyDown : undefined}
-      className={`focus-visible:ring-primary block border-b border-neutral px-4 py-3.5 transition-colors hover:bg-base-2/20 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset ${canOpenPost ? "cursor-pointer" : ""} ${isUnread ? "bg-subtle" : ""}`}
+    <Hover
+      borderRadius="rounded-2xl"
+      background="bg-subtle/50"
+      fullWidth
+      className={canOpenPost ? "cursor-pointer" : ""}
     >
-      <div className="flex items-center gap-3">
-        <div className="flex size-10 shrink-0 items-center justify-center">
-          <HeartIcon className="size-5.5 text-like" />
+      <div
+        role={canOpenPost ? "button" : undefined}
+        tabIndex={canOpenPost ? 0 : undefined}
+        onClick={canOpenPost ? openPost : undefined}
+        onKeyDown={canOpenPost ? handleKeyDown : undefined}
+        className="w-full px-4 py-3"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex w-10 shrink-0 justify-center">
+            <HeartIcon className="size-6 text-like" />
+          </div>
+          <AvatarRow items={items} />
         </div>
-        <AvatarRow items={items} />
-      </div>
-      <div className="mt-2 pl-[52px]">
-        <p className="text-sm">
-          {leadHandle ? (
-            <Link
-              to="/$handle"
-              params={{ handle: leadHandle }}
-              className="font-semibold text-primary hover:underline"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {leadDisplayName || leadHandle}
-            </Link>
-          ) : (
-            <span className="font-semibold text-primary">
-              {leadDisplayName || "someone"}
+        <div className="mt-2 pl-[52px]">
+          <p className="text-sm">
+            {leadHandle ? (
+              <Link
+                to="/$handle"
+                params={{ handle: leadHandle }}
+                className="font-semibold text-primary hover:underline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {leadDisplayName || leadHandle}
+              </Link>
+            ) : (
+              <span className="font-semibold text-primary">
+                {leadDisplayName || "someone"}
+              </span>
+            )}
+            {leadHandle && (
+              <span className="text-tertiary"> @{leadHandle}</span>
+            )}
+            <span className="text-secondary">
+              {" "}
+              and {items.length - 1} other{items.length - 1 !== 1 ? "s" : ""}{" "}
+              liked your post
             </span>
-          )}
-          {leadHandle && <span className="text-tertiary"> @{leadHandle}</span>}
-          <span className="text-secondary">
-            {" "}
-            and {items.length - 1} other{items.length - 1 !== 1 ? "s" : ""}{" "}
-            liked your post
-          </span>
-        </p>
-        {target.text && (
-          <p className="mt-1 line-clamp-1 text-sm text-tertiary">
-            {target.text}
           </p>
-        )}
+          {target.text && (
+            <p className="mt-1 line-clamp-1 text-sm text-tertiary">
+              {target.text}
+            </p>
+          )}
+        </div>
       </div>
-    </div>
+    </Hover>
   )
 }
 
@@ -617,49 +691,49 @@ function GroupedFollowRow({ items }: { items: Array<NotificationItem> }) {
   const lead = items[0]
   const leadDisplayName = lead.actor?.displayName ?? null
   const leadHandle = lead.actor?.handle ?? null
-  const isUnread = items.some((n) => !n.readAt)
 
   return (
-    <div
-      className={`border-b border-neutral px-4 py-3.5 transition-colors hover:bg-base-2/20 ${isUnread ? "bg-subtle" : ""}`}
-    >
-      <div className="flex items-center gap-3">
-        <div className="flex size-10 shrink-0 items-center justify-center">
-          <UserPlusIcon className="size-5.5 text-sky-500" />
+    <Hover borderRadius="rounded-2xl" background="bg-subtle/50" fullWidth>
+      <div className="w-full px-4 py-3">
+        <div className="flex items-center gap-3">
+          <div className="flex w-10 shrink-0 justify-center">
+            <UserPlusIcon className="size-5 text-primary" />
+          </div>
+          <AvatarRow items={items} />
         </div>
-        <AvatarRow items={items} />
-      </div>
-      <div className="mt-2 pl-[52px]">
-        <p className="text-sm">
-          {leadHandle ? (
-            <Link
-              to="/$handle"
-              params={{ handle: leadHandle }}
-              className="font-semibold text-primary hover:underline"
-            >
-              {leadDisplayName || leadHandle}
-            </Link>
-          ) : (
-            <span className="font-semibold text-primary">
-              {leadDisplayName || "someone"}
+        <div className="mt-2 pl-[52px]">
+          <p className="text-sm">
+            {leadHandle ? (
+              <Link
+                to="/$handle"
+                params={{ handle: leadHandle }}
+                className="font-semibold text-primary hover:underline"
+              >
+                {leadDisplayName || leadHandle}
+              </Link>
+            ) : (
+              <span className="font-semibold text-primary">
+                {leadDisplayName || "someone"}
+              </span>
+            )}
+            {leadHandle && (
+              <span className="text-tertiary"> @{leadHandle}</span>
+            )}
+            <span className="text-secondary">
+              {" "}
+              and {items.length - 1} other{items.length - 1 !== 1 ? "s" : ""}{" "}
+              followed you
             </span>
-          )}
-          {leadHandle && <span className="text-tertiary"> @{leadHandle}</span>}
-          <span className="text-secondary">
-            {" "}
-            and {items.length - 1} other{items.length - 1 !== 1 ? "s" : ""}{" "}
-            followed you
-          </span>
-        </p>
+          </p>
+        </div>
       </div>
-    </div>
+    </Hover>
   )
 }
 
 function ReplyRow({ item }: { item: NotificationItem }) {
   const navigate = useNavigate()
   const actor = item.actor
-  const actorDisplayName = actor?.displayName ?? null
   const actorHandle = actor?.handle ?? null
   const actorInitial = (actor?.displayName ?? actorHandle ?? "·")
     .slice(0, 1)
@@ -693,110 +767,92 @@ function ReplyRow({ item }: { item: NotificationItem }) {
     }
   }
 
-  const avatarEl = (
-    <Avatar
-      initial={actorInitial}
-      src={actor?.avatarUrl}
-      className="size-10 shrink-0"
-    />
-  )
-
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={openPost}
-      onKeyDown={handleKeyDown}
-      className={`focus-visible:ring-primary cursor-pointer border-b border-neutral px-4 py-3.5 transition-colors hover:bg-base-2/20 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset ${!item.readAt ? "bg-subtle" : ""}`}
+    <Hover
+      borderRadius="rounded-2xl"
+      background="bg-subtle/50"
+      fullWidth
+      className="cursor-pointer"
     >
-      <div className="flex items-start gap-3">
-        {actorHandle ? (
-          <Link
-            to="/$handle"
-            params={{ handle: actorHandle }}
-            className="shrink-0 rounded-full transition hover:opacity-80"
-            onClick={(e) => e.stopPropagation()}
-            aria-label={`View @${actorHandle}`}
-          >
-            {avatarEl}
-          </Link>
-        ) : (
-          avatarEl
-        )}
-        <div className="min-w-0 flex-1 text-sm">
-          <div className="flex items-center gap-1.5">
-            {actorHandle ? (
-              <Link
-                to="/$handle"
-                params={{ handle: actorHandle }}
-                className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {actorDisplayName || actorHandle}
-                {(() => {
-                  const tier = actor ? resolveBadgeTier(actor) : null
-                  return tier ? <VerifiedBadge size={14} role={tier} /> : null
-                })()}
-              </Link>
-            ) : (
-              <span className="inline-flex items-center gap-1 font-semibold text-primary">
-                {actorDisplayName || "someone"}
-                {(() => {
-                  const tier = actor ? resolveBadgeTier(actor) : null
-                  return tier ? <VerifiedBadge size={14} role={tier} /> : null
-                })()}
-              </span>
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={openPost}
+        onKeyDown={handleKeyDown}
+        className="w-full px-4 py-3"
+      >
+        <div className="flex items-start gap-3">
+          {actorHandle ? (
+            <AvatarWithHoverCard
+              handle={actorHandle}
+              displayName={actor?.displayName}
+              avatarUrl={actor?.avatarUrl}
+              size="lg"
+            />
+          ) : (
+            <Avatar initial={actorInitial} src={actor?.avatarUrl} size="lg" />
+          )}
+          <div className="min-w-0 flex-1">
+            <AuthorHeader
+              author={{
+                handle: actorHandle,
+                displayName: actor?.displayName ?? null,
+                avatarUrl: actor?.avatarUrl ?? null,
+                isVerified: actor?.isVerified,
+                isContributor: actor?.isContributor,
+                role: actor?.role,
+              }}
+              time={formatShortTime(item.createdAt)}
+              onAuthorClick={
+                actorHandle
+                  ? () =>
+                      navigate({
+                        to: "/$handle",
+                        params: { handle: actorHandle },
+                      })
+                  : undefined
+              }
+              onFetchAuthorProfile={
+                actorHandle ? fetchAuthorProfile(actorHandle) : undefined
+              }
+              className="pr-8"
+            />
+            {replyToHandles.length > 0 && (
+              <p className="mt-0.5 text-sm text-secondary">
+                Replying to{" "}
+                {replyToHandles.slice(0, 2).map((handle, i) => (
+                  <span key={handle}>
+                    {i > 0 && ", "}
+                    <MentionLink handle={handle} />
+                  </span>
+                ))}
+                {replyToHandles.length > 2 && (
+                  <span className="text-secondary">
+                    {" "}
+                    and {replyToHandles.length - 2} other
+                    {replyToHandles.length - 2 !== 1 ? "s" : ""}
+                  </span>
+                )}
+              </p>
             )}
-            {actorHandle && (
-              <span className="text-tertiary">@{actorHandle}</span>
+            {replyTarget?.text && (
+              <p className="mt-0.5 text-sm leading-relaxed whitespace-pre-wrap text-primary">
+                <RichText text={replyTarget.text} />
+              </p>
             )}
-            <span className="text-xs text-tertiary">
-              · {formatShortTime(item.createdAt)}
-            </span>
+            {replyTarget && <PostEngagementBar post={replyTarget} />}
           </div>
-          {replyToHandles.length > 0 && (
-            <p className="mt-0.5 text-secondary">
-              Replying to{" "}
-              {replyToHandles.slice(0, 2).map((handle, i) => (
-                <span key={handle}>
-                  {i > 0 && ", "}
-                  <Link
-                    to="/$handle"
-                    params={{ handle }}
-                    className="text-sky-500 hover:underline"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    @{handle}
-                  </Link>
-                </span>
-              ))}
-              {replyToHandles.length > 2 && (
-                <span className="text-secondary">
-                  {" "}
-                  and {replyToHandles.length - 2} other
-                  {replyToHandles.length - 2 !== 1 ? "s" : ""}
-                </span>
-              )}
-            </p>
-          )}
-          {replyTarget?.text && (
-            <p className="mt-0.5 leading-relaxed whitespace-pre-wrap text-primary">
-              <RichText text={replyTarget.text} />
-            </p>
-          )}
-          {replyTarget && <PostEngagementBar post={replyTarget} />}
         </div>
       </div>
-    </div>
+    </Hover>
   )
 }
 
 function MentionRow({ item }: { item: NotificationItem }) {
   const navigate = useNavigate()
   const actor = item.actor
-  const actorDisplayName = actor?.displayName ?? null
   const actorHandle = actor?.handle ?? null
-  const actorInitial = (actorDisplayName ?? actorHandle ?? "·")
+  const actorInitial = (actor?.displayName ?? actorHandle ?? "·")
     .slice(0, 1)
     .toUpperCase()
   const mentionTarget = item.target
@@ -817,76 +873,66 @@ function MentionRow({ item }: { item: NotificationItem }) {
     }
   }
 
-  const avatarEl = (
-    <Avatar
-      initial={actorInitial}
-      src={actor?.avatarUrl}
-      className="size-10 shrink-0"
-    />
-  )
-
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={openPost}
-      onKeyDown={handleKeyDown}
-      className={`focus-visible:ring-primary cursor-pointer border-b border-neutral px-4 py-3.5 transition-colors hover:bg-base-2/20 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset ${!item.readAt ? "bg-subtle" : ""}`}
+    <Hover
+      borderRadius="rounded-2xl"
+      background="bg-subtle/50"
+      fullWidth
+      className="cursor-pointer"
     >
-      <div className="flex items-start gap-3">
-        {actorHandle ? (
-          <Link
-            to="/$handle"
-            params={{ handle: actorHandle }}
-            className="shrink-0 rounded-full transition hover:opacity-80"
-            onClick={(e) => e.stopPropagation()}
-            aria-label={`View @${actorHandle}`}
-          >
-            {avatarEl}
-          </Link>
-        ) : (
-          avatarEl
-        )}
-        <div className="min-w-0 flex-1 text-sm">
-          <div className="flex items-center gap-1.5">
-            {actorHandle ? (
-              <Link
-                to="/$handle"
-                params={{ handle: actorHandle }}
-                className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {actorDisplayName || actorHandle}
-                {(() => {
-                  const tier = actor ? resolveBadgeTier(actor) : null
-                  return tier ? <VerifiedBadge size={14} role={tier} /> : null
-                })()}
-              </Link>
-            ) : (
-              <span className="inline-flex items-center gap-1 font-semibold text-primary">
-                {actorDisplayName || "someone"}
-                {(() => {
-                  const tier = actor ? resolveBadgeTier(actor) : null
-                  return tier ? <VerifiedBadge size={14} role={tier} /> : null
-                })()}
-              </span>
-            )}
-            {actorHandle && (
-              <span className="text-tertiary">@{actorHandle}</span>
-            )}
-            <span className="text-xs text-tertiary">
-              · {formatShortTime(item.createdAt)}
-            </span>
-          </div>
-          {mentionTarget?.text && (
-            <p className="mt-0.5 leading-relaxed whitespace-pre-wrap text-primary">
-              <RichText text={mentionTarget.text} />
-            </p>
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={openPost}
+        onKeyDown={handleKeyDown}
+        className="w-full px-4 py-3"
+      >
+        <div className="flex items-start gap-3">
+          {actorHandle ? (
+            <AvatarWithHoverCard
+              handle={actorHandle}
+              displayName={actor?.displayName}
+              avatarUrl={actor?.avatarUrl}
+              size="lg"
+            />
+          ) : (
+            <Avatar initial={actorInitial} src={actor?.avatarUrl} size="lg" />
           )}
-          {mentionTarget && <PostEngagementBar post={mentionTarget} />}
+          <div className="min-w-0 flex-1">
+            <AuthorHeader
+              author={{
+                handle: actorHandle,
+                displayName: actor?.displayName ?? null,
+                avatarUrl: actor?.avatarUrl ?? null,
+                isVerified: actor?.isVerified,
+                isContributor: actor?.isContributor,
+                role: actor?.role,
+              }}
+              time={formatShortTime(item.createdAt)}
+              onAuthorClick={
+                actorHandle
+                  ? () =>
+                      navigate({
+                        to: "/$handle",
+                        params: { handle: actorHandle },
+                      })
+                  : undefined
+              }
+              onFetchAuthorProfile={
+                actorHandle ? fetchAuthorProfile(actorHandle) : undefined
+              }
+              className="pr-8"
+            />
+            {mentionTarget?.text && (
+              <p className="mt-0.5 text-sm leading-relaxed whitespace-pre-wrap text-primary">
+                <RichText text={mentionTarget.text} />
+              </p>
+            )}
+            {mentionTarget && <PostEngagementBar post={mentionTarget} />}
+          </div>
         </div>
       </div>
-    </div>
+    </Hover>
   )
 }
 
@@ -943,70 +989,59 @@ function NotificationRow({ item }: { item: NotificationItem }) {
     }
   }
 
-  const avatarEl = (
-    <Avatar
-      initial={actorInitial}
-      src={item.actor?.avatarUrl}
-      className="size-10 shrink-0"
-    />
-  )
+  const leadName = actorDisplayName || actorHandle || "someone"
 
   return (
-    <div
-      role={canOpen ? "button" : undefined}
-      tabIndex={canOpen ? 0 : undefined}
-      onClick={canOpen ? openRow : undefined}
-      onKeyDown={canOpen ? handleKeyDown : undefined}
-      className={`focus-visible:ring-primary block border-b border-neutral px-4 py-3.5 transition-colors hover:bg-base-2/20 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset ${canOpen ? "cursor-pointer" : ""} ${!item.readAt ? "bg-subtle" : ""}`}
+    <Hover
+      borderRadius="rounded-2xl"
+      background="bg-subtle/50"
+      fullWidth
+      className={canOpen ? "cursor-pointer" : ""}
     >
-      <div className="flex items-start gap-3">
-        <div className="flex size-10 shrink-0 items-center justify-center">
-          <Icon className={`size-5.5 ${iconClass}`} />
+      <div
+        role={canOpen ? "button" : undefined}
+        tabIndex={canOpen ? 0 : undefined}
+        onClick={canOpen ? openRow : undefined}
+        onKeyDown={canOpen ? handleKeyDown : undefined}
+        className="w-full px-4 py-3"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex w-10 shrink-0 justify-center">
+            <Icon className={`size-5 ${iconClass}`} />
+          </div>
+          {actorHandle ? (
+            <AvatarWithHoverCard
+              handle={actorHandle}
+              displayName={actorDisplayName}
+              avatarUrl={item.actor?.avatarUrl}
+              size="md"
+            />
+          ) : (
+            <Avatar
+              initial={actorInitial}
+              src={item.actor?.avatarUrl}
+              size="md"
+            />
+          )}
         </div>
-        {actorHandle ? (
-          <Link
-            to="/$handle"
-            params={{ handle: actorHandle }}
-            className="shrink-0 rounded-full transition hover:opacity-80"
-            onClick={(e) => e.stopPropagation()}
-            aria-label={`View @${actorHandle}`}
-          >
-            {avatarEl}
-          </Link>
-        ) : (
-          avatarEl
-        )}
-        <div className="min-w-0 flex-1 text-sm">
-          <p>
+        <div className="mt-2 pl-[52px]">
+          <p className="text-sm">
             {actorHandle ? (
               <Link
                 to="/$handle"
                 params={{ handle: actorHandle }}
-                className="inline-flex items-center gap-1 align-middle font-semibold text-primary hover:underline"
+                className="font-semibold text-primary hover:underline"
                 onClick={(e) => e.stopPropagation()}
               >
-                {actorDisplayName || actorHandle}
-                {(() => {
-                  const tier = item.actor ? resolveBadgeTier(item.actor) : null
-                  return tier ? <VerifiedBadge size={14} role={tier} /> : null
-                })()}
+                {leadName}
               </Link>
             ) : (
-              <span className="inline-flex items-center gap-1 align-middle font-semibold text-primary">
-                {actorDisplayName || "someone"}
-                {(() => {
-                  const tier = item.actor ? resolveBadgeTier(item.actor) : null
-                  return tier ? <VerifiedBadge size={14} role={tier} /> : null
-                })()}
-              </span>
+              <span className="font-semibold text-primary">{leadName}</span>
             )}
             {actorHandle && (
               <span className="text-tertiary"> @{actorHandle}</span>
             )}
             <span className="text-secondary"> {verb}</span>
-            <span className="ml-1.5 text-xs text-tertiary">
-              · {formatShortTime(item.createdAt)}
-            </span>
           </p>
           {item.target?.text && (
             <p className="mt-1 line-clamp-1 text-sm text-tertiary">
@@ -1015,7 +1050,7 @@ function NotificationRow({ item }: { item: NotificationItem }) {
           )}
         </div>
       </div>
-    </div>
+    </Hover>
   )
 }
 
@@ -1044,11 +1079,11 @@ function iconClassForKind(kind: NotificationItem["kind"]): string {
     case "like":
       return "text-like"
     case "repost":
-      return "text-emerald-500"
+      return "text-success"
     case "follow":
-      return "text-sky-500"
+      return "text-primary"
     case "quote":
-      return "text-amber-500"
+      return "text-warn"
     case "mention":
     case "reply":
     case "article_reply":

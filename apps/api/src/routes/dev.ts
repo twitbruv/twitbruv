@@ -268,12 +268,25 @@ devRoute.post("/seed", requireAuth(), async (c) => {
 	// ─── 8. Posts for the current user ──────────────────────────────────
 
 	const cu1 = await createPost({ authorId: currentUserId, text: "just getting started here. building something cool.", minutesAgo: 10 })
-	await createPost({ authorId: currentUserId, text: "shipped a big update today. feels good to finally get this out the door.", minutesAgo: 25, mediaIndex: [0] })
-	await createPost({ authorId: currentUserId, text: "anyone else spend more time configuring their dev environment than actually writing code?", minutesAgo: 45 })
+	const cu2 = await createPost({ authorId: currentUserId, text: "shipped a big update today. feels good to finally get this out the door.", minutesAgo: 25, mediaIndex: [0] })
+	const cu3 = await createPost({ authorId: currentUserId, text: "anyone else spend more time configuring their dev environment than actually writing code?", minutesAgo: 45 })
+	const cu4 = await createPost({ authorId: currentUserId, text: "new setup who dis", minutesAgo: 60, mediaIndex: [6] })
+	const cu5 = await createPost({ authorId: currentUserId, text: "hot take: the best code is the code you delete", minutesAgo: 100 })
 
-	// Some seed users reply to and like the current user's posts
-	await createPost({ authorId: alice, text: "welcome! excited to see what you build.", minutesAgo: 9, replyToId: cu1, rootId: cu1, conversationDepth: 1 })
+	// Seed users reply to current user's posts
+	const cuR1 = await createPost({ authorId: alice, text: "welcome! excited to see what you build.", minutesAgo: 9, replyToId: cu1, rootId: cu1, conversationDepth: 1 })
 	await createPost({ authorId: bob, text: "following!", minutesAgo: 9, replyToId: cu1, rootId: cu1, conversationDepth: 1 })
+	await createPost({ authorId: carol, text: "that desk setup is clean! what monitor is that?", minutesAgo: 55, replyToId: cu4, rootId: cu4, conversationDepth: 1 })
+	await createPost({ authorId: eve, text: "not a hot take, just facts. we deleted 40% of our codebase last quarter and everything runs better.", minutesAgo: 95, replyToId: cu5, rootId: cu5, conversationDepth: 1 })
+	await createPost({ authorId: bob, text: "congrats on the launch! what stack are you using?", minutesAgo: 23, replyToId: cu2, rootId: cu2, conversationDepth: 1 })
+	await createPost({ authorId: dave, text: "yes. every single day.", minutesAgo: 40, replyToId: cu3, rootId: cu3, conversationDepth: 1 })
+
+	// Seed users quote current user's posts
+	await createPost({ authorId: alice, text: "couldn't agree more. simplicity is the ultimate sophistication.", minutesAgo: 90, quoteOfId: cu5 })
+
+	// Seed users repost current user's posts
+	await createPost({ authorId: bob, text: "", minutesAgo: 50, repostOfId: cu4 })
+	await createPost({ authorId: eve, text: "", minutesAgo: 85, repostOfId: cu5 })
 
 	// ─── 9. Likes ───────────────────────────────────────────────────────
 
@@ -289,6 +302,10 @@ devRoute.post("/seed", requireAuth(), async (c) => {
 		{ userId: alice, postId: p11 }, { userId: bob, postId: p11 },
 		// Likes on current user's posts
 		{ userId: alice, postId: cu1 }, { userId: bob, postId: cu1 }, { userId: carol, postId: cu1 },
+		{ userId: alice, postId: cu2 }, { userId: bob, postId: cu2 }, { userId: eve, postId: cu2 },
+		{ userId: carol, postId: cu3 }, { userId: dave, postId: cu3 },
+		{ userId: alice, postId: cu4 }, { userId: bob, postId: cu4 }, { userId: carol, postId: cu4 }, { userId: eve, postId: cu4 },
+		{ userId: alice, postId: cu5 }, { userId: bob, postId: cu5 }, { userId: carol, postId: cu5 }, { userId: dave, postId: cu5 }, { userId: eve, postId: cu5 },
 		// Current user likes some posts
 		{ userId: currentUserId, postId: p1 }, { userId: currentUserId, postId: p5 }, { userId: currentUserId, postId: p14 },
 		// Likes on deep threads
@@ -328,6 +345,76 @@ devRoute.post("/seed", requireAuth(), async (c) => {
 	]
 
 	await db.insert(schema.follows).values(followPairs).onConflictDoNothing()
+
+	// ─── 11. Notifications for the current user ────────────────────────
+
+	const notifs = [
+		// Likes on cu1 (grouped — 3 people)
+		{ userId: currentUserId, kind: "like" as const, actorId: alice, entityType: "post", entityId: cu1, createdAt: ago(9) },
+		{ userId: currentUserId, kind: "like" as const, actorId: bob, entityType: "post", entityId: cu1, createdAt: ago(8) },
+		{ userId: currentUserId, kind: "like" as const, actorId: carol, entityType: "post", entityId: cu1, createdAt: ago(7) },
+		// Likes on cu2 (post with image — grouped)
+		{ userId: currentUserId, kind: "like" as const, actorId: alice, entityType: "post", entityId: cu2, createdAt: ago(22) },
+		{ userId: currentUserId, kind: "like" as const, actorId: bob, entityType: "post", entityId: cu2, createdAt: ago(21) },
+		{ userId: currentUserId, kind: "like" as const, actorId: eve, entityType: "post", entityId: cu2, createdAt: ago(20) },
+		// Likes on cu4 (desk setup with image — grouped)
+		{ userId: currentUserId, kind: "like" as const, actorId: alice, entityType: "post", entityId: cu4, createdAt: ago(52) },
+		{ userId: currentUserId, kind: "like" as const, actorId: bob, entityType: "post", entityId: cu4, createdAt: ago(51) },
+		{ userId: currentUserId, kind: "like" as const, actorId: carol, entityType: "post", entityId: cu4, createdAt: ago(50) },
+		{ userId: currentUserId, kind: "like" as const, actorId: eve, entityType: "post", entityId: cu4, createdAt: ago(49) },
+		// Likes on cu5 (hot take — grouped)
+		{ userId: currentUserId, kind: "like" as const, actorId: alice, entityType: "post", entityId: cu5, createdAt: ago(92) },
+		{ userId: currentUserId, kind: "like" as const, actorId: bob, entityType: "post", entityId: cu5, createdAt: ago(91) },
+		{ userId: currentUserId, kind: "like" as const, actorId: carol, entityType: "post", entityId: cu5, createdAt: ago(90) },
+		{ userId: currentUserId, kind: "like" as const, actorId: dave, entityType: "post", entityId: cu5, createdAt: ago(89) },
+		{ userId: currentUserId, kind: "like" as const, actorId: eve, entityType: "post", entityId: cu5, createdAt: ago(88) },
+		// Single likes on cu3
+		{ userId: currentUserId, kind: "like" as const, actorId: carol, entityType: "post", entityId: cu3, createdAt: ago(38) },
+		{ userId: currentUserId, kind: "like" as const, actorId: dave, entityType: "post", entityId: cu3, createdAt: ago(37) },
+		// Replies to current user's posts
+		{ userId: currentUserId, kind: "reply" as const, actorId: alice, entityType: "post", entityId: cuR1, createdAt: ago(9) },
+		{ userId: currentUserId, kind: "reply" as const, actorId: bob, entityType: "post", entityId: cu1, createdAt: ago(9) },
+		{ userId: currentUserId, kind: "reply" as const, actorId: carol, entityType: "post", entityId: cu4, createdAt: ago(55) },
+		{ userId: currentUserId, kind: "reply" as const, actorId: eve, entityType: "post", entityId: cu5, createdAt: ago(95) },
+		{ userId: currentUserId, kind: "reply" as const, actorId: bob, entityType: "post", entityId: cu2, createdAt: ago(23) },
+		{ userId: currentUserId, kind: "reply" as const, actorId: dave, entityType: "post", entityId: cu3, createdAt: ago(40) },
+		// Follows
+		{ userId: currentUserId, kind: "follow" as const, actorId: alice, entityType: "user", entityId: alice, createdAt: ago(6) },
+		{ userId: currentUserId, kind: "follow" as const, actorId: bob, entityType: "user", entityId: bob, createdAt: ago(5) },
+		{ userId: currentUserId, kind: "follow" as const, actorId: carol, entityType: "user", entityId: carol, createdAt: ago(4) },
+		{ userId: currentUserId, kind: "follow" as const, actorId: eve, entityType: "user", entityId: eve, createdAt: ago(3) },
+		{ userId: currentUserId, kind: "follow" as const, actorId: dave, entityType: "user", entityId: dave, createdAt: ago(2) },
+		// Reposts of current user's posts
+		{ userId: currentUserId, kind: "repost" as const, actorId: bob, entityType: "post", entityId: cu4, createdAt: ago(50) },
+		{ userId: currentUserId, kind: "repost" as const, actorId: eve, entityType: "post", entityId: cu5, createdAt: ago(85) },
+		// Quote of current user's post
+		{ userId: currentUserId, kind: "quote" as const, actorId: alice, entityType: "post", entityId: cu5, createdAt: ago(90) },
+	]
+
+	await db.insert(schema.notifications).values(notifs).onConflictDoNothing()
+
+	// ─── 12. Update denormalized counts ─────────────────────────────────
+
+	await db.execute(sql`
+		UPDATE posts SET like_count = (
+			SELECT count(*) FROM likes WHERE likes.post_id = posts.id
+		)
+	`)
+	await db.execute(sql`
+		UPDATE posts SET reply_count = (
+			SELECT count(*) FROM posts AS r WHERE r.reply_to_id = posts.id
+		)
+	`)
+	await db.execute(sql`
+		UPDATE posts SET repost_count = (
+			SELECT count(*) FROM posts AS r WHERE r.repost_of_id = posts.id
+		)
+	`)
+	await db.execute(sql`
+		UPDATE posts SET quote_count = (
+			SELECT count(*) FROM posts AS q WHERE q.quote_of_id = posts.id
+		)
+	`)
 
 	return c.json({
 		ok: true,

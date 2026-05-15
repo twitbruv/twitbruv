@@ -592,6 +592,32 @@ async function seed() {
 	console.log(`  created ${followPairs.length} follows`)
 
 	// -----------------------------------------------------------------------
+	// 9. Update denormalized counts
+	// -----------------------------------------------------------------------
+
+	await db.execute(sql`
+		UPDATE posts SET like_count = (
+			SELECT count(*) FROM likes WHERE likes.post_id = posts.id
+		)
+	`)
+	await db.execute(sql`
+		UPDATE posts SET reply_count = (
+			SELECT count(*) FROM posts AS r WHERE r.reply_to_id = posts.id
+		)
+	`)
+	await db.execute(sql`
+		UPDATE posts SET repost_count = (
+			SELECT count(*) FROM posts AS r WHERE r.repost_of_id = posts.id
+		)
+	`)
+	await db.execute(sql`
+		UPDATE posts SET quote_count = (
+			SELECT count(*) FROM posts AS q WHERE q.quote_of_id = posts.id
+		)
+	`)
+	console.log("  updated denormalized counts")
+
+	// -----------------------------------------------------------------------
 	// Done
 	// -----------------------------------------------------------------------
 

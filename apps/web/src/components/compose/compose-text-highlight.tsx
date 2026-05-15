@@ -1,6 +1,7 @@
 import { Fragment } from "react"
 import { cn } from "@workspace/ui/lib/utils"
-import { Mention, linkifyText } from "../rich-text"
+import { MentionLink } from "../mention-link"
+import { linkifyText } from "../rich-text"
 
 interface ComposeTextHighlightProps {
   text: string
@@ -33,7 +34,7 @@ export function ComposeTextHighlight({
         if (p.type === "mention") {
           return (
             <span key={i} className="pointer-events-auto">
-              <Mention handle={p.value.slice(1)} />
+              <MentionLink handle={p.value.slice(1)} />
             </span>
           )
         }

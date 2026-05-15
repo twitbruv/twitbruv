@@ -87,7 +87,7 @@ export function LinkPill({
       data-post-card-ignore-open
       onClick={(e) => e.stopPropagation()}
       className={cn(
-        "inline-flex max-w-[min(100%,18rem)] items-center gap-1.5 rounded-md border border-neutral bg-base-2 px-1.5 py-0.5 align-middle text-sm font-semibold tracking-tight text-primary no-underline shadow-[var(--inset-shadow-primary)] transition hover:scale-[1.03] hover:bg-subtle",
+        "inline-flex max-w-[min(100%,18rem)] items-center gap-1.5 rounded-md border border-neutral bg-base-2 px-1.5 py-0.5 align-middle text-sm font-semibold tracking-tight text-primary no-underline transition hover:scale-[1.03] hover:bg-subtle",
         className
       )}
     >
