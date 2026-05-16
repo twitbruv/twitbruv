@@ -11,13 +11,15 @@ final class PushController: NSObject, UNUserNotificationCenterDelegate {
 
     private var lastTokenHex: String = ""
     private weak var api: APIClient?
+    private weak var deepLinks: DeepLinkRouter?
 
     private override init() {
         super.init()
     }
 
-    func attach(api: APIClient) {
+    func attach(api: APIClient, deepLinks: DeepLinkRouter) {
         self.api = api
+        self.deepLinks = deepLinks
         UNUserNotificationCenter.current().delegate = self
     }
 
@@ -95,9 +97,7 @@ final class PushController: NSObject, UNUserNotificationCenterDelegate {
         let userInfo = response.notification.request.content.userInfo
         if let deep = userInfo["deepLink"] as? String, let url = URL(string: deep) {
             Task { @MainActor in
-                NotificationCenter.default.post(
-                    name: .twitbruvDeepLink, object: nil, userInfo: ["url": url]
-                )
+                deepLinks?.handle(url)
             }
         }
         completionHandler()

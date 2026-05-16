@@ -5,6 +5,7 @@ import os
 enum AuthState: Equatable, Sendable {
     case loading
     case signedOut
+    case unavailable(lastError: APIError?)
     case needsEmailVerification(email: String)
     case needsHandle(user: CurrentUser)
     case signedIn(user: CurrentUser)
@@ -46,15 +47,26 @@ final class AuthStore {
             case "email_not_verified":
                 state = .needsEmailVerification(email: "")
             case "handle_required":
-                if let user = try? await fetchSelf() { state = .needsHandle(user: user) }
-                else { state = .signedOut }
+                if let user = try? await fetchSelf() {
+                    state = .needsHandle(user: user)
+                } else {
+                    state = .unavailable(lastError: nil)
+                }
             default:
                 state = .signedOut
             }
+        } catch let error as APIError {
+            log.warning("bootstrap error \(String(describing: error))")
+            state = .unavailable(lastError: error)
         } catch {
             log.warning("bootstrap error \(String(describing: error))")
-            state = .signedOut
+            state = .unavailable(lastError: nil)
         }
+    }
+
+    func retryBootstrap() async {
+        state = .loading
+        await bootstrap()
     }
 
     private func fetchSelf() async throws -> CurrentUser {

@@ -27,6 +27,8 @@ struct AppRouter: View {
             switch auth.state {
             case .loading:
                 SplashView()
+            case .unavailable(let lastError):
+                BootstrapUnavailableView(lastError: lastError)
             case .signedOut:
                 SignedOutContainer()
             case .needsEmailVerification:
@@ -51,6 +53,38 @@ private struct SplashView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.clear)
+    }
+}
+
+private struct BootstrapUnavailableView: View {
+    @Environment(AuthStore.self) private var auth
+    let lastError: APIError?
+
+    var body: some View {
+        VStack(spacing: 16) {
+            HeroIcon(name: "exclamation-triangle-solid", size: 40)
+                .foregroundStyle(TBColor.textTertiary)
+            Text("Can't reach twitbruv")
+                .font(TBTypography.pageTitle)
+                .foregroundStyle(TBColor.textPrimary)
+            Text(message)
+                .multilineTextAlignment(.center)
+                .font(TBTypography.bodySecondary)
+                .foregroundStyle(TBColor.textSecondary)
+                .padding(.horizontal)
+            TBButton(title: "Retry", style: .primary, expands: true) {
+                Task { await auth.retryBootstrap() }
+            }
+            .padding(.horizontal, TBLayout.pagePadding)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.clear)
+    }
+
+    private var message: String {
+        lastError?.localizedDescription
+            ?? "Check your connection and try again."
     }
 }
 

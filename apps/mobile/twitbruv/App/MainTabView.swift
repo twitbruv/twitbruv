@@ -80,6 +80,12 @@ struct MainTabView: View {
         .onReceive(NotificationCenter.default.publisher(for: .dmUnreadCountShouldRefresh)) { _ in
             Task { await env.badges.refreshDMs() }
         }
+        .onChange(of: env.deepLinks.feedRevision) { _, _ in
+            selection = .home
+        }
+        .onChange(of: env.deepLinks.dmRevision) { _, _ in
+            selection = .dms
+        }
     }
 
     private func tbTabLabel(_ title: String, icon: String) -> some View {

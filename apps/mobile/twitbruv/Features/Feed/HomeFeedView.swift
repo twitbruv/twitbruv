@@ -88,6 +88,14 @@ struct HomeFeedView: View {
                 ReportSheet(subject: .post(id: post.id))
             }
             .task { initializeLoaders() }
+            .onAppear { flushDeepLinks() }
+            .onChange(of: env.deepLinks.feedRevision) { _, _ in flushDeepLinks() }
+        }
+    }
+
+    private func flushDeepLinks() {
+        for route in env.deepLinks.takePendingFeedRoutes() {
+            path.append(route)
         }
     }
 

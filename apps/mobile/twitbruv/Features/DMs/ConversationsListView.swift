@@ -68,6 +68,17 @@ struct ConversationsListView: View {
             Group {
                 if let vm {
                     List {
+                        if let err = vm.error, vm.conversations.isEmpty {
+                            Section {
+                                ErrorBanner(message: err.localizedDescription) {
+                                    Task {
+                                        await vm.reload()
+                                        await env.badges.refreshDMs()
+                                    }
+                                }
+                                .listRowSeparator(.hidden)
+                            }
+                        }
                         if vm.conversations.isEmpty && vm.didLoadOnce {
                             TBInlineState(
                                 kind: .empty(
@@ -188,6 +199,14 @@ struct ConversationsListView: View {
                     await env.badges.refreshDMs()
                 }
             }
+            .onAppear { flushDeepLinks() }
+            .onChange(of: env.deepLinks.dmRevision) { _, _ in flushDeepLinks() }
+        }
+    }
+
+    private func flushDeepLinks() {
+        for route in env.deepLinks.takePendingDMRoutes() {
+            path.append(route)
         }
     }
 }

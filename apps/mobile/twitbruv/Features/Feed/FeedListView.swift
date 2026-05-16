@@ -67,6 +67,14 @@ struct FeedListView<TopInset: View, Page: Decodable & Sendable>: View {
                     }
                     .listRowSeparator(.hidden)
                 }
+            } else if loader.items.isEmpty && !loader.didLoadOnce && loader.error == nil {
+                Section {
+                    ProgressView()
+                        .tint(TBColor.accent)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 24)
+                        .listRowSeparator(.hidden)
+                }
             } else if loader.items.isEmpty && loader.didLoadOnce {
                 Section {
                     #if DEBUG

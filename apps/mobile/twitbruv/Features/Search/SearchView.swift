@@ -5,7 +5,8 @@ import Observation
 @MainActor
 final class SearchViewModel {
     let api: APIClient
-    var query = ""
+    var rawQuery: String = ""
+    var scope: SearchScope = .top
     var users: [UserSummary] = []
     var suggested: [UserSummary] = []
     var posts: [Post] = []
@@ -14,11 +15,22 @@ final class SearchViewModel {
     var isSearching = false
     var error: APIError?
     var openingErrorMessage: String?
-    private var lastQuery = ""
+    var didLoadOpening = false
+    private var lastSearchedQuery = ""
 
     init(api: APIClient, initialQuery: String = "") {
         self.api = api
-        self.query = initialQuery
+        self.rawQuery = initialQuery
+    }
+
+    var trimmedQuery: String {
+        rawQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var hasActiveQuery: Bool { trimmedQuery.count >= 2 }
+
+    var currentFilters: SearchFilters {
+        SearchFiltersCodec.parse(rawQuery)
     }
 
     func loadOpening() async {
@@ -33,17 +45,18 @@ final class SearchViewModel {
         } catch {
             openingErrorMessage = "Could not load search suggestions."
         }
+        didLoadOpening = true
     }
 
     func search() async {
-        let q = query.trimmingCharacters(in: .whitespaces)
+        let q = trimmedQuery
         guard q.count >= 2 else {
             users = []
             posts = []
             return
         }
-        if q == lastQuery, isSearching { return }
-        lastQuery = q
+        if q == lastSearchedQuery { return }
+        lastSearchedQuery = q
         isSearching = true
         defer { isSearching = false }
         do {
@@ -53,13 +66,19 @@ final class SearchViewModel {
             error = nil
         } catch let e as APIError {
             self.error = e
+            lastSearchedQuery = ""
         } catch {
             self.error = .invalidResponse
+            lastSearchedQuery = ""
         }
     }
 
+    func applyFilters(_ filters: SearchFilters) {
+        rawQuery = SearchFiltersCodec.build(filters)
+    }
+
     func saveCurrent() async -> String? {
-        let q = query.trimmingCharacters(in: .whitespaces)
+        let q = trimmedQuery
         guard q.count >= 2 else { return nil }
         guard !saved.contains(where: { $0.query.caseInsensitiveCompare(q) == .orderedSame }) else {
             return "Search already saved"
@@ -117,190 +136,58 @@ struct SearchStackContent: View {
     @Environment(\.openURL) private var openURL
     @State private var vm: SearchViewModel?
     @State private var actions: PostActions?
+    @State private var recents = SearchRecentsStore()
     @State private var mediaViewer: MediaViewerItem?
     @State private var debounceTask: Task<Void, Never>?
+    @State private var showFilters = false
 
     var body: some View {
         Group {
             if let vm {
-                List {
-                    if let openingErrorMessage = vm.openingErrorMessage,
-                       vm.query.trimmingCharacters(in: .whitespaces).isEmpty
-                    {
-                        TBInlineState(
-                            kind: .error(openingErrorMessage),
-                            retryTitle: "Retry",
-                            retry: { Task { await vm.loadOpening() } }
+                listContent(vm: vm)
+                    .tbListChrome()
+                    .scrollDismissesKeyboard(.interactively)
+                    .toolbarVisibility(.hidden, for: .navigationBar)
+                    .safeAreaInset(edge: .top, spacing: 0) {
+                        SearchHeaderBar(
+                            query: Binding(
+                                get: { vm.rawQuery },
+                                set: { vm.rawQuery = $0 }
+                            ),
+                            scope: Binding(
+                                get: { vm.scope },
+                                set: { vm.scope = $0 }
+                            ),
+                            showScopes: vm.hasActiveQuery,
+                            activeFilterCount: vm.currentFilters.activeOperatorCount,
+                            canSave: vm.hasActiveQuery,
+                            onSubmit: { submitSearch(vm: vm) },
+                            onTapFilter: { showFilters = true },
+                            onTapSave: { saveCurrent(vm: vm) }
                         )
-                        .listRowSeparator(.hidden)
+                        .background(headerBackground)
                     }
-                    if vm.query.trimmingCharacters(in: .whitespaces).isEmpty {
-                        if !vm.suggested.isEmpty {
-                            Section("Suggested") {
-                                ForEach(vm.suggested) { user in
-                                    if let h = user.handle {
-                                        NavigationLink(value: FeedRoute.profile(handle: h)) {
-                                            UserRowView(user: user)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        if !vm.trending.isEmpty {
-                            Section("Trending") {
-                                ForEach(vm.trending) { tag in
-                                    Button {
-                                        path.append(SearchRoute.hashtag(tag: tag.tag))
-                                    } label: {
-                                        HStack {
-                                            Text("#\(tag.tag)").font(.callout.weight(.semibold))
-                                            Spacer()
-                                            if let n = tag.postCount {
-                                                Text("\(n) posts").font(.caption)
-                                                    .foregroundStyle(.secondary)
-                                            }
-                                        }
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-                        }
-                        if !vm.saved.isEmpty {
-                            Section("Saved") {
-                                ForEach(vm.saved) { s in
-                                    HStack {
-                                        Text(s.query)
-                                        Spacer()
-                                        Button(role: .destructive) {
-                                            Task {
-                                                let ok = await vm.deleteSaved(s.id)
-                                                env.toast.show(
-                                                    ok ? "Saved search removed" : "Could not remove saved search",
-                                                    kind: ok ? .success : .error
-                                                )
-                                            }
-                                        } label: {
-                                            HeroIcon(name: "trash-solid", size: 16)
-                                        }
-                                        .buttonStyle(.plain)
-                                    }
-                                    .contentShape(.rect)
-                                    .onTapGesture {
-                                        vm.query = s.query
-                                        Task { await vm.search() }
-                                    }
-                                }
-                            }
-                        }
-                    } else {
-                        if !vm.users.isEmpty {
-                            Section("People") {
-                                ForEach(vm.users) { user in
-                                    if let h = user.handle {
-                                        NavigationLink(value: FeedRoute.profile(handle: h)) {
-                                            UserRowView(user: user)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        if !vm.posts.isEmpty {
-                            Section("Posts") {
-                                ForEach(vm.posts) { post in
-                                    Button {
-                                        path.append(FeedRoute.thread(id: post.id))
-                                    } label: {
-                                        PostCardView(
-                                            post: post,
-                                            displayMode: .compact,
-                                            onLike: { Task { await actions?.toggleLike(post) } },
-                                            onRepost: { Task { await actions?.toggleRepost(post) } },
-                                            onQuote: { path.append(FeedRoute.quote(target: post)) },
-                                            onBookmark: { Task { await actions?.toggleBookmark(post) } },
-                                            onReply: { path.append(FeedRoute.compose(replyTo: post)) },
-                                            onTapAuthor: {
-                                                if let h = post.author.handle {
-                                                    path.append(FeedRoute.profile(handle: h))
-                                                }
-                                            },
-                                            onTapMedia: { media, all in
-                                                mediaViewer = MediaViewerItem(media: all, initialID: media.id)
-                                            },
-                                            onTapHashtag: { tag in
-                                                path.append(SearchRoute.hashtag(tag: tag))
-                                            },
-                                            onTapURL: { url in openURL(url) },
-                                            onVotePoll: { pollId, optionId in
-                                                Task {
-                                                    await actions?.votePoll(
-                                                        pollId: pollId,
-                                                        optionId: optionId,
-                                                        previousOptionIds: post.poll?.viewerVoteOptionIds
-                                                    )
-                                                }
-                                            }
-                                        )
-                                    }
-                                    .buttonStyle(.plain)
-                                    .listRowInsets(EdgeInsets())
-                                    .listRowSeparator(.hidden)
-                                    .listRowBackground(Color.clear)
-                                }
-                            }
-                        }
-                        if vm.users.isEmpty && vm.posts.isEmpty && !vm.isSearching {
-                            Section {
-                                TBInlineState(
-                                    kind: .empty(
-                                        icon: "magnifying-glass-solid",
-                                        title: "No results",
-                                        message: nil
-                                    )
-                                )
+                    .onChange(of: vm.rawQuery) { _, newValue in
+                        debounceTask?.cancel()
+                        debounceTask = Task { @MainActor in
+                            try? await Task.sleep(for: .milliseconds(300))
+                            guard !Task.isCancelled else { return }
+                            if newValue.trimmingCharacters(in: .whitespacesAndNewlines).count >= 2 {
+                                await vm.search()
+                            } else {
+                                vm.users = []
+                                vm.posts = []
                             }
                         }
                     }
-                }
-                .listRowSpacing(TBLayout.feedListRowSpacing)
-                .listStyle(.insetGrouped)
-                .scrollContentBackground(.hidden)
-                .background(Color.clear)
-                .tbReadableColumn()
-                .navigationTitle("Search")
-                .searchable(
-                    text: Binding(get: { vm.query }, set: { vm.query = $0 }),
-                    prompt: "People, posts, #tags"
-                )
-                .onChange(of: vm.query) { _, newValue in
-                    debounceTask?.cancel()
-                    debounceTask = Task { @MainActor in
-                        try? await Task.sleep(for: .milliseconds(300))
-                        guard !Task.isCancelled else { return }
-                        if newValue.trimmingCharacters(in: .whitespaces).count >= 2 {
-                            await vm.search()
-                        }
-                    }
-                }
-                .onSubmit(of: .search) {
-                    Task { await vm.search() }
-                }
-                .toolbar {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        if !vm.query.isEmpty {
-                            Button {
-                                Task {
-                                    if let message = await vm.saveCurrent() {
-                                        env.toast.show(message)
-                                    } else {
-                                        env.toast.show("Could not save search", kind: .error)
-                                    }
-                                }
-                            } label: {
-                                HeroIcon(name: "bookmark-outline", size: 18)
+                    .sheet(isPresented: $showFilters) {
+                        SearchFiltersSheet(
+                            initial: vm.currentFilters,
+                            onApply: { filters in
+                                vm.applyFilters(filters)
                             }
-                        }
+                        )
                     }
-                }
             } else {
                 ProgressView()
                     .tint(TBColor.accent)
@@ -362,6 +249,390 @@ struct SearchStackContent: View {
                 }
             }
         }
+    }
+
+    private var headerBackground: some View {
+        TBColor.base1
+            .overlay(alignment: .bottom) {
+                TBColor.borderNeutral
+                    .frame(height: 0.5)
+            }
+            .ignoresSafeArea(edges: .top)
+    }
+
+    private func submitSearch(vm: SearchViewModel) {
+        let q = vm.trimmedQuery
+        if q.count >= 2 {
+            recents.add(q)
+        }
+        debounceTask?.cancel()
+        Task { await vm.search() }
+    }
+
+    private func runQuery(_ query: String, vm: SearchViewModel) {
+        debounceTask?.cancel()
+        vm.rawQuery = query
+        recents.add(query)
+        Task { await vm.search() }
+    }
+
+    private func saveCurrent(vm: SearchViewModel) {
+        Task {
+            if let message = await vm.saveCurrent() {
+                env.toast.show(message)
+            } else {
+                env.toast.show("Could not save search", kind: .error)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func listContent(vm: SearchViewModel) -> some View {
+        List {
+            if vm.hasActiveQuery {
+                resultsSections(vm: vm)
+            } else {
+                openingSections(vm: vm)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func openingSections(vm: SearchViewModel) -> some View {
+        if let openingErrorMessage = vm.openingErrorMessage {
+            TBInlineState(
+                kind: .error(openingErrorMessage),
+                retryTitle: "Retry",
+                retry: { Task { await vm.loadOpening() } }
+            )
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets())
+        }
+        let nothingToShow = vm.didLoadOpening &&
+            vm.openingErrorMessage == nil &&
+            recents.items.isEmpty &&
+            vm.suggested.isEmpty &&
+            vm.trending.isEmpty &&
+            vm.saved.isEmpty
+        if nothingToShow {
+            TBInlineState(
+                kind: .empty(
+                    icon: "magnifying-glass-solid",
+                    title: "Discover what's happening",
+                    message: "Search for people, posts, or #tags."
+                )
+            )
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets())
+        }
+        if !recents.items.isEmpty {
+            sectionHeader(
+                "Recent",
+                trailing: AnyView(
+                    Button("Clear") { recents.clear() }
+                        .font(TBTypography.meta.weight(.medium))
+                        .foregroundStyle(TBColor.textSecondary)
+                )
+            )
+            ForEach(recents.items, id: \.self) { query in
+                RecentSearchRow(
+                    query: query,
+                    onTap: {
+                        runQuery(query, vm: vm)
+                    },
+                    onRemove: { recents.remove(query) }
+                )
+                .listRowInsets(EdgeInsets())
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    Button(role: .destructive) {
+                        recents.remove(query)
+                    } label: {
+                        Label("Remove", hero: "trash-solid")
+                    }
+                }
+            }
+        }
+        if !vm.suggested.isEmpty {
+            sectionHeader("Suggested")
+            ForEach(vm.suggested) { user in
+                if let handle = user.handle {
+                    NavigationLink(value: FeedRoute.profile(handle: handle)) {
+                        UserRowView(user: user)
+                            .padding(.horizontal, TBLayout.pagePadding)
+                            .padding(.vertical, 10)
+                    }
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                }
+            }
+        }
+        if !vm.trending.isEmpty {
+            sectionHeader("Trending")
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    ForEach(vm.trending) { tag in
+                        TrendingChip(tag: tag) {
+                            path.append(SearchRoute.hashtag(tag: tag.tag))
+                        }
+                    }
+                }
+                .padding(.horizontal, TBLayout.pagePadding)
+                .padding(.vertical, 4)
+            }
+            .listRowInsets(EdgeInsets())
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+        }
+        if !vm.saved.isEmpty {
+            sectionHeader("Saved")
+            ForEach(vm.saved) { saved in
+                SavedSearchRow(
+                    query: saved.query,
+                    onTap: {
+                        runQuery(saved.query, vm: vm)
+                    },
+                    onDelete: {
+                        Task {
+                            let ok = await vm.deleteSaved(saved.id)
+                            env.toast.show(
+                                ok ? "Saved search removed" : "Could not remove saved search",
+                                kind: ok ? .success : .error
+                            )
+                        }
+                    }
+                )
+                .listRowInsets(EdgeInsets())
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    Button(role: .destructive) {
+                        Task {
+                            let ok = await vm.deleteSaved(saved.id)
+                            env.toast.show(
+                                ok ? "Saved search removed" : "Could not remove saved search",
+                                kind: ok ? .success : .error
+                            )
+                        }
+                    } label: {
+                        Label("Remove", hero: "trash-solid")
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func resultsSections(vm: SearchViewModel) -> some View {
+        let showPeople = vm.scope == .top || vm.scope == .people
+        let showPosts = vm.scope == .top || vm.scope == .posts
+
+        if showPeople, !vm.users.isEmpty {
+            sectionHeader("People")
+            ForEach(vm.users) { user in
+                if let handle = user.handle {
+                    NavigationLink(value: FeedRoute.profile(handle: handle)) {
+                        UserRowView(user: user)
+                            .padding(.horizontal, TBLayout.pagePadding)
+                            .padding(.vertical, 10)
+                    }
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                }
+            }
+        }
+        if showPosts, !vm.posts.isEmpty {
+            sectionHeader("Posts")
+            ForEach(vm.posts) { post in
+                Button {
+                    path.append(FeedRoute.thread(id: post.id))
+                } label: {
+                    PostCardView(
+                        post: post,
+                        displayMode: .compact,
+                        onLike: { Task { await actions?.toggleLike(post) } },
+                        onRepost: { Task { await actions?.toggleRepost(post) } },
+                        onQuote: { path.append(FeedRoute.quote(target: post)) },
+                        onBookmark: { Task { await actions?.toggleBookmark(post) } },
+                        onReply: { path.append(FeedRoute.compose(replyTo: post)) },
+                        onTapAuthor: {
+                            if let h = post.author.handle {
+                                path.append(FeedRoute.profile(handle: h))
+                            }
+                        },
+                        onTapMedia: { media, all in
+                            mediaViewer = MediaViewerItem(media: all, initialID: media.id)
+                        },
+                        onTapHashtag: { tag in
+                            path.append(SearchRoute.hashtag(tag: tag))
+                        },
+                        onTapURL: { url in openURL(url) },
+                        onVotePoll: { pollId, optionId in
+                            Task {
+                                await actions?.votePoll(
+                                    pollId: pollId,
+                                    optionId: optionId,
+                                    previousOptionIds: post.poll?.viewerVoteOptionIds
+                                )
+                            }
+                        }
+                    )
+                }
+                .buttonStyle(.plain)
+                .listRowInsets(EdgeInsets())
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+            }
+        }
+
+        let nothingForScope =
+            (showPeople ? vm.users.isEmpty : true) &&
+            (showPosts ? vm.posts.isEmpty : true)
+        if nothingForScope, !vm.isSearching {
+            TBInlineState(
+                kind: .empty(
+                    icon: "magnifying-glass-solid",
+                    title: emptyTitle(for: vm.scope),
+                    message: emptyMessage(for: vm.scope, query: vm.trimmedQuery)
+                )
+            )
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets())
+        }
+    }
+
+    @ViewBuilder
+    private func sectionHeader(
+        _ title: String,
+        trailing: AnyView? = nil
+    ) -> some View {
+        HStack {
+            Text(title)
+                .font(TBTypography.cardTitle.weight(.semibold))
+                .foregroundStyle(TBColor.textPrimary)
+            Spacer()
+            if let trailing { trailing }
+        }
+        .padding(.horizontal, TBLayout.pagePadding)
+        .padding(.top, 14)
+        .padding(.bottom, 2)
+        .listRowInsets(EdgeInsets())
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+    }
+
+    private func emptyTitle(for scope: SearchScope) -> String {
+        switch scope {
+        case .top: return "No results"
+        case .people: return "No people found"
+        case .posts: return "No posts found"
+        }
+    }
+
+    private func emptyMessage(for scope: SearchScope, query: String) -> String? {
+        guard !query.isEmpty else { return nil }
+        switch scope {
+        case .top: return "Try a different query or check your spelling."
+        case .people: return "No accounts match “\(query)”."
+        case .posts: return "No posts match “\(query)”."
+        }
+    }
+}
+
+private struct RecentSearchRow: View {
+    let query: String
+    let onTap: () -> Void
+    let onRemove: () -> Void
+
+    var body: some View {
+        TappableRow(action: onTap) {
+            HStack(spacing: 12) {
+                HeroIcon(name: "clock-solid", size: 16)
+                    .foregroundStyle(TBColor.textTertiary)
+                    .frame(width: 24)
+                Text(query)
+                    .font(TBTypography.body)
+                    .foregroundStyle(TBColor.textPrimary)
+                    .lineLimit(1)
+                Spacer()
+                Button(action: onRemove) {
+                    HeroIcon(name: "xmark-solid", size: 14)
+                        .foregroundStyle(TBColor.textTertiary)
+                        .frame(width: 30, height: 30)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Remove recent search")
+            }
+            .padding(.horizontal, TBLayout.pagePadding)
+            .padding(.vertical, 8)
+        }
+    }
+}
+
+private struct SavedSearchRow: View {
+    let query: String
+    let onTap: () -> Void
+    let onDelete: () -> Void
+
+    var body: some View {
+        TappableRow(action: onTap) {
+            HStack(spacing: 12) {
+                HeroIcon(name: "bookmark-solid", size: 16)
+                    .foregroundStyle(TBColor.accent)
+                    .frame(width: 24)
+                Text(query)
+                    .font(TBTypography.body)
+                    .foregroundStyle(TBColor.textPrimary)
+                    .lineLimit(1)
+                Spacer()
+                Button(action: onDelete) {
+                    HeroIcon(name: "trash-solid", size: 14)
+                        .foregroundStyle(TBColor.textTertiary)
+                        .frame(width: 30, height: 30)
+                        .contentShape(.rect)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Delete saved search")
+            }
+            .padding(.horizontal, TBLayout.pagePadding)
+            .padding(.vertical, 8)
+        }
+    }
+}
+
+private struct TrendingChip: View {
+    let tag: Hashtag
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("#\(tag.tag)")
+                    .font(TBTypography.body.weight(.semibold))
+                    .foregroundStyle(TBColor.textPrimary)
+                if let count = tag.postCount {
+                    Text("\(count) post\(count == 1 ? "" : "s")")
+                        .font(TBTypography.caption)
+                        .foregroundStyle(TBColor.textSecondary)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 10)
+            .frame(minWidth: 120, alignment: .leading)
+            .tbGlass(
+                .card,
+                in: RoundedRectangle(cornerRadius: TBLayout.radiusGlassCard, style: .continuous),
+                shadow: false
+            )
+        }
+        .buttonStyle(TBSquishButtonStyle())
     }
 }
 

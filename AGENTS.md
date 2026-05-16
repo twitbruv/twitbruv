@@ -49,6 +49,8 @@ directory.
 
 - Install dependencies: `bun install`
 - Start all dev tasks: `bun run dev`
+- Start API + worker only: `bun run dev:api`
+- Start API + worker + iOS app on simulator: `bun run dev:mobile`
 - Start local services: `bun run services:up`
 - Stop local services: `bun run services:down`
 - Typecheck: `bun run typecheck`
@@ -57,6 +59,8 @@ directory.
 - Check formatting: `bun run format:check`
 - Format: `bun run format`
 - Build: `bun run build`
+- iOS (`apps/mobile`): Xcode unit tests are separate from Bun; see `apps/mobile/README.md`
+- iOS (`apps/mobile`): Xcode unit tests are separate from Bun; see `apps/mobile/README.md`
 - Database push for local schema sync: `bun run db:push`
 - Database seed: `bun run db:seed`
 - Database studio: `bun run db:studio`

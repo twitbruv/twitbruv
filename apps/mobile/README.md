@@ -1,91 +1,33 @@
-# apps/mobile — iOS client (`twitbruv`)
+# iOS app (`twitbruv`)
 
-Native SwiftUI client for twitbruv. Talks to `apps/api` over HTTPS using
-Better Auth cookie sessions. Built with Xcode 26+ and an iOS 26.0 deployment
-target. **Not part of the Bun/Turbo build graph** — `bun run typecheck`,
-`bun run lint`, and `bun run build` do not touch this directory.
+Open `twitbruv.xcodeproj` in Xcode. Root `bun run typecheck`, `lint`, and `build` do **not** compile Swift — the mobile app is not part of the Bun/Turbo build graph.
 
-## Open the project
+## Run alongside API + worker
+
+From the repository root:
 
 ```bash
-open apps/mobile/twitbruv.xcodeproj
+bun run dev:mobile
 ```
 
-The project uses `PBXFileSystemSynchronizedRootGroup`, so any `.swift` file
-added under `apps/mobile/twitbruv/` is automatically part of the build target.
+This starts `api` + `worker` via `turbo dev` and, in parallel, builds the iOS app, installs it on the currently booted simulator (falling back to `iPhone 17 Pro Max`), and launches it. Ctrl+C stops the API and worker; the app keeps running in the simulator.
 
-## Run against local services
+Build artifacts go to `apps/mobile/DerivedData/` (gitignored). To skip the parallel iOS step and only run the backend, use `bun run dev:api`.
 
-1. From repo root, start backing services and the API:
+## Unit tests
 
-   ```bash
-   bun run services:up
-   bun run dev
-   ```
+From the repository root:
 
-   Confirm the API is on `http://localhost:3001` and the web on
-   `http://localhost:3000`.
+```bash
+xcodebuild \
+  -project apps/mobile/twitbruv.xcodeproj \
+  -scheme twitbruv \
+  -destination 'generic/platform=iOS Simulator' \
+  test
+```
 
-2. Make sure your local `.env` has `twitbruv-ios://app` in
-   `AUTH_TRUSTED_ORIGINS` (the value `.env.example` ships with). Without this,
-   any non-GET request from the iOS app will be rejected by
-   `requireSameOrigin` with `403 invalid_origin`.
+Use `-quiet` for less log noise once the project is healthy locally.
 
-3. In Xcode, pick an **iOS 26.0 or newer** simulator and Cmd-R. The DEBUG build points
-   at `http://localhost:3001` (see `App/Config.swift`). Release builds default
-   to `https://api.ak2.dev` (API) and `https://ak2.dev` (web). To override, set
-   the `API_BASE_URL` and `WEB_BASE_URL` Info.plist entries via build settings
-   or an `.xcconfig`.
+## Local API / web URLs
 
-   The DEBUG `Info.plist` includes an `NSAppTransportSecurity` exception for
-   `localhost` and `127.0.0.1` so HTTP traffic to the dev API is allowed.
-   Release builds require HTTPS.
-
-## Auth
-
-The app uses cookie sessions managed by `URLSession`'s shared
-`HTTPCookieStorage`. After sign-in the `session_token` cookie is persisted to
-disk and survives relaunch. Current visible sign-in surfaces:
-
-- Email + password
-- 2FA challenge (TOTP + backup code)
-
-Magic-link and OAuth views exist in the target, but are not exposed from the
-primary sign-in screen until mobile callback behavior is revalidated locally.
-
-Passkey enrolment, password reset, and email-verification deep links are
-deferred to a follow-up.
-
-## Production checklist
-
-Before pointing the app at a non-local environment:
-
-1. Add the mobile origin to `AUTH_TRUSTED_ORIGINS` for that environment:
-
-   ```
-   AUTH_TRUSTED_ORIGINS=...,twitbruv-ios://app
-   ```
-
-   Without this the API rejects every mutation from the app.
-
-2. Confirm `AUTH_COOKIE_DOMAIN` for the API host the app is calling. The app
-   relies on `Set-Cookie` from the API; if the cookie scope is wrong the app
-   will silently sign you out on next launch.
-
-3. Build with `Release` to compile out the localhost ATS exception. Override
-   `API_BASE_URL` / `WEB_BASE_URL` via build settings if the URLs differ from
-   the defaults baked into `Config.swift`.
-
-4. **Push (APNs):** Enable the Push Notifications capability in Xcode for your
-   team if it is not already applied. Debug builds use
-   `twitbruv/twitbruv.entitlements` (`aps-environment` = development); Release
-   uses `twitbruv-release.entitlements` (production). Run `bun run db:push`
-   locally so the `device_tokens` table exists. Configure `APNS_*` in `.env`
-   for `apps/worker` (see root `.env.example`).
-
-## Out of scope for v1
-
-- Bearer / API-key auth — cookie sessions only
-- Article composition (read-only viewer; write on web)
-- Chess, admin, analytics dashboard, GitHub connector, ActivityPub
-- Offline storage / SwiftData persistence
+Debug defaults match `Config`: API `http://localhost:3001`, web `http://localhost:3000`. Override with `API_BASE_URL` and `WEB_BASE_URL` in the app `Info.plist` if needed.

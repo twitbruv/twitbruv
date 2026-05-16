@@ -10,9 +10,20 @@
 		0CE8B4B12FA8124C00FF124B /* twitbruv.icon in Resources */ = {isa = PBXBuildFile; fileRef = 0CE8B4B02FA8124C00FF124B /* twitbruv.icon */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		E1F2A3BA2FA6294A00D7299E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 78D8D9872FA6294A00D7299E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 78D8D98E2FA6294A00D7299E;
+			remoteInfo = twitbruv;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		0CE8B4B02FA8124C00FF124B /* twitbruv.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = twitbruv.icon; sourceTree = "<group>"; };
 		78D8D98F2FA6294A00D7299E /* twitbruv.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = twitbruv.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E1F2A3B52FA6294A00D7299E /* twitbruvTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = twitbruvTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -34,10 +45,22 @@
 			path = twitbruv;
 			sourceTree = "<group>";
 		};
+		E1F2A3B92FA6294A00D7299E /* twitbruvTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = twitbruvTests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		78D8D98C2FA6294A00D7299E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E1F2A3B72FA6294A00D7299E /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -52,6 +75,7 @@
 			children = (
 				0CE8B4B02FA8124C00FF124B /* twitbruv.icon */,
 				78D8D9912FA6294A00D7299E /* twitbruv */,
+				E1F2A3B92FA6294A00D7299E /* twitbruvTests */,
 				78D8D9902FA6294A00D7299E /* Products */,
 			);
 			sourceTree = "<group>";
@@ -60,6 +84,7 @@
 			isa = PBXGroup;
 			children = (
 				78D8D98F2FA6294A00D7299E /* twitbruv.app */,
+				E1F2A3B52FA6294A00D7299E /* twitbruvTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -89,6 +114,29 @@
 			productReference = 78D8D98F2FA6294A00D7299E /* twitbruv.app */;
 			productType = "com.apple.product-type.application";
 		};
+		E1F2A3B42FA6294A00D7299E /* twitbruvTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E1F2A3BE2FA6294A00D7299E /* Build configuration list for PBXNativeTarget "twitbruvTests" */;
+			buildPhases = (
+				E1F2A3B62FA6294A00D7299E /* Sources */,
+				E1F2A3B72FA6294A00D7299E /* Frameworks */,
+				E1F2A3B82FA6294A00D7299E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				E1F2A3BB2FA6294A00D7299E /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				E1F2A3B92FA6294A00D7299E /* twitbruvTests */,
+			);
+			name = twitbruvTests;
+			packageProductDependencies = (
+			);
+			productName = twitbruvTests;
+			productReference = E1F2A3B52FA6294A00D7299E /* twitbruvTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -101,6 +149,10 @@
 				TargetAttributes = {
 					78D8D98E2FA6294A00D7299E = {
 						CreatedOnToolsVersion = 26.4.1;
+					};
+					E1F2A3B42FA6294A00D7299E = {
+						CreatedOnToolsVersion = 26.4.1;
+						TestTargetID = 78D8D98E2FA6294A00D7299E;
 					};
 				};
 			};
@@ -119,6 +171,7 @@
 			projectRoot = "";
 			targets = (
 				78D8D98E2FA6294A00D7299E /* twitbruv */,
+				E1F2A3B42FA6294A00D7299E /* twitbruvTests */,
 			);
 		};
 /* End PBXProject section */
@@ -132,6 +185,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E1F2A3B82FA6294A00D7299E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -142,7 +202,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E1F2A3B62FA6294A00D7299E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		E1F2A3BB2FA6294A00D7299E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 78D8D98E2FA6294A00D7299E /* twitbruv */;
+			targetProxy = E1F2A3BA2FA6294A00D7299E /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		78D8D9982FA6294B00D7299E /* Debug */ = {
@@ -277,6 +352,7 @@
 				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_TEAM = DS2JFEEZDM;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_TESTABILITY = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = twitbruv/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -332,6 +408,50 @@
 			};
 			name = Release;
 		};
+		E1F2A3BC2FA6294A00D7299E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 8;
+				DEVELOPMENT_TEAM = DS2JFEEZDM;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.ak2.twitbruvTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/twitbruv.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/twitbruv";
+			};
+			name = Debug;
+		};
+		E1F2A3BD2FA6294A00D7299E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 8;
+				DEVELOPMENT_TEAM = DS2JFEEZDM;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = dev.ak2.twitbruvTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/twitbruv.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/twitbruv";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -349,6 +469,15 @@
 			buildConfigurations = (
 				78D8D99B2FA6294B00D7299E /* Debug */,
 				78D8D99C2FA6294B00D7299E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E1F2A3BE2FA6294A00D7299E /* Build configuration list for PBXNativeTarget "twitbruvTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E1F2A3BC2FA6294A00D7299E /* Debug */,
+				E1F2A3BD2FA6294A00D7299E /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

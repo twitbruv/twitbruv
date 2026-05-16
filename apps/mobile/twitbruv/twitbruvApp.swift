@@ -19,15 +19,13 @@ struct twitbruvApp: App {
                     await env.bootstrap()
                 }
                 .onOpenURL { url in
-                    NotificationCenter.default.post(
-                        name: .twitbruvDeepLink, object: nil, userInfo: ["url": url]
-                    )
+                    env.deepLinks.handle(url)
+                }
+                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { activity in
+                    if let url = activity.webpageURL {
+                        env.deepLinks.handle(url)
+                    }
                 }
         }
     }
-}
-
-extension Notification.Name {
-    static let twitbruvDeepLink = Notification.Name("twitbruv.deepLink")
-    static let postChanged = Notification.Name("twitbruv.postChanged")
 }

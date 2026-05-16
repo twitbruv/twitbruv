@@ -1,5 +1,6 @@
 import AuthenticationServices
 import SwiftUI
+import UIKit
 
 struct OAuthSignInView: View {
     @Environment(AppEnvironment.self) private var env
@@ -129,16 +130,16 @@ final class OAuthCoordinator: NSObject, ASWebAuthenticationPresentationContextPr
             let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
             let windowScene =
                 scenes.first(where: { $0.activationState == .foregroundActive }) ?? scenes.first
-            guard let windowScene else {
-                fatalError("No UIWindowScene available for OAuth presentation anchor")
+            if let windowScene {
+                if let key = windowScene.windows.first(where: \.isKeyWindow) {
+                    return key
+                }
+                if let first = windowScene.windows.first {
+                    return first
+                }
+                return UIWindow(windowScene: windowScene)
             }
-            if let key = windowScene.windows.first(where: \.isKeyWindow) {
-                return key
-            }
-            if let first = windowScene.windows.first {
-                return first
-            }
-            return UIWindow(windowScene: windowScene)
+            return UIWindow(frame: UIScreen.main.bounds)
         }
     }
 }

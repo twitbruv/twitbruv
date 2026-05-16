@@ -41,3 +41,7 @@ packages/media/tsconfig.tsbuildinfo
 apps/api/scripts/
 
 xcuserdata
+
+apps/mobile/**/DerivedData/
+apps/mobile/**/build/
+*.xcresult

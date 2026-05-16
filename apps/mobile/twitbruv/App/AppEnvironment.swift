@@ -6,6 +6,7 @@ import Observation
 final class AppEnvironment {
     let api: APIClient
     let auth: AuthStore
+    let deepLinks = DeepLinkRouter()
     let devTools: DevTools
     let badges: AppBadgeStore
     let toast = TBToastStore()
@@ -20,7 +21,7 @@ final class AppEnvironment {
         self.devTools = DevTools(api: api)
         self.badges = AppBadgeStore(api: api)
         api.delegate = self
-        PushController.shared.attach(api: api)
+        PushController.shared.attach(api: api, deepLinks: deepLinks)
     }
 
     #if DEBUG
@@ -30,7 +31,7 @@ final class AppEnvironment {
         self.devTools = DevTools(api: api)
         self.badges = AppBadgeStore(api: api)
         api.delegate = self
-        PushController.shared.attach(api: api)
+        PushController.shared.attach(api: api, deepLinks: deepLinks)
     }
     #endif
 

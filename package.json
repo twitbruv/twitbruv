@@ -6,6 +6,7 @@
     "build": "turbo build",
     "dev": "turbo dev",
     "dev:api": "turbo dev --filter=api --filter=worker",
+    "dev:mobile": "bun run apps/mobile/scripts/dev.ts",
     "lint": "turbo lint",
     "lint:fix": "turbo lint:fix",
     "format": "turbo format",

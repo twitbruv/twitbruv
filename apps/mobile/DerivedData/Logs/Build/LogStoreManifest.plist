@@ -5,6 +5,91 @@
 	<key>logFormatVersion</key>
 	<integer>12</integer>
 	<key>logs</key>
-	<dict/>
+	<dict>
+		<key>7AE8A6CD-8672-436A-8E24-D294AACA61EC</key>
+		<dict>
+			<key>className</key>
+			<string>IDECommandLineBuildLog</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
+			<key>fileName</key>
+			<string>7AE8A6CD-8672-436A-8E24-D294AACA61EC.xcactivitylog</string>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>S</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>0</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>twitbruv project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>twitbruv</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Building project twitbruv with scheme twitbruv</string>
+			<key>timeStartedRecording</key>
+			<real>800667939.82804596</real>
+			<key>timeStoppedRecording</key>
+			<real>800667941.40655005</real>
+			<key>title</key>
+			<string>Building project twitbruv with scheme twitbruv</string>
+			<key>uniqueIdentifier</key>
+			<string>7AE8A6CD-8672-436A-8E24-D294AACA61EC</string>
+		</dict>
+		<key>D5492D97-9199-4D79-8BB2-D188DC836FF2</key>
+		<dict>
+			<key>className</key>
+			<string>IDECommandLineBuildLog</string>
+			<key>documentTypeString</key>
+			<string>&lt;nil&gt;</string>
+			<key>domainType</key>
+			<string>Xcode.IDEActivityLogDomainType.BuildLog</string>
+			<key>fileName</key>
+			<string>D5492D97-9199-4D79-8BB2-D188DC836FF2.xcactivitylog</string>
+			<key>hasPrimaryLog</key>
+			<true/>
+			<key>primaryObservable</key>
+			<dict>
+				<key>highLevelStatus</key>
+				<string>W</string>
+				<key>totalNumberOfAnalyzerIssues</key>
+				<integer>0</integer>
+				<key>totalNumberOfErrors</key>
+				<integer>0</integer>
+				<key>totalNumberOfTestFailures</key>
+				<integer>0</integer>
+				<key>totalNumberOfWarnings</key>
+				<integer>22</integer>
+			</dict>
+			<key>schemeIdentifier-containerName</key>
+			<string>twitbruv project</string>
+			<key>schemeIdentifier-schemeName</key>
+			<string>twitbruv</string>
+			<key>schemeIdentifier-sharedScheme</key>
+			<integer>1</integer>
+			<key>signature</key>
+			<string>Building project twitbruv with scheme twitbruv</string>
+			<key>timeStartedRecording</key>
+			<real>800667887.75111496</real>
+			<key>timeStoppedRecording</key>
+			<real>800667921.01027596</real>
+			<key>title</key>
+			<string>Building project twitbruv with scheme twitbruv</string>
+			<key>uniqueIdentifier</key>
+			<string>D5492D97-9199-4D79-8BB2-D188DC836FF2</string>
+		</dict>
+	</dict>
 </dict>
 </plist>

@@ -74,3 +74,18 @@ jobs:
 
       - name: Build
         run: bun run build
+
+  ios-test:
+    name: ios-test
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Unit tests (Simulator)
+        run: >
+          xcodebuild
+          -project apps/mobile/twitbruv.xcodeproj
+          -scheme twitbruv
+          -destination 'generic/platform=iOS Simulator'
+          -quiet
+          test
