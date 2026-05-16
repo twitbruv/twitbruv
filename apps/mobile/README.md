@@ -1,7 +1,7 @@
 # apps/mobile — iOS client (`twitbruv`)
 
 Native SwiftUI client for twitbruv. Talks to `apps/api` over HTTPS using
-Better Auth cookie sessions. Built with Xcode 26+ and an iOS 26.4 deployment
+Better Auth cookie sessions. Built with Xcode 26+ and an iOS 26.0 deployment
 target. **Not part of the Bun/Turbo build graph** — `bun run typecheck`,
 `bun run lint`, and `bun run build` do not touch this directory.
 
@@ -31,7 +31,7 @@ added under `apps/mobile/twitbruv/` is automatically part of the build target.
    any non-GET request from the iOS app will be rejected by
    `requireSameOrigin` with `403 invalid_origin`.
 
-3. In Xcode, pick an **iOS 26.4** simulator and Cmd-R. The DEBUG build points
+3. In Xcode, pick an **iOS 26.0 or newer** simulator and Cmd-R. The DEBUG build points
    at `http://localhost:3001` (see `App/Config.swift`). Release builds default
    to `https://api.ak2.dev` (API) and `https://ak2.dev` (web). To override, set
    the `API_BASE_URL` and `WEB_BASE_URL` Info.plist entries via build settings
@@ -45,14 +45,13 @@ added under `apps/mobile/twitbruv/` is automatically part of the build target.
 
 The app uses cookie sessions managed by `URLSession`'s shared
 `HTTPCookieStorage`. After sign-in the `session_token` cookie is persisted to
-disk and survives relaunch. v1 sign-in surfaces:
+disk and survives relaunch. Current visible sign-in surfaces:
 
 - Email + password
-- Magic link (request only — link itself opens in Safari and falls back into
-  the app once the cookie is set; Universal Links can be wired later)
-- OAuth via `ASWebAuthenticationSession` (GitHub / Google / GitLab) using the
-  custom `twitbruv-ios://auth/done` callback scheme
 - 2FA challenge (TOTP + backup code)
+
+Magic-link and OAuth views exist in the target, but are not exposed from the
+primary sign-in screen until mobile callback behavior is revalidated locally.
 
 Passkey enrolment, password reset, and email-verification deep links are
 deferred to a follow-up.

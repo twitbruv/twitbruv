@@ -2,6 +2,9 @@ import SwiftUI
 import UIKit
 
 struct MainTabView: View {
+    @Environment(AppEnvironment.self) private var env
+    @Environment(\.scenePhase) private var scenePhase
+
     @State private var selection: AppTab = .home
     @State private var showCompose = false
     @State private var suppressComposeFab = false
@@ -25,12 +28,14 @@ struct MainTabView: View {
             } label: {
                 tbTabLabel("Notifications", icon: "bell-solid")
             }
+            .badge(env.badges.notificationUnreadCount)
 
             Tab(value: AppTab.dms) {
                 ConversationsListView()
             } label: {
                 tbTabLabel("Messages", icon: "envelope-solid")
             }
+            .badge(env.badges.dmUnreadCount)
 
             Tab(value: AppTab.me) {
                 MyProfileView()
@@ -54,10 +59,26 @@ struct MainTabView: View {
             }
         }
         .sheet(isPresented: $showCompose) {
-            ComposerView(mode: .new)
+            ComposerView(mode: .new) { result in
+                if case .created = result {
+                    Task { await env.badges.refreshAll() }
+                }
+            }
         }
         .task {
             await PushController.shared.requestAndRegisterIfSignedIn()
+            await env.badges.refreshAll()
+        }
+        .onChange(of: selection) { _, _ in
+            Task { await env.badges.refreshAll() }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active {
+                Task { await env.badges.refreshAll() }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .dmUnreadCountShouldRefresh)) { _ in
+            Task { await env.badges.refreshDMs() }
         }
     }
 

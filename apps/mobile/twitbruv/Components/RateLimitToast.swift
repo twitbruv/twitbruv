@@ -26,7 +26,7 @@ struct RateLimitToast: View {
                     Button {
                         env.clearRateLimit()
                     } label: {
-                        HeroIcon(name: "x-circle-solid", size: 18)
+                        HeroIcon(name: "xcircle-solid", size: 18)
                             .foregroundStyle(TBColor.textTertiary)
                     }
                 }

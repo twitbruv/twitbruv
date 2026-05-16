@@ -10,6 +10,13 @@ struct AppRouter: View {
         }
         .overlay(alignment: .top) { MaintenanceBannerView() }
         .overlay(alignment: .bottom) { RateLimitToast() }
+        .overlay(alignment: .bottom) {
+            if let message = env.toast.message {
+                TBActionToast(message: message)
+                    .padding(.bottom, 18)
+                    .onTapGesture { env.toast.clear() }
+            }
+        }
     }
 
     @ViewBuilder

@@ -21,7 +21,8 @@ struct BookmarksView: View {
                         },
                         onReply: { post in path.append(FeedRoute.compose(replyTo: post)) },
                         onQuote: { post in path.append(FeedRoute.quote(target: post)) },
-                        onReport: { post in reportTarget = post }
+                        onReport: { post in reportTarget = post },
+                        onSelectHashtag: { tag in path.append(FeedRoute.hashtag(tag: tag)) }
                     )
                 } else {
                     ProgressView()

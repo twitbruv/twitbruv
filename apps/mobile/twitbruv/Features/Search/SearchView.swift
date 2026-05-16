@@ -7,11 +7,13 @@ final class SearchViewModel {
     let api: APIClient
     var query = ""
     var users: [UserSummary] = []
+    var suggested: [UserSummary] = []
     var posts: [Post] = []
     var saved: [SavedSearch] = []
     var trending: [Hashtag] = []
     var isSearching = false
     var error: APIError?
+    var openingErrorMessage: String?
     private var lastQuery = ""
 
     init(api: APIClient, initialQuery: String = "") {
@@ -23,9 +25,14 @@ final class SearchViewModel {
         do {
             async let trendResp: TrendingHashtagsResponse = api.get(API.Hashtags.trending())
             async let savedResp: SavedSearchesResponse = api.get(API.Search.saved())
+            async let suggestedResp: SuggestedUsersResponse = api.get(API.Users.suggested())
             trending = try await trendResp.hashtags
             saved = try await savedResp.items
-        } catch {}
+            suggested = try await suggestedResp.users
+            openingErrorMessage = nil
+        } catch {
+            openingErrorMessage = "Could not load search suggestions."
+        }
     }
 
     func search() async {
@@ -51,23 +58,32 @@ final class SearchViewModel {
         }
     }
 
-    func saveCurrent() async {
+    func saveCurrent() async -> String? {
         let q = query.trimmingCharacters(in: .whitespaces)
-        guard q.count >= 2 else { return }
+        guard q.count >= 2 else { return nil }
+        guard !saved.contains(where: { $0.query.caseInsensitiveCompare(q) == .orderedSame }) else {
+            return "Search already saved"
+        }
         struct Body: Encodable { let query: String }
         do {
             let response: SavedSearchResponse = try await api.send(
                 API.Search.saveQuery(), body: Body(query: q)
             )
             saved.insert(response.item, at: 0)
-        } catch {}
+            return "Search saved"
+        } catch {
+            return nil
+        }
     }
 
-    func deleteSaved(_ id: String) async {
+    func deleteSaved(_ id: String) async -> Bool {
         do {
             try await api.sendVoid(API.Search.deleteSaved(id))
             saved.removeAll { $0.id == id }
-        } catch {}
+            return true
+        } catch {
+            return false
+        }
     }
 }
 
@@ -98,13 +114,38 @@ struct SearchStackContent: View {
     @Binding var path: NavigationPath
     var initialQuery: String?
 
+    @Environment(\.openURL) private var openURL
     @State private var vm: SearchViewModel?
+    @State private var actions: PostActions?
+    @State private var mediaViewer: MediaViewerItem?
+    @State private var debounceTask: Task<Void, Never>?
 
     var body: some View {
         Group {
             if let vm {
                 List {
+                    if let openingErrorMessage = vm.openingErrorMessage,
+                       vm.query.trimmingCharacters(in: .whitespaces).isEmpty
+                    {
+                        TBInlineState(
+                            kind: .error(openingErrorMessage),
+                            retryTitle: "Retry",
+                            retry: { Task { await vm.loadOpening() } }
+                        )
+                        .listRowSeparator(.hidden)
+                    }
                     if vm.query.trimmingCharacters(in: .whitespaces).isEmpty {
+                        if !vm.suggested.isEmpty {
+                            Section("Suggested") {
+                                ForEach(vm.suggested) { user in
+                                    if let h = user.handle {
+                                        NavigationLink(value: FeedRoute.profile(handle: h)) {
+                                            UserRowView(user: user)
+                                        }
+                                    }
+                                }
+                            }
+                        }
                         if !vm.trending.isEmpty {
                             Section("Trending") {
                                 ForEach(vm.trending) { tag in
@@ -131,7 +172,13 @@ struct SearchStackContent: View {
                                         Text(s.query)
                                         Spacer()
                                         Button(role: .destructive) {
-                                            Task { await vm.deleteSaved(s.id) }
+                                            Task {
+                                                let ok = await vm.deleteSaved(s.id)
+                                                env.toast.show(
+                                                    ok ? "Saved search removed" : "Could not remove saved search",
+                                                    kind: ok ? .success : .error
+                                                )
+                                            }
                                         } label: {
                                             HeroIcon(name: "trash-solid", size: 16)
                                         }
@@ -163,7 +210,36 @@ struct SearchStackContent: View {
                                     Button {
                                         path.append(FeedRoute.thread(id: post.id))
                                     } label: {
-                                        PostCardView(post: post)
+                                        PostCardView(
+                                            post: post,
+                                            displayMode: .compact,
+                                            onLike: { Task { await actions?.toggleLike(post) } },
+                                            onRepost: { Task { await actions?.toggleRepost(post) } },
+                                            onQuote: { path.append(FeedRoute.quote(target: post)) },
+                                            onBookmark: { Task { await actions?.toggleBookmark(post) } },
+                                            onReply: { path.append(FeedRoute.compose(replyTo: post)) },
+                                            onTapAuthor: {
+                                                if let h = post.author.handle {
+                                                    path.append(FeedRoute.profile(handle: h))
+                                                }
+                                            },
+                                            onTapMedia: { media, all in
+                                                mediaViewer = MediaViewerItem(media: all, initialID: media.id)
+                                            },
+                                            onTapHashtag: { tag in
+                                                path.append(SearchRoute.hashtag(tag: tag))
+                                            },
+                                            onTapURL: { url in openURL(url) },
+                                            onVotePoll: { pollId, optionId in
+                                                Task {
+                                                    await actions?.votePoll(
+                                                        pollId: pollId,
+                                                        optionId: optionId,
+                                                        previousOptionIds: post.poll?.viewerVoteOptionIds
+                                                    )
+                                                }
+                                            }
+                                        )
                                     }
                                     .buttonStyle(.plain)
                                     .listRowInsets(EdgeInsets())
@@ -174,9 +250,12 @@ struct SearchStackContent: View {
                         }
                         if vm.users.isEmpty && vm.posts.isEmpty && !vm.isSearching {
                             Section {
-                                EmptyStateView(
-                                    icon: "magnifying-glass-solid",
-                                    title: "No results"
+                                TBInlineState(
+                                    kind: .empty(
+                                        icon: "magnifying-glass-solid",
+                                        title: "No results",
+                                        message: nil
+                                    )
                                 )
                             }
                         }
@@ -192,6 +271,16 @@ struct SearchStackContent: View {
                     text: Binding(get: { vm.query }, set: { vm.query = $0 }),
                     prompt: "People, posts, #tags"
                 )
+                .onChange(of: vm.query) { _, newValue in
+                    debounceTask?.cancel()
+                    debounceTask = Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(300))
+                        guard !Task.isCancelled else { return }
+                        if newValue.trimmingCharacters(in: .whitespaces).count >= 2 {
+                            await vm.search()
+                        }
+                    }
+                }
                 .onSubmit(of: .search) {
                     Task { await vm.search() }
                 }
@@ -199,7 +288,13 @@ struct SearchStackContent: View {
                     ToolbarItem(placement: .topBarTrailing) {
                         if !vm.query.isEmpty {
                             Button {
-                                Task { await vm.saveCurrent() }
+                                Task {
+                                    if let message = await vm.saveCurrent() {
+                                        env.toast.show(message)
+                                    } else {
+                                        env.toast.show("Could not save search", kind: .error)
+                                    }
+                                }
                             } label: {
                                 HeroIcon(name: "bookmark-outline", size: 18)
                             }
@@ -236,12 +331,34 @@ struct SearchStackContent: View {
         }
         .task {
             if vm == nil {
+                actions = PostActions(api: env.api)
                 let q = initialQuery ?? ""
                 let new = SearchViewModel(api: env.api, initialQuery: q)
                 vm = new
                 await new.loadOpening()
                 if q.count >= 2 {
                     await new.search()
+                }
+            }
+        }
+        .sheet(item: $mediaViewer) { item in
+            MediaViewerView(media: item.media, initialID: item.initialID)
+        }
+        .onReceive(
+            NotificationCenter.default.publisher(for: .postMutated)
+        ) { note in
+            guard let box = note.userInfo?["mutation"] as? MutationBox else { return }
+            if let id = note.userInfo?["id"] as? String {
+                guard let vm, let idx = vm.posts.firstIndex(where: { $0.id == id }) else { return }
+                if case .deleted = box.mutation {
+                    vm.posts.remove(at: idx)
+                } else {
+                    box.mutation.apply(to: &vm.posts[idx])
+                }
+            } else if note.userInfo?["pollId"] is String {
+                guard let vm else { return }
+                for idx in vm.posts.indices {
+                    box.mutation.apply(to: &vm.posts[idx])
                 }
             }
         }
@@ -258,31 +375,22 @@ struct HashtagView: View {
 
     @State private var loader: PagedLoader<Post, PostsHashtagResponse>?
     @State private var path = NavigationPath()
+    @State private var reportTarget: Post?
 
     var body: some View {
         Group {
             if let loader {
-                List {
-                    ForEach(loader.items) { post in
-                        PostCardView(post: post)
-                            .listRowInsets(EdgeInsets())
-                            .listRowSeparator(.hidden)
-                            .listRowBackground(Color.clear)
-                            .onTapGesture {
-                                path.append(FeedRoute.thread(id: post.id))
-                            }
-                    }
-                    LoadMoreFooter(
-                        hasMore: loader.nextCursor != nil,
-                        isLoading: loader.isLoading
-                    ) { await loader.loadMore() }
-                }
-                .listRowSpacing(TBLayout.feedListRowSpacing)
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
-                .background(Color.clear)
-                .refreshable { await loader.reload() }
-                .tbReadableColumn()
+                FeedListView(
+                    loader: loader,
+                    emptyTitle: "No posts for #\(tag)",
+                    emptyMessage: nil,
+                    onSelectPost: { post in path.append(FeedRoute.thread(id: post.id)) },
+                    onSelectAuthor: { handle in path.append(FeedRoute.profile(handle: handle)) },
+                    onReply: { post in path.append(FeedRoute.compose(replyTo: post)) },
+                    onQuote: { post in path.append(FeedRoute.quote(target: post)) },
+                    onReport: { post in reportTarget = post },
+                    onSelectHashtag: { tag in path.append(FeedRoute.hashtag(tag: tag)) }
+                )
             } else {
                 ProgressView()
                     .tint(TBColor.accent)
@@ -300,6 +408,9 @@ struct HashtagView: View {
         }
         .navigationTitle("#\(tag)")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(item: $reportTarget) { post in
+            ReportSheet(subject: .post(id: post.id))
+        }
         .navigationDestination(for: FeedRoute.self) { route in
             switch route {
             case .thread(let id):

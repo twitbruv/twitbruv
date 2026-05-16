@@ -9,14 +9,25 @@ struct MyListsView: View {
     @State private var newName = ""
     @State private var newDescription = ""
     @State private var newVisibility = "public"
+    @State private var errorMessage: String?
 
     var body: some View {
         List {
+            if let errorMessage {
+                TBInlineState(
+                    kind: .error(errorMessage),
+                    retryTitle: "Retry",
+                    retry: { Task { await load() } }
+                )
+                .listRowSeparator(.hidden)
+            }
             if lists.isEmpty && !isLoading {
-                EmptyStateView(
-                    icon: "queue-list-solid",
-                    title: "No lists yet",
-                    message: "Create a list to organize accounts you follow."
+                TBInlineState(
+                    kind: .empty(
+                        icon: "queue-list-solid",
+                        title: "No lists yet",
+                        message: "Create a list to organize accounts you follow."
+                    )
                 )
                 .listRowSeparator(.hidden)
             }
@@ -41,9 +52,7 @@ struct MyListsView: View {
                 }
             }
         }
-        .listStyle(.insetGrouped)
-        .scrollContentBackground(.hidden)
-        .background(Color.clear)
+        .tbListChrome()
         .navigationTitle("Lists")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -96,7 +105,10 @@ struct MyListsView: View {
         do {
             let response: ListsResponse = try await env.api.get(API.Lists.mine())
             lists = response.lists
-        } catch {}
+            errorMessage = nil
+        } catch {
+            errorMessage = "Could not load lists."
+        }
     }
 
     private func create() async {
@@ -112,7 +124,10 @@ struct MyListsView: View {
             lists.insert(response.list, at: 0)
             newName = ""; newDescription = ""; newVisibility = "public"
             showCreate = false
-        } catch {}
+            env.toast.show("List created")
+        } catch {
+            env.toast.show("Could not create list", kind: .error)
+        }
     }
 }
 
@@ -134,12 +149,18 @@ struct MyListsView: View {
 
 struct ListDetailView: View {
     @Environment(AppEnvironment.self) private var env
+    @Environment(\.openURL) private var openURL
     let list: UserList
 
     @State private var members: [UserSummary] = []
     @State private var loader: PagedLoader<Post, PostsResponse>?
     @State private var tab: ListTab = .timeline
     @State private var showAdd = false
+    @State private var actions: PostActions?
+    @State private var route: PendingFeedRoute?
+    @State private var mediaViewer: MediaViewerItem?
+    @State private var reportTarget: Post?
+    @State private var memberErrorMessage: String?
 
     var body: some View {
         Group {
@@ -159,15 +180,48 @@ struct ListDetailView: View {
 
                     switch tab {
                     case .timeline:
+                        if let error = loader.error, loader.items.isEmpty {
+                            TBInlineState(
+                                kind: .error(error.localizedDescription),
+                                retryTitle: "Retry",
+                                retry: { Task { await loader.reload() } }
+                            )
+                            .listRowSeparator(.hidden)
+                        } else if loader.items.isEmpty && loader.didLoadOnce {
+                            TBInlineState(
+                                kind: .empty(
+                                    icon: "queue-list-solid",
+                                    title: "No posts in this list",
+                                    message: nil
+                                )
+                            )
+                            .listRowSeparator(.hidden)
+                        }
                         ForEach(loader.items) { post in
-                            PostCardView(post: post)
-                                .listRowInsets(EdgeInsets())
+                            timelinePostRow(post)
                         }
                         LoadMoreFooter(
                             hasMore: loader.nextCursor != nil,
                             isLoading: loader.isLoading
                         ) { await loader.loadMore() }
                     case .members:
+                        if let memberErrorMessage {
+                            TBInlineState(
+                                kind: .error(memberErrorMessage),
+                                retryTitle: "Retry",
+                                retry: { Task { await loadMembers() } }
+                            )
+                            .listRowSeparator(.hidden)
+                        } else if members.isEmpty {
+                            TBInlineState(
+                                kind: .empty(
+                                    icon: "users-solid",
+                                    title: "No members yet",
+                                    message: nil
+                                )
+                            )
+                            .listRowSeparator(.hidden)
+                        }
                         ForEach(members) { user in
                             UserRowView(user: user)
                         }
@@ -181,8 +235,7 @@ struct ListDetailView: View {
                     await loadMembers()
                 }
             } else {
-                ProgressView()
-                    .tint(TBColor.accent)
+                TBInlineState(kind: .loading("Loading list"))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(Color.clear)
                     .task { await setup() }
@@ -202,11 +255,90 @@ struct ListDetailView: View {
                 Task { await loadMembers() }
             }
         }
+        .sheet(item: $mediaViewer) { item in
+            MediaViewerView(media: item.media, initialID: item.initialID)
+        }
+        .sheet(item: $reportTarget) { post in
+            ReportSheet(subject: .post(id: post.id))
+        }
+        .navigationDestination(item: $route) { pending in
+            switch pending.route {
+            case .thread(let id):
+                ThreadView(postId: id)
+            case .profile(let handle):
+                ProfileView(handle: handle, navigationPath: .constant(NavigationPath()))
+            case .compose(let post):
+                ComposerView(mode: .reply(post))
+            case .quote(let target):
+                ComposerView(mode: .quote(target))
+            case .hashtag(let tag):
+                HashtagView(tag: tag)
+            case .search(let query):
+                SearchStackContent(path: .constant(NavigationPath()), initialQuery: query)
+            }
+        }
+        .onReceive(
+            NotificationCenter.default.publisher(for: .postMutated)
+        ) { note in
+            guard let loader, let box = note.userInfo?["mutation"] as? MutationBox else {
+                return
+            }
+            if let id = note.userInfo?["id"] as? String {
+                if case .deleted = box.mutation {
+                    loader.remove(id: id)
+                } else {
+                    loader.patch(id: id) { post in box.mutation.apply(to: &post) }
+                }
+            } else if note.userInfo?["pollId"] is String {
+                loader.patchAll { post in box.mutation.apply(to: &post) }
+            }
+        }
     }
 
     enum ListTab: Hashable { case timeline, members }
+    
+    private func timelinePostRow(_ post: Post) -> some View {
+        TappableRow(action: {
+            route = PendingFeedRoute(.thread(id: post.id))
+        }) {
+            PostCardView(
+                post: post,
+                onLike: { Task { await actions?.toggleLike(post) } },
+                onRepost: { Task { await actions?.toggleRepost(post) } },
+                onQuote: { route = PendingFeedRoute(.quote(target: post)) },
+                onBookmark: { Task { await actions?.toggleBookmark(post) } },
+                onReply: { route = PendingFeedRoute(.compose(replyTo: post)) },
+                onTapAuthor: {
+                    if let handle = post.author.handle {
+                        route = PendingFeedRoute(.profile(handle: handle))
+                    }
+                },
+                onTapMedia: { media, all in
+                    mediaViewer = MediaViewerItem(media: all, initialID: media.id)
+                },
+                onTapHashtag: { tag in
+                    route = PendingFeedRoute(.hashtag(tag: tag))
+                },
+                onTapURL: { url in openURL(url) },
+                onVotePoll: { pollId, optionId in
+                    Task {
+                        await actions?.votePoll(
+                            pollId: pollId,
+                            optionId: optionId,
+                            previousOptionIds: post.poll?.viewerVoteOptionIds
+                        )
+                    }
+                },
+                onMenuAction: { action in handleMenu(action, post: post) }
+            )
+        }
+        .listRowInsets(EdgeInsets())
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+    }
 
     private func setup() async {
+        actions = PostActions(api: env.api)
         loader = PagedLoader<Post, PostsResponse>(
             api: env.api,
             endpoint: { cursor in API.Lists.timeline(list.id, cursor: cursor) },
@@ -222,7 +354,42 @@ struct ListDetailView: View {
                 API.Lists.members(list.id)
             )
             members = response.members
-        } catch {}
+            memberErrorMessage = nil
+        } catch {
+            memberErrorMessage = "Could not load list members."
+        }
+    }
+
+    private func handleMenu(_ action: PostMenuAction, post: Post) {
+        switch action {
+        case .copyLink(let id):
+            UIPasteboard.general.string =
+                Config.webBaseURL.appendingPathComponent(
+                    "/@\(post.author.handle ?? "")/\(id)"
+                ).absoluteString
+            env.toast.show("Post link copied")
+        case .viewProfile(let handle):
+            route = PendingFeedRoute(.profile(handle: handle))
+        case .report(_):
+            reportTarget = post
+        }
+    }
+}
+
+private struct PendingFeedRoute: Identifiable, Hashable {
+    let id = UUID()
+    let route: FeedRoute
+
+    init(_ route: FeedRoute) {
+        self.route = route
+    }
+
+    static func == (lhs: PendingFeedRoute, rhs: PendingFeedRoute) -> Bool {
+        lhs.id == rhs.id
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
     }
 }
 
@@ -236,6 +403,7 @@ struct AddMembersSheet: View {
     @State private var users: [UserSummary] = []
     @State private var selected: Set<String> = []
     @State private var isWorking = false
+    @State private var errorMessage: String?
 
     var body: some View {
         NavigationStack {
@@ -247,6 +415,11 @@ struct AddMembersSheet: View {
                         .onSubmit { Task { await search() } }
                 }
                 Section("Results") {
+                    if let errorMessage {
+                        Text(errorMessage)
+                            .font(TBTypography.caption)
+                            .foregroundStyle(TBColor.danger)
+                    }
                     ForEach(users) { user in
                         Button {
                             if selected.contains(user.id) { selected.remove(user.id) }
@@ -287,7 +460,10 @@ struct AddMembersSheet: View {
         do {
             let response: SearchResponse = try await env.api.get(API.Search.search(q))
             users = response.users
-        } catch {}
+            errorMessage = nil
+        } catch {
+            errorMessage = "Could not search users."
+        }
     }
 
     private func add() async {
@@ -298,8 +474,11 @@ struct AddMembersSheet: View {
                 API.Lists.addMembers(listId),
                 body: AddMembersBody(userIds: Array(selected))
             )
+            env.toast.show("Members added")
             onAdded()
             dismiss()
-        } catch {}
+        } catch {
+            errorMessage = "Could not add members."
+        }
     }
 }

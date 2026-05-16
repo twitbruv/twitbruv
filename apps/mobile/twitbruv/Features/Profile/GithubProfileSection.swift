@@ -108,14 +108,14 @@ private struct GithubPinnedRepoCard: View {
                 
                 if repo.stars > 0 {
                     HStack(spacing: 4) {
-                        HeroIcon(name: "star-solid", size: 14)
+                        HeroIcon(name: "sparkles-solid", size: 14)
                         Text("\(repo.stars)")
                     }
                 }
                 
                 if repo.forks > 0 {
                     HStack(spacing: 4) {
-                        HeroIcon(name: "arrows-right-left-solid", size: 14)
+                        HeroIcon(name: "arrow-path-rounded-square-solid", size: 14)
                         Text("\(repo.forks)")
                     }
                 }

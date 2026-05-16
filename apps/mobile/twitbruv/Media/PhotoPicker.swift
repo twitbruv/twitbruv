@@ -5,6 +5,7 @@ struct PickedPhoto: Identifiable, Sendable {
     let id = UUID()
     let data: Data
     let mime: String
+    var altText: String = ""
 }
 
 @Observable
@@ -40,6 +41,11 @@ final class PhotoPickerController {
 
     func remove(id: PickedPhoto.ID) {
         picked.removeAll { $0.id == id }
+    }
+
+    func updateAlt(id: PickedPhoto.ID, altText: String) {
+        guard let idx = picked.firstIndex(where: { $0.id == id }) else { return }
+        picked[idx].altText = altText
     }
 
     func clear() { picked.removeAll() }

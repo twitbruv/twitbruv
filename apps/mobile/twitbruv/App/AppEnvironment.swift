@@ -7,6 +7,8 @@ final class AppEnvironment {
     let api: APIClient
     let auth: AuthStore
     let devTools: DevTools
+    let badges: AppBadgeStore
+    let toast = TBToastStore()
 
     var isMaintenance = false
     var rateLimit: RateLimitNotice?
@@ -16,6 +18,7 @@ final class AppEnvironment {
         self.api = api
         self.auth = AuthStore(api: api)
         self.devTools = DevTools(api: api)
+        self.badges = AppBadgeStore(api: api)
         api.delegate = self
         PushController.shared.attach(api: api)
     }
@@ -25,6 +28,7 @@ final class AppEnvironment {
         self.api = api
         self.auth = AuthStore(api: api)
         self.devTools = DevTools(api: api)
+        self.badges = AppBadgeStore(api: api)
         api.delegate = self
         PushController.shared.attach(api: api)
     }
@@ -32,6 +36,11 @@ final class AppEnvironment {
 
     func bootstrap() async {
         await auth.bootstrap()
+        if case .signedIn = auth.state {
+            await badges.refreshAll()
+        } else {
+            badges.clear()
+        }
     }
 
     func clearRateLimit() {

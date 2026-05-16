@@ -85,7 +85,7 @@ struct ArticleReaderView: View {
             article = response.article
             error = nil
         } catch let e as APIError {
-            error = e
+            self.error = e
         } catch {
             self.error = .invalidResponse
         }

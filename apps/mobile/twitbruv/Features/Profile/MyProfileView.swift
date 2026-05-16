@@ -37,40 +37,56 @@ struct SettingsView: View {
     @State private var isSigningOut = false
 
     var body: some View {
-        Form {
+        List {
             Section("Notifications") {
-                Button("System notification settings") {
+                Button {
                     if let url = URL(string: UIApplication.openSettingsURLString) {
                         openURL(url)
                     }
+                } label: {
+                    SettingsRow(icon: "bell-solid", title: "System notification settings")
                 }
-                .foregroundStyle(TBColor.accent)
+                .buttonStyle(.plain)
             }
 
             Section("Library") {
-                NavigationLink("Bookmarks") { BookmarksView() }
-                NavigationLink("Lists") { MyListsView() }
-                NavigationLink("Scheduled") { ScheduledPostsView() }
+                NavigationLink { BookmarksView() } label: {
+                    SettingsRow(icon: "bookmark-solid", title: "Bookmarks")
+                }
+                NavigationLink { MyListsView() } label: {
+                    SettingsRow(icon: "queue-list-solid", title: "Lists")
+                }
+                NavigationLink { ScheduledPostsView() } label: {
+                    SettingsRow(icon: "calendar-solid", title: "Scheduled")
+                }
             }
 
             Section("Privacy") {
-                NavigationLink("Blocked accounts") {
+                NavigationLink {
                     UsersListView(title: "Blocked", endpoint: { cursor in
                         API.Me.blocks(cursor: cursor)
                     })
+                } label: {
+                    SettingsRow(icon: "hand-raised-solid", title: "Blocked accounts")
                 }
-                NavigationLink("Muted accounts") {
+                NavigationLink {
                     UsersListView(title: "Muted", endpoint: { cursor in
                         API.Me.mutes(cursor: cursor)
                     })
+                } label: {
+                    SettingsRow(icon: "speaker-xmark-solid", title: "Muted accounts")
                 }
             }
 
             Section("Account") {
-                NavigationLink("Edit profile") { EditProfileView() }
+                NavigationLink { EditProfileView() } label: {
+                    SettingsRow(icon: "user-circle-solid", title: "Edit profile")
+                }
                 #if DEBUG
-                NavigationLink("API diagnostics") {
+                NavigationLink {
                     DevDiagnosticsView()
+                } label: {
+                    SettingsRow(icon: "wrench-screwdriver-solid", title: "API diagnostics")
                 }
                 Button {
                     Task { _ = await env.devTools.seedLocalData() }
@@ -78,9 +94,10 @@ struct SettingsView: View {
                     if env.devTools.isSeeding {
                         ProgressView()
                     } else {
-                        Text("Seed local data")
+                        SettingsRow(icon: "sparkles-solid", title: "Seed local data")
                     }
                 }
+                .buttonStyle(.plain)
                 #endif
                 Button(role: .destructive) {
                     Task {
@@ -90,13 +107,35 @@ struct SettingsView: View {
                     }
                 } label: {
                     if isSigningOut { ProgressView() }
-                    else { Text("Sign out") }
+                    else {
+                        SettingsRow(icon: "arrow-left-solid", title: "Sign out", tint: TBColor.danger)
+                    }
                 }
+                .buttonStyle(.plain)
             }
         }
         .navigationTitle("Settings")
-        .scrollContentBackground(.hidden)
-        .background(Color.clear)
+        .tbListChrome()
+    }
+}
+
+private struct SettingsRow: View {
+    let icon: String
+    let title: String
+    var tint: Color = TBColor.accent
+
+    var body: some View {
+        HStack(spacing: 12) {
+            HeroIcon(name: icon, size: 18)
+                .foregroundStyle(tint)
+                .frame(width: TBLayout.hitTarget, height: TBLayout.hitTarget)
+                .tbGlass(.card, in: Circle(), shadow: false)
+            Text(title)
+                .font(TBTypography.meta.weight(.medium))
+                .foregroundStyle(TBColor.textPrimary)
+            Spacer(minLength: 0)
+        }
+        .contentShape(.rect)
     }
 }
 

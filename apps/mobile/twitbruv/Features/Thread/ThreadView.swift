@@ -49,6 +49,19 @@ final class ThreadViewModel {
             replies.removeAll { $0.id == id }
         }
     }
+
+    func applyPollMutation(_ mutation: PostMutation) {
+        if var p = post {
+            mutation.apply(to: &p)
+            post = p
+        }
+        for idx in ancestors.indices {
+            mutation.apply(to: &ancestors[idx])
+        }
+        for idx in replies.indices {
+            mutation.apply(to: &replies[idx])
+        }
+    }
 }
 
 struct ThreadView: View {
@@ -57,8 +70,9 @@ struct ThreadView: View {
 
     @State private var vm: ThreadViewModel?
     @State private var actions: PostActions?
-    @State private var showCompose = false
+    @State private var composeMode: ComposeMode?
     @State private var reportTarget: Post?
+    @State private var mediaViewer: MediaViewerItem?
 
     var body: some View {
         Group {
@@ -67,11 +81,25 @@ struct ThreadView: View {
                     ForEach(vm.ancestors) { ancestor in
                         PostCardView(
                             post: ancestor,
+                            displayMode: .threadReply,
                             onLike: { Task { await actions?.toggleLike(ancestor) } },
                             onRepost: { Task { await actions?.toggleRepost(ancestor) } },
+                            onQuote: { composeMode = .quote(ancestor) },
                             onBookmark: { Task { await actions?.toggleBookmark(ancestor) } },
-                            onReply: nil,
+                            onReply: { composeMode = .reply(ancestor) },
                             onTapAuthor: nil,
+                            onTapMedia: { media, all in
+                                mediaViewer = MediaViewerItem(media: all, initialID: media.id)
+                            },
+                            onVotePoll: { pollId, optionId in
+                                Task {
+                                    await actions?.votePoll(
+                                        pollId: pollId,
+                                        optionId: optionId,
+                                        previousOptionIds: ancestor.poll?.viewerVoteOptionIds
+                                    )
+                                }
+                            },
                             onMenuAction: nil
                         )
                         .listRowInsets(EdgeInsets())
@@ -82,11 +110,25 @@ struct ThreadView: View {
                     if let p = vm.post {
                         PostCardView(
                             post: p,
+                            displayMode: .threadRoot,
                             onLike: { Task { await actions?.toggleLike(p) } },
                             onRepost: { Task { await actions?.toggleRepost(p) } },
+                            onQuote: { composeMode = .quote(p) },
                             onBookmark: { Task { await actions?.toggleBookmark(p) } },
-                            onReply: { showCompose = true },
+                            onReply: { composeMode = .reply(p) },
                             onTapAuthor: nil,
+                            onTapMedia: { media, all in
+                                mediaViewer = MediaViewerItem(media: all, initialID: media.id)
+                            },
+                            onVotePoll: { pollId, optionId in
+                                Task {
+                                    await actions?.votePoll(
+                                        pollId: pollId,
+                                        optionId: optionId,
+                                        previousOptionIds: p.poll?.viewerVoteOptionIds
+                                    )
+                                }
+                            },
                             onMenuAction: { action in
                                 if case .report = action { reportTarget = p }
                             }
@@ -99,11 +141,25 @@ struct ThreadView: View {
                             ForEach(vm.replies) { reply in
                                 PostCardView(
                                     post: reply,
+                                    displayMode: .threadReply,
                                     onLike: { Task { await actions?.toggleLike(reply) } },
                                     onRepost: { Task { await actions?.toggleRepost(reply) } },
+                                    onQuote: { composeMode = .quote(reply) },
                                     onBookmark: { Task { await actions?.toggleBookmark(reply) } },
-                                    onReply: nil,
+                                    onReply: { composeMode = .reply(reply) },
                                     onTapAuthor: nil,
+                                    onTapMedia: { media, all in
+                                        mediaViewer = MediaViewerItem(media: all, initialID: media.id)
+                                    },
+                                    onVotePoll: { pollId, optionId in
+                                        Task {
+                                            await actions?.votePoll(
+                                                pollId: pollId,
+                                                optionId: optionId,
+                                                previousOptionIds: reply.poll?.viewerVoteOptionIds
+                                            )
+                                        }
+                                    },
                                     onMenuAction: { action in
                                         if case .report = action { reportTarget = reply }
                                     }
@@ -115,15 +171,10 @@ struct ThreadView: View {
                         }
                     }
                 }
-                .listRowSpacing(TBLayout.feedListRowSpacing)
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
-                .background(Color.clear)
+                .tbListChrome()
                 .refreshable { await vm.load() }
-                .tbReadableColumn()
             } else {
-                ProgressView()
-                    .tint(TBColor.accent)
+                TBInlineState(kind: .loading("Loading thread"))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(Color.clear)
             }
@@ -138,19 +189,26 @@ struct ThreadView: View {
         .onReceive(
             NotificationCenter.default.publisher(for: .postMutated)
         ) { note in
-            guard
-                let id = note.userInfo?["id"] as? String,
-                let box = note.userInfo?["mutation"] as? MutationBox
-            else { return }
-            vm?.apply(mutation: box.mutation, to: id)
-        }
-        .sheet(isPresented: $showCompose) {
-            if let p = vm?.post {
-                ComposerView(mode: .reply(p))
+            guard let box = note.userInfo?["mutation"] as? MutationBox else { return }
+            if let id = note.userInfo?["id"] as? String {
+                vm?.apply(mutation: box.mutation, to: id)
+            } else if note.userInfo?["pollId"] is String {
+                vm?.applyPollMutation(box.mutation)
             }
+        }
+        .sheet(
+            isPresented: Binding(
+                get: { composeMode != nil },
+                set: { if !$0 { composeMode = nil } }
+            )
+        ) {
+            ComposerView(mode: composeMode ?? .new)
         }
         .sheet(item: $reportTarget) { post in
             ReportSheet(subject: .post(id: post.id))
+        }
+        .sheet(item: $mediaViewer) { item in
+            MediaViewerView(media: item.media, initialID: item.initialID)
         }
     }
 }

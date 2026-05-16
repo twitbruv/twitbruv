@@ -24,6 +24,31 @@ final class ConversationsListViewModel {
             conversations = response.conversations
             requestCount = response.requestCount ?? 0
             didLoadOnce = true
+            error = nil
+        } catch let e as APIError {
+            self.error = e
+        } catch {
+            self.error = .invalidResponse
+        }
+    }
+
+    func accept(_ conversation: Conversation) async {
+        do {
+            try await api.sendVoid(API.DMs.accept(conversation.id))
+            conversations.removeAll { $0.id == conversation.id }
+            requestCount = max(0, requestCount - 1)
+        } catch let e as APIError {
+            self.error = e
+        } catch {
+            self.error = .invalidResponse
+        }
+    }
+
+    func decline(_ conversation: Conversation) async {
+        do {
+            try await api.sendVoid(API.DMs.decline(conversation.id))
+            conversations.removeAll { $0.id == conversation.id }
+            requestCount = max(0, requestCount - 1)
         } catch let e as APIError {
             self.error = e
         } catch {
@@ -44,26 +69,55 @@ struct ConversationsListView: View {
                 if let vm {
                     List {
                         if vm.conversations.isEmpty && vm.didLoadOnce {
-                            EmptyStateView(
-                                icon: "envelope-solid",
-                                title: vm.folder == "requests"
-                                    ? "No pending requests"
-                                    : "No conversations yet"
+                            TBInlineState(
+                                kind: .empty(
+                                    icon: "envelope-solid",
+                                    title: vm.folder == "requests"
+                                        ? "No pending requests"
+                                        : "No conversations yet",
+                                    message: nil
+                                )
                             )
                             .listRowSeparator(.hidden)
                         }
                         ForEach(vm.conversations) { conv in
-                            TappableRow(action: {
-                                path.append(DMRoute.conversation(id: conv.id))
-                            }) {
-                                ConversationRow(conv: conv)
+                            VStack(alignment: .leading, spacing: 8) {
+                                TappableRow(action: {
+                                    path.append(DMRoute.conversation(id: conv.id))
+                                }) {
+                                    ConversationRow(conv: conv)
+                                }
+                                if vm.folder == "requests" {
+                                    HStack(spacing: 10) {
+                                        TBButton(title: "Accept", style: .primary, expands: false) {
+                                            Task {
+                                                await vm.accept(conv)
+                                                await env.badges.refreshDMs()
+                                                env.toast.show("Message request accepted")
+                                            }
+                                        }
+                                        TBButton(title: "Decline", style: .secondary, expands: false) {
+                                            Task {
+                                                await vm.decline(conv)
+                                                await env.badges.refreshDMs()
+                                                env.toast.show("Message request declined")
+                                            }
+                                        }
+                                    }
+                                    .padding(.horizontal, TBLayout.pagePadding)
+                                    .padding(.bottom, 8)
+                                }
                             }
+                            .listRowInsets(EdgeInsets())
+                            .listRowSeparator(.hidden)
+                            .listRowBackground(Color.clear)
                         }
                     }
-                    .listStyle(.plain)
-                    .scrollContentBackground(.hidden)
-                    .background(Color.clear)
-                    .refreshable { await vm.reload() }
+                    .tbListChrome()
+                    .refreshable {
+                        await vm.reload()
+                        await env.badges.refreshDMs()
+                    }
                     .safeAreaInset(edge: .top, spacing: 0) {
                         HStack(alignment: .center, spacing: 10) {
                             TBFeedSegmented(
@@ -131,6 +185,7 @@ struct ConversationsListView: View {
                     let new = ConversationsListViewModel(api: env.api)
                     vm = new
                     await new.reload()
+                    await env.badges.refreshDMs()
                 }
             }
         }

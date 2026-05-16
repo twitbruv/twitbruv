@@ -14,6 +14,7 @@ final class ConversationViewModel {
     var isLoading = false
     var error: APIError?
     var typing: Set<String> = []
+    var sendErrorMessage: String?
     private let log = Logger(subsystem: "app.twitbruv.ios", category: "dm-vm")
     private var sseTask: Task<Void, Never>?
 
@@ -34,6 +35,7 @@ final class ConversationViewModel {
             messages = messagesResp.messages.reversed()
             nextCursor = messagesResp.nextCursor
             try? await api.sendVoid(API.DMs.read(conversationId))
+            error = nil
         } catch let e as APIError {
             self.error = e
         } catch {
@@ -52,12 +54,16 @@ final class ConversationViewModel {
             let older = response.messages.reversed()
             messages.insert(contentsOf: older, at: 0)
             nextCursor = response.nextCursor
-        } catch {}
+        } catch let e as APIError {
+            self.error = e
+        } catch {
+            self.error = .invalidResponse
+        }
     }
 
-    func send(text: String, mediaId: String?) async {
+    func send(text: String, mediaId: String?) async -> Bool {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty || mediaId != nil else { return }
+        guard !trimmed.isEmpty || mediaId != nil else { return false }
         do {
             let response: SentMessageResponse = try await api.send(
                 API.DMs.sendMessage(conversationId),
@@ -66,24 +72,48 @@ final class ConversationViewModel {
             if !messages.contains(where: { $0.id == response.message.id }) {
                 messages.append(response.message)
             }
-        } catch {}
+            sendErrorMessage = nil
+            return true
+        } catch {
+            sendErrorMessage = "Message could not be sent."
+            return false
+        }
     }
 
     func toggleReaction(_ emoji: String, on messageId: String) async {
         struct Body: Encodable { let emoji: String }
+        if let idx = messages.firstIndex(where: { $0.id == messageId }) {
+            var reactions = messages[idx].reactions ?? []
+            if let reactionIdx = reactions.firstIndex(where: { $0.emoji == emoji }) {
+                let wasMine = reactions[reactionIdx].byMe == true
+                reactions[reactionIdx].byMe = !wasMine
+                reactions[reactionIdx].count += wasMine ? -1 : 1
+                if reactions[reactionIdx].count <= 0 {
+                    reactions.remove(at: reactionIdx)
+                }
+            } else {
+                reactions.append(Message.Reaction(emoji: emoji, count: 1, byMe: true))
+            }
+            messages[idx].reactions = reactions
+        }
         do {
             try await api.sendVoid(
                 API.DMs.toggleReaction(conversationId, msgId: messageId),
                 body: Body(emoji: emoji)
             )
-        } catch {}
+        } catch {
+            await load()
+        }
     }
 
-    func deleteMessage(_ messageId: String) async {
+    func deleteMessage(_ messageId: String) async -> Bool {
         do {
             try await api.sendVoid(API.DMs.deleteMessage(conversationId, msgId: messageId))
             messages.removeAll { $0.id == messageId }
-        } catch {}
+            return true
+        } catch {
+            return false
+        }
     }
 
     func sendTyping() {
@@ -125,6 +155,9 @@ final class ConversationViewModel {
                 {
                     messages.append(msg)
                     Task { try? await api.sendVoid(API.DMs.read(conversationId)) }
+                    Task { @MainActor in
+                        NotificationCenter.default.post(name: .dmUnreadCountShouldRefresh, object: nil)
+                    }
                 }
             case "message_deleted":
                 if let id = parsed.messageId {
@@ -169,6 +202,7 @@ struct ConversationView: View {
     @State private var picker = PhotoPickerController()
     @State private var pickerItems: [PhotosPickerItem] = []
     @State private var isSending = false
+    @State private var mediaViewer: MediaViewerItem?
 
     private var conversationTitle: String {
         guard let conv = vm?.conversation else { return "Direct message" }
@@ -210,10 +244,11 @@ struct ConversationView: View {
                                                     picker.remove(id: p.id)
                                                     pickerItems.removeAll { _ in true }
                                                 } label: {
-                                                    HeroIcon(name: "x-circle-solid", size: 22)
+                                                    HeroIcon(name: "xcircle-solid", size: 22)
                                                         .foregroundStyle(TBColor.inverse)
                                                 }
                                                 .padding(2)
+                                                .accessibilityLabel("Remove image")
                                             }
                                     }
                                 }
@@ -234,12 +269,20 @@ struct ConversationView: View {
                                     let uploader = MediaUploader(api: env.api)
                                     if let media = try? await uploader.upload(data: photo.data, mimeType: photo.mime) {
                                         mediaId = media.id
+                                    } else {
+                                        env.toast.show("Image upload failed", kind: .error)
+                                        return
                                     }
                                 }
-                                await vm?.send(text: draft, mediaId: mediaId)
-                                draft = ""
-                                picker.clear()
-                                pickerItems = []
+                                let sent = await vm?.send(text: draft, mediaId: mediaId) == true
+                                if sent {
+                                    draft = ""
+                                    picker.clear()
+                                    pickerItems = []
+                                    await env.badges.refreshDMs()
+                                } else {
+                                    env.toast.show("Message could not be sent", kind: .error)
+                                }
                             }
                         },
                         onTyping: { vm?.sendTyping() },
@@ -259,11 +302,15 @@ struct ConversationView: View {
                 GroupSettingsView(conversation: conv)
             }
         }
+        .sheet(item: $mediaViewer) { item in
+            MediaViewerView(media: item.media, initialID: item.initialID)
+        }
         .task {
             if vm == nil {
                 let new = ConversationViewModel(conversationId: conversationId, api: env.api)
                 vm = new
                 await new.load()
+                await env.badges.refreshDMs()
                 new.startStream()
             }
         }
@@ -314,7 +361,10 @@ struct ConversationView: View {
                             MessageBubble(
                                 message: msg,
                                 isMine: msg.senderId == auth.currentUser?.id,
-                                showTimestamp: isLastForSender
+                                showTimestamp: isLastForSender,
+                                onTapMedia: { media in
+                                    mediaViewer = MediaViewerItem(media: [media], initialID: media.id)
+                                }
                             )
                             .padding(.horizontal, TBLayout.pagePadding - 4)
                             .contextMenu {
@@ -325,7 +375,13 @@ struct ConversationView: View {
                                 }
                                 if msg.senderId == env.auth.currentUser?.id {
                                     Button(role: .destructive) {
-                                        Task { await vm.deleteMessage(msg.id) }
+                                        Task {
+                                            let ok = await vm.deleteMessage(msg.id)
+                                            env.toast.show(
+                                                ok ? "Message deleted" : "Could not delete message",
+                                                kind: ok ? .success : .error
+                                            )
+                                        }
                                     } label: {
                                         Label("Delete", hero: "trash-solid")
                                     }
@@ -388,6 +444,10 @@ struct ConversationView: View {
                 .background(Color.clear)
         }
     }
+}
+
+extension Notification.Name {
+    static let dmUnreadCountShouldRefresh = Notification.Name("twitbruv.dmUnreadCountShouldRefresh")
 }
 
 private struct ConversationThreadHeader: View {
@@ -461,6 +521,7 @@ private struct MessageBubble: View {
     let message: Message
     let isMine: Bool
     let showTimestamp: Bool
+    var onTapMedia: ((Media) -> Void)?
 
     private let bubbleRadius: CGFloat = 20
 
@@ -482,16 +543,21 @@ private struct MessageBubble: View {
                         )
                 }
                 if let media = message.media, let url = media.bestURL {
-                    AsyncImage(url: url) { phase in
-                        switch phase {
-                        case .success(let img):
-                            img.resizable().scaledToFit()
-                        default:
-                            TBColor.base2
+                    Button {
+                        onTapMedia?(media)
+                    } label: {
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .success(let img):
+                                img.resizable().scaledToFit()
+                            default:
+                                TBColor.base2
+                            }
                         }
+                        .frame(maxWidth: 240, maxHeight: 240)
+                        .clipShape(RoundedRectangle(cornerRadius: bubbleRadius, style: .continuous))
                     }
-                    .frame(maxWidth: 240, maxHeight: 240)
-                    .clipShape(RoundedRectangle(cornerRadius: bubbleRadius, style: .continuous))
+                    .buttonStyle(.plain)
                 }
                 if let reactions = message.reactions, !reactions.isEmpty {
                     HStack(spacing: 4) {
@@ -577,8 +643,7 @@ struct DMComposeBar: View {
                             .scaleEffect(0.6)
                             .frame(width: sendDiameter, height: sendDiameter)
                     } else {
-                        Image(systemName: "arrow.up")
-                            .font(.system(size: 14, weight: .semibold))
+                        HeroIcon(name: "arrow-up-circle-solid", size: 18)
                             .foregroundStyle(canSend ? .white : TBColor.textTertiary)
                             .frame(width: sendDiameter, height: sendDiameter)
                             .contentShape(Circle())

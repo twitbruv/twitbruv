@@ -45,7 +45,11 @@ final class NotificationsViewModel {
             )
             items.append(contentsOf: response.notifications)
             nextCursor = response.nextCursor
-        } catch {}
+        } catch let e as APIError {
+            self.error = e
+        } catch {
+            self.error = .invalidResponse
+        }
     }
 
     func refreshUnread() async {
@@ -54,7 +58,9 @@ final class NotificationsViewModel {
                 API.Notifications.unreadCount()
             )
             unreadCount = response.value
-        } catch {}
+        } catch {
+            unreadCount = max(0, unreadCount)
+        }
     }
 
     func markAllRead() async {
@@ -67,7 +73,29 @@ final class NotificationsViewModel {
                 items[idx].readAt = .now
             }
             unreadCount = 0
-        } catch {}
+        } catch let e as APIError {
+            self.error = e
+        } catch {
+            self.error = .invalidResponse
+        }
+    }
+
+    func markRead(ids: [String]) async {
+        guard !ids.isEmpty else { return }
+        do {
+            try await api.sendVoid(
+                API.Notifications.markRead(),
+                body: MarkReadBody(ids: ids, all: nil)
+            )
+            for idx in items.indices where ids.contains(items[idx].id) {
+                items[idx].readAt = .now
+            }
+            await refreshUnread()
+        } catch let e as APIError {
+            self.error = e
+        } catch {
+            self.error = .invalidResponse
+        }
     }
 
     func applyMutation(_ mutation: PostMutation, to postId: String) {
@@ -166,6 +194,7 @@ private struct NotificationActions {
     let like: (Post) -> Void
     let repost: (Post) -> Void
     let bookmark: (Post) -> Void
+    let markRead: ([String]) -> Void
 }
 
 struct NotificationsView: View {
@@ -197,7 +226,10 @@ struct NotificationsView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     if let vm = vm, vm.unreadCount > 0 {
                         Button("Mark read") {
-                            Task { await vm.markAllRead() }
+                            Task {
+                                await vm.markAllRead()
+                                await env.badges.refreshNotifications()
+                            }
                         }
                         .foregroundStyle(TBColor.accent)
                     }
@@ -230,7 +262,6 @@ struct NotificationsView: View {
                 vm?.applyMutation(box.mutation, to: id)
             }
         }
-        .tbOptionalTabBadge(vm?.unreadCount ?? 0)
     }
 
     @ViewBuilder
@@ -242,7 +273,13 @@ struct NotificationsView: View {
             quote: { post in path.append(FeedRoute.quote(target: post)) },
             like: { post in Task { await vm.actions.toggleLike(post) } },
             repost: { post in Task { await vm.actions.toggleRepost(post) } },
-            bookmark: { post in Task { await vm.actions.toggleBookmark(post) } }
+            bookmark: { post in Task { await vm.actions.toggleBookmark(post) } },
+            markRead: { ids in
+                Task {
+                    await vm.markRead(ids: ids)
+                    await env.badges.refreshNotifications()
+                }
+            }
         )
         let groups = groupNotifications(vm.items)
 
@@ -262,9 +299,16 @@ struct NotificationsView: View {
             }
             ForEach(groups) { group in
                 groupRow(group: group, actions: actions)
-                    .listRowBackground(
-                        group.hasUnread ? TBColor.glassCardTint : Color.clear
-                    )
+                    .overlay(alignment: .leading) {
+                        if group.hasUnread {
+                            Capsule()
+                                .fill(TBColor.accent)
+                                .frame(width: 3)
+                                .padding(.vertical, 10)
+                                .padding(.leading, 4)
+                        }
+                    }
+                    .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets())
                     .listRowSeparator(.hidden)
             }
@@ -274,11 +318,11 @@ struct NotificationsView: View {
             ) { await vm.loadMore() }
         }
         .listRowSpacing(TBLayout.feedListRowSpacing)
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .background(Color.clear)
-        .refreshable { await vm.reload() }
-        .tbReadableColumn()
+        .tbListChrome()
+        .refreshable {
+            await vm.reload()
+            await env.badges.refreshNotifications()
+        }
     }
 
     @ViewBuilder
@@ -420,6 +464,9 @@ private struct NotificationRow: View {
     }
 
     private func tapAction() {
+        if item.readAt == nil {
+            actions.markRead([item.id])
+        }
         if let id = item.post?.id {
             actions.openPost(id)
         } else if let handle = item.actor?.handle {
@@ -473,7 +520,10 @@ private struct GroupedLikeRow: View {
     var body: some View {
         let lead = items[0].actor
         let othersCount = items.count - 1
-        TappableRow(action: { actions.openPost(target.id) }) {
+        TappableRow(action: {
+            actions.markRead(items.filter { $0.readAt == nil }.map(\.id))
+            actions.openPost(target.id)
+        }) {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .center, spacing: 10) {
                     HeroIcon(name: "heart-solid", size: 20)
@@ -518,7 +568,10 @@ private struct GroupedFollowRow: View {
     var body: some View {
         let lead = items[0].actor
         let othersCount = items.count - 1
-        TappableRow(action: { if let h = lead?.handle { actions.openProfile(h) } }) {
+        TappableRow(action: {
+            actions.markRead(items.filter { $0.readAt == nil }.map(\.id))
+            if let h = lead?.handle { actions.openProfile(h) }
+        }) {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .center, spacing: 10) {
                     HeroIcon(name: "user-plus-solid", size: 20)
@@ -553,7 +606,10 @@ private struct ReplyRow: View {
 
     var body: some View {
         let target = item.post
-        TappableRow(action: { if let id = target?.id { actions.openPost(id) } }) {
+        TappableRow(action: {
+            if item.readAt == nil { actions.markRead([item.id]) }
+            if let id = target?.id { actions.openPost(id) }
+        }) {
             HStack(alignment: .top, spacing: 10) {
                 HeroIcon(name: "chat-bubble-left-solid", size: 20)
                     .foregroundStyle(TBColor.accent)
@@ -602,7 +658,10 @@ private struct MentionRow: View {
 
     var body: some View {
         let target = item.post
-        TappableRow(action: { if let id = target?.id { actions.openPost(id) } }) {
+        TappableRow(action: {
+            if item.readAt == nil { actions.markRead([item.id]) }
+            if let id = target?.id { actions.openPost(id) }
+        }) {
             HStack(alignment: .top, spacing: 10) {
                 HeroIcon(name: "at-symbol-solid", size: 20)
                     .foregroundStyle(TBColor.accent)

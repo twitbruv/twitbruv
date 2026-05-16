@@ -9,11 +9,19 @@ enum ComposeMode: Equatable {
     case scheduled(ScheduledPost)
 }
 
+enum ComposerResult {
+    case created(Post)
+    case scheduled(ScheduledPost)
+    case updatedScheduled(ScheduledPost)
+    case cancelled
+}
+
 struct ComposerView: View {
     @Environment(AppEnvironment.self) private var env
     @Environment(\.dismiss) private var dismiss
 
     let mode: ComposeMode
+    var onComplete: ((ComposerResult) -> Void)?
 
     @State private var text: String = ""
     @State private var picker = PhotoPickerController()
@@ -28,8 +36,11 @@ struct ComposerView: View {
     @State private var isSubmitting = false
     @State private var errorMessage: String?
     @State private var unfurlPreview: UnfurlCard?
+    @State private var uploadStates: [PickedPhoto.ID: UploadState] = [:]
+    @State private var previewTask: Task<Void, Never>?
 
     private let textLimit = 500
+    private let minimumScheduleLeadTime: TimeInterval = 300
 
     var body: some View {
         NavigationStack {
@@ -107,11 +118,35 @@ struct ComposerView: View {
                                                     Button {
                                                         picker.remove(id: p.id)
                                                     } label: {
-                                                        HeroIcon(name: "x-circle-solid", size: 22)
+                                                        HeroIcon(name: "xcircle-solid", size: 22)
                                                             .foregroundStyle(TBColor.inverse)
                                                     }
                                                     .padding(2)
+                                                    .accessibilityLabel("Remove image")
                                                 }
+                                                .overlay(alignment: .bottomLeading) {
+                                                    if let state = uploadStates[p.id] {
+                                                        UploadStateBadge(state: state)
+                                                            .padding(5)
+                                                    }
+                                                }
+                                            VStack(alignment: .leading, spacing: 4) {
+                                                TextField("Alt text", text: Binding(
+                                                    get: { p.altText },
+                                                    set: { picker.updateAlt(id: p.id, altText: $0) }
+                                                ))
+                                                .font(TBTypography.caption)
+                                                .textFieldStyle(.plain)
+                                                .padding(.horizontal, 10)
+                                                .padding(.vertical, 7)
+                                                .frame(width: 180)
+                                                .tbGlass(
+                                                    .field,
+                                                    in: RoundedRectangle(cornerRadius: TBLayout.radiusMD, style: .continuous),
+                                                    interactive: true,
+                                                    shadow: false
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -164,17 +199,6 @@ struct ComposerView: View {
                                 shadow: false
                             )
                         }
-                        DatePicker(
-                            "Schedule",
-                            selection: Binding(
-                                get: { scheduledAt ?? .now.addingTimeInterval(3600) },
-                                set: { scheduledAt = $0 }
-                            ),
-                            in: Date()...,
-                            displayedComponents: [.date, .hourAndMinute]
-                        )
-                        .tint(TBColor.accent)
-                        .disabled(scheduledAt == nil)
                         Toggle(
                             "Schedule for later",
                             isOn: Binding(
@@ -185,6 +209,18 @@ struct ComposerView: View {
                             )
                         )
                         .tint(TBColor.inverse)
+                        if scheduledAt != nil {
+                            DatePicker(
+                                "Schedule",
+                                selection: Binding(
+                                    get: { scheduledAt ?? .now.addingTimeInterval(3600) },
+                                    set: { scheduledAt = $0 }
+                                ),
+                                in: Date().addingTimeInterval(minimumScheduleLeadTime)...,
+                                displayedComponents: [.date, .hourAndMinute]
+                            )
+                            .tint(TBColor.accent)
+                        }
                     }
 
                     if let card = unfurlPreview {
@@ -217,7 +253,10 @@ struct ComposerView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancel") {
+                        onComplete?(.cancelled)
+                        dismiss()
+                    }
                         .foregroundStyle(TBColor.textSecondary)
                 }
                 ToolbarItem(placement: .confirmationAction) {
@@ -230,7 +269,12 @@ struct ComposerView: View {
                 }
             }
             .onChange(of: text) { _, new in
-                Task { await previewIfPossible(text: new) }
+                previewTask?.cancel()
+                previewTask = Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(350))
+                    guard !Task.isCancelled else { return }
+                    await previewIfPossible(text: new)
+                }
             }
             .overlay {
                 if isSubmitting {
@@ -287,6 +331,10 @@ struct ComposerView: View {
 
     private var canSubmit: Bool {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count <= textLimit else { return false }
+        if let scheduledAt, scheduledAt.timeIntervalSinceNow < minimumScheduleLeadTime {
+            return false
+        }
         if !picker.picked.isEmpty { return true }
         if pollOptions != nil { return validPoll }
         return !trimmed.isEmpty && trimmed.count <= textLimit
@@ -330,7 +378,18 @@ struct ComposerView: View {
             if !picker.picked.isEmpty {
                 let uploader = MediaUploader(api: env.api)
                 for p in picker.picked {
+                    uploadStates[p.id] = .uploading
                     let media = try await uploader.upload(data: p.data, mimeType: p.mime)
+                    uploadStates[p.id] = .processing
+                    let alt = p.altText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !alt.isEmpty {
+                        struct AltBody: Encodable { let altText: String }
+                        try await env.api.sendVoid(
+                            API.Media.setAlt(media.id),
+                            body: AltBody(altText: alt)
+                        )
+                    }
+                    uploadStates[p.id] = .complete
                     mediaIds.append(media.id)
                 }
             }
@@ -347,6 +406,10 @@ struct ComposerView: View {
             }()
 
             if let scheduledAt {
+                guard scheduledAt.timeIntervalSinceNow >= minimumScheduleLeadTime else {
+                    errorMessage = "Scheduled posts need at least 5 minutes lead time."
+                    return
+                }
                 let body = ScheduledPostBody(
                     kind: "scheduled",
                     text: text,
@@ -357,9 +420,12 @@ struct ComposerView: View {
                     replyRestriction: "anyone",
                     scheduledAt: scheduledAt
                 )
-                let _: ScheduledPostResponse = try await env.api.send(
+                let response: ScheduledPostResponse = try await env.api.send(
                     API.ScheduledPosts.create(), body: body
                 )
+                if let scheduled = response.value {
+                    onComplete?(.scheduled(scheduled))
+                }
                 dismiss()
                 return
             }
@@ -385,13 +451,66 @@ struct ComposerView: View {
             NotificationCenter.default.post(
                 name: .composedPostCreated, object: response.post
             )
+            onComplete?(.created(response.post))
             dismiss()
         } catch let APIError.http(_, _, message) {
+            markUploadsFailed()
             errorMessage = message ?? "Couldn't post."
         } catch let APIError.rateLimited(retry, _) {
+            markUploadsFailed()
             errorMessage = "Too many requests. Try in \(retry)s."
         } catch {
+            markUploadsFailed()
             errorMessage = error.localizedDescription
+        }
+    }
+
+    private func markUploadsFailed() {
+        for id in uploadStates.keys {
+            if uploadStates[id] != .complete {
+                uploadStates[id] = .failed
+            }
+        }
+    }
+}
+
+private enum UploadState: Equatable {
+    case uploading
+    case processing
+    case complete
+    case failed
+}
+
+private struct UploadStateBadge: View {
+    let state: UploadState
+
+    var body: some View {
+        HStack(spacing: 4) {
+            switch state {
+            case .uploading, .processing:
+                ProgressView()
+                    .tint(.white)
+                    .scaleEffect(0.55)
+            case .complete:
+                HeroIcon(name: "check-circle-solid", size: 12)
+            case .failed:
+                HeroIcon(name: "exclamation-triangle-solid", size: 12)
+            }
+            Text(label)
+                .font(TBTypography.micro.weight(.bold))
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
+        .background(.black.opacity(0.58), in: Capsule())
+    }
+
+    private var label: String {
+        switch state {
+        case .uploading: return "Uploading"
+        case .processing: return "Processing"
+        case .complete: return "Ready"
+        case .failed: return "Failed"
         }
     }
 }

@@ -45,6 +45,9 @@ struct HomeFeedView: View {
                         onReport: { post in
                             reportTarget = post
                         },
+                        onSelectHashtag: { tag in
+                            path.append(FeedRoute.hashtag(tag: tag))
+                        },
                         scrollCollapsesTopInset: true,
                         collapseInsetResetToken: scope,
                         topSafeAreaInset: {

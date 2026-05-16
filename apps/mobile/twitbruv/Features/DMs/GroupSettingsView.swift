@@ -9,13 +9,28 @@ struct GroupSettingsView: View {
     @State private var newName = ""
     @State private var invites: [ConversationInvite] = []
     @State private var isWorking = false
+    @State private var errorMessage: String?
 
     var body: some View {
         NavigationStack {
             Form {
                 Section("Members") {
                     ForEach(conversation.members ?? []) { user in
-                        UserRowView(user: user)
+                        HStack {
+                            UserRowView(user: user)
+                            Spacer()
+                            if conversation.isGroup == true {
+                                Button(role: .destructive) {
+                                    Task { await removeMember(user) }
+                                } label: {
+                                    HeroIcon(name: "trash-solid", size: 16)
+                                        .foregroundStyle(TBColor.danger)
+                                        .frame(width: TBLayout.hitTarget, height: TBLayout.hitTarget)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("Remove member")
+                            }
+                        }
                     }
                 }
                 if conversation.isGroup == true {
@@ -32,6 +47,21 @@ struct GroupSettingsView: View {
                                     .font(.footnote)
                                     .lineLimit(1)
                                 Spacer()
+                                if let value = invite.url ?? invite.token {
+                                    ShareLink(item: value) {
+                                        HeroIcon(name: "arrow-up-circle-solid", size: 16)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .accessibilityLabel("Share invite link")
+                                    Button {
+                                        UIPasteboard.general.string = value
+                                        env.toast.show("Invite link copied")
+                                    } label: {
+                                        HeroIcon(name: "link-solid", size: 16)
+                                    }
+                                    .buttonStyle(.plain)
+                                    .accessibilityLabel("Copy invite link")
+                                }
                                 Button(role: .destructive) {
                                     Task { await revokeInvite(invite) }
                                 } label: {
@@ -40,6 +70,13 @@ struct GroupSettingsView: View {
                                 .buttonStyle(.plain)
                             }
                         }
+                    }
+                }
+                if let errorMessage {
+                    Section {
+                        Text(errorMessage)
+                            .font(TBTypography.caption)
+                            .foregroundStyle(TBColor.danger)
                     }
                 }
             }
@@ -68,8 +105,11 @@ struct GroupSettingsView: View {
         defer { isWorking = false }
         do {
             try await env.api.sendVoid(API.DMs.rename(conversation.id), body: Body(name: newName))
+            env.toast.show("Group renamed")
             dismiss()
-        } catch {}
+        } catch {
+            errorMessage = "Could not rename group."
+        }
     }
 
     private func loadInvites() async {
@@ -78,7 +118,9 @@ struct GroupSettingsView: View {
                 API.DMs.invites(conversation.id)
             )
             invites = response.invites
-        } catch {}
+        } catch {
+            errorMessage = "Could not load invites."
+        }
     }
 
     private func createInvite() async {
@@ -88,7 +130,10 @@ struct GroupSettingsView: View {
                 body: EmptyBody()
             )
             invites.insert(response.invite, at: 0)
-        } catch {}
+            env.toast.show("Invite created")
+        } catch {
+            errorMessage = "Could not create invite."
+        }
     }
 
     private func revokeInvite(_ invite: ConversationInvite) async {
@@ -97,6 +142,22 @@ struct GroupSettingsView: View {
                 API.DMs.revokeInvite(conversation.id, inviteId: invite.id)
             )
             invites.removeAll { $0.id == invite.id }
-        } catch {}
+            env.toast.show("Invite revoked")
+        } catch {
+            errorMessage = "Could not revoke invite."
+        }
+    }
+
+    private func removeMember(_ user: UserSummary) async {
+        isWorking = true
+        defer { isWorking = false }
+        do {
+            try await env.api.sendVoid(
+                API.DMs.removeMember(conversation.id, userId: user.id)
+            )
+            env.toast.show("Member removed")
+        } catch {
+            errorMessage = "Could not remove member."
+        }
     }
 }

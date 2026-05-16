@@ -30,8 +30,8 @@ final class ProfileViewModel {
         }
     }
 
-    func setFollow(_ follow: Bool) async {
-        guard user != nil else { return }
+    func setFollow(_ follow: Bool) async -> Bool {
+        guard user != nil else { return false }
         let was = user?.viewer?.following == true
         if user?.viewer == nil {
             user?.viewer = PublicUser.ViewerFlags(
@@ -41,7 +41,7 @@ final class ProfileViewModel {
         user?.viewer?.following = follow
         if let counts = user?.counts {
             user?.counts = PublicUser.Counts(
-                followers: (counts.followers ?? 0) + (follow ? 1 : -1),
+                followers: max(0, (counts.followers ?? 0) + (follow ? 1 : -1)),
                 following: counts.following,
                 posts: counts.posts
             )
@@ -52,31 +52,40 @@ final class ProfileViewModel {
             } else {
                 try await api.sendVoid(API.Users.unfollow(handle))
             }
+            return true
         } catch {
             user?.viewer?.following = was
+            return false
         }
     }
 
-    func setBlock(_ block: Bool) async {
+    func setBlock(_ block: Bool) async -> Bool {
         do {
             if block { try await api.sendVoid(API.Users.block(handle)) }
             else { try await api.sendVoid(API.Users.unblock(handle)) }
             user?.viewer?.blocking = block
-        } catch {}
+            return true
+        } catch {
+            return false
+        }
     }
 
-    func setMute(_ mute: Bool) async {
+    func setMute(_ mute: Bool) async -> Bool {
         do {
             if mute { try await api.sendVoid(API.Users.mute(handle)) }
             else { try await api.sendVoid(API.Users.unmute(handle)) }
             user?.viewer?.muting = mute
-        } catch {}
+            return true
+        } catch {
+            return false
+        }
     }
 }
 
 struct ProfileView: View {
     @Environment(AppEnvironment.self) private var env
     @Environment(AuthStore.self) private var auth
+    @Environment(\.openURL) private var openURL
 
     let handle: String
     @Binding var navigationPath: NavigationPath
@@ -91,6 +100,8 @@ struct ProfileView: View {
     @State private var showEditProfile = false
     @State private var reportTarget: Post?
     @State private var reportUser: ReportSubject?
+    @State private var actions: PostActions?
+    @State private var mediaViewer: MediaViewerItem?
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -186,11 +197,15 @@ struct ProfileView: View {
         .sheet(item: $reportTarget) { post in
             ReportSheet(subject: .post(id: post.id))
         }
+        .sheet(item: $mediaViewer) { item in
+            MediaViewerView(media: item.media, initialID: item.initialID)
+        }
         .sheet(item: $reportUser) { subject in
             ReportSheet(subject: subject)
         }
         .task {
             if vm == nil { vm = ProfileViewModel(handle: handle, api: env.api) }
+            if actions == nil { actions = PostActions(api: env.api) }
             if postsLoader == nil {
                 postsLoader = PagedLoader<Post, PostsResponse>(
                     api: env.api,
@@ -207,6 +222,22 @@ struct ProfileView: View {
                 )
             }
             await vm?.load()
+        }
+        .onReceive(
+            NotificationCenter.default.publisher(for: .postMutated)
+        ) { note in
+            guard let loader = postsLoader,
+                  let box = note.userInfo?["mutation"] as? MutationBox
+            else { return }
+            if let id = note.userInfo?["id"] as? String {
+                if case .deleted = box.mutation {
+                    loader.remove(id: id)
+                } else {
+                    loader.patch(id: id) { post in box.mutation.apply(to: &post) }
+                }
+            } else if note.userInfo?["pollId"] is String {
+                loader.patchAll { post in box.mutation.apply(to: &post) }
+            }
         }
         .onChange(of: tab) { _, new in
             if new == .articles, articlesLoader?.didLoadOnce == false {
@@ -247,29 +278,45 @@ struct ProfileView: View {
             case .posts:
                 if let loader = postsLoader {
                     ForEach(loader.items) { post in
-                        PostCardView(
-                            post: post,
-                            onLike: {
-                                Task { await PostActions(api: env.api).toggleLike(post) }
-                            },
-                            onRepost: {
-                                Task { await PostActions(api: env.api).toggleRepost(post) }
-                            },
-                            onBookmark: {
-                                Task { await PostActions(api: env.api).toggleBookmark(post) }
-                            },
-                            onReply: nil,
-                            onTapAuthor: nil,
-                            onMenuAction: { action in
-                                if case .report = action { reportTarget = post }
-                            }
-                        )
+                        TappableRow(action: {
+                            navigationPath.append(FeedRoute.thread(id: post.id))
+                        }) {
+                            PostCardView(
+                                post: post,
+                                onLike: { Task { await actions?.toggleLike(post) } },
+                                onRepost: { Task { await actions?.toggleRepost(post) } },
+                                onQuote: { navigationPath.append(FeedRoute.quote(target: post)) },
+                                onBookmark: { Task { await actions?.toggleBookmark(post) } },
+                                onReply: { navigationPath.append(FeedRoute.compose(replyTo: post)) },
+                                onTapAuthor: {
+                                    if let h = post.author.handle {
+                                        navigationPath.append(FeedRoute.profile(handle: h))
+                                    }
+                                },
+                                onTapMedia: { media, all in
+                                    mediaViewer = MediaViewerItem(media: all, initialID: media.id)
+                                },
+                                onTapHashtag: { tag in
+                                    navigationPath.append(FeedRoute.hashtag(tag: tag))
+                                },
+                                onTapURL: { url in openURL(url) },
+                                onVotePoll: { pollId, optionId in
+                                    Task {
+                                        await actions?.votePoll(
+                                            pollId: pollId,
+                                            optionId: optionId,
+                                            previousOptionIds: post.poll?.viewerVoteOptionIds
+                                        )
+                                    }
+                                },
+                                onMenuAction: { action in
+                                    handlePostMenu(action, post: post)
+                                }
+                            )
+                        }
                         .listRowInsets(EdgeInsets())
                         .listRowSeparator(.hidden)
                         .listRowBackground(Color.clear)
-                        .onTapGesture {
-                            navigationPath.append(FeedRoute.thread(id: post.id))
-                        }
                     }
                     LoadMoreFooter(
                         hasMore: loader.nextCursor != nil,
@@ -304,6 +351,21 @@ struct ProfileView: View {
             await vm.load()
             await postsLoader?.reload()
             await articlesLoader?.reload()
+        }
+    }
+
+    private func handlePostMenu(_ action: PostMenuAction, post: Post) {
+        switch action {
+        case .copyLink(let id):
+            UIPasteboard.general.string =
+                Config.webBaseURL.appendingPathComponent(
+                    "/@\(post.author.handle ?? "")/\(id)"
+                ).absoluteString
+            env.toast.show("Post link copied")
+        case .viewProfile(let handle):
+            navigationPath.append(FeedRoute.profile(handle: handle))
+        case .report(_):
+            reportTarget = post
         }
     }
 }
@@ -423,12 +485,16 @@ private struct ProfileFloatingChrome: View {
 }
 
 private struct ProfileOverflowMenu: View {
+    @Environment(AppEnvironment.self) private var env
+
     let isSelf: Bool
     let vm: ProfileViewModel
     let user: PublicUser
     @Binding var showSettings: Bool
     @Binding var reportUser: ReportSubject?
     let reduceTransparency: Bool
+
+    @State private var confirmBlock = false
 
     private let bannerGlassIconSize: CGFloat = 44
 
@@ -462,6 +528,24 @@ private struct ProfileOverflowMenu: View {
                 .accessibilityLabel("More")
             }
         }
+        .confirmationDialog(
+            "Block @\(user.handle ?? "this user")?",
+            isPresented: $confirmBlock,
+            titleVisibility: .visible
+        ) {
+            Button("Block", role: .destructive) {
+                Task {
+                    let ok = await vm.setBlock(true)
+                    env.toast.show(
+                        ok ? "User blocked" : "Could not block user",
+                        kind: ok ? .success : .error
+                    )
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("They will not be able to follow or message you.")
+        }
     }
 
     @ViewBuilder
@@ -470,15 +554,24 @@ private struct ProfileOverflowMenu: View {
             Button {
                 showSettings = true
             } label: {
-                Label("Settings", hero: "cog-6-tooth-solid")
+                Label("Settings", hero: "cog6-tooth-solid")
             }
         } else {
             Button {
-                Task { await vm.setMute(!(user.viewer?.muting == true)) }
+                Task {
+                    let shouldMute = !(user.viewer?.muting == true)
+                    let ok = await vm.setMute(shouldMute)
+                    env.toast.show(
+                        ok
+                            ? (shouldMute ? "User muted" : "User unmuted")
+                            : "Could not update mute",
+                        kind: ok ? .success : .error
+                    )
+                }
             } label: {
                 Label(
                     (user.viewer?.muting == true) ? "Unmute" : "Mute",
-                    hero: "speaker-x-mark-solid"
+                    hero: "speaker-xmark-solid"
                 )
             }
             Button {
@@ -490,13 +583,19 @@ private struct ProfileOverflowMenu: View {
             }
             if user.viewer?.blocking == true {
                 Button {
-                    Task { await vm.setBlock(false) }
+                    Task {
+                        let ok = await vm.setBlock(false)
+                        env.toast.show(
+                            ok ? "User unblocked" : "Could not unblock user",
+                            kind: ok ? .success : .error
+                        )
+                    }
                 } label: {
                     Label("Unblock", hero: "hand-raised-solid")
                 }
             } else {
                 Button(role: .destructive) {
-                    Task { await vm.setBlock(true) }
+                    confirmBlock = true
                 } label: {
                     Label("Block", hero: "hand-raised-solid")
                 }
@@ -718,7 +817,16 @@ private struct ProfileActionsRow: View {
                     expands: false,
                     isDisabled: viewerBlocking
                 ) {
-                    Task { await vm.setFollow(!viewerFollowing) }
+                    Task {
+                        let shouldFollow = !viewerFollowing
+                        let ok = await vm.setFollow(shouldFollow)
+                        env.toast.show(
+                            ok
+                                ? (shouldFollow ? "Following" : "Unfollowed")
+                                : "Could not update follow",
+                            kind: ok ? .success : .error
+                        )
+                    }
                 }
                 Button {
                     Task { await startDM() }
@@ -753,7 +861,9 @@ private struct ProfileActionsRow: View {
                 body: StartDMBody(userIds: [user.id], name: nil)
             )
             navigationPath.append(DMRoute.conversation(id: response.conversation.id))
-        } catch {}
+        } catch {
+            env.toast.show("Could not start conversation", kind: .error)
+        }
     }
 }
 
@@ -795,28 +905,39 @@ private struct ProfileMetricsRow: View {
 private struct ArticleRow: View {
     let article: Article
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 8) {
             Text(article.title ?? "Untitled")
                 .font(TBTypography.cardTitle)
                 .foregroundStyle(TBColor.textPrimary)
+                .lineLimit(2)
             if let subtitle = article.subtitle {
                 Text(subtitle)
                     .font(TBTypography.bodySecondary)
                     .foregroundStyle(TBColor.textSecondary)
                     .lineLimit(2)
             }
-            HStack {
+            HStack(spacing: 6) {
                 if let pub = article.publishedAt {
                     Text(pub.relativeShort)
                 }
                 if let mins = article.readingTimeMinutes {
-                    Text("· \(mins) min read")
+                    Text("·")
+                    Text("\(mins) min read")
                 }
             }
             .font(TBTypography.caption)
             .foregroundStyle(TBColor.textSecondary)
         }
-        .padding(.vertical, 6)
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .tbGlass(
+            .card,
+            in: RoundedRectangle(cornerRadius: TBLayout.radiusGlassCard, style: .continuous),
+            interactive: true,
+            shadow: false
+        )
+        .padding(.horizontal, TBLayout.pagePadding)
+        .padding(.vertical, 4)
     }
 }
 

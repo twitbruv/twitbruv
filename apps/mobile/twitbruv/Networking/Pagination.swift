@@ -69,6 +69,12 @@ final class PagedLoader<Item: Identifiable & Sendable & Decodable, Page: Decodab
         transform(&items[idx])
     }
 
+    func patchAll(transform: (inout Item) -> Void) {
+        for idx in items.indices {
+            transform(&items[idx])
+        }
+    }
+
     func remove(id: Item.ID) {
         items.removeAll { $0.id == id }
     }

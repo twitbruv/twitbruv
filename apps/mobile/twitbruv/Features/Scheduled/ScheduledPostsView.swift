@@ -7,6 +7,7 @@ struct ScheduledPostsView: View {
     @State private var kind: String = "scheduled"
     @State private var isLoading = false
     @State private var editing: ScheduledPost?
+    @State private var errorMessage: String?
 
     var body: some View {
         List {
@@ -25,11 +26,22 @@ struct ScheduledPostsView: View {
                 }
             }
 
+            if let errorMessage {
+                TBInlineState(
+                    kind: .error(errorMessage),
+                    retryTitle: "Retry",
+                    retry: { Task { await load() } }
+                )
+                .listRowSeparator(.hidden)
+            }
+
             if items.isEmpty && !isLoading {
-                EmptyStateView(
-                    icon: "calendar-solid",
-                    title: kind == "draft" ? "No drafts yet" : "No scheduled posts",
-                    message: nil
+                TBInlineState(
+                    kind: .empty(
+                        icon: "calendar-solid",
+                        title: kind == "draft" ? "No drafts yet" : "No scheduled posts",
+                        message: nil
+                    )
                 )
                 .listRowSeparator(.hidden)
             }
@@ -50,9 +62,7 @@ struct ScheduledPostsView: View {
                     }
             }
         }
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .background(Color.clear)
+        .tbListChrome()
         .navigationTitle("Scheduled")
         .refreshable { await load() }
         .task { await load() }
@@ -71,21 +81,30 @@ struct ScheduledPostsView: View {
                 API.ScheduledPosts.list(kind: kind)
             )
             items = response.values
-        } catch {}
+            errorMessage = nil
+        } catch {
+            errorMessage = "Could not load scheduled posts."
+        }
     }
 
     private func delete(_ item: ScheduledPost) async {
         do {
             try await env.api.sendVoid(API.ScheduledPosts.delete(item.id))
             items.removeAll { $0.id == item.id }
-        } catch {}
+            env.toast.show("Scheduled post deleted")
+        } catch {
+            env.toast.show("Could not delete scheduled post", kind: .error)
+        }
     }
 
     private func publish(_ item: ScheduledPost) async {
         do {
             try await env.api.sendVoid(API.ScheduledPosts.publish(item.id))
             items.removeAll { $0.id == item.id }
-        } catch {}
+            env.toast.show("Post published")
+        } catch {
+            env.toast.show("Could not publish post", kind: .error)
+        }
     }
 }
 
@@ -219,6 +238,7 @@ struct ScheduledEditorView: View {
             let _: ScheduledPostResponse = try await env.api.send(
                 API.ScheduledPosts.update(item.id), body: body
             )
+            env.toast.show("Scheduled post updated")
             onChange()
             dismiss()
         } catch {
@@ -231,6 +251,7 @@ struct ScheduledEditorView: View {
         defer { isSaving = false }
         do {
             try await env.api.sendVoid(API.ScheduledPosts.publish(item.id))
+            env.toast.show("Post published")
             onChange()
             dismiss()
         } catch {

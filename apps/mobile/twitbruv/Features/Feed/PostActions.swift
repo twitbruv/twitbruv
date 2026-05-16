@@ -7,6 +7,8 @@ enum PostMutation: Sendable {
     case toggleBookmark(value: Bool)
     case togglePin(value: Bool)
     case toggleHidden(value: Bool)
+    case votePoll(pollId: String, optionId: String)
+    case restorePoll(pollId: String, optionIds: [String]?)
     case deleted
 
     func apply(to post: inout Post) {
@@ -33,9 +35,36 @@ enum PostMutation: Sendable {
             post.pinned = v
         case .toggleHidden(let v):
             post.hidden = v
+        case .votePoll(let pollId, let optionId):
+            post.applyPollVote(pollId: pollId, optionIds: [optionId])
+        case .restorePoll(let pollId, let optionIds):
+            post.applyPollVote(pollId: pollId, optionIds: optionIds)
         case .deleted:
             break
         }
+    }
+}
+
+private extension Post {
+    mutating func applyPollVote(pollId: String, optionIds: [String]?) {
+        guard var currentPoll = poll, currentPoll.id == pollId else { return }
+        let previous = Set(currentPoll.viewerVoteOptionIds ?? [])
+        let next = Set(optionIds ?? [])
+        for idx in currentPoll.options.indices {
+            let optionId = currentPoll.options[idx].id
+            let had = previous.contains(optionId)
+            let has = next.contains(optionId)
+            if had != has {
+                currentPoll.options[idx].voteCount += has ? 1 : -1
+            }
+        }
+        if previous.isEmpty && !next.isEmpty {
+            currentPoll.totalVotes += 1
+        } else if !previous.isEmpty && next.isEmpty {
+            currentPoll.totalVotes = max(0, currentPoll.totalVotes - 1)
+        }
+        currentPoll.viewerVoteOptionIds = optionIds
+        poll = currentPoll
     }
 }
 
@@ -94,6 +123,21 @@ final class PostActions {
         }
     }
 
+    func votePoll(pollId: String, optionId: String, previousOptionIds: [String]? = nil) async {
+        broadcast(pollId: pollId, mutation: .votePoll(pollId: pollId, optionId: optionId))
+        do {
+            try await api.sendVoid(
+                API.Polls.vote(pollId),
+                body: PollVoteBody(optionIds: [optionId])
+            )
+        } catch {
+            broadcast(
+                pollId: pollId,
+                mutation: .restorePoll(pollId: pollId, optionIds: previousOptionIds)
+            )
+        }
+    }
+
     func togglePin(_ post: Post) async {
         let pinned = post.pinned == true
         do {
@@ -136,6 +180,14 @@ final class PostActions {
             name: .postMutated,
             object: nil,
             userInfo: ["id": id, "mutation": MutationBox(mutation)]
+        )
+    }
+
+    private func broadcast(pollId: String, mutation: PostMutation) {
+        NotificationCenter.default.post(
+            name: .postMutated,
+            object: nil,
+            userInfo: ["pollId": pollId, "mutation": MutationBox(mutation)]
         )
     }
 }
