@@ -181,18 +181,28 @@ function ConversationRow({ conversation }: { conversation: DmConversation }) {
     : ""
   const peer =
     !isGroup && !conversation.title ? conversation.members.at(0) : null
+  const isUnread = conversation.unreadCount > 0
 
   return (
     <div className="border-b border-neutral">
       <Link
         to="/inbox/$conversationId"
         params={{ conversationId: conversation.id }}
+        aria-label={
+          isUnread
+            ? `${title}, ${conversation.unreadCount} unread message${conversation.unreadCount > 1 ? "s" : ""}`
+            : title
+        }
         className="focus-visible:ring-primary flex items-start gap-3 px-4 py-3.5 transition-colors hover:bg-base-2/20 focus-visible:ring-2 focus-visible:outline-none focus-visible:ring-inset"
       >
         <ConversationAvatar conversation={conversation} />
         <div className="min-w-0 flex-1 pt-0.5">
           <div className="flex items-baseline justify-between gap-2">
-            <span className="flex min-w-0 items-center gap-1 text-sm font-semibold text-primary">
+            <span
+              className={`flex min-w-0 items-center gap-1 text-sm text-primary ${
+                isUnread ? "font-semibold" : "font-medium"
+              }`}
+            >
               <span className="truncate">{title}</span>
               {(() => {
                 const tier = peer ? resolveBadgeTier(peer) : null
@@ -201,20 +211,32 @@ function ConversationRow({ conversation }: { conversation: DmConversation }) {
                 ) : null
               })()}
             </span>
-            {ts && (
-              <time className="shrink-0 text-xs text-tertiary tabular-nums">
+            {ts && conversation.lastMessageAt && (
+              <time
+                dateTime={conversation.lastMessageAt}
+                className={`shrink-0 text-xs tabular-nums ${
+                  isUnread ? "font-medium text-primary" : "text-tertiary"
+                }`}
+              >
                 {ts}
               </time>
             )}
           </div>
-          <p className="mt-0.5 truncate text-xs text-tertiary">
+          <p
+            className={`mt-0.5 truncate text-xs ${
+              isUnread ? "text-secondary" : "text-tertiary"
+            }`}
+          >
             {isGroup && `${conversation.members.length + 1} members · `}
             {preview ?? "No messages yet."}
           </p>
         </div>
-        {conversation.unreadCount > 0 && (
-          <span className="ml-1 shrink-0 self-center rounded-full bg-inverse px-2 py-0.5 text-[10px] font-semibold text-inverse tabular-nums">
-            {conversation.unreadCount}
+        {isUnread && (
+          <span
+            aria-hidden
+            className="ml-1 inline-flex h-5 min-w-5 shrink-0 items-center justify-center self-center rounded-full bg-inverse px-1.5 text-[10px] font-semibold text-inverse tabular-nums"
+          >
+            {conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}
           </span>
         )}
       </Link>

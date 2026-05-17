@@ -1,11 +1,16 @@
 import { Link, createFileRoute, useRouter } from "@tanstack/react-router"
 import { useQuery } from "@tanstack/react-query"
 import { useCallback, useDeferredValue, useMemo, useState } from "react"
-import { XMarkIcon } from "@heroicons/react/24/solid"
+import {
+  ArrowLeftIcon,
+  MagnifyingGlassIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/solid"
 import { Button } from "@workspace/ui/components/button"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import { Avatar } from "@workspace/ui/components/avatar"
+import { Spinner } from "@workspace/ui/components/spinner"
 import { api } from "../lib/api"
 import { qk } from "../lib/query-keys"
 import { PageError } from "../components/page-surface"
@@ -78,9 +83,10 @@ function NewConversation() {
         <div className="min-w-0">
           <Link
             to="/inbox"
-            className="mb-1 inline-flex text-xs font-medium text-tertiary transition hover:text-primary focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
+            className="mb-1 inline-flex items-center gap-1 text-xs font-medium text-tertiary transition hover:text-primary focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
           >
-            ← Inbox
+            <ArrowLeftIcon className="size-3" />
+            Inbox
           </Link>
           <h1 className="text-base leading-tight font-semibold text-primary">
             New conversation
@@ -94,7 +100,8 @@ function NewConversation() {
           disabled={selected.length === 0 || busy}
           onClick={start}
         >
-          {busy ? "…" : isGroup ? "Create group" : "Message"}
+          {busy ? <Spinner size="xs" /> : null}
+          {isGroup ? "Create group" : "Message"}
         </Button>
       </header>
 
@@ -129,7 +136,7 @@ function NewConversation() {
                   type="button"
                   onClick={() => remove(u.id)}
                   aria-label={`remove ${u.handle ?? u.id}`}
-                  className="ml-0.5 text-tertiary hover:text-primary"
+                  className="ml-0.5 cursor-pointer text-tertiary transition hover:text-primary"
                 >
                   <XMarkIcon className="size-3" />
                 </button>
@@ -143,12 +150,16 @@ function NewConversation() {
             <Label htmlFor="new-dm-search" className="text-xs text-tertiary">
               Search
             </Label>
-            <Input
-              id="new-dm-search"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Handle or name"
-            />
+            <div className="relative">
+              <MagnifyingGlassIcon className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-tertiary" />
+              <Input
+                id="new-dm-search"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Handle or name"
+                className="pl-8"
+              />
+            </div>
           </div>
         </div>
 
@@ -189,7 +200,10 @@ function NewConversation() {
         {q.trim().length >= 2 && (
           <ul className="overflow-hidden rounded-lg border border-neutral bg-base-1">
             {searching && results.length === 0 && (
-              <li className="p-3 text-sm text-tertiary">Searching…</li>
+              <li className="flex items-center gap-2 p-3 text-sm text-tertiary">
+                <Spinner size="xs" />
+                Searching…
+              </li>
             )}
             {!searching && results.length === 0 && (
               <li className="p-3 text-sm text-tertiary">No matches</li>
@@ -202,7 +216,7 @@ function NewConversation() {
                 <button
                   type="button"
                   onClick={() => add(u)}
-                  className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition hover:bg-base-2/30 focus-visible:bg-base-2/30 focus-visible:outline-none"
+                  className="flex w-full cursor-pointer items-center gap-3 px-3 py-2.5 text-left transition hover:bg-base-2/30 focus-visible:bg-base-2/30 focus-visible:outline-none"
                 >
                   <Avatar
                     initial={(u.displayName || u.handle || "?")

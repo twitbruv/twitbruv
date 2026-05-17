@@ -140,21 +140,34 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
       <div className="border-b border-neutral">
         <form onSubmit={onSubmit} className="px-4 py-3">
           <div className="relative">
-            <MagnifyingGlassIcon className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-tertiary" />
+            <MagnifyingGlassIcon className="pointer-events-none absolute top-1/2 left-2.5 size-3.5 -translate-y-1/2 text-tertiary" />
             <Input
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder='Search people and posts. Try "from:lucas has:media".'
-              className="pl-7"
+              className="pr-8 pl-8"
               aria-label="search"
             />
+            {draft.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setDraft("")
+                  navigate({ to: "/search", search: {} })
+                }}
+                aria-label="clear search"
+                className="absolute top-1/2 right-2 flex size-5 -translate-y-1/2 items-center justify-center rounded-full text-tertiary transition hover:bg-base-2 hover:text-primary focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
+              >
+                <XMarkIcon className="size-3" />
+              </button>
+            )}
           </div>
           {me && query.length >= 2 && (
             <div className="mt-2 flex items-center justify-between gap-2 text-xs">
               <button
                 type="button"
                 onClick={toggleSaved}
-                className="text-primary hover:underline"
+                className="text-primary transition hover:underline"
                 aria-pressed={Boolean(activeSavedId)}
               >
                 {activeSavedId ? (
@@ -169,16 +182,33 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
                   </span>
                 )}
               </button>
-              <details className="text-tertiary">
-                <summary className="cursor-pointer select-none">
-                  Operators
+              <details className="group text-tertiary">
+                <summary className="cursor-pointer list-none transition select-none hover:text-primary">
+                  <span className="group-open:hidden">Show operators</span>
+                  <span className="hidden group-open:inline">
+                    Hide operators
+                  </span>
                 </summary>
-                <div className="mt-1 max-w-md text-right text-[11px] leading-snug">
-                  <code>from:user</code> · <code>to:user</code> ·{" "}
-                  <code>has:media</code> · <code>has:link</code> ·{" "}
-                  <code>has:poll</code> · <code>lang:en</code> ·{" "}
-                  <code>since:YYYY-MM-DD</code> · <code>until:YYYY-MM-DD</code>{" "}
-                  · <code>min_likes:10</code> · <code>min_replies:5</code>
+                <div className="mt-2 flex max-w-md flex-wrap justify-end gap-1">
+                  {[
+                    "from:user",
+                    "to:user",
+                    "has:media",
+                    "has:link",
+                    "has:poll",
+                    "lang:en",
+                    "since:YYYY-MM-DD",
+                    "until:YYYY-MM-DD",
+                    "min_likes:10",
+                    "min_replies:5",
+                  ].map((op) => (
+                    <code
+                      key={op}
+                      className="rounded bg-subtle px-1.5 py-0.5 text-[11px] leading-snug"
+                    >
+                      {op}
+                    </code>
+                  ))}
                 </div>
               </details>
             </div>
@@ -194,45 +224,61 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
       </div>
 
       {me && saved.length > 0 && (
-        <section className="border-b border-neutral px-4 py-2">
-          <h2 className="mb-1 text-xs font-medium text-tertiary">
+        <section className="border-b border-neutral px-4 py-3">
+          <h2 className="mb-2 flex items-center gap-1.5 text-xs font-medium text-tertiary">
+            <BookmarkIcon className="size-3.5" />
             Saved searches
           </h2>
           <div className="flex flex-wrap gap-1.5">
-            {saved.map((s) => (
-              <span key={s.id} className="inline-flex items-center gap-0.5">
-                <Button
-                  size="sm"
-                  variant={s.query === query ? "outline" : "transparent"}
-                  onClick={() => {
-                    setDraft(s.query)
-                    navigate({ to: "/search", search: { q: s.query } })
-                  }}
-                  className="rounded-full"
+            {saved.map((s) => {
+              const active = s.query === query
+              return (
+                <span
+                  key={s.id}
+                  className={`group inline-flex items-center gap-0.5 rounded-full border transition ${
+                    active
+                      ? "border-neutral bg-subtle"
+                      : "border-transparent hover:border-neutral hover:bg-base-2/40"
+                  }`}
                 >
-                  <span className="max-w-[18ch] truncate">{s.query}</span>
-                </Button>
-                <Button
-                  size="sm"
-                  variant="transparent"
-                  aria-label={`delete saved search ${s.query}`}
-                  onClick={async () => {
-                    try {
-                      await api.deleteSavedSearch(s.id)
-                      await qc.invalidateQueries({
-                        queryKey: qk.savedSearches(),
-                      })
-                    } catch {
-                      await qc.invalidateQueries({
-                        queryKey: qk.savedSearches(),
-                      })
-                    }
-                  }}
-                >
-                  <XMarkIcon className="size-2.5" />
-                </Button>
-              </span>
-            ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDraft(s.query)
+                      navigate({ to: "/search", search: { q: s.query } })
+                    }}
+                    className="cursor-pointer rounded-full py-1 pl-3 text-xs font-medium text-secondary transition hover:text-primary focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
+                  >
+                    <span className="block max-w-[18ch] truncate">
+                      {s.query}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`delete saved search ${s.query}`}
+                    onClick={async () => {
+                      setSavedActionError(null)
+                      try {
+                        await api.deleteSavedSearch(s.id)
+                      } catch (err) {
+                        setSavedActionError(
+                          err instanceof ApiError
+                            ? err.message
+                            : "couldn't delete saved search"
+                        )
+                      } finally {
+                        await qc.invalidateQueries({
+                          queryKey: qk.savedSearches(),
+                        })
+                      }
+                    }}
+                    className="mr-1 ml-1 flex size-4 cursor-pointer items-center justify-center rounded-full text-tertiary opacity-60 transition hover:bg-base-2 hover:text-primary hover:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-focus focus-visible:outline-none"
+                  >
+                    <XMarkIcon className="size-2.5" />
+                  </button>
+                </span>
+              )
+            })}
           </div>
         </section>
       )}
@@ -292,44 +338,12 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
           </p>
           {me && suggested.length > 0 && (
             <section>
-              <h2 className="flex items-center gap-1.5 border-t border-neutral px-4 py-2 text-xs font-medium text-tertiary">
-                <UserPlusIcon className="size-3.5" />
-                Suggested for you
-              </h2>
+              <SectionHeader
+                icon={<UserPlusIcon className="size-3.5" />}
+                title="Suggested for you"
+              />
               {suggested.map((u) =>
-                u.handle ? (
-                  <Link
-                    key={u.id}
-                    to="/$handle"
-                    params={{ handle: u.handle }}
-                    className="flex items-start gap-3 border-t border-neutral px-4 py-3 hover:bg-base-2/40"
-                  >
-                    <Avatar
-                      src={u.avatarUrl}
-                      initial={(u.displayName || u.handle).slice(0, 2)}
-                      size="lg"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1 text-sm font-medium">
-                        <span className="truncate">
-                          {u.displayName || `@${u.handle}`}
-                        </span>
-                        {(() => {
-                          const tier = resolveBadgeTier(u)
-                          return tier ? (
-                            <VerifiedBadge size={14} role={tier} />
-                          ) : null
-                        })()}
-                      </div>
-                      <div className="text-xs text-tertiary">@{u.handle}</div>
-                      {u.bio && (
-                        <p className="mt-1 line-clamp-2 text-xs text-tertiary">
-                          {u.bio}
-                        </p>
-                      )}
-                    </div>
-                  </Link>
-                ) : null
+                u.handle ? <UserResultRow key={u.id} user={u} /> : null
               )}
             </section>
           )}
@@ -340,44 +354,15 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
         <>
           {users.length > 0 && (
             <section className="border-b border-neutral">
-              <h2 className="px-4 py-2 text-xs font-medium text-tertiary">
-                People
-              </h2>
+              <SectionHeader title="People" />
               {users.map((u) =>
-                u.handle ? (
-                  <Link
-                    key={u.id}
-                    to="/$handle"
-                    params={{ handle: u.handle }}
-                    className="block border-t border-neutral px-4 py-3 hover:bg-base-2/40"
-                  >
-                    <div className="flex items-center gap-1 text-sm font-medium">
-                      <span className="truncate">
-                        {u.displayName || `@${u.handle}`}
-                      </span>
-                      {(() => {
-                        const tier = resolveBadgeTier(u)
-                        return tier ? (
-                          <VerifiedBadge size={14} role={tier} />
-                        ) : null
-                      })()}
-                    </div>
-                    <div className="text-xs text-tertiary">@{u.handle}</div>
-                    {u.bio && (
-                      <p className="mt-1 line-clamp-2 text-xs text-tertiary">
-                        {u.bio}
-                      </p>
-                    )}
-                  </Link>
-                ) : null
+                u.handle ? <UserResultRow key={u.id} user={u} /> : null
               )}
             </section>
           )}
           {posts.length > 0 && (
             <section>
-              <h2 className="px-4 py-2 text-xs font-medium text-tertiary">
-                Posts
-              </h2>
+              <SectionHeader title="Posts" />
               {posts.map((p) => (
                 <PostCard key={p.id} post={p} />
               ))}
@@ -394,5 +379,50 @@ function SearchInner({ initialQuery }: { initialQuery: string }) {
         </>
       )}
     </PageFrame>
+  )
+}
+
+function SectionHeader({
+  title,
+  icon,
+}: {
+  title: string
+  icon?: React.ReactNode
+}) {
+  return (
+    <h2 className="flex items-center gap-1.5 border-t border-neutral bg-base-1/60 px-4 py-2 text-xs font-medium tracking-wide text-tertiary uppercase">
+      {icon}
+      {title}
+    </h2>
+  )
+}
+
+function UserResultRow({ user }: { user: PublicUser }) {
+  if (!user.handle) return null
+  const tier = resolveBadgeTier(user)
+  return (
+    <Link
+      to="/$handle"
+      params={{ handle: user.handle }}
+      className="flex items-start gap-3 border-t border-neutral px-4 py-3 transition-colors hover:bg-base-2/40 focus-visible:bg-base-2/40 focus-visible:outline-none"
+    >
+      <Avatar
+        src={user.avatarUrl}
+        initial={(user.displayName || user.handle).slice(0, 2)}
+        size="lg"
+      />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1 text-sm font-medium text-primary">
+          <span className="truncate">
+            {user.displayName || `@${user.handle}`}
+          </span>
+          {tier && <VerifiedBadge size={14} role={tier} />}
+        </div>
+        <div className="text-xs text-tertiary">@{user.handle}</div>
+        {user.bio && (
+          <p className="mt-1 line-clamp-2 text-xs text-secondary">{user.bio}</p>
+        )}
+      </div>
+    </Link>
   )
 }

@@ -68,7 +68,7 @@ function DailySparkline({
   series,
   emptyLabel,
 }: {
-  series: Array<{ n: number }>
+  series: Array<{ day: string; n: number }>
   emptyLabel: string
 }) {
   if (series.every((s) => s.n === 0)) {
@@ -77,27 +77,70 @@ function DailySparkline({
 
   const width = 600
   const height = 80
+  const padTop = 4
   const max = Math.max(1, ...series.map((s) => s.n))
   const step = width / Math.max(1, series.length - 1)
-  const pts = series
-    .map((s, i) => `${i * step},${height - (s.n / max) * height}`)
+  const last = series[series.length - 1]
+  const total = series.reduce((acc, s) => acc + s.n, 0)
+  const peak = series.reduce((best, s) => (s.n > best.n ? s : best), series[0])
+
+  const linePts = series
+    .map(
+      (s, i) =>
+        `${i * step},${height - (s.n / max) * (height - padTop) - padTop / 2}`
+    )
     .join(" ")
+  const areaPath = `M 0,${height} L ${linePts.replaceAll(" ", " L ")} L ${width},${height} Z`
 
   return (
-    <svg
-      viewBox={`0 0 ${width} ${height}`}
-      className="mt-3 h-20 w-full"
-      preserveAspectRatio="none"
-    >
-      <polyline
-        points={pts}
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2}
-        className="text-primary"
-      />
-    </svg>
+    <div className="mt-3">
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="h-20 w-full"
+        preserveAspectRatio="none"
+        aria-hidden
+      >
+        <path d={areaPath} className="fill-primary/10" />
+        <polyline
+          points={linePts}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          strokeLinejoin="round"
+          strokeLinecap="round"
+          className="text-primary"
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+      <div className="mt-1 flex items-center justify-between text-[11px] text-tertiary tabular-nums">
+        <span>
+          Peak {peak.n.toLocaleString()}
+          {peak.day ? ` · ${formatDayShort(peak.day)}` : ""}
+        </span>
+        <span>
+          Total {total.toLocaleString()} · today {last.n.toLocaleString()}
+        </span>
+      </div>
+    </div>
   )
+}
+
+function formatDayShort(day: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(day)
+  if (!match) return day
+  const year = Number(match[1])
+  const month = Number(match[2])
+  const dayOfMonth = Number(match[3])
+  if (
+    !Number.isFinite(year) ||
+    !Number.isFinite(month) ||
+    !Number.isFinite(dayOfMonth)
+  ) {
+    return day
+  }
+  const d = new Date(year, month - 1, dayOfMonth)
+  if (Number.isNaN(d.getTime())) return day
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" })
 }
 
 function Analytics() {
@@ -384,8 +427,10 @@ function SnapshotCard({
   hint: string
 }) {
   return (
-    <div className="flex gap-3 rounded-md border border-neutral p-3">
-      <div className="shrink-0 text-tertiary">{icon}</div>
+    <div className="flex gap-3 rounded-md border border-neutral p-3 transition-colors hover:bg-base-2/30">
+      <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-subtle text-secondary">
+        {icon}
+      </div>
       <div className="min-w-0">
         <div className="text-xs text-tertiary">{label}</div>
         <div className="mt-0.5 text-xl font-semibold tabular-nums">{value}</div>
@@ -407,8 +452,10 @@ function Stat({
   hint?: string
 }) {
   return (
-    <div className="flex gap-2 rounded-md border border-neutral p-3">
-      <div className="mt-0.5 shrink-0 text-tertiary">{icon}</div>
+    <div className="flex gap-3 rounded-md border border-neutral p-3 transition-colors hover:bg-base-2/30">
+      <div className="flex size-7 shrink-0 items-center justify-center rounded-md bg-subtle text-secondary">
+        {icon}
+      </div>
       <div className="min-w-0">
         <div className="text-xs text-tertiary">{label}</div>
         <div className="mt-1 text-2xl font-semibold tabular-nums">
@@ -439,8 +486,8 @@ function BreakdownRow({
   return (
     <li className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
       <div className="flex min-w-0 flex-1 items-center gap-2">
-        <span className="text-tertiary">{icon}</span>
-        <span className="text-sm text-tertiary">{label}</span>
+        <span className="text-secondary">{icon}</span>
+        <span className="text-sm text-secondary">{label}</span>
       </div>
       <div className="flex w-full flex-col items-stretch gap-1 sm:w-48 sm:items-end">
         <span className="text-sm font-semibold tabular-nums sm:text-right">
@@ -449,9 +496,9 @@ function BreakdownRow({
             {value === 0 ? "0%" : `${pct}%`}
           </span>
         </span>
-        <div className="h-1 w-full overflow-hidden rounded-full bg-base-2 sm:max-w-[12rem]">
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-subtle sm:max-w-[12rem]">
           <div
-            className="bg-primary h-full rounded-full transition-[width]"
+            className="h-full rounded-full bg-inverse transition-[width] duration-500 ease-out"
             style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
           />
         </div>
