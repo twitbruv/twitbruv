@@ -1,3 +1,5 @@
+import type { AdminUsersListQuery } from "./api"
+
 export type FeedTabKey = "following" | "network" | "all" | "forYou"
 
 export type AdminPostFilters = {
@@ -10,10 +12,7 @@ export type AdminPostFilters = {
   status?: string
 }
 
-export type AdminUsersFilters = {
-  q?: string
-  cursor?: string
-}
+export type AdminUsersFilters = Omit<AdminUsersListQuery, "cursor">
 
 export const qk = {
   me: () => ["me"] as const,

@@ -24,6 +24,13 @@ import { DropdownMenu } from "@workspace/ui/components/dropdown-menu"
 import { Input } from "@workspace/ui/components/input"
 import { Label } from "@workspace/ui/components/label"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@workspace/ui/components/select"
+import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -51,11 +58,22 @@ import { useMe } from "../../lib/me"
 import { PageError, PageLoading } from "../page-surface"
 import { PageFrame } from "../page-frame"
 import { VerifiedBadge, resolveBadgeTier } from "../verified-badge"
+import { FilterField } from "./filter-field"
 import type { ColumnDef } from "@tanstack/react-table"
 import type { AdminUser } from "../../lib/api"
+import type { AdminUsersFilters } from "../../lib/query-keys"
 
 type Role = "user" | "admin" | "owner"
 const ROLES: Array<Role> = ["user", "admin", "owner"]
+
+type AdminUsersRoleFilter = "any" | Role
+type TriBoolFilter = "any" | "true" | "false"
+type AdminUserStatusFilter =
+  | "any"
+  | "active"
+  | "banned"
+  | "shadowbanned"
+  | "deleted"
 
 type ActionDialogState =
   | { kind: "ban"; user: AdminUser }
@@ -97,9 +115,61 @@ export default function AdminUsers() {
     return () => clearTimeout(t)
   }, [q])
 
+  const [roleFilter, setRoleFilter] = useState<AdminUsersRoleFilter>("any")
+  const [verifiedFilter, setVerifiedFilter] = useState<TriBoolFilter>("any")
+  const [contributorFilter, setContributorFilter] =
+    useState<TriBoolFilter>("any")
+  const [emailVerifiedFilter, setEmailVerifiedFilter] =
+    useState<TriBoolFilter>("any")
+  const [botFilter, setBotFilter] = useState<TriBoolFilter>("any")
+  const [statusFilter, setStatusFilter] = useState<AdminUserStatusFilter>("any")
+
   const filters = useMemo(
-    () => ({ q: debouncedQ.trim() || undefined }),
-    [debouncedQ]
+    (): AdminUsersFilters => ({
+      q: debouncedQ.trim() || undefined,
+      role: roleFilter === "any" ? undefined : roleFilter,
+      verified:
+        verifiedFilter === "any" ? undefined : verifiedFilter === "true",
+      contributor:
+        contributorFilter === "any" ? undefined : contributorFilter === "true",
+      emailVerified:
+        emailVerifiedFilter === "any"
+          ? undefined
+          : emailVerifiedFilter === "true",
+      bot: botFilter === "any" ? undefined : botFilter === "true",
+      status: statusFilter === "any" ? undefined : statusFilter,
+    }),
+    [
+      debouncedQ,
+      roleFilter,
+      verifiedFilter,
+      contributorFilter,
+      emailVerifiedFilter,
+      botFilter,
+      statusFilter,
+    ]
+  )
+
+  const hasActiveFilters = useMemo(
+    () =>
+      Boolean(
+        debouncedQ.trim() ||
+        roleFilter !== "any" ||
+        verifiedFilter !== "any" ||
+        contributorFilter !== "any" ||
+        emailVerifiedFilter !== "any" ||
+        botFilter !== "any" ||
+        statusFilter !== "any"
+      ),
+    [
+      debouncedQ,
+      roleFilter,
+      verifiedFilter,
+      contributorFilter,
+      emailVerifiedFilter,
+      botFilter,
+      statusFilter,
+    ]
   )
 
   const {
@@ -111,7 +181,8 @@ export default function AdminUsers() {
     hasNextPage,
   } = useInfiniteQuery({
     queryKey: qk.admin.users(filters),
-    queryFn: ({ pageParam }) => api.adminUsers(filters.q, pageParam),
+    queryFn: ({ pageParam }) =>
+      api.adminUsers({ ...filters, cursor: pageParam }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.nextCursor ?? undefined,
   })
@@ -525,16 +596,116 @@ export default function AdminUsers() {
 
   return (
     <PageFrame width="full" className="flex flex-col">
-      <div className="shrink-0 border-b border-neutral p-4">
+      <div className="shrink-0 space-y-3 border-b border-neutral p-4">
         <Input
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="search by handle or email…"
         />
+        <div className="flex flex-wrap items-end gap-3">
+          <FilterField label="Role">
+            <Select
+              value={roleFilter}
+              onValueChange={(v) => setRoleFilter(v as AdminUsersRoleFilter)}
+            >
+              <SelectTrigger size="sm" className="h-8 w-36">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="any">Any</SelectItem>
+                <SelectItem value="user">User</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="owner">Owner</SelectItem>
+              </SelectContent>
+            </Select>
+          </FilterField>
+          <FilterField label="Verified">
+            <Select
+              value={verifiedFilter}
+              onValueChange={(v) => setVerifiedFilter(v as TriBoolFilter)}
+            >
+              <SelectTrigger size="sm" className="h-8 w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="any">Any</SelectItem>
+                <SelectItem value="true">Verified</SelectItem>
+                <SelectItem value="false">Not verified</SelectItem>
+              </SelectContent>
+            </Select>
+          </FilterField>
+          <FilterField label="Contributor">
+            <Select
+              value={contributorFilter}
+              onValueChange={(v) => setContributorFilter(v as TriBoolFilter)}
+            >
+              <SelectTrigger size="sm" className="h-8 w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="any">Any</SelectItem>
+                <SelectItem value="true">Contributor</SelectItem>
+                <SelectItem value="false">Not contributor</SelectItem>
+              </SelectContent>
+            </Select>
+          </FilterField>
+          <FilterField label="Email">
+            <Select
+              value={emailVerifiedFilter}
+              onValueChange={(v) => setEmailVerifiedFilter(v as TriBoolFilter)}
+            >
+              <SelectTrigger size="sm" className="h-8 w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="any">Any</SelectItem>
+                <SelectItem value="true">Verified</SelectItem>
+                <SelectItem value="false">Not verified</SelectItem>
+              </SelectContent>
+            </Select>
+          </FilterField>
+          <FilterField label="Bot">
+            <Select
+              value={botFilter}
+              onValueChange={(v) => setBotFilter(v as TriBoolFilter)}
+            >
+              <SelectTrigger size="sm" className="h-8 w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="any">Any</SelectItem>
+                <SelectItem value="true">Bot</SelectItem>
+                <SelectItem value="false">Human</SelectItem>
+              </SelectContent>
+            </Select>
+          </FilterField>
+          <FilterField label="Status">
+            <Select
+              value={statusFilter}
+              onValueChange={(v) => setStatusFilter(v as AdminUserStatusFilter)}
+            >
+              <SelectTrigger size="sm" className="h-8 w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="any">Any</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="banned">Banned</SelectItem>
+                <SelectItem value="shadowbanned">Shadowbanned</SelectItem>
+                <SelectItem value="deleted">Deleted</SelectItem>
+              </SelectContent>
+            </Select>
+          </FilterField>
+        </div>
       </div>
       {loadError && <PageError message={loadError} />}
       {isPending && users.length === 0 && (
         <PageLoading className="py-8" label="Loading…" />
+      )}
+      {!isPending && users.length === 0 && !loadError && (
+        <div className="py-8 text-center text-xs text-tertiary">
+          {hasActiveFilters ? "No users match these filters." : "No users yet."}
+        </div>
       )}
       {users.length > 0 && (
         <div ref={setScrollRoot} className="flex-1">

@@ -59,6 +59,17 @@ const h = (handle: string) => handle.replace(/^@/, "")
 const qs = (cursor?: string) =>
   cursor ? `?cursor=${encodeURIComponent(cursor)}` : ""
 
+export type AdminUsersListQuery = {
+  q?: string
+  cursor?: string
+  role?: "user" | "admin" | "owner"
+  verified?: boolean
+  contributor?: boolean
+  emailVerified?: boolean
+  bot?: boolean
+  status?: "active" | "banned" | "shadowbanned" | "deleted"
+}
+
 export const api = {
   me: () => request<{ user: SelfUser }>("/api/me"),
   updateMe: (body: Partial<SelfUser>) =>
@@ -447,10 +458,19 @@ export const api = {
 
   adminStats: () => request<AdminStats>(`/api/admin/stats`),
   adminOnline: () => request<AdminOnline>(`/api/admin/online`),
-  adminUsers: (q?: string, cursor?: string) => {
+  adminUsers: (opts: AdminUsersListQuery) => {
     const params = new URLSearchParams()
-    if (q) params.set("q", q)
-    if (cursor) params.set("cursor", cursor)
+    if (opts.q) params.set("q", opts.q)
+    if (opts.cursor) params.set("cursor", opts.cursor)
+    if (opts.role) params.set("role", opts.role)
+    if (opts.verified !== undefined)
+      params.set("verified", opts.verified ? "true" : "false")
+    if (opts.contributor !== undefined)
+      params.set("contributor", opts.contributor ? "true" : "false")
+    if (opts.emailVerified !== undefined)
+      params.set("emailVerified", opts.emailVerified ? "true" : "false")
+    if (opts.bot !== undefined) params.set("bot", opts.bot ? "true" : "false")
+    if (opts.status) params.set("status", opts.status)
     return request<{ users: Array<AdminUser>; nextCursor: string | null }>(
       `/api/admin/users${params.toString() ? `?${params.toString()}` : ""}`
     )
@@ -1264,6 +1284,7 @@ export interface AdminPost {
 export interface AdminUser {
   id: string
   email: string
+  emailVerified: boolean
   handle: string | null
   displayName: string | null
   avatarUrl: string | null
@@ -1273,6 +1294,7 @@ export interface AdminUser {
   banExpires: string | null
   shadowBannedAt: string | null
   isVerified: boolean
+  isBot: boolean
   isContributor: boolean
   contributorCheckedAt: string | null
   deletedAt: string | null
