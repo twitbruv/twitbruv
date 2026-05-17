@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import { cn } from "@workspace/ui/lib/utils"
 import { Avatar } from "@workspace/ui/components/avatar"
@@ -14,7 +14,10 @@ import { ComposePoll } from "./compose-poll"
 import { ComposeAttachments } from "./compose-attachments"
 import { ComposeDropZone } from "./compose-drop-zone"
 import { ComposeActionBar } from "./compose-action-bar"
+import { ComposeTextHighlight } from "./compose-text-highlight"
+import { MentionPopover } from "./mention-popover"
 import { useLinkPreview } from "./use-link-preview"
+import { useMentionAutocomplete } from "./use-mention-autocomplete"
 import {
   MAX_ATTACHMENTS,
   createId,
@@ -44,6 +47,7 @@ export function Compose({
   )
 
   const [text, setText] = useState(() => loadDraft(dKey))
+  const [caret, setCaret] = useState(0)
   const [expanded, setExpanded] = useState(
     () => !collapsible || loadDraft(dKey).length > 0
   )
@@ -68,12 +72,6 @@ export function Compose({
   useEffect(() => {
     resizeTextarea(textareaRef.current)
   }, [text, expanded])
-
-  useEffect(() => {
-    if (autoFocus && textareaRef.current) {
-      textareaRef.current.focus()
-    }
-  }, [autoFocus])
 
   useEffect(() => {
     if (autoFocus && textareaRef.current) {
@@ -142,10 +140,57 @@ export function Compose({
   const handleTextChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       setText(e.target.value)
+      setCaret(e.target.selectionStart)
       if (collapsible) setExpanded(true)
     },
     [collapsible]
   )
+
+  // setText updaters are kept pure (Strict Mode double-invokes them in dev);
+  // caret/focus work happens in a microtask after the commit.
+  const handleInsertEmoji = useCallback(
+    (emoji: string) => {
+      const ta = textareaRef.current
+      const start = ta?.selectionStart ?? text.length
+      const end = ta?.selectionEnd ?? text.length
+      const nextCaret = start + emoji.length
+      setText((prev) => prev.slice(0, start) + emoji + prev.slice(end))
+      queueMicrotask(() => {
+        if (!ta) return
+        ta.focus()
+        ta.setSelectionRange(nextCaret, nextCaret)
+        setCaret(nextCaret)
+      })
+    },
+    [text]
+  )
+
+  const handleApplyMention = useCallback(
+    (start: number, end: number, handle: string) => {
+      const ta = textareaRef.current
+      const insertion = `@${handle} `
+      const nextCaret = start + insertion.length
+      setText((prev) => prev.slice(0, start) + insertion + prev.slice(end))
+      queueMicrotask(() => {
+        if (!ta) return
+        ta.focus()
+        ta.setSelectionRange(nextCaret, nextCaret)
+        setCaret(nextCaret)
+      })
+    },
+    []
+  )
+
+  const mention = useMentionAutocomplete({
+    text,
+    caret,
+    onApply: handleApplyMention,
+  })
+  const mentionListboxId = useId()
+  const activeMentionOptionId =
+    mention.open && mention.users[mention.activeIndex]
+      ? `${mentionListboxId}-opt-${mention.activeIndex}`
+      : undefined
 
   const addFiles = useCallback(
     async (files: FileList | ReadonlyArray<File> | null) => {
@@ -301,6 +346,7 @@ export function Compose({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (mention.handleKeyDown(e)) return
       if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault()
         if (canSubmit) {
@@ -311,8 +357,12 @@ export function Compose({
         }
       }
     },
-    [canSubmit, handleSubmit]
+    [mention, canSubmit, handleSubmit]
   )
+
+  const syncCaret = useCallback(() => {
+    setCaret(textareaRef.current?.selectionStart ?? 0)
+  }, [])
 
   const handlePaste = useCallback(
     (e: React.ClipboardEvent) => {
@@ -470,20 +520,39 @@ export function Compose({
         {/* Content */}
         <div className="min-w-0 flex-1">
           {/* Textarea */}
-          <textarea
-            ref={textareaRef}
-            value={text}
-            onChange={handleTextChange}
-            onKeyDown={handleKeyDown}
-            onFocus={() => {
-              if (collapsible) setExpanded(true)
-            }}
-            onPaste={handlePaste}
-            placeholder={placeholder}
-            rows={1}
-            maxLength={POST_MAX_LEN * 2}
-            className="w-full resize-none bg-transparent pt-2 text-[15px] leading-relaxed text-primary outline-none placeholder:text-tertiary"
-          />
+          <div className="relative">
+            <textarea
+              ref={textareaRef}
+              value={text}
+              onChange={handleTextChange}
+              onKeyDown={handleKeyDown}
+              onSelect={syncCaret}
+              onClick={syncCaret}
+              onFocus={() => {
+                if (collapsible) setExpanded(true)
+              }}
+              onPaste={handlePaste}
+              placeholder={placeholder}
+              rows={1}
+              maxLength={POST_MAX_LEN * 2}
+              role="combobox"
+              aria-autocomplete="list"
+              aria-haspopup="listbox"
+              aria-expanded={mention.open}
+              aria-controls={mention.open ? mentionListboxId : undefined}
+              aria-activedescendant={activeMentionOptionId}
+              className="w-full resize-none bg-transparent pt-2 text-[15px] leading-relaxed text-transparent caret-[var(--text-color-primary)] outline-none placeholder:text-tertiary"
+            />
+            <ComposeTextHighlight text={text} />
+            <MentionPopover
+              listboxId={mentionListboxId}
+              open={mention.open}
+              users={mention.users}
+              activeIndex={mention.activeIndex}
+              onHover={mention.setActiveIndex}
+              onSelect={mention.apply}
+            />
+          </div>
 
           {/* Poll */}
           {poll && (
@@ -602,6 +671,7 @@ export function Compose({
             buttonLabel={buttonLabel()}
             onAddFiles={addFiles}
             onStartPoll={startPoll}
+            onInsertEmoji={handleInsertEmoji}
           />
         </div>
       </form>

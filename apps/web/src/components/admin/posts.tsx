@@ -46,6 +46,7 @@ import { useInfiniteScrollSentinel } from "../../lib/use-infinite-scroll-sentine
 import { PageError, PageLoading } from "../page-surface"
 import { PageFrame } from "../page-frame"
 import { VerifiedBadge, resolveBadgeTier } from "../verified-badge"
+import { FilterField } from "./filter-field"
 import type { AdminPostFilters } from "../../lib/query-keys"
 import type { ColumnDef } from "@tanstack/react-table"
 import type { AdminPost, AdminPostSort, AdminPostType } from "../../lib/api"
@@ -701,23 +702,6 @@ export default function AdminPosts() {
         }}
       />
     </PageFrame>
-  )
-}
-
-function FilterField({
-  label,
-  children,
-}: {
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <div className="flex flex-col gap-1">
-      <span className="text-[10px] font-semibold tracking-wider text-tertiary uppercase">
-        {label}
-      </span>
-      {children}
-    </div>
   )
 }
 

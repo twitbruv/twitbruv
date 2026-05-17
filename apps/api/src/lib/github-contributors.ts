@@ -1,3 +1,5 @@
+import { eq } from "@workspace/db"
+import { schema } from "@workspace/db"
 import type { AppContext } from "./context.ts"
 
 const CACHE_TTL_SEC = 10 * 60
@@ -110,4 +112,44 @@ export function contributorReposConfigured(ctx: AppContext): boolean {
 
 export function configuredContributorRepos(ctx: AppContext): Array<string> {
   return ctx.env.GITHUB_CONTRIBUTOR_REPOS ?? []
+}
+
+export interface SyncContributorResult {
+  isContributor: boolean
+  changed: boolean
+}
+
+export async function syncContributorStatus(
+  ctx: AppContext,
+  userId: string,
+  login: string | null | undefined,
+): Promise<SyncContributorResult> {
+  const [before] = await ctx.db
+    .select({ isContributor: schema.users.isContributor })
+    .from(schema.users)
+    .where(eq(schema.users.id, userId))
+    .limit(1)
+  const previous = before?.isContributor ?? false
+  try {
+    const isContributor = await isUserContributor(ctx, login)
+    await ctx.db
+      .update(schema.users)
+      .set({ isContributor, contributorCheckedAt: new Date() })
+      .where(eq(schema.users.id, userId))
+    return { isContributor, changed: previous !== isContributor }
+  } catch (err) {
+    ctx.log.warn(
+      { err: err instanceof Error ? err.message : err, userId },
+      "github_contributor_sync_failed",
+    )
+    return { isContributor: previous, changed: false }
+  }
+}
+
+export async function bustContributorRepoCaches(
+  ctx: AppContext,
+): Promise<void> {
+  for (const repo of ctx.env.GITHUB_CONTRIBUTOR_REPOS ?? []) {
+    await ctx.cache.del(cacheKey(repo))
+  }
 }

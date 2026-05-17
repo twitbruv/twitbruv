@@ -1,4 +1,4 @@
-import { PhotoIcon } from "@heroicons/react/24/solid"
+import { PhotoIcon } from "@heroicons/react/16/solid"
 import { cn } from "@workspace/ui/lib/utils"
 import { MAX_ATTACHMENTS } from "./types"
 

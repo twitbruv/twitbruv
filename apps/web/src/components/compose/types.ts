@@ -2,7 +2,7 @@ import {
   AtSymbolIcon,
   GlobeAltIcon,
   UsersIcon,
-} from "@heroicons/react/24/solid"
+} from "@heroicons/react/16/solid"
 import type { UploadedMedia } from "../../lib/media"
 import type { Post } from "../../lib/api"
 

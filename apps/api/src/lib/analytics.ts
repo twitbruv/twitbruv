@@ -52,6 +52,7 @@ export type EventName =
   | 'admin_user_unverified'
   | 'admin_user_contributor_granted'
   | 'admin_user_contributor_revoked'
+  | 'admin_user_github_refreshed'
   | 'admin_user_role_set'
   | 'admin_user_handle_set'
   | 'admin_user_deleted'

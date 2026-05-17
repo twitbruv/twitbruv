@@ -27,6 +27,11 @@ import {
 import { parseCursor } from "../lib/cursor.ts"
 import { isReservedHandle } from "../lib/handles.ts"
 import { getOnlinePresence } from "../lib/presence.ts"
+import { bustCache, getGithubSnapshot } from "../lib/github-snapshot.ts"
+import {
+  bustContributorRepoCaches,
+  syncContributorStatus,
+} from "../lib/github-contributors.ts"
 
 export const adminRoute = new Hono<HonoEnv>()
 
@@ -239,6 +244,11 @@ adminRoute.get("/online", async (c) => {
   })
 })
 
+const adminUserListBoolParam = z
+  .enum(["true", "false"])
+  .transform((v) => v === "true")
+  .optional()
+
 const listQuery = z.object({
   // Cap admin search input. Without a limit, an admin (or compromised admin session) can
   // ship a massive `q` and force the planner into a wildcard ilike scan. 80 chars matches
@@ -246,12 +256,30 @@ const listQuery = z.object({
   q: z.string().trim().max(80).optional(),
   cursor: z.string().max(40).optional(),
   limit: z.coerce.number().min(1).max(100).default(40),
+  role: z.enum(["user", "admin", "owner"]).optional(),
+  verified: adminUserListBoolParam,
+  contributor: adminUserListBoolParam,
+  emailVerified: adminUserListBoolParam,
+  bot: adminUserListBoolParam,
+  status: z
+    .enum(["active", "banned", "shadowbanned", "deleted"])
+    .optional(),
 })
 
 // List/search users. Cursor is the ISO timestamp of the previous page's last createdAt.
 adminRoute.get("/users", async (c) => {
   const { db, mediaEnv } = c.get("ctx")
-  const { q, cursor, limit } = listQuery.parse(c.req.query())
+  const {
+    q,
+    cursor,
+    limit,
+    role,
+    verified,
+    contributor,
+    emailVerified,
+    bot,
+    status,
+  } = listQuery.parse(c.req.query())
 
   const filters: Array<unknown> = []
   if (q) {
@@ -262,6 +290,29 @@ adminRoute.get("/users", async (c) => {
   }
   const parsedCursor = parseCursor(cursor)
   if (parsedCursor) filters.push(lt(schema.users.createdAt, parsedCursor))
+
+  if (role) filters.push(eq(schema.users.role, role))
+  if (verified !== undefined) filters.push(eq(schema.users.isVerified, verified))
+  if (contributor !== undefined)
+    filters.push(eq(schema.users.isContributor, contributor))
+  if (emailVerified !== undefined)
+    filters.push(eq(schema.users.emailVerified, emailVerified))
+  if (bot !== undefined) filters.push(eq(schema.users.isBot, bot))
+  if (status === "active") {
+    filters.push(
+      and(
+        eq(schema.users.banned, false),
+        isNull(schema.users.shadowBannedAt),
+        isNull(schema.users.deletedAt)
+      )
+    )
+  } else if (status === "banned") {
+    filters.push(eq(schema.users.banned, true))
+  } else if (status === "shadowbanned") {
+    filters.push(isNotNull(schema.users.shadowBannedAt))
+  } else if (status === "deleted") {
+    filters.push(isNotNull(schema.users.deletedAt))
+  }
 
   const rows = await db
     .select()
@@ -334,6 +385,7 @@ adminRoute.get("/users", async (c) => {
   const items = rows.map((u) => ({
     id: u.id,
     email: u.email,
+    emailVerified: u.emailVerified,
     handle: u.handle,
     displayName: u.displayName,
     avatarUrl: assetUrl(mediaEnv, u.avatarUrl),
@@ -343,6 +395,7 @@ adminRoute.get("/users", async (c) => {
     banExpires: u.banExpires?.toISOString() ?? null,
     shadowBannedAt: u.shadowBannedAt?.toISOString() ?? null,
     isVerified: u.isVerified,
+    isBot: u.isBot,
     isContributor: u.isContributor,
     contributorCheckedAt: u.contributorCheckedAt?.toISOString() ?? null,
     deletedAt: u.deletedAt?.toISOString() ?? null,
@@ -448,6 +501,7 @@ adminRoute.get("/users/:id", async (c) => {
     user: {
       id: user.id,
       email: user.email,
+      emailVerified: user.emailVerified,
       handle: user.handle,
       displayName: user.displayName,
       bio: user.bio,
@@ -459,6 +513,7 @@ adminRoute.get("/users/:id", async (c) => {
       banExpires: user.banExpires?.toISOString() ?? null,
       shadowBannedAt: user.shadowBannedAt?.toISOString() ?? null,
       isVerified: user.isVerified,
+      isBot: user.isBot,
       isContributor: user.isContributor,
       contributorCheckedAt: user.contributorCheckedAt?.toISOString() ?? null,
       deletedAt: user.deletedAt?.toISOString() ?? null,
@@ -1041,6 +1096,82 @@ adminRoute.delete("/users/:id/contributor", async (c) => {
   })
   c.get("ctx").track("admin_user_contributor_revoked", session.user.id)
   return c.json({ ok: true })
+})
+
+// Force-refresh a single user's GitHub connection: re-fetch their profile snapshot via their
+// stored OAuth token, bust the shared contributor-list cache, then recompute is_contributor
+// from the (possibly renamed) login. Useful when a contributor was added to one of the
+// configured repos after the user connected, or when their GitHub handle changed.
+adminRoute.post("/users/:id/connectors/github/refresh", async (c) => {
+  const ctx = c.get("ctx")
+  await ctx.rateLimit(c, "connectors.github.admin-refresh")
+  const session = c.get("session")!
+  const id = c.req.param("id")
+
+  const [conn] = await ctx.db
+    .select({
+      providerUsername: schema.oauthConnections.providerUsername,
+      accessTokenEncrypted: schema.oauthConnections.accessTokenEncrypted,
+    })
+    .from(schema.oauthConnections)
+    .where(
+      and(
+        eq(schema.oauthConnections.userId, id),
+        eq(schema.oauthConnections.provider, "github"),
+      ),
+    )
+    .limit(1)
+  if (!conn) return c.json({ error: "no_github_connection" }, 404)
+
+  await bustContributorRepoCaches(ctx)
+  await bustCache(ctx, id)
+  const { snapshot } = await getGithubSnapshot(ctx, id, { forceRefresh: true })
+  const login = snapshot?.login ?? conn.providerUsername ?? null
+  const { isContributor, changed } = await syncContributorStatus(
+    ctx,
+    id,
+    login,
+  )
+
+  // getGithubSnapshot clears accessTokenEncrypted on GitHubAuthError; re-read to surface a
+  // clear "token revoked" signal to the admin UI rather than guessing from snapshot.stale.
+  const [after] = await ctx.db
+    .select({
+      accessTokenEncrypted: schema.oauthConnections.accessTokenEncrypted,
+    })
+    .from(schema.oauthConnections)
+    .where(
+      and(
+        eq(schema.oauthConnections.userId, id),
+        eq(schema.oauthConnections.provider, "github"),
+      ),
+    )
+    .limit(1)
+  const tokenRevoked = !after?.accessTokenEncrypted
+
+  ctx.log.info(
+    {
+      adminId: session.user.id,
+      targetUserId: id,
+      login,
+      isContributor,
+      changed,
+      snapshotStale: snapshot?.stale ?? null,
+      tokenRevoked,
+    },
+    "admin_user_github_refreshed",
+  )
+  ctx.track("admin_user_github_refreshed", session.user.id)
+
+  return c.json({
+    ok: true,
+    login,
+    isContributor,
+    changed,
+    refreshedAt: snapshot?.refreshedAt ?? null,
+    stale: snapshot?.stale ?? false,
+    tokenRevoked,
+  })
 })
 
 // Owner-only: forcibly reassign a user's handle. Useful for reclaiming squatted handles or

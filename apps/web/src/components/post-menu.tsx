@@ -8,9 +8,10 @@ import {
   PencilSquareIcon,
   TrashIcon,
 } from "@heroicons/react/24/solid"
+import { AlertDialog } from "@workspace/ui/components/alert-dialog"
 import { Button } from "@workspace/ui/components/button"
 import { DropdownMenu } from "@workspace/ui/components/dropdown-menu"
-import { ApiError, api } from "../lib/api"
+import { api } from "../lib/api"
 import { authClient } from "../lib/auth"
 import { ReportDialog } from "./report-dialog"
 import type { Post } from "../lib/api"
@@ -37,6 +38,7 @@ export function PostMenu({
 }) {
   const { data: session } = authClient.useSession()
   const [busy, setBusy] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const [reportOpen, setReportOpen] = useState(false)
   const isOwner = Boolean(session?.user && session.user.id === post.author.id)
   const canEdit =
@@ -46,17 +48,8 @@ export function PostMenu({
   if (!session) return null
 
   async function onDelete() {
-    if (busy) return
-    if (!confirm("Delete this post?")) return
-    setBusy(true)
-    try {
-      await api.deletePost(post.id)
-      onRemove?.()
-    } catch (e) {
-      alert(e instanceof ApiError ? e.message : "delete failed")
-    } finally {
-      setBusy(false)
-    }
+    await api.deletePost(post.id)
+    onRemove?.()
   }
 
   async function togglePin() {
@@ -107,10 +100,8 @@ export function PostMenu({
                 variant="transparent"
                 size="sm"
                 aria-label="Post menu"
-                className="size-5"
-              >
-                <EllipsisHorizontalIcon className="size-3" />
-              </Button>
+                iconLeft={<EllipsisHorizontalIcon />}
+              />
             }
           />
           <DropdownMenu.Content align="end" sideOffset={4} className="w-40">
@@ -129,7 +120,7 @@ export function PostMenu({
             {isOwner && (
               <DropdownMenu.Item
                 variant="danger"
-                onClick={onDelete}
+                onClick={() => setDeleteOpen(true)}
                 disabled={busy}
               >
                 <TrashIcon className="size-3.5" />
@@ -155,6 +146,14 @@ export function PostMenu({
           </DropdownMenu.Content>
         </DropdownMenu.Root>
       </div>
+      <AlertDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="Delete this post?"
+        description="This can't be undone."
+        confirmLabel="Delete"
+        onConfirm={onDelete}
+      />
       <ReportDialog
         open={reportOpen}
         onOpenChange={setReportOpen}

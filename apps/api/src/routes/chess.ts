@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { and, desc, eq, or } from '@workspace/db'
+import { and, desc, eq, isNull, or } from '@workspace/db'
 import { schema } from '@workspace/db'
 import { createChessGameSchema, moveChessSchema } from '@workspace/validators'
 import { requireHandle, type HonoEnv } from '../middleware/session.ts'
@@ -136,15 +136,32 @@ chessRoute.post('/', async (c) => {
   const { db } = c.get('ctx')
   const body = createChessGameSchema.parse(await c.req.json())
 
-  // For simplicity, the creator is white, opponent is black
-  // In a real app, you might want to randomize this or have a challenge system
-  const [game] = await db
-    .insert(schema.chessGames)
-    .values({
-      whitePlayerId: session.user.id,
-      blackPlayerId: body.opponentId,
-    })
-    .returning()
+  if (body.opponentId === session.user.id) {
+    return c.json({ error: 'self_challenge' }, 400)
+  }
+
+  // Validate opponent and create the game in one transaction with FOR UPDATE on
+  // the user row, so a concurrent soft-delete can't slip in between the check
+  // and the insert.
+  const game = await db.transaction(async (tx) => {
+    const [opponent] = await tx
+      .select({ id: schema.users.id })
+      .from(schema.users)
+      .where(and(eq(schema.users.id, body.opponentId), isNull(schema.users.deletedAt)))
+      .limit(1)
+      .for('update')
+    if (!opponent) return null
+
+    const [created] = await tx
+      .insert(schema.chessGames)
+      .values({
+        whitePlayerId: session.user.id,
+        blackPlayerId: body.opponentId,
+      })
+      .returning()
+    return created ?? null
+  })
+  if (!game) return c.json({ error: 'opponent_not_found' }, 404)
 
   c.get('ctx').track('chess_game_created', session.user.id)
   return c.json({ game })

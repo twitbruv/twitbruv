@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router"
 import { LinkPill } from "./link-card"
+import { MentionLink } from "./mention-link"
 import type { ReactNode } from "react"
 
 type Part =
@@ -46,14 +47,9 @@ export function RichText({ text }: { text: string }): ReactNode {
         }
         if (p.type === "mention") {
           return (
-            <Link
-              key={i}
-              to="/$handle"
-              params={{ handle: p.value.slice(1) }}
-              className="text-sky-500 hover:underline"
-            >
+            <MentionLink key={i} handle={p.value.slice(1)}>
               {p.value}
-            </Link>
+            </MentionLink>
           )
         }
         return <LinkPill key={i} url={p.value} />

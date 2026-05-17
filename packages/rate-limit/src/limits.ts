@@ -172,6 +172,13 @@ export const BUCKETS = {
     { windowMs: MIN, max: 4 },
     { windowMs: HOUR, max: 30 },
   ],
+  // Admin-driven re-sync of a single user's GitHub connection. Tighter ceiling than the
+  // user-facing refresh because admins iterating a list can otherwise burn through the
+  // shared GitHub token budget; loose enough to triage a backlog without throttling.
+  "connectors.github.admin-refresh": [
+    { windowMs: MIN, max: 30 },
+    { windowMs: HOUR, max: 200 },
+  ],
 } satisfies Record<string, Array<FixedWindowLimit>>
 
 export type BucketName = keyof typeof BUCKETS

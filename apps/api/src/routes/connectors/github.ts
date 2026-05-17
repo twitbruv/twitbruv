@@ -8,7 +8,7 @@ import { requireHandle } from '../../middleware/session.ts'
 import { connectorsEnabled, decryptToken, encryptToken } from '../../lib/connector-crypto.ts'
 import { exchangeCode, revokeGrant } from '../../lib/github-client.ts'
 import { bustCache, getGithubSnapshot } from '../../lib/github-snapshot.ts'
-import { isUserContributor } from '../../lib/github-contributors.ts'
+import { syncContributorStatus } from '../../lib/github-contributors.ts'
 
 export const githubConnectorRoute = new Hono<HonoEnv>()
 
@@ -187,28 +187,6 @@ githubConnectorRoute.get('/callback', async (c) => {
 
   return settled({ settings_tab: 'connections', connected: 'github' })
 })
-
-async function syncContributorStatus(
-  ctx: import('../../lib/context.ts').AppContext,
-  userId: string,
-  login: string | null | undefined,
-): Promise<void> {
-  try {
-    const isContributor = await isUserContributor(ctx, login)
-    await ctx.db
-      .update(schema.users)
-      .set({
-        isContributor,
-        contributorCheckedAt: new Date(),
-      })
-      .where(eq(schema.users.id, userId))
-  } catch (err) {
-    ctx.log.warn(
-      { err: err instanceof Error ? err.message : err, userId },
-      'github_contributor_sync_failed',
-    )
-  }
-}
 
 // What the settings page reads to render the current connection state.
 githubConnectorRoute.get('/me', requireHandle(), async (c) => {

@@ -1,3 +1,5 @@
+import type { AdminUsersListQuery } from "./api"
+
 export type FeedTabKey = "following" | "network" | "all" | "forYou"
 
 export type AdminPostFilters = {
@@ -10,15 +12,14 @@ export type AdminPostFilters = {
   status?: string
 }
 
-export type AdminUsersFilters = {
-  q?: string
-  cursor?: string
-}
+export type AdminUsersFilters = Omit<AdminUsersListQuery, "cursor">
 
 export const qk = {
   me: () => ["me"] as const,
 
-  user: (handle: string) => ["user", handle] as const,
+  // Server stores handles lowercase; normalize so mixed-case URLs and
+  // mention text share one cache entry instead of duplicating fetches.
+  user: (handle: string) => ["user", handle.toLowerCase()] as const,
 
   userPosts: (handle: string) => ["userPosts", handle] as const,
 
